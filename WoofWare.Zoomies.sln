@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "WoofWare.Zoomies", "WoofWare.Zoomies\WoofWare.Zoomies.fsproj", "{2E463971-7762-4446-9F55-04453D57746D}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "WoofWare.Zoomies.Test", "WoofWare.Zoomies\WoofWare.Zoomies.Test\WoofWare.Zoomies.Test.fsproj", "{A7968FB2-5B74-46E9-887E-927D6FDAE9A7}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2E463971-7762-4446-9F55-04453D57746D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2E463971-7762-4446-9F55-04453D57746D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2E463971-7762-4446-9F55-04453D57746D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2E463971-7762-4446-9F55-04453D57746D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A7968FB2-5B74-46E9-887E-927D6FDAE9A7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A7968FB2-5B74-46E9-887E-927D6FDAE9A7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A7968FB2-5B74-46E9-887E-927D6FDAE9A7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A7968FB2-5B74-46E9-887E-927D6FDAE9A7}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
