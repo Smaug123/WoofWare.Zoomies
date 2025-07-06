@@ -1,0 +1,29 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <IsPackable>false</IsPackable>
+        <OutputType>Exe</OutputType>
+        <GenerateProgramFile>false</GenerateProgramFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="TestWeakHashTable.fs" />
+        <Compile Include="TestList.fs" />
+        <Compile Include="Program.fs"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Expecto" Version="10.2.3" />
+        <PackageReference Include="Expecto.Diff" Version="10.2.3" />
+        <PackageReference Include="Expecto.FsCheck" Version="10.2.3" />
+        <PackageReference Include="FsUnit" Version="7.1.1"/>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1"/>
+        <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.3" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\WoofWare.PlayFetch.fsproj" />
+    </ItemGroup>
+
+</Project>

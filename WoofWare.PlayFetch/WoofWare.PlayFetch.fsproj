@@ -1,0 +1,42 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netstandard2.0</TargetFramework>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="AssemblyInfo.fs" />
+        <Compile Include="Map.fs" />
+        <Compile Include="List.fs" />
+        <Compile Include="Time.fs" />
+        <Compile Include="TimingWheel.fsi" />
+        <Compile Include="TimingWheel.fs" />
+        <Compile Include="WeakHashTable.fs" />
+        <Compile Include="StepFunction.fsi" />
+        <Compile Include="StepFunction.fs" />
+        <Compile Include="BeforeOrAfter.fs" />
+        <Compile Include="RaisedException.fsi" />
+        <Compile Include="RaisedException.fs" />
+        <Compile Include="StabilizationNum.fsi" />
+        <Compile Include="StabilizationNum.fs" />
+        <Compile Include="OnUpdateHandler.fsi" />
+        <Compile Include="OnUpdateHandler.fs" />
+        <Compile Include="NodeId.fs" />
+        <Compile Include="Cutoff.fsi" />
+        <Compile Include="Cutoff.fs" />
+        <Compile Include="DotUserInfo.fsi" />
+        <Compile Include="DotUserInfo.fs" />
+        <Compile Include="Types.fs" />
+        <Compile Include="Var.fsi" />
+        <Compile Include="Var.fs" />
+        <Compile Include="Node.fs" />
+        <Compile Include="UnorderedArrayFold.fsi" />
+        <Compile Include="UnorderedArrayFold.fs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="TypeEquality" Version="0.3.0" />
+    </ItemGroup>
+
+</Project>
