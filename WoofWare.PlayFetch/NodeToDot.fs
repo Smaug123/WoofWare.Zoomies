@@ -1,27 +1,28 @@
 namespace WoofWare.PlayFetch
 
 module NodeToDot =
-    let print_node (out : Format.formatter) ~name ~kind ~height ~user_info =
-  let default = For_analyzer.Dot_user_info.default ~name ~kind ~height in
-  let info =
-    match user_info with
-    | None -> default
-    | Some user_info -> For_analyzer.Dot_user_info.append default user_info
-  in
-  Format.fprintf
-    out
-    "%s\n"
-    (For_analyzer.Dot_user_info.to_string ~name (For_analyzer.Dot_user_info.to_dot info))
-;;
+    let print_node (out : Format.formatter) name kind height user_info =
+      let default' = For_analyzer.Dot_user_info.default ~name ~kind ~height in
+      let info =
+        match user_info with
+        | None -> default'
+        | Some user_info -> For_analyzer.Dot_user_info.append default' user_info
+      in
+      Format.fprintf
+        out
+        "%s\n"
+        (For_analyzer.Dot_user_info.to_string ~name (For_analyzer.Dot_user_info.to_dot info))
 
-let save_dot ~emit_bind_edges (out : Format.formatter) ts =
-  let node_name =
-    if am_running_test
-    then fun _ -> "n###"
-    else fun id -> "n" ^ For_analyzer.Node_id.to_string id
-  in
-  Format.fprintf out "digraph G {\n";
-  Format.fprintf out "  rankdir = BT\n";
+    let saveDot emitBindEdges out ts =
+        seq {
+            let node_name =
+                if am_running_test
+                then fun _ -> "n###"
+                else fun id -> "n" ^ For_analyzer.Node_id.to_string id
+            yield "digraph G {\n"
+            yield "  rankdir = BT\n"
+        }
+
   let seen = For_analyzer.Node_id.Hash_set.create () in
   let bind_edges = ref [] in
   For_analyzer.traverse
