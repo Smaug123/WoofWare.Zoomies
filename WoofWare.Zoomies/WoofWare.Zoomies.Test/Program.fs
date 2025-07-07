@@ -4,4 +4,6 @@ open Expecto
 
 module Program =
     [<EntryPoint>]
-    let main argv = runTestsInAssemblyWithCLIArgs [] argv
+    let main argv =
+        let res = runTestsInAssemblyWithCLIArgs [] argv
+        res

@@ -3,8 +3,8 @@ namespace WoofWare.PlayFetch
 [<RequireQualifiedAccess>]
 module internal List =
 
-    let isSortedBy (projection: 'a -> 'b) (list: 'a list) : bool =
-        let rec go (headProj: 'b) (l: 'a list) =
+    let isSortedBy (projection : 'a -> 'b) (list : 'a list) : bool =
+        let rec go (headProj : 'b) (l : 'a list) =
             match l with
             | [] -> true
             | next :: l ->

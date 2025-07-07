@@ -11,5 +11,5 @@ type internal VarCrate =
 [<RequireQualifiedAccess>]
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal Var =
-    val latestValue: Var<'t> -> 't
-    val incrState: Var<'a> -> State
+    val latestValue : Var<'t> -> 't
+    val incrState : Var<'a> -> State

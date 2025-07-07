@@ -17,7 +17,7 @@ module TypeIdSet =
     /// <summary>
     /// The empty set.
     /// </summary>
-    val empty: TypeIdSet
+    val empty : TypeIdSet
 
     /// <summary>
     /// A singleton set.
@@ -27,9 +27,9 @@ module TypeIdSet =
     /// <summary>
     /// Returns <c>true</c> if the set contains no elements.
     /// </summary>
-    val isEmpty: TypeIdSet -> bool
+    val isEmpty : TypeIdSet -> bool
 
-    val length: TypeIdSet -> int
+    val length : TypeIdSet -> int
 
     /// <summary>
     /// Adds a type-id to the set.
@@ -48,12 +48,12 @@ module TypeIdSet =
     /// <summary>
     /// Computes the union of two sets
     /// </summary>
-    val union: TypeIdSet -> TypeIdSet -> TypeIdSet
+    val union : TypeIdSet -> TypeIdSet -> TypeIdSet
 
     /// <summary>
     /// Folds over the elements in the set
     /// </summary>
-    val fold<'acc> : TypeIdSet -> init: 'acc -> 'acc TypeIdFolder -> 'acc
+    val fold<'acc> : TypeIdSet -> init : 'acc -> 'acc TypeIdFolder -> 'acc
 
     /// <summary>
     /// Maps over the set and sticks the return values in a list
@@ -63,4 +63,4 @@ module TypeIdSet =
     /// <summary>
     /// iterates over the elements in the set
     /// </summary>
-    val iter: TypeIdSet -> unit TypeIdEval -> unit
+    val iter : TypeIdSet -> unit TypeIdEval -> unit

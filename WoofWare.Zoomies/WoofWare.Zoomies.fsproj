@@ -12,6 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="AssemblyInfo.fs" />
     <Compile Include="PrivateEval\TypeId.fs" />
     <Compile Include="PrivateEval\TypeIdSet.fsi" />
     <Compile Include="PrivateEval\TypeIdSet.fs" />

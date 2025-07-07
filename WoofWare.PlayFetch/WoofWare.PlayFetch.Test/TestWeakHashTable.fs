@@ -5,7 +5,7 @@ open System
 open WoofWare.PlayFetch
 open Expecto
 
-let data (i: int) = ref i
+let data (i : int) = ref i
 
 let testBasicOperations () =
     let t = WeakHashTable.create<int, int ref> ()
@@ -60,9 +60,9 @@ let testSpaceReclamation () =
     Expect.isTrue (WeakHashTable.mem t key) "Key should be present after add"
 
     // Force GC to collect the value
-    GC.Collect()
-    GC.WaitForPendingFinalizers()
-    GC.Collect()
+    GC.Collect ()
+    GC.WaitForPendingFinalizers ()
+    GC.Collect ()
 
     // Key still uses space but mem returns false (weak ref cleared)
     Expect.isTrue (WeakHashTable.keyIsUsingSpace t key) "Key should still use space after GC"
@@ -82,8 +82,8 @@ let testRunWhenUnusedData () =
     WeakHashTable.setRunWhenUnusedData t (fun () -> ran := true)
 
     // GC before adding data - callback shouldn't run
-    GC.Collect()
-    GC.WaitForPendingFinalizers()
+    GC.Collect ()
+    GC.WaitForPendingFinalizers ()
     Expect.isFalse !ran "Callback should not run before data added"
 
     // Add data and keep reference
@@ -91,8 +91,8 @@ let testRunWhenUnusedData () =
     WeakHashTable.addExn t key data
 
     // GC with live reference - callback shouldn't run
-    GC.Collect()
-    GC.WaitForPendingFinalizers()
+    GC.Collect ()
+    GC.WaitForPendingFinalizers ()
     Expect.isFalse !ran "Callback should not run with live reference"
 
     // Ensure data is still accessible (prevents optimization)
@@ -100,32 +100,39 @@ let testRunWhenUnusedData () =
 
     // Now let data go out of scope by setting to null (simulating going out of scope)
     // In real F# this would happen naturally when data goes out of scope
-    GC.KeepAlive(data) // Ensure it's alive until here
+    GC.KeepAlive (data) // Ensure it's alive until here
 // data goes out of scope after the function
 
 // Test: findOrAdd and complex scenarios
 type Struct =
-    { mutable Foo: int
-      Bar: int
-      Baz: string }
+    {
+        mutable Foo : int
+        Bar : int
+        Baz : string
+    }
 
 let testComplexScenarios () =
     let t = WeakHashTable.create<int, Struct ref> ()
 
     let createData foo =
-        ref { Foo = foo; Bar = 0; Baz = "hello" }
+        ref
+            {
+                Foo = foo
+                Bar = 0
+                Baz = "hello"
+            }
 
     let stabilize () =
-        GC.Collect()
-        GC.WaitForPendingFinalizers()
-        GC.Collect()
+        GC.Collect ()
+        GC.WaitForPendingFinalizers ()
+        GC.Collect ()
         WeakHashTable.reclaimSpaceForKeysWithUnusedData t
 
     // Use mutable cells to control lifetime
-    let b1 = ref (Some(createData 1))
-    let b2 = ref (Some(createData 2))
-    let b3 = ref (Some(createData 3))
-    let b4 = ref (Some(createData 4))
+    let b1 = ref (Some (createData 1))
+    let b2 = ref (Some (createData 2))
+    let b3 = ref (Some (createData 3))
+    let b4 = ref (Some (createData 4))
 
     let k1, k2, k3 = 1, 2, 3
 
@@ -143,9 +150,9 @@ let testComplexScenarios () =
 
     let isAbsent k = not (WeakHashTable.keyIsUsingSpace t k)
 
-    let isBlock k (expected: 'a ref option) =
+    let isBlock k (expected : 'a ref option) =
         match WeakHashTable.find t k, expected with
-        | Some found, Some exp -> Object.ReferenceEquals(found, exp)
+        | Some found, Some exp -> Object.ReferenceEquals (found, exp)
         | _ -> false
 
     // All should be present
@@ -189,7 +196,9 @@ let testComplexScenarios () =
 let tests =
     testList
         "TestWeakHashTable"
-        [ test "basic operations" { testBasicOperations () }
-          test "space reclamation" { testSpaceReclamation () }
-          test "callback" { testRunWhenUnusedData () }
-          test "complex" { testComplexScenarios () } ]
+        [
+            test "basic operations" { testBasicOperations () }
+            test "space reclamation" { testSpaceReclamation () }
+            test "callback" { testRunWhenUnusedData () }
+            test "complex" { testComplexScenarios () }
+        ]

@@ -2,7 +2,7 @@ namespace WoofWare.PlayFetch
 
 open System.Threading
 
-type NodeId = private NodeId of int
+type NodeId = private | NodeId of int
 
 [<RequireQualifiedAccess>]
 module NodeId =

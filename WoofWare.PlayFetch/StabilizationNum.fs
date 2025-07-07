@@ -14,20 +14,20 @@ type StabilizationNum =
             | _ -> failwith "oh no"
 
     interface IComparable<StabilizationNum> with
-        member this.CompareTo(StabilizationNum other) =
+        member this.CompareTo (StabilizationNum other) =
             match this with
             | StabilizationNum this -> this.CompareTo other
 
-    override this.Equals(other: obj) : bool =
+    override this.Equals (other : obj) : bool =
         match other with
         | :? StabilizationNum as other ->
             match this, other with
             | StabilizationNum this, StabilizationNum other -> this = other
         | _ -> failwith "oh no"
 
-    override this.GetHashCode() : int =
+    override this.GetHashCode () : int =
         match this with
-        | StabilizationNum this -> this.GetHashCode()
+        | StabilizationNum this -> this.GetHashCode ()
 
 [<RequireQualifiedAccess>]
 module StabilizationNum =

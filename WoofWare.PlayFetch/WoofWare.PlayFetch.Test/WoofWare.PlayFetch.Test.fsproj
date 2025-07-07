@@ -10,6 +10,7 @@
     <ItemGroup>
         <Compile Include="TestWeakHashTable.fs" />
         <Compile Include="TestList.fs" />
+        <Compile Include="TestTimingWheel.fs" />
         <Compile Include="Program.fs"/>
     </ItemGroup>
 

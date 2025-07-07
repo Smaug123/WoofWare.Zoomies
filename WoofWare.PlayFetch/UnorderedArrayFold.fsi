@@ -10,23 +10,23 @@ type internal Update<'a, 'b> =
 
 [<RequireQualifiedAccess>]
 module internal UnorderedArrayFold =
-    val create:
-        init: 'acc ->
-        f: ('acc -> 'a -> 'acc) ->
-        update: Update<'a, 'acc> ->
-        fullComputeEveryNChanges: int ->
-        children: 'a Node[] ->
-        main: 'acc Node ->
+    val create :
+        init : 'acc ->
+        f : ('acc -> 'a -> 'acc) ->
+        update : Update<'a, 'acc> ->
+        fullComputeEveryNChanges : int ->
+        children : 'a Node[] ->
+        main : 'acc Node ->
             UnorderedArrayFold<'a, 'acc>
 
-    val compute: UnorderedArrayFold<'a, 'acc> -> 'acc
+    val compute : UnorderedArrayFold<'a, 'acc> -> 'acc
 
     val childChanged<'a, 'b, 'acc> :
-        t: UnorderedArrayFold<'a, 'acc> ->
-        child: 'b Node ->
-        childIndex: int ->
-        oldValueOpt: 'b voption ->
-        newValue: 'b ->
+        t : UnorderedArrayFold<'a, 'acc> ->
+        child : 'b Node ->
+        childIndex : int ->
+        oldValueOpt : 'b voption ->
+        newValue : 'b ->
             unit
 
-    val forceFullCompute: UnorderedArrayFold<'a, 'b> -> unit
+    val forceFullCompute : UnorderedArrayFold<'a, 'b> -> unit

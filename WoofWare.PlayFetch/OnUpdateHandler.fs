@@ -14,18 +14,22 @@ type NodeUpdate<'a> =
     | Unnecessary
 
 type OnUpdateHandler<'a> =
-    { F: 'a NodeUpdate -> unit
-      mutable PreviousUpdateKind: PreviousUpdateKind
-      CreatedAt: StabilizationNum }
+    {
+        F : 'a NodeUpdate -> unit
+        mutable PreviousUpdateKind : PreviousUpdateKind
+        CreatedAt : StabilizationNum
+    }
 
 [<RequireQualifiedAccess>]
 module OnUpdateHandler =
     let create f at =
-        { F = f
-          PreviousUpdateKind = PreviousUpdateKind.NeverBeenUpdated
-          CreatedAt = at }
+        {
+            F = f
+            PreviousUpdateKind = PreviousUpdateKind.NeverBeenUpdated
+            CreatedAt = at
+        }
 
-    let reallyRun (t: OnUpdateHandler<'a>) (nodeUpdate: 'a NodeUpdate) =
+    let reallyRun (t : OnUpdateHandler<'a>) (nodeUpdate : 'a NodeUpdate) =
         t.PreviousUpdateKind <-
             match nodeUpdate with
             | Necessary _ -> PreviousUpdateKind.Necessary
@@ -35,7 +39,7 @@ module OnUpdateHandler =
 
         t.F nodeUpdate
 
-    let run (t: OnUpdateHandler<'a>) (nodeUpdate: 'a NodeUpdate) now =
+    let run (t : OnUpdateHandler<'a>) (nodeUpdate : 'a NodeUpdate) now =
         (* We only run the handler if was created in an earlier stabilization cycle.  If the
          handler was created by another on-update handler during the running of on-update
          handlers in the current stabilization, we treat the added handler as if it were added
@@ -54,7 +58,7 @@ module OnUpdateHandler =
             | PreviousUpdateKind.Unnecessary, NodeUpdate.Unnecessary -> ()
             (* If this handler hasn't seen a node that is changing, we treat the update as an
            initialization. *)
-            | (PreviousUpdateKind.NeverBeenUpdated | PreviousUpdateKind.Unnecessary), NodeUpdate.Changed(_, a) ->
+            | (PreviousUpdateKind.NeverBeenUpdated | PreviousUpdateKind.Unnecessary), NodeUpdate.Changed (_, a) ->
                 reallyRun t (Necessary a)
             (* All other updates are run as is. *)
             | PreviousUpdateKind.NeverBeenUpdated,

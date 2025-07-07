@@ -17,21 +17,23 @@ module Update =
 
 [<RequireQualifiedAccess>]
 module internal UnorderedArrayFold =
-    let same (t1: UnorderedArrayFold<'a, 'b>) (t2: UnorderedArrayFold<'c, 'd>) = Object.ReferenceEquals(t1, t2)
+    let same (t1 : UnorderedArrayFold<'a, 'b>) (t2 : UnorderedArrayFold<'c, 'd>) = Object.ReferenceEquals (t1, t2)
 
     let create init f update fullComputeEveryNChanges children main =
-        { Init = init
-          F = f
-          Update = Update.update update f
-          FullComputeEveryNChanges = fullComputeEveryNChanges
-          Children = children
-          Main = main
-          FoldValue = ValueNone
-          (* We make [num_changes_since_last_full_compute = full_compute_every_n_changes]
+        {
+            Init = init
+            F = f
+            Update = Update.update update f
+            FullComputeEveryNChanges = fullComputeEveryNChanges
+            Children = children
+            Main = main
+            FoldValue = ValueNone
+            (* We make [num_changes_since_last_full_compute = full_compute_every_n_changes]
      so that there will be a full computation the next time the node is computed. *)
-          NumChangesSinceLastFullCompute = fullComputeEveryNChanges }
+            NumChangesSinceLastFullCompute = fullComputeEveryNChanges
+        }
 
-    let fullCompute (f: UnorderedArrayFold<'a, 'acc>) : 'acc =
+    let fullCompute (f : UnorderedArrayFold<'a, 'acc>) : 'acc =
         let mutable result = f.Init
 
         for i = 0 to Array.length f.Children - 1 do
@@ -43,7 +45,7 @@ module internal UnorderedArrayFold =
     let compute t =
         if t.NumChangesSinceLastFullCompute = t.FullComputeEveryNChanges then
             t.NumChangesSinceLastFullCompute <- 0
-            t.FoldValue <- ValueSome(fullCompute t)
+            t.FoldValue <- ValueSome (fullCompute t)
 
         t.FoldValue.Value
 
@@ -52,12 +54,13 @@ module internal UnorderedArrayFold =
         t.NumChangesSinceLastFullCompute <- t.FullComputeEveryNChanges
 
     let childChanged<'a, 'b, 'acc>
-        (t: UnorderedArrayFold<'a, 'acc>)
-        (child: 'b Node)
-        (childIndex: int)
-        (oldValueOpt: 'b voption)
-        (newValue: 'b)
-        : unit =
+        (t : UnorderedArrayFold<'a, 'acc>)
+        (child : 'b Node)
+        (childIndex : int)
+        (oldValueOpt : 'b voption)
+        (newValue : 'b)
+        : unit
+        =
         let childAtIndex = t.Children.[childIndex]
 
         match Node.typeEqualIfPhysSame child childAtIndex with

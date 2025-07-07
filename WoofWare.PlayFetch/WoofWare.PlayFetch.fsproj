@@ -7,11 +7,12 @@
 
     <ItemGroup>
         <Compile Include="AssemblyInfo.fs" />
+        <Compile Include="FakeUnit.fs" />
         <Compile Include="Map.fs" />
         <Compile Include="List.fs" />
         <Compile Include="Time.fs" />
         <Compile Include="TimingWheel.fsi" />
-        <Compile Include="TimingWheel.fs" />
+        <None Include="TimingWheel.fs" />
         <Compile Include="WeakHashTable.fs" />
         <Compile Include="StepFunction.fsi" />
         <Compile Include="StepFunction.fs" />
@@ -28,15 +29,35 @@
         <Compile Include="DotUserInfo.fsi" />
         <Compile Include="DotUserInfo.fs" />
         <Compile Include="Types.fs" />
+        <Compile Include="Bind.fsi" />
+        <Compile Include="Bind.fs" />
+        <Compile Include="NodeToDot.fsi" />
+        <Compile Include="NodeToDot.fs" />
+        <Compile Include="Observer.fsi" />
+        <Compile Include="Observer.fs" />
+        <Compile Include="RecomputeHeap.fsi" />
+        <Compile Include="RecomputeHeap.fs" />
+        <Compile Include="ArrayFold.fsi" />
+        <Compile Include="ArrayFold.fs" />
+        <Compile Include="Expert.fsi" />
+        <Compile Include="Expert.fs" />
+        <Compile Include="ReduceBalanced.fsi" />
+        <Compile Include="ReduceBalanced.fs" />
         <Compile Include="Var.fsi" />
         <Compile Include="Var.fs" />
         <Compile Include="Node.fs" />
         <Compile Include="UnorderedArrayFold.fsi" />
         <Compile Include="UnorderedArrayFold.fs" />
+        <Compile Include="Scope.fsi" />
+        <Compile Include="Scope.fs" />
+        <Compile Include="StepFunctionNode.fsi" />
+        <Compile Include="StepFunctionNode.fs" />
+        <Compile Include="State.fs" />
     </ItemGroup>
 
     <ItemGroup>
       <PackageReference Include="TypeEquality" Version="0.3.0" />
+      <PackageReference Include="WoofWare.BalancedReducer" Version="0.1.2" />
     </ItemGroup>
 
 </Project>

@@ -12,7 +12,7 @@ module Var =
 
     let incrState t = t.Watch.State
 
-    let latestValue (t: Var<'a>) =
+    let latestValue (t : Var<'a>) =
         match t.ValueSetDuringStabilization with
         | Some t -> t
         | None -> t.Value
