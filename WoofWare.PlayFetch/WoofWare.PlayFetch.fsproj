@@ -11,8 +11,10 @@
         <Compile Include="Map.fs" />
         <Compile Include="List.fs" />
         <Compile Include="Time.fs" />
+        <Compile Include="TimeNs.fs" />
         <Compile Include="TimingWheel.fsi" />
-        <None Include="TimingWheel.fs" />
+        <Compile Include="TimingWheel.fs" />
+      <!--
         <Compile Include="WeakHashTable.fs" />
         <Compile Include="StepFunction.fsi" />
         <Compile Include="StepFunction.fs" />
@@ -53,6 +55,7 @@
         <Compile Include="StepFunctionNode.fsi" />
         <Compile Include="StepFunctionNode.fs" />
         <Compile Include="State.fs" />
+        -->
     </ItemGroup>
 
     <ItemGroup>

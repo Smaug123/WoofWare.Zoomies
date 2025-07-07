@@ -4,7 +4,7 @@ Here are some common patterns:
 
 * GADTs don't exist in F#. We use the "crate" pattern (skolemization) to represent the existential type instead: `type FooCrate = abstract Apply<'ret> : FooEval<'ret> -> 'ret` and `type FooEval<'ret> = abstract Eval<'a> : Foo<'a> -> 'ret`.
 * Named arguments (`~f` or `~f:...`) don't exist in F#; we simply don't use names.
-* Optional arguments can be made in F#, but we just won't. Any optional args in the OCaml should be made non-optional in F#.
+* Optional arguments (`?f`) can be made in F#, but we just won't. Any optional args in the OCaml should be made non-optional in F#.
 * We use `thisCaseConvention` instead of OCaml's `this_case_convention`, and we use `fooThrowing` instead of `foo_exn` indicating that a function can throw.
 * Jane Street's `Uopt` type is F#'s built-in `ValueOption`; `Uopt.value_exn u` is `u.Value` in F#.
 * Universally quantified types look like `let foo : type a. a t -> bool` in OCaml; in F# they are e.g. `let foo<'a> (x : 'a t) -> bool = ...`.
