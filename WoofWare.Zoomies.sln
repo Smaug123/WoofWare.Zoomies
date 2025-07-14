@@ -4,6 +4,10 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "WoofWare.Zoomies", "WoofWar
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "WoofWare.Zoomies.Test", "WoofWare.Zoomies\WoofWare.Zoomies.Test\WoofWare.Zoomies.Test.fsproj", "{A7968FB2-5B74-46E9-887E-927D6FDAE9A7}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "WoofWare.PlayFetch", "WoofWare.PlayFetch\WoofWare.PlayFetch.fsproj", "{AE847D52-F20D-40DA-BD05-4B3092FDA164}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "WoofWare.PlayFetch.Test", "WoofWare.PlayFetch\WoofWare.PlayFetch.Test\WoofWare.PlayFetch.Test.fsproj", "{DCD38BFC-5392-4AD6-ABC8-CF212DA6CC5B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +22,13 @@ Global
 		{A7968FB2-5B74-46E9-887E-927D6FDAE9A7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A7968FB2-5B74-46E9-887E-927D6FDAE9A7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A7968FB2-5B74-46E9-887E-927D6FDAE9A7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AE847D52-F20D-40DA-BD05-4B3092FDA164}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AE847D52-F20D-40DA-BD05-4B3092FDA164}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AE847D52-F20D-40DA-BD05-4B3092FDA164}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AE847D52-F20D-40DA-BD05-4B3092FDA164}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DCD38BFC-5392-4AD6-ABC8-CF212DA6CC5B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DCD38BFC-5392-4AD6-ABC8-CF212DA6CC5B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DCD38BFC-5392-4AD6-ABC8-CF212DA6CC5B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DCD38BFC-5392-4AD6-ABC8-CF212DA6CC5B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

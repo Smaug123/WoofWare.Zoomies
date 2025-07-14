@@ -1,6 +1,11 @@
 namespace WoofWare.Zoomies
 
-type TypeId<'a> = private { Uid: int; Name: string }
+type TypeId<'a> =
+    private
+        {
+            Uid : int
+            Name : string
+        }
 
 /// <summary>
 /// A function to apply to some TypeId.
@@ -15,13 +20,14 @@ type TypeIdEval<'ret> =
 type TypeIdCrate =
     abstract Apply<'ret> : TypeIdEval<'ret> -> 'ret
 
-    abstract Uid: int
-    abstract Name: string
+    abstract Uid : int
+    abstract Name : string
 
 [<RequireQualifiedAccess>]
 module TypeIdCrate =
-    let make<'a> (t: 'a TypeId) : TypeIdCrate =
+    let make<'a> (t : 'a TypeId) : TypeIdCrate =
         { new TypeIdCrate with
             member _.Apply e = e.Eval t
             member _.Name = t.Name
-            member _.Uid = t.Uid }
+            member _.Uid = t.Uid
+        }
