@@ -7,7 +7,7 @@ module Scope =
 
     let top = Scope.Top
 
-    let is_top (s : Scope) =
+    let isTop (s : Scope) =
       match s with
       | Top -> true
       | Bind _ -> false
@@ -28,7 +28,11 @@ module Scope =
     let isValid (s : Scope) =
       match s with
       | Top -> true
-      | Bind bind -> Bind.isValid bind
+      | Bind bind ->
+          { new BindEval<_> with
+              member _.Eval e = Bind.isValid e
+          }
+          |> bind.Apply
 
     let isNecessary (s : Scope) =
       match s with

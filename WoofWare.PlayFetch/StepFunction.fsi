@@ -2,6 +2,7 @@ namespace WoofWare.PlayFetch
 
 open System
 open System.Collections.Generic
+open WoofWare.TimingWheel
 
 [<NoEquality ; NoComparison ; Sealed>]
 type StepFunction<'a> =

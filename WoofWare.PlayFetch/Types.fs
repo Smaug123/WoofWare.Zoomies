@@ -4,6 +4,8 @@ open System
 open System.Collections.Concurrent
 open System.Runtime.ExceptionServices
 open TypeEquality
+open WoofWare.TimingWheel
+open WoofWare.WeakHashTable
 
 type Status =
     | Stabilizing
@@ -121,7 +123,7 @@ and IfThenElse<'a> =
         Main : Node<'a>
         Test : Node<bool>
         TestChange : Node<unit>
-        mutable CurrentBranch : Node<'a> option
+        mutable CurrentBranch : Node<'a> voption
         Then : Node<'a>
         Else : Node<'a>
     }
@@ -154,11 +156,11 @@ and Join<'a> =
         Main : 'a Node
         Lhs : 'a Node Node
         LhsChange : unit Node
-        mutable Rhs : 'a Node option
+        mutable Rhs : 'a Node voption
     }
 
 and ArrayFoldEval<'a, 'ret> =
-    abstract Apply<'b> : ArrayFold<'b, 'a> -> 'ret
+    abstract Eval<'b> : ArrayFold<'b, 'a> -> 'ret
 
 and ArrayFoldCrate<'a> =
     abstract Apply<'ret> : ArrayFoldEval<'a, 'ret> -> 'ret
@@ -188,7 +190,7 @@ and JoinCrate =
     abstract Apply<'ret> : JoinEval<'ret> -> 'ret
 
 and MapEval<'a, 'ret> =
-    abstract Apply<'a1> : ('a1 -> 'a) * 'a1 Node -> 'ret
+    abstract Eval<'a1> : ('a1 -> 'a) * 'a1 Node -> 'ret
 
 and MapCrate<'a> =
     abstract Apply<'ret> : MapEval<'a, 'ret> -> 'ret
@@ -289,10 +291,10 @@ and Node<'a> =
             mutable HeightInRecomputeHeap : int
             /// [prev_in_recompute_heap] and [next_in_recompute_heap] doubly link all nodes of the
             /// same height in the recompute heap.
-            mutable PrevInRecomputeHeap : NodeCrate option
+            mutable PrevInRecomputeHeap : NodeCrate voption
             /// [prev_in_recompute_heap] and [next_in_recompute_heap] doubly link all nodes of the
             /// same height in the recompute heap.
-            mutable NextInRecomputeHeap : NodeCrate option
+            mutable NextInRecomputeHeap : NodeCrate voption
             /// [height_in_adjust_heights_heap] is used only during height adjustment, and is
             /// non-negative iff [t] is in the adjust-heights heap.  It holds the pre-adjusted
             /// height of [t].
@@ -341,7 +343,7 @@ and RecomputeHeap =
     {
         mutable Length : int
         mutable HeightLowerBound : int
-        mutable NodesByHeight : NodeCrate option[]
+        mutable NodesByHeight : NodeCrate voption[]
     }
 
 and RunOnUpdateHandlersEval<'ret> =
@@ -447,7 +449,7 @@ and State =
 and StepFunctionNode<'a> =
     {
         Main : 'a Node
-        mutable Child : 'a StepFunction Node option
+        mutable Child : 'a StepFunction Node voption
         mutable ExtractedStepFunctionFromChildAt : StabilizationNum
         mutable Value : 'a voption
         mutable UpcomingSteps : (TimeNs * 'a) seq
@@ -494,4 +496,11 @@ module NodeCrate =
     let make (node : Node<'a>) =
         { new NodeCrate with
             member _.Apply e = e.Eval node
+        }
+
+[<RequireQualifiedAccess>]
+module BindCrate =
+    let make (bind : Bind<'a, 'b>) =
+        { new BindCrate with
+            member _.Apply e = e.Eval bind
         }

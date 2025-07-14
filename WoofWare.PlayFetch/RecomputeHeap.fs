@@ -1,170 +1,176 @@
 namespace WoofWare.PlayFetch
 
+open System
+
 // module As_recompute_list = Node.Packed.As_list (struct
 //     let next (Node.Packed.T node) = node.next_in_recompute_heap
 //   end)
 
 type NodesByHeight = AsRecomputeList[]
 
+[<RequireQualifiedAccess>]
 module RecomputeHeap =
-    let max_height_allowed t = Uniform_array.length t.nodes_by_height - 1
-    let is_empty t = t.length = 0
+    let maxHeightAllowed (t: RecomputeHeap) : int = t.NodesByHeight.Length - 1
+    let isEmpty (t: RecomputeHeap) : bool = t.Length = 0
 
-    let invariant t =
-      Invariant.invariant t [%sexp_of: t] (fun () ->
-        let check f = Invariant.check_field t f in
-        Fields.iter
-          ~length:
-            (check (fun length ->
-               let actual_length = ref 0 in
-               Uniform_array.iter t.nodes_by_height ~f:(fun node ->
-                 actual_length := !actual_length + As_recompute_list.length node);
-               [%test_eq: int] length !actual_length))
-          ~height_lower_bound:
-            (check (fun height_lower_bound ->
-               assert (height_lower_bound >= 0);
-               assert (height_lower_bound <= Uniform_array.length t.nodes_by_height);
-               for height = 0 to height_lower_bound - 1 do
-                 assert (Uopt.is_none (Uniform_array.get t.nodes_by_height height))
-               done))
-          ~nodes_by_height:
-            (check (fun nodes_by_height ->
-               Uniform_array.iteri nodes_by_height ~f:(fun height node ->
-                 As_recompute_list.iter node ~f:(fun (T node) ->
-                   assert (node.height_in_recompute_heap = height);
-                   assert (Node.needs_to_be_computed node))))))
-    ;;
+    let invariant (t : RecomputeHeap) : unit =
+      do
+          let mutable actualLength = 0
+          t.NodesByHeight
+          |> Array.iter (fun node ->
+              actualLength <- actualLength + AsRecomputeList.length node
+          )
 
-    let create_nodes_by_height ~max_height_allowed =
-      Uniform_array.create ~len:(max_height_allowed + 1) Uopt.none
-    ;;
+          if t.Length <> actualLength then failwith "incorrect length"
 
-    let set_max_height_allowed t max_height_allowed =
-      if debug
-      then
-        for i = max_height_allowed + 1 to Uniform_array.length t.nodes_by_height - 1 do
-          assert (Uopt.is_none (Uniform_array.get t.nodes_by_height i))
-        done;
-      let src = t.nodes_by_height in
-      let dst = create_nodes_by_height ~max_height_allowed in
-      Uniform_array.blit
-        ~src
-        ~src_pos:0
-        ~dst
-        ~dst_pos:0
-        ~len:(min (Uniform_array.length src) (Uniform_array.length dst));
-      t.nodes_by_height <- dst;
-      t.height_lower_bound <- min t.height_lower_bound (Uniform_array.length dst)
-    ;;
+      do
+          if t.HeightLowerBound < 0 then failwith "HeightLowerBound must be nonnegative"
+          if t.HeightLowerBound > t.NodesByHeight.Length then failwith "HeightLowerBound must be at most NodesByHeight length"
+          for height = 0 to t.HeightLowerBound - 1 do
+              match t.NodesByHeight.[height] with
+              | ValueNone -> ()
+              | ValueSome _ -> failwith "expected nodes to be None"
 
-    let create ~max_height_allowed =
-      { length = 0
-      ; height_lower_bound = max_height_allowed + 1
-      ; nodes_by_height = create_nodes_by_height ~max_height_allowed
+      do
+          t.NodesByHeight
+          |> Array.iteri (fun height node ->
+                  match node with
+                  | ValueNone -> ()
+                  | ValueSome node ->
+                      { new NodeEval<_> with
+                          member _.Eval node =
+                              if node.HeightInRecomputeHeap <> height then failwith "bad height"
+                              if not (Node.needsToBeComputed node) then failwith "expected node needs to be computed"
+                              FakeUnit.ofUnit ()
+                      }
+                      |> node.Apply
+                      |> FakeUnit.toUnit
+          )
+
+    let createNodesByHeight maxHeightAllowed : ValueOption<NodeCrate> array =
+        Array.zeroCreate (maxHeightAllowed + 1)
+
+    let setMaxHeightAllowed t maxHeightAllowed =
+      if Debug.globalFlag then
+        for i = maxHeightAllowed + 1 to t.NodesByHeight.Length - 1 do
+          assert t.NodesByHeight.[i].IsNone
+      let src = t.NodesByHeight
+      let dst = createNodesByHeight maxHeightAllowed
+      Array.blit src 0 dst 0 (min src.Length dst.Length)
+      t.NodesByHeight <- dst
+      t.HeightLowerBound <- min t.HeightLowerBound dst.Length
+
+    let create maxHeightAllowed =
+      {
+          Length = 0
+          HeightLowerBound = maxHeightAllowed + 1
+          NodesByHeight = createNodesByHeight maxHeightAllowed
       }
-    ;;
 
-    let set_next (prev : Node.Packed.t Uopt.t) ~next =
-      if Uopt.is_some prev
-      then (
-        let (T prev) = Uopt.unsafe_value prev in
-        prev.next_in_recompute_heap <- next)
-    ;;
+    let setNext (prev : NodeCrate voption) (next: NodeCrate voption) : unit =
+      match prev with
+      | ValueSome prev ->
+          { new NodeEval<_> with
+              member _.Eval node =
+                  node.NextInRecomputeHeap <- next
+                  FakeUnit.ofUnit ()
+          }
+          |> prev.Apply
+          |> FakeUnit.toUnit
+      | ValueNone -> ()
 
-    let set_prev (next : Node.Packed.t Uopt.t) ~prev =
-      if Uopt.is_some next
-      then (
-        let (T next) = Uopt.unsafe_value next in
-        next.prev_in_recompute_heap <- prev)
-    ;;
+    let setPrev (next : NodeCrate voption) (prev: NodeCrate voption) : unit =
+      match next with
+      | ValueSome next ->
+          { new NodeEval<_> with
+              member _.Eval node =
+                  node.PrevInRecomputeHeap <- prev
+                  FakeUnit.ofUnit ()
+          }
+          |> next.Apply
+          |> FakeUnit.toUnit
+      | ValueNone -> ()
 
-    let link (type a) t (node : a Node.t) =
-      let height = node.height in
-      if debug then assert (height <= max_height_allowed t);
-      node.height_in_recompute_heap <- height;
-      let next = Uniform_array.get t.nodes_by_height height in
-      node.next_in_recompute_heap <- next;
-      set_prev next ~prev:(Uopt.some (Node.Packed.T node));
-      Uniform_array.unsafe_set t.nodes_by_height height (Uopt.some (Node.Packed.T node))
-    ;;
+    let link<'a> (t: RecomputeHeap) (node : 'a Node) : unit =
+      let height = node.Height
+      if Debug.globalFlag then assert (height <= maxHeightAllowed t)
+      node.HeightInRecomputeHeap <- height
+      let next = t.NodesByHeight.[height]
+      node.NextInRecomputeHeap <- next
+      let node = NodeCrate.make node
+      setPrev next (ValueSome node)
+      t.NodesByHeight.[height] <- ValueSome node
 
-    let unlink (type a) t (node : a Node.t) =
-      let prev = node.prev_in_recompute_heap in
-      let next = node.next_in_recompute_heap in
-      if phys_same
-           (Uopt.some node)
-           (Uniform_array.get t.nodes_by_height node.height_in_recompute_heap)
-      then Uniform_array.unsafe_set t.nodes_by_height node.height_in_recompute_heap next;
-      set_prev next ~prev;
-      set_next prev ~next;
-      node.prev_in_recompute_heap <- Uopt.none
-    ;;
+    let unlink<'a> (t : RecomputeHeap) (node : 'a Node) : unit =
+      let prev = node.PrevInRecomputeHeap
+      let next = node.NextInRecomputeHeap
+      match t.NodesByHeight.[node.HeightInRecomputeHeap] with
+      | ValueNone -> ()
+      | ValueSome existing ->
+          if Object.ReferenceEquals (node, existing) then
+             t.NodesByHeight.[node.HeightInRecomputeHeap] <- next
+      setPrev next prev
+      setNext prev next
+      node.PrevInRecomputeHeap <- ValueNone
 
-    (* We don't set [node.next_in_recompute_heap] here, but rather after calling [unlink]. *)
+    // We don't set [node.next_in_recompute_heap] here, but rather after calling [unlink].
 
-    let add (type a) t (node : a Node.t) =
-      if debug && (Node.is_in_recompute_heap node || not (Node.needs_to_be_computed node))
-      then
-        failwiths "incorrect attempt to add node to recompute heap" node [%sexp_of: _ Node.t];
-      if debug then assert (node.height <= max_height_allowed t);
-      let height = node.height in
-      if height < t.height_lower_bound then t.height_lower_bound <- height;
-      link t node;
-      t.length <- t.length + 1
-    ;;
-
-    let remove (type a) t (node : a Node.t) =
-      if debug && ((not (Node.is_in_recompute_heap node)) || Node.needs_to_be_computed node)
-      then
-        failwiths "incorrect [remove] of node from recompute heap" node [%sexp_of: _ Node.t];
-      unlink t node;
-      node.next_in_recompute_heap <- Uopt.none;
-      node.height_in_recompute_heap <- -1;
-      t.length <- t.length - 1
-    ;;
-
-    let increase_height (type a) t (node : a Node.t) =
-      if debug
-      then (
-        assert (node.height > node.height_in_recompute_heap);
-        assert (node.height <= max_height_allowed t);
-        assert (Node.is_in_recompute_heap node));
-      unlink t node;
+    let add<'a> (t : RecomputeHeap) (node : 'a Node) : unit =
+      if Debug.globalFlag && (Node.isInRecomputeHeap node || not (Node.needsToBeComputed node)) then
+        failwith "incorrect attempt to add node to recompute heap"
+      if Debug.globalFlag then assert (node.Height <= maxHeightAllowed t)
+      let height = node.Height
+      if height < t.HeightLowerBound then t.HeightLowerBound <- height
       link t node
-    ;;
+      t.Length <- t.Length + 1
 
-    let min_height t =
-      if t.length = 0
-      then t.height_lower_bound <- Uniform_array.length t.nodes_by_height
-      else (
-        let nodes_by_height = t.nodes_by_height in
-        while Uopt.is_none (Uniform_array.get nodes_by_height t.height_lower_bound) do
-          t.height_lower_bound <- t.height_lower_bound + 1
-        done);
-      t.height_lower_bound
-    ;;
+    let remove<'a> (t : RecomputeHeap) (node : 'a Node) : unit =
+      if Debug.globalFlag && ((not (Node.isInRecomputeHeap node)) || Node.needsToBeComputed node) then
+        failwith "incorrect [remove] of node from recompute heap"
+      unlink t node
+      node.NextInRecomputeHeap <- ValueNone
+      node.HeightInRecomputeHeap <- -1
+      t.Length <- t.Length - 1
 
-    let remove_min t : Node.Packed.t =
-      if debug then assert (not (is_empty t));
-      let nodes_by_height = t.nodes_by_height in
-      let node = ref (Uniform_array.get nodes_by_height t.height_lower_bound) in
-      while Uopt.is_none !node do
-        t.height_lower_bound <- t.height_lower_bound + 1;
-        if debug && t.height_lower_bound >= Uniform_array.length t.nodes_by_height
-        then
-          failwiths
-            "Recompute_heap.remove_min unexpectedly reached end of heap"
-            t
-            [%sexp_of: t];
-        node := Uniform_array.get nodes_by_height t.height_lower_bound
-      done;
-      let (T node) = Uopt.unsafe_value !node in
-      node.height_in_recompute_heap <- -1;
-      t.length <- t.length - 1;
-      let next = node.next_in_recompute_heap in
-      Uniform_array.set t.nodes_by_height t.height_lower_bound next;
-      set_prev next ~prev:Uopt.none;
-      if debug then assert (Uopt.is_none node.prev_in_recompute_heap);
-      node.next_in_recompute_heap <- Uopt.none;
-      T node
-    ;;
+    let increaseHeight<'a> (t: RecomputeHeap) (node : 'a Node) : unit =
+      if Debug.globalFlag then
+        assert (node.Height > node.HeightInRecomputeHeap)
+        assert (node.Height <= maxHeightAllowed t)
+        assert (Node.isInRecomputeHeap node)
+      unlink t node
+      link t node
+
+    let minHeight (t: RecomputeHeap) : int =
+      if t.Length = 0 then
+          t.HeightLowerBound <- t.NodesByHeight.Length
+      else
+        let nodesByHeight = t.NodesByHeight
+        while nodesByHeight.[t.HeightLowerBound].IsNone do
+          t.HeightLowerBound <- t.HeightLowerBound + 1
+      t.HeightLowerBound
+
+    let removeMin t : NodeCrate =
+      if Debug.globalFlag then
+          if isEmpty t then
+              failwith "expected nonempty if there was a min"
+      let nodesByHeight = t.NodesByHeight in
+      let mutable node = nodesByHeight.[t.HeightLowerBound]
+      while node.IsNone do
+        t.HeightLowerBound <- t.HeightLowerBound + 1;
+        if Debug.globalFlag && t.HeightLowerBound >= t.NodesByHeight.Length then
+          failwith "Recompute_heap.remove_min unexpectedly reached end of heap"
+        node <- nodesByHeight.[t.HeightLowerBound]
+      { new NodeEval<_> with
+          member _.Eval node =
+              node.HeightInRecomputeHeap <- -1
+              t.Length <- t.Length - 1
+              let next = node.NextInRecomputeHeap
+              t.NodesByHeight.[t.HeightLowerBound] <- next
+              setPrev next ValueNone
+              if Debug.globalFlag then
+                  if node.PrevInRecomputeHeap.IsSome then
+                      failwith "expected prev node to be None"
+              node.NextInRecomputeHeap <- ValueNone
+              NodeCrate.make node
+      }
+      |> node.Value.Apply

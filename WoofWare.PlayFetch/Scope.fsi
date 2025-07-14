@@ -1,6 +1,7 @@
 namespace WoofWare.PlayFetch
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+[<RequireQualifiedAccess>]
 module Scope =
     val top : Scope
     val isTop : Scope -> bool

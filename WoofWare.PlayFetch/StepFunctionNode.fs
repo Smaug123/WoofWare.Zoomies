@@ -2,6 +2,7 @@ namespace WoofWare.PlayFetch
 
 open System
 open System.Collections.Generic
+open WoofWare.TimingWheel
 
 [<RequireQualifiedAccess>]
 module internal StepFunctionNode =

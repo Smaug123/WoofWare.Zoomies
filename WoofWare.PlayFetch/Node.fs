@@ -42,27 +42,33 @@ module Node =
         else
             None
 
-    let same (t1 : _ t) (t2 : _ t) = phys_same t1 t2
-let packed_same (Packed.T t1) (Packed.T t2) = same t1 t2
-let is_necessary = Node.is_necessary
-let initial_num_children t = Kind.initial_num_children t.kind
-let iteri_children t ~f = Kind.iteri_children t.kind ~f
-let is_valid = Node.is_valid
-let type_equal_if_phys_same = type_equal_if_phys_same
+    let same (t1 : Node<'a>) (t2 : Node<'b>) = Object.ReferenceEquals (t1, t2)
+    let packedSame (t1 : NodeCrate) (t2 : NodeCrate) =
+        { new NodeEval<_> with
+            member _.Eval n =
+                { new NodeEval<_> with
+                    member _.Eval m =
+                        same m n
+                }
+                |> t2.Apply
+        }
+        |> t1.Apply
 
-let user_info t =
-  match t.user_info with
-  | None -> None
-  | Some (Info i) -> Some i
-  | Some other -> Some (Info.create_s (Dot_user_info.sexp_of_t other))
-;;
+    let initialNumChildren (n : Node<_>) : int = Kind.initialNumChildren n.Kind
+    let iteriChildren (t: Node<'a>) (f: int -> NodeCrate -> unit) : unit = Kind.iteriChildren t.Kind f
 
-let set_user_info t info =
-  t.user_info
-  <- (match info with
-      | None -> None
-      | Some i -> Some (Info i))
-;;
+    let userInfo (t: Node<'a>) : string option =
+        match t.UserInfo with
+        | None -> None
+        | Some (DotUserInfo.Info i) -> Some i
+        | Some other -> Some (DotUserInfo.createS (DotUserInfo.sexpOfT other))
+
+    let setUserInfo (t: Node<'a>) (info: string option) : unit =
+        let desired =
+            match info with
+            | None -> None
+            | Some i -> Some (DotUserInfo.Info i)
+        t.UserInfo <- desired
 
 let append_user_info_graphviz t ~label ~attrs =
   let new_ = Dot_user_info.dot ~label ~attributes:attrs in
@@ -114,19 +120,6 @@ let is_stale : type a. a t -> bool =
   | Join_main _
   | Map _
   | Map2 _
-  | Map3 _
-  | Map4 _
-  | Map5 _
-  | Map6 _
-  | Map7 _
-  | Map8 _
-  | Map9 _
-  | Map10 _
-  | Map11 _
-  | Map12 _
-  | Map13 _
-  | Map14 _
-  | Map15 _
   | Step_function _
   | Unordered_array_fold _ ->
     Stabilization_num.is_none t.recomputed_at || is_stale_with_respect_to_a_child t
@@ -186,19 +179,6 @@ let should_be_invalidated : type a. a t -> bool =
   | Freeze _
   | Map _
   | Map2 _
-  | Map3 _
-  | Map4 _
-  | Map5 _
-  | Map6 _
-  | Map7 _
-  | Map8 _
-  | Map9 _
-  | Map10 _
-  | Map11 _
-  | Map12 _
-  | Map13 _
-  | Map14 _
-  | Map15 _
   | Step_function _
   | Unordered_array_fold _ -> has_invalid_child t
   (* A *_change node is invalid if the node it is watching for changes is invalid (same

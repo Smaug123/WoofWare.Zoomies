@@ -12,3 +12,11 @@ Here are some common patterns:
 * The OCaml heavily uses type inference; we annotate types of top-level function definitions.
 * The OCaml defines many types centrally in what is `Types.fs` for us, and then it has to repeat some of those type definitions when it comes to the file that defines the module. F# doesn't need to repeat the type.
 * OCaml explicitly uses `ref` to create a mutable refcell; F# usually just uses `let mutable`. OCaml uses `incr` to increment mutable ints; idiomatic F# uses `foo.Value <- foo.Value + 1`.
+* `null` is a reserved keyword in F#. When porting OCaml code that uses `null` as an identifier, use `null'` instead.
+
+# Building the project
+
+To build the project, run:
+```
+dotnet build
+```
