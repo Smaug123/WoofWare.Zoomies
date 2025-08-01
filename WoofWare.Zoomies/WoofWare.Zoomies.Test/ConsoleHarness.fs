@@ -36,6 +36,7 @@ module ConsoleHarness =
             for x = 0 to Array2D.length2 c.Display - 1 do
                 sb.Append c.Display.[y, x] |> ignore
 
-            sb.Append '\n' |> ignore
+            // Don't want whitespace stripping in the IDE to catch us out
+            sb.Append "|\n" |> ignore
 
         sb.ToString ()

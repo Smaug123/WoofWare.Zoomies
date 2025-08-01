@@ -27,15 +27,15 @@ module TestRender =
             Vdom.textContent "errybody wants to be a bodybuilder, but don't nobody want to lift no heavy-ass weights"
             |> Vdom.bordered
 
-        let topHalf = Vdom.panelSplit Direction.Vertical 0.5 left right
+        let topHalf = Vdom.panelSplitProportion Direction.Vertical 0.5 left right
 
         let bottomHalf = Vdom.labelledCheckbox state.IsChecked "Press Space to toggle"
 
-        let vdom = Vdom.panelSplit Direction.Horizontal 0.9 topHalf bottomHalf
+        let vdom = Vdom.panelSplitAbsolute Direction.Horizontal -3 topHalf bottomHalf
 
         if state.IsChecked then
             Vdom.textContent "This gets displayed when the thing is checked"
-            |> Vdom.panelSplit Direction.Horizontal 0.7 vdom
+            |> Vdom.panelSplitProportion Direction.Horizontal 0.7 vdom
         else
             vdom
 
@@ -68,16 +68,58 @@ module TestRender =
         expect {
             snapshot
                 @"
-┌──────────────────────────────────────┐┌──────────────────────────────────────┐
-│not praising the praiseworthy keeps pe││errybody wants to be a bodybuilder, bu│
-│ople uncompetitive; not prizing rare t││t don't nobody want to lift no heavy-a│
-│reasures keeps people from stealing; n││ss weights                            │
-│ot looking at the desirable keeps the ││                                      │
-│mind quiet                            ││                                      │
-│                                      ││                                      │
-│                                      ││                                      │
-└──────────────────────────────────────────────────────────────────────────────┘
-Press Space to toggle                                                           
+┌──────────────────────────────────────┐┌──────────────────────────────────────┐|
+│not praising the praiseworthy keeps pe││errybody wants to be a bodybuilder, bu│|
+│ople uncompetitive; not prizing rare t││t don't nobody want to lift no heavy-a│|
+│reasures keeps people from stealing; n││ss weights                            │|
+│ot looking at the desirable keeps the ││                                      │|
+│mind quiet                            ││                                      │|
+└──────────────────────────────────────┘└──────────────────────────────────────┘|
+   Press Space to toggle                                                        |
+ ☐                                                                              |
+                                                                                |
+"
+
+            return ConsoleHarness.toString terminal
+        }
+
+        state.IsChecked <- true
+        Render.oneStep renderState state vdom
+
+        expect {
+            snapshot
+                @"
+┌──────────────────────────────────────┐┌──────────────────────────────────────┐|
+│not praising the praiseworthy keeps pe││errybody wants to be a bodybuilder, bu│|
+│ople uncompetitive; not prizing rare t││t don't nobody want to lift no heavy-a│|
+└──────────────────────────────────────┘└──────────────────────────────────────┘|
+   Press Space to toggle                                                        |
+ ☑                                                                              |
+                                                                                |
+This gets displayed when the thing is checked                                   |
+                                                                                |
+                                                                                |
+"
+
+            return ConsoleHarness.toString terminal
+        }
+
+        state.IsChecked <- false
+        Render.oneStep renderState state vdom
+
+        expect {
+            snapshot
+                @"
+┌──────────────────────────────────────┐┌──────────────────────────────────────┐|
+│not praising the praiseworthy keeps pe││errybody wants to be a bodybuilder, bu│|
+│ople uncompetitive; not prizing rare t││t don't nobody want to lift no heavy-a│|
+│reasures keeps people from stealing; n││ss weights                            │|
+│ot looking at the desirable keeps the ││                                      │|
+│mind quiet                            ││                                      │|
+└──────────────────────────────────────┘└──────────────────────────────────────┘|
+   Press Space to toggle                                                        |
+ ☐                                                                              |
+                                                                                |
 "
 
             return ConsoleHarness.toString terminal

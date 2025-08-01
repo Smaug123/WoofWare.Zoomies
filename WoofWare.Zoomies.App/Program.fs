@@ -25,15 +25,15 @@ module Program =
             Vdom.textContent "errybody wants to be a bodybuilder, but don't nobody want to lift no heavy-ass weights"
             |> Vdom.bordered
 
-        let topHalf = Vdom.panelSplit Direction.Vertical 0.5 left right
+        let topHalf = Vdom.panelSplitProportion Direction.Vertical 0.5 left right
 
         let bottomHalf = Vdom.labelledCheckbox state.IsChecked "Press Space to toggle"
 
-        let vdom = Vdom.panelSplit Direction.Horizontal 0.9 topHalf bottomHalf
+        let vdom = Vdom.panelSplitAbsolute Direction.Horizontal -3 topHalf bottomHalf
 
         if state.IsChecked then
             Vdom.textContent "This gets displayed when the thing is checked"
-            |> Vdom.panelSplit Direction.Horizontal 0.7 vdom
+            |> Vdom.panelSplitProportion Direction.Horizontal 0.7 vdom
         else
             vdom
 

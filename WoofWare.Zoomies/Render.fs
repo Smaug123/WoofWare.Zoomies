@@ -56,10 +56,18 @@ module RenderState =
 
 [<RequireQualifiedAccess>]
 module Render =
-    let private splitBounds (direction : Direction) (proportion : float) (bounds : Rectangle) : Rectangle * Rectangle =
+    let private splitBounds
+        (direction : Direction)
+        (split : Choice<float, int>)
+        (bounds : Rectangle)
+        : Rectangle * Rectangle
+        =
         match direction with
         | Direction.Vertical ->
-            let leftWidth = float bounds.Width * proportion |> int
+            let leftWidth =
+                match split with
+                | Choice1Of2 proportion -> max (float bounds.Width * proportion |> int) 1
+                | Choice2Of2 absolute -> if absolute < 0 then bounds.Width + absolute else absolute
 
             let left =
                 {
@@ -79,7 +87,10 @@ module Render =
 
             left, right
         | Direction.Horizontal ->
-            let topHeight = float bounds.Height * proportion |> int
+            let topHeight =
+                match split with
+                | Choice1Of2 proportion -> max (float bounds.Height * proportion |> int) 1
+                | Choice2Of2 absolute -> if absolute < 0 then bounds.Height + absolute else absolute
 
             let top =
                 {
@@ -110,13 +121,7 @@ module Render =
     let inline private yIndex (bounds : Rectangle) (relativeY : int) = bounds.TopLeftY + relativeY
     let inline private xIndex (bounds : Rectangle) (relativeX : int) = bounds.TopLeftX + relativeX
 
-    let inline private setAtRelativeOffset
-        (arr : 'a[,])
-        (bounds : Rectangle)
-        (relativeX : int)
-        (relativeY : int)
-        (v : 'a)
-        =
+    let private setAtRelativeOffset (arr : 'a[,]) (bounds : Rectangle) (relativeX : int) (relativeY : int) (v : 'a) =
         arr.[yIndex bounds relativeY, xIndex bounds relativeX] <- v
 
     let rec layout
@@ -134,139 +139,108 @@ module Render =
             previousNode
         | _ ->
 
-            match vdom with
-            | Vdom.TextContent s ->
-                match previousVdom with
-                | Some (Vdom.TextContent prevText, prevNode) when prevNode.Bounds = bounds && prevText = s ->
-                    {
-                        Bounds = bounds
-                        OverlaidChildren = []
-                        VDomSource = vdom
-                    }
-                | _ ->
+        match vdom with
+        | Vdom.TextContent s ->
+            match previousVdom with
+            | Some (Vdom.TextContent prevText, prevNode) when prevNode.Bounds = bounds && prevText = s ->
+                {
+                    Bounds = bounds
+                    OverlaidChildren = []
+                    VDomSource = vdom
+                }
+            | _ ->
 
-                    // TODO: can do better here if we can compute a more efficient diff
-                    for y = 0 to bounds.Height - 1 do
-                        for x = 0 to bounds.Width - 1 do
-                            setAtRelativeOffset
-                                dirty
-                                bounds
-                                x
-                                y
-                                (ValueSome
-                                    {
-                                        Char = ' '
-                                    })
-
-                    // dumb implementation! could do much better
-                    let mutable index = 0
-                    let mutable currX = 0
-                    let mutable currY = 0
-
-                    while index < s.Length do
+                // TODO: can do better here if we can compute a more efficient diff
+                for y = 0 to bounds.Height - 1 do
+                    for x = 0 to bounds.Width - 1 do
                         setAtRelativeOffset
                             dirty
                             bounds
-                            currX
-                            currY
+                            x
+                            y
                             (ValueSome
                                 {
-                                    Char = s.Chars index
+                                    Char = ' '
                                 })
 
-                        currX <- currX + 1
+                // dumb implementation! could do much better
+                let mutable index = 0
+                let mutable currX = 0
+                let mutable currY = 0
 
-                        if currX = bounds.Width then
-                            currX <- 0
-                            currY <- currY + 1
+                while index < s.Length do
+                    setAtRelativeOffset
+                        dirty
+                        bounds
+                        currX
+                        currY
+                        (ValueSome
+                            {
+                                Char = s.Chars index
+                            })
 
-                            if currY >= bounds.Height then
-                                index <- s.Length
+                    currX <- currX + 1
 
-                        index <- index + 1
+                    if currX = bounds.Width then
+                        currX <- 0
+                        currY <- currY + 1
 
-                    {
-                        Bounds = bounds
-                        OverlaidChildren = []
-                        VDomSource = vdom
-                    }
+                        if currY >= bounds.Height then
+                            index <- s.Length
 
-            | Vdom.PanelSplit (dir, proportion, child1, child2) ->
-                match previousVdom with
-                | Some (Vdom.PanelSplit (prevDir, prevProportion, prevChild1, prevChild2), prevNode) when
-                    proportion = prevProportion && prevDir = dir && bounds = prevNode.Bounds
-                    ->
-                    let bounds1, bounds2 = splitBounds dir proportion bounds
+                    index <- index + 1
 
-                    let rendered1 =
-                        layout dirty (Some (prevChild1, prevNode.OverlaidChildren.[0])) bounds1 child1
+                {
+                    Bounds = bounds
+                    OverlaidChildren = []
+                    VDomSource = vdom
+                }
 
-                    let rendered2 =
-                        layout dirty (Some (prevChild2, prevNode.OverlaidChildren.[1])) bounds2 child2
+        | Vdom.PanelSplit (dir, proportion, child1, child2) ->
+            match previousVdom with
+            | Some (Vdom.PanelSplit (prevDir, prevProportion, prevChild1, prevChild2), prevNode) when
+                proportion = prevProportion && prevDir = dir && bounds = prevNode.Bounds
+                ->
+                let bounds1, bounds2 = splitBounds dir proportion bounds
 
-                    {
-                        Bounds = bounds
-                        OverlaidChildren = [ rendered1 ; rendered2 ]
-                        VDomSource = vdom
-                    }
-                | _ ->
-                    for y = 0 to bounds.Height - 1 do
-                        for x = 0 to bounds.Width - 1 do
-                            setAtRelativeOffset
-                                dirty
-                                bounds
-                                x
-                                y
-                                (ValueSome
-                                    {
-                                        Char = ' '
-                                    })
+                let rendered1 =
+                    layout dirty (Some (prevChild1, prevNode.OverlaidChildren.[0])) bounds1 child1
 
-                    let bounds1, bounds2 = splitBounds dir proportion bounds
-                    let rendered1 = layout dirty None bounds1 child1
-                    let rendered2 = layout dirty None bounds2 child2
+                let rendered2 =
+                    layout dirty (Some (prevChild2, prevNode.OverlaidChildren.[1])) bounds2 child2
 
-                    {
-                        Bounds = bounds
-                        OverlaidChildren = [ rendered1 ; rendered2 ]
-                        VDomSource = vdom
-                    }
-
-            | Vdom.Checkbox isChecked ->
-                match previousVdom with
-                | Some (Vdom.Checkbox prevChecked, prevNode) when prevNode.Bounds = bounds ->
-                    if prevChecked <> isChecked then
-                        let content = if isChecked then '☑' else '☐'
-
+                {
+                    Bounds = bounds
+                    OverlaidChildren = [ rendered1 ; rendered2 ]
+                    VDomSource = vdom
+                }
+            | _ ->
+                for y = 0 to bounds.Height - 1 do
+                    for x = 0 to bounds.Width - 1 do
                         setAtRelativeOffset
                             dirty
                             bounds
-                            (bounds.Width / 2)
-                            (bounds.Height / 2)
+                            x
+                            y
                             (ValueSome
                                 {
-                                    Char = content
+                                    Char = ' '
                                 })
 
-                    {
-                        Bounds = bounds
-                        OverlaidChildren = []
-                        VDomSource = vdom
-                    }
-                | _ ->
+                let bounds1, bounds2 = splitBounds dir proportion bounds
+                let rendered1 = layout dirty None bounds1 child1
+                let rendered2 = layout dirty None bounds2 child2
 
-                    for y = 0 to bounds.Height - 1 do
-                        for x = 0 to bounds.Width - 1 do
-                            setAtRelativeOffset
-                                dirty
-                                bounds
-                                x
-                                y
-                                (ValueSome
-                                    {
-                                        Char = ' '
-                                    })
+                {
+                    Bounds = bounds
+                    OverlaidChildren = [ rendered1 ; rendered2 ]
+                    VDomSource = vdom
+                }
 
+        | Vdom.Checkbox isChecked ->
+            match previousVdom with
+            | Some (Vdom.Checkbox prevChecked, prevNode) when prevNode.Bounds = bounds ->
+                if prevChecked <> isChecked then
                     let content = if isChecked then '☑' else '☐'
 
                     setAtRelativeOffset
@@ -279,128 +253,164 @@ module Render =
                                 Char = content
                             })
 
-                    {
-                        Bounds = bounds
-                        OverlaidChildren = []
-                        VDomSource = vdom
-                    }
+                {
+                    Bounds = bounds
+                    OverlaidChildren = []
+                    VDomSource = vdom
+                }
+            | _ ->
 
-            | Vdom.Bordered child ->
-                match previousVdom with
-                | Some (Vdom.Bordered prevInner, prevNode) when prevNode.Bounds = bounds ->
-                    let children =
-                        [
-                            layout dirty (Some (prevInner, prevNode.OverlaidChildren.[0])) (shrinkBounds bounds) child
-                        ]
+                for y = 0 to bounds.Height - 1 do
+                    for x = 0 to bounds.Width - 1 do
+                        setAtRelativeOffset
+                            dirty
+                            bounds
+                            x
+                            y
+                            (ValueSome
+                                {
+                                    Char = ' '
+                                })
 
-                    {
-                        Bounds = bounds
-                        OverlaidChildren = children
-                        VDomSource = vdom
-                    }
-                | _ ->
+                let content = if isChecked then '☑' else '☐'
 
-                    for y = 0 to bounds.Height - 1 do
-                        for x = 0 to bounds.Width - 1 do
-                            setAtRelativeOffset
-                                dirty
-                                bounds
-                                x
-                                y
-                                (ValueSome
-                                    {
-                                        Char = ' '
-                                    })
+                setAtRelativeOffset
+                    dirty
+                    bounds
+                    (bounds.Width / 2)
+                    (bounds.Height / 2)
+                    (ValueSome
+                        {
+                            Char = content
+                        })
 
+                {
+                    Bounds = bounds
+                    OverlaidChildren = []
+                    VDomSource = vdom
+                }
+
+        | Vdom.Bordered child ->
+            match previousVdom with
+            | Some (Vdom.Bordered prevInner, prevNode) when prevNode.Bounds = bounds ->
+                let children =
+                    [
+                        layout dirty (Some (prevInner, prevNode.OverlaidChildren.[0])) (shrinkBounds bounds) child
+                    ]
+
+                {
+                    Bounds = bounds
+                    OverlaidChildren = children
+                    VDomSource = vdom
+                }
+            | _ ->
+                if bounds.Height <= 2 then
+                    failwith $"TODO: too short: %O{bounds}"
+
+                if bounds.Width <= 2 then
+                    failwith $"TODO: too thin: %O{bounds}"
+
+                for y = 0 to bounds.Height - 1 do
+                    for x = 0 to bounds.Width - 1 do
+                        setAtRelativeOffset
+                            dirty
+                            bounds
+                            x
+                            y
+                            (ValueSome
+                                {
+                                    Char = ' '
+                                })
+
+                setAtRelativeOffset
+                    dirty
+                    bounds
+                    0
+                    0
+                    (ValueSome
+                        {
+                            Char = '┌'
+                        })
+
+                setAtRelativeOffset
+                    dirty
+                    bounds
+                    0
+                    (bounds.Height - 1)
+                    (ValueSome
+                        {
+                            Char = '└'
+                        })
+
+                setAtRelativeOffset
+                    dirty
+                    bounds
+                    (bounds.Width - 1)
+                    0
+                    (ValueSome
+                        {
+                            Char = '┐'
+                        })
+
+                setAtRelativeOffset
+                    dirty
+                    bounds
+                    (bounds.Width - 1)
+                    (bounds.Height - 1)
+                    (ValueSome
+                        {
+                            Char = '┘'
+                        })
+
+                for i = 1 to bounds.Width - 2 do
                     setAtRelativeOffset
                         dirty
                         bounds
-                        0
+                        i
                         0
                         (ValueSome
                             {
-                                Char = '┌'
+                                Char = '─'
                             })
 
                     setAtRelativeOffset
                         dirty
                         bounds
-                        0
+                        i
                         (bounds.Height - 1)
                         (ValueSome
                             {
-                                Char = '└'
+                                Char = '─'
+                            })
+
+                for i = 1 to bounds.Height - 2 do
+                    setAtRelativeOffset
+                        dirty
+                        bounds
+                        0
+                        i
+                        (ValueSome
+                            {
+                                Char = '│'
                             })
 
                     setAtRelativeOffset
                         dirty
                         bounds
                         (bounds.Width - 1)
-                        0
+                        i
                         (ValueSome
                             {
-                                Char = '┐'
+                                Char = '│'
                             })
 
-                    setAtRelativeOffset
-                        dirty
-                        bounds
-                        (bounds.Width - 1)
-                        (bounds.Height - 1)
-                        (ValueSome
-                            {
-                                Char = '┘'
-                            })
+                let children = [ layout dirty None (shrinkBounds bounds) child ]
 
-                    for i = 1 to bounds.Width - 2 do
-                        setAtRelativeOffset
-                            dirty
-                            bounds
-                            i
-                            0
-                            (ValueSome
-                                {
-                                    Char = '─'
-                                })
-
-                        setAtRelativeOffset
-                            dirty
-                            bounds
-                            i
-                            (bounds.Height - 1)
-                            (ValueSome
-                                {
-                                    Char = '─'
-                                })
-
-                    for i = 1 to bounds.Height - 2 do
-                        setAtRelativeOffset
-                            dirty
-                            bounds
-                            0
-                            i
-                            (ValueSome
-                                {
-                                    Char = '│'
-                                })
-
-                        setAtRelativeOffset
-                            dirty
-                            bounds
-                            (bounds.Width - 1)
-                            i
-                            (ValueSome
-                                {
-                                    Char = '│'
-                                })
-
-                    let children = [ layout dirty None (shrinkBounds bounds) child ]
-
-                    {
-                        Bounds = bounds
-                        OverlaidChildren = children
-                        VDomSource = vdom
-                    }
+                {
+                    Bounds = bounds
+                    OverlaidChildren = children
+                    VDomSource = vdom
+                }
 
     let writeBuffer (dirty : TerminalCell voption[,]) : TerminalOp seq =
         // TODO this is super dumb
