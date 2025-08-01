@@ -14,7 +14,6 @@ module Terminal =
     let moveCursor (x : int) (y : int) =
         Console.Write $"\x1B[%d{y + 1};%d{x + 1}H"
 
-    let clearScreen () = Console.Write "\x1B[2J"
     let clearLine () = Console.Write "\x1B[2K"
     let hideCursor () = Console.Write "\x1B[?25l"
     let showCursor () = Console.Write "\x1B[?25h"
@@ -24,6 +23,8 @@ module Terminal =
 type TerminalOp =
     | MoveCursor of x : int * y : int
     | WriteChar of char
+    | SetCursorVisibility of toVisible : bool
+    | ClearScreen
 
 [<RequireQualifiedAccess>]
 module TerminalOp =
@@ -31,3 +32,9 @@ module TerminalOp =
         match o with
         | TerminalOp.WriteChar c -> consoleWrite $"%c{c}"
         | TerminalOp.MoveCursor (x, y) -> consoleWrite $"\x1B[%d{y + 1};%d{x + 1}H"
+        | TerminalOp.SetCursorVisibility visible ->
+            if visible then
+                consoleWrite "\x1B[?25h"
+            else
+                consoleWrite "\x1B[?25l"
+        | TerminalOp.ClearScreen -> consoleWrite "\x1B[2J"
