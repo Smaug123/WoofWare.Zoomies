@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="TestTrampoline.fs" />
     <Compile Include="ConsoleHarness.fs" />
     <Compile Include="TestRender.fs" />
     <Compile Include="TestWorldFreezer.fs" />
