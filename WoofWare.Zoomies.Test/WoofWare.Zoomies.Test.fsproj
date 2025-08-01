@@ -7,14 +7,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="TestTrampoline.fs" />
     <Compile Include="ConsoleHarness.fs" />
     <Compile Include="TestRender.fs" />
     <Compile Include="TestWorldFreezer.fs" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../WoofWare.Zoomies.fsproj"/>
+    <ProjectReference Include="../WoofWare.Zoomies/WoofWare.Zoomies.fsproj"/>
   </ItemGroup>
 
   <ItemGroup>
