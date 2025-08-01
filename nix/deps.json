@@ -20,6 +20,11 @@
     "hash": "sha256-HYn+BzwplXow+tl9ziT5MHYcMmuWonqczReUxHKaEoM="
   },
   {
+    "pname": "FSharp.Core",
+    "version": "9.0.202",
+    "hash": "sha256-64Gub0qemmCoMa1tDus6TeTuB1+5sHfE6KD2j4o84mA="
+  },
+  {
     "pname": "FSharp.SystemTextJson",
     "version": "1.4.36",
     "hash": "sha256-zZEhjP0mdc5E3fBPS4/lqD7sxoaoT5SOspP546RWYdc="
@@ -173,6 +178,11 @@
     "pname": "Microsoft.TestPlatform.TestHost",
     "version": "17.14.1",
     "hash": "sha256-1cxHWcvHRD7orQ3EEEPPxVGEkTpxom1/zoICC9SInJs="
+  },
+  {
+    "pname": "Nerdbank.GitVersioning",
+    "version": "3.8.38-alpha",
+    "hash": "sha256-gPMrVbjOZxXoofczF/pn6eVkLhjVSJIyQrLO2oljrDc="
   },
   {
     "pname": "Newtonsoft.Json",
