@@ -6,13 +6,18 @@ open WoofWare.Expect
 open WoofWare.Zoomies
 
 type State =
-    { mutable IsChecked: bool }
+    {
+        mutable IsChecked : bool
+    }
 
-    static member Empty: State = { IsChecked = false }
+    static member Empty : State =
+        {
+            IsChecked = false
+        }
 
 [<TestFixture>]
 module TestRender =
-    let vdom (state: State) =
+    let vdom (state : State) =
         let left =
             Vdom.textContent
                 "not praising the praiseworthy keeps people uncompetitive; not prizing rare treasures keeps people from stealing; not looking at the desirable keeps the mind quiet"
@@ -38,12 +43,12 @@ module TestRender =
     let ``there is no rerender if nothing changes`` () =
         let state = State.Empty
 
-        let terminalOps = ResizeArray()
+        let terminalOps = ResizeArray ()
         let renderState = RenderState.make' (fun () -> 80) (fun () -> 80) terminalOps.Add
 
         Render.oneStep renderState state vdom
 
-        terminalOps.Clear()
+        terminalOps.Clear ()
 
         Render.oneStep renderState state vdom
 

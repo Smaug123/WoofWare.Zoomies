@@ -17,19 +17,19 @@ module TestWorldFreezer =
 
             let readKey () =
                 Interlocked.Increment &keysRead |> ignore<int>
-                ConsoleKeyInfo('x', ConsoleKey.X, false, false, false)
+                ConsoleKeyInfo ('x', ConsoleKey.X, false, false, false)
 
-            use cts = new CancellationTokenSource()
+            use cts = new CancellationTokenSource ()
 
             let freezer = WorldFreezer.listen' keysAvailable readKey cts.Token
 
-            cts.Cancel()
-            do! freezer.IsShutDown.WaitAsync(TimeSpan.FromSeconds 10.0)
+            cts.Cancel ()
+            do! freezer.IsShutDown.WaitAsync (TimeSpan.FromSeconds 10.0)
             freezer.IsShutDown.IsCompletedSuccessfully |> shouldEqual true
 
-            freezer.Refresh()
+            freezer.Refresh ()
             let _ = freezer.Changes |> Seq.toList
-            freezer.Refresh()
+            freezer.Refresh ()
             freezer.Changes |> shouldBeEmpty
         }
 
@@ -38,8 +38,10 @@ module TestWorldFreezer =
         let mutable callCount = 0
 
         let keys =
-            [| ConsoleKeyInfo('x', ConsoleKey.X, false, false, false)
-               ConsoleKeyInfo('y', ConsoleKey.Y, false, false, false) |]
+            [|
+                ConsoleKeyInfo ('x', ConsoleKey.X, false, false, false)
+                ConsoleKeyInfo ('y', ConsoleKey.Y, false, false, false)
+            |]
 
         let keyAvailable () = callCount < keys.Length
 
@@ -48,21 +50,22 @@ module TestWorldFreezer =
             Interlocked.Increment &callCount |> ignore<int>
             key
 
-        use cts = new CancellationTokenSource()
+        use cts = new CancellationTokenSource ()
 
         let freezer = WorldFreezer.listen' keyAvailable readKey cts.Token
 
-        let seen = ResizeArray()
+        let seen = ResizeArray ()
         let mutable cont = true
 
         while cont do
-            freezer.Refresh()
+            freezer.Refresh ()
 
             let result =
                 freezer.Changes
                 |> Seq.map (fun change ->
                     match change with
-                    | WorldStateChange.Keystroke c -> c.KeyChar)
+                    | WorldStateChange.Keystroke c -> c.KeyChar
+                )
                 |> Seq.toList
 
             seen.AddRange result
@@ -71,9 +74,9 @@ module TestWorldFreezer =
             | Some 'y' -> cont <- false
             | _ -> ()
 
-        seen |> Seq.toList |> shouldEqual [ 'x'; 'y' ]
+        seen |> Seq.toList |> shouldEqual [ 'x' ; 'y' ]
 
-        freezer.Refresh()
+        freezer.Refresh ()
         freezer.Changes |> shouldBeEmpty
 
-        cts.Cancel()
+        cts.Cancel ()

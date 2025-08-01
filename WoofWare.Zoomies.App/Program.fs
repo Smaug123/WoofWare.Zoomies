@@ -4,13 +4,18 @@ open System.Threading
 open WoofWare.Zoomies
 
 type State =
-    { mutable IsChecked: bool }
+    {
+        mutable IsChecked : bool
+    }
 
-    static member Empty: State = { IsChecked = false }
+    static member Empty : State =
+        {
+            IsChecked = false
+        }
 
 module Program =
 
-    let vdom (state: State) =
+    let vdom (state : State) =
         let left =
             Vdom.textContent
                 "not praising the praiseworthy keeps people uncompetitive; not prizing rare treasures keeps people from stealing; not looking at the desirable keeps the mind quiet"
@@ -32,7 +37,7 @@ module Program =
         else
             vdom
 
-    let processWorld (worldChanges: WorldStateChange seq) (state: State) : unit =
+    let processWorld (worldChanges : WorldStateChange seq) (state : State) : unit =
         for change in worldChanges do
             match change with
             | Keystroke c when c.KeyChar = ' ' -> state.IsChecked <- not state.IsChecked
@@ -51,7 +56,7 @@ module Program =
         let renderState = RenderState.make ()
 
         while true do
-            listener.Refresh()
+            listener.Refresh ()
 
             processWorld listener.Changes state
 
