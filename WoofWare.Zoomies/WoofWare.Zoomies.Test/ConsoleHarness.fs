@@ -27,6 +27,11 @@ module ConsoleHarness =
             c.CursorX <- x
             c.CursorY <- y
         | TerminalOp.WriteChar ch -> c.Display.[c.CursorY, c.CursorX] <- ch
+        | SetCursorVisibility _ -> ()
+        | ClearScreen ->
+            for y = 0 to Array2D.length1 c.Display - 1 do
+                for x = 0 to Array2D.length2 c.Display - 1 do
+                    c.Display.[y, x] <- ' '
 
     let toString (c : FakeConsole) : string =
         let sb = StringBuilder ()

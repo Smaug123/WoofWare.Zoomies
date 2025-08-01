@@ -25,11 +25,24 @@ type RenderState =
             mutable PreviousVdom : (Vdom * RenderedNode) option
             mutable Buffer : TerminalCell voption[,]
             mutable TerminalBounds : Rectangle
+            mutable CursorVisible : bool
             Output : TerminalOp -> unit
         }
 
 [<RequireQualifiedAccess>]
 module RenderState =
+    let isCursorVisible (s : RenderState) = s.CursorVisible
+
+    let setCursorVisible (s : RenderState) =
+        s.Output (TerminalOp.SetCursorVisibility true)
+        s.CursorVisible <- true
+
+    let setCursorInvisible (s : RenderState) =
+        s.Output (TerminalOp.SetCursorVisibility false)
+        s.CursorVisible <- false
+
+    let clearScreen (s : RenderState) = s.Output TerminalOp.ClearScreen
+
     let make' (consoleWindowWidth : unit -> int) (consoleWindowHeight : unit -> int) (output : TerminalOp -> unit) =
         let width = consoleWindowWidth ()
         let height = consoleWindowHeight ()
@@ -49,6 +62,7 @@ module RenderState =
             Buffer = changeBuffer
             PreviousVdom = None
             Output = output
+            CursorVisible = true
         }
 
     let make () =
@@ -431,10 +445,19 @@ module Render =
 
         renderState.PreviousVdom <- Some (vdom, rendered)
 
+        let cursorFlip = RenderState.isCursorVisible renderState
+        let mutable haveManipulatedCursor = false
+
         for y = 0 to renderState.Buffer.GetLength 0 - 1 do
             for x = 0 to renderState.Buffer.GetLength 1 - 1 do
                 match renderState.Buffer.[y, x] with
                 | ValueNone -> ()
                 | ValueSome cell ->
+                    if not haveManipulatedCursor && cursorFlip then
+                        RenderState.setCursorInvisible renderState
+
                     renderState.Output (TerminalOp.MoveCursor (x, y))
                     renderState.Output (TerminalOp.WriteChar cell.Char)
+
+        if haveManipulatedCursor && cursorFlip then
+            RenderState.setCursorVisible renderState

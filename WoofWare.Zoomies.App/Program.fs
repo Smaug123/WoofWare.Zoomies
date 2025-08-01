@@ -46,14 +46,14 @@ module Program =
 
     [<EntryPoint>]
     let main argv =
-
-        Terminal.clearScreen ()
-
-        let listener = WorldFreezer.listen CancellationToken.None
-
-        let state = State.Empty
         // TODO: react to changes in dimension
         let renderState = RenderState.make ()
+
+        RenderState.clearScreen renderState
+        RenderState.setCursorInvisible renderState
+
+        let state = State.Empty
+        let listener = WorldFreezer.listen CancellationToken.None
 
         while true do
             listener.Refresh ()
