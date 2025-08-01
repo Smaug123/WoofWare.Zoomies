@@ -4,6 +4,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "WoofWare.Zoomies", "WoofWar
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "WoofWare.Zoomies.Test", "WoofWare.Zoomies\WoofWare.Zoomies.Test\WoofWare.Zoomies.Test.fsproj", "{A7968FB2-5B74-46E9-887E-927D6FDAE9A7}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "WoofWare.Zoomies.App", "WoofWare.Zoomies.App\WoofWare.Zoomies.App.fsproj", "{8B4D033F-C83F-4377-9F45-44498DA85C88}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +20,9 @@ Global
 		{A7968FB2-5B74-46E9-887E-927D6FDAE9A7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A7968FB2-5B74-46E9-887E-927D6FDAE9A7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A7968FB2-5B74-46E9-887E-927D6FDAE9A7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8B4D033F-C83F-4377-9F45-44498DA85C88}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8B4D033F-C83F-4377-9F45-44498DA85C88}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8B4D033F-C83F-4377-9F45-44498DA85C88}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8B4D033F-C83F-4377-9F45-44498DA85C88}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

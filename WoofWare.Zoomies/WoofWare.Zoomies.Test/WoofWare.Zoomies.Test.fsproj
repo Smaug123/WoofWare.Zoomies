@@ -9,7 +9,9 @@
 
   <ItemGroup>
     <Compile Include="TestTrampoline.fs" />
-    <Compile Include="Program.fs" />
+    <Compile Include="ConsoleHarness.fs" />
+    <Compile Include="TestRender.fs" />
+    <Compile Include="TestWorldFreezer.fs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -17,11 +19,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Expecto" Version="10.2.3" />
-    <PackageReference Include="Expecto.Diff" Version="10.2.3" />
     <PackageReference Include="FsUnit" Version="7.1.1"/>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1"/>
-    <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.3" />
+    <PackageReference Include="NUnit" Version="4.3.2" />
+    <PackageReference Include="NUnit3TestAdapter" Version="5.0.0" />
+    <PackageReference Include="WoofWare.Expect" Version="0.8.1" />
   </ItemGroup>
 </Project>
 

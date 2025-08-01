@@ -18,6 +18,9 @@
     <Compile Include="PrivateEval\Trampoline.fsi" />
     <Compile Include="PrivateEval\Trampoline.fs" />
     <Compile Include="Vdom.fs" />
+    <Compile Include="WorldFreezer.fs" />
+    <Compile Include="Terminal.fs" />
+    <Compile Include="Render.fs" />
   </ItemGroup>
 
 </Project>
