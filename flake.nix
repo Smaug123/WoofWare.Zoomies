@@ -57,7 +57,7 @@
           name = "WoofWare.Zoomies";
           src = ./.;
           projectFile = "./WoofWare.Zoomies/WoofWare.Zoomies.fsproj";
-          testProjectFile = "./WoofWare.Zoomies/WoofWare.Zoomies.Test/WoofWare.Zoomies.Test.fsproj";
+          testProjectFile = "./WoofWare.Zoomies.Test/WoofWare.Zoomies.Test.fsproj";
           nugetDeps = ./nix/deps.json; # `nix build .#default.fetch-deps && ./result nix/deps.json`
           doCheck = true;
         };
