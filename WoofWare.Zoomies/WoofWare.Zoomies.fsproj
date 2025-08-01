@@ -12,11 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="PrivateEval\TypeId.fs" />
-    <Compile Include="PrivateEval\TypeIdSet.fsi" />
-    <Compile Include="PrivateEval\TypeIdSet.fs" />
-    <Compile Include="PrivateEval\Trampoline.fsi" />
-    <Compile Include="PrivateEval\Trampoline.fs" />
     <Compile Include="Vdom.fs" />
     <Compile Include="WorldFreezer.fs" />
     <Compile Include="Terminal.fs" />
