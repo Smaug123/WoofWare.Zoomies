@@ -27,6 +27,8 @@ type RenderState =
             mutable TerminalBounds : Rectangle
             mutable CursorVisible : bool
             Output : TerminalOp -> unit
+            mutable BackgroundColor : ConsoleColor
+            mutable ForegroundColor : ConsoleColor
         }
 
 [<RequireQualifiedAccess>]
@@ -43,9 +45,9 @@ module RenderState =
 
     let clearScreen (s : RenderState) = s.Output TerminalOp.ClearScreen
 
-    let make' (consoleWindowWidth : unit -> int) (consoleWindowHeight : unit -> int) (output : TerminalOp -> unit) =
-        let width = consoleWindowWidth ()
-        let height = consoleWindowHeight ()
+    let make' (c : IConsole) =
+        let width = c.WindowWidth ()
+        let height = c.WindowHeight ()
 
         let bounds =
             {
@@ -57,16 +59,22 @@ module RenderState =
 
         let changeBuffer = Array2D.zeroCreate height width
 
+        let bg = c.BackgroundColor ()
+        let fg = c.ForegroundColor ()
+
         {
             TerminalBounds = bounds
             Buffer = changeBuffer
             PreviousVdom = None
-            Output = output
+            Output = c.Execute
             CursorVisible = true
+            BackgroundColor = bg
+            ForegroundColor = fg
         }
 
     let make () =
-        make' (fun () -> Console.WindowWidth) (fun () -> Console.WindowHeight) (TerminalOp.execute Console.Write)
+        let console = IConsole.make ()
+        make' console
 
 [<RequireQualifiedAccess>]
 module Render =
@@ -167,15 +175,7 @@ module Render =
                 // TODO: can do better here if we can compute a more efficient diff
                 for y = 0 to bounds.Height - 1 do
                     for x = 0 to bounds.Width - 1 do
-                        setAtRelativeOffset
-                            dirty
-                            bounds
-                            x
-                            y
-                            (ValueSome
-                                {
-                                    Char = ' '
-                                })
+                        setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
 
                 // dumb implementation! could do much better
                 let mutable index = 0
@@ -183,15 +183,7 @@ module Render =
                 let mutable currY = 0
 
                 while index < s.Length do
-                    setAtRelativeOffset
-                        dirty
-                        bounds
-                        currX
-                        currY
-                        (ValueSome
-                            {
-                                Char = s.Chars index
-                            })
+                    setAtRelativeOffset dirty bounds currX currY (ValueSome (TerminalCell.OfChar (s.Chars index)))
 
                     currX <- currX + 1
 
@@ -231,15 +223,7 @@ module Render =
             | _ ->
                 for y = 0 to bounds.Height - 1 do
                     for x = 0 to bounds.Width - 1 do
-                        setAtRelativeOffset
-                            dirty
-                            bounds
-                            x
-                            y
-                            (ValueSome
-                                {
-                                    Char = ' '
-                                })
+                        setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
 
                 let bounds1, bounds2 = splitBounds dir proportion bounds
                 let rendered1 = layout dirty None bounds1 child1
@@ -262,10 +246,7 @@ module Render =
                         bounds
                         (bounds.Width / 2)
                         (bounds.Height / 2)
-                        (ValueSome
-                            {
-                                Char = content
-                            })
+                        (ValueSome (TerminalCell.OfChar content))
 
                 {
                     Bounds = bounds
@@ -276,15 +257,7 @@ module Render =
 
                 for y = 0 to bounds.Height - 1 do
                     for x = 0 to bounds.Width - 1 do
-                        setAtRelativeOffset
-                            dirty
-                            bounds
-                            x
-                            y
-                            (ValueSome
-                                {
-                                    Char = ' '
-                                })
+                        setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
 
                 let content = if isChecked then '☑' else '☐'
 
@@ -293,10 +266,7 @@ module Render =
                     bounds
                     (bounds.Width / 2)
                     (bounds.Height / 2)
-                    (ValueSome
-                        {
-                            Char = content
-                        })
+                    (ValueSome (TerminalCell.OfChar content))
 
                 {
                     Bounds = bounds
@@ -326,97 +296,30 @@ module Render =
 
                 for y = 0 to bounds.Height - 1 do
                     for x = 0 to bounds.Width - 1 do
-                        setAtRelativeOffset
-                            dirty
-                            bounds
-                            x
-                            y
-                            (ValueSome
-                                {
-                                    Char = ' '
-                                })
+                        setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
 
-                setAtRelativeOffset
-                    dirty
-                    bounds
-                    0
-                    0
-                    (ValueSome
-                        {
-                            Char = '┌'
-                        })
+                setAtRelativeOffset dirty bounds 0 0 (ValueSome (TerminalCell.OfChar '┌'))
 
-                setAtRelativeOffset
-                    dirty
-                    bounds
-                    0
-                    (bounds.Height - 1)
-                    (ValueSome
-                        {
-                            Char = '└'
-                        })
+                setAtRelativeOffset dirty bounds 0 (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '└'))
 
-                setAtRelativeOffset
-                    dirty
-                    bounds
-                    (bounds.Width - 1)
-                    0
-                    (ValueSome
-                        {
-                            Char = '┐'
-                        })
+                setAtRelativeOffset dirty bounds (bounds.Width - 1) 0 (ValueSome (TerminalCell.OfChar '┐'))
 
                 setAtRelativeOffset
                     dirty
                     bounds
                     (bounds.Width - 1)
                     (bounds.Height - 1)
-                    (ValueSome
-                        {
-                            Char = '┘'
-                        })
+                    (ValueSome (TerminalCell.OfChar '┘'))
 
                 for i = 1 to bounds.Width - 2 do
-                    setAtRelativeOffset
-                        dirty
-                        bounds
-                        i
-                        0
-                        (ValueSome
-                            {
-                                Char = '─'
-                            })
+                    setAtRelativeOffset dirty bounds i 0 (ValueSome (TerminalCell.OfChar '─'))
 
-                    setAtRelativeOffset
-                        dirty
-                        bounds
-                        i
-                        (bounds.Height - 1)
-                        (ValueSome
-                            {
-                                Char = '─'
-                            })
+                    setAtRelativeOffset dirty bounds i (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '─'))
 
                 for i = 1 to bounds.Height - 2 do
-                    setAtRelativeOffset
-                        dirty
-                        bounds
-                        0
-                        i
-                        (ValueSome
-                            {
-                                Char = '│'
-                            })
+                    setAtRelativeOffset dirty bounds 0 i (ValueSome (TerminalCell.OfChar '│'))
 
-                    setAtRelativeOffset
-                        dirty
-                        bounds
-                        (bounds.Width - 1)
-                        i
-                        (ValueSome
-                            {
-                                Char = '│'
-                            })
+                    setAtRelativeOffset dirty bounds (bounds.Width - 1) i (ValueSome (TerminalCell.OfChar '│'))
 
                 let children = [ layout dirty None (shrinkBounds bounds) child ]
 
@@ -433,7 +336,7 @@ module Render =
                 for x = 0 to dirty.GetLength 1 - 1 do
                     match dirty.[y, x] with
                     | ValueNone -> ()
-                    | ValueSome cell -> yield! [ TerminalOp.MoveCursor (x, y) ; TerminalOp.WriteChar cell.Char ]
+                    | ValueSome cell -> yield! [ TerminalOp.MoveCursor (x, y) ; TerminalOp.WriteChar cell ]
         }
 
     let oneStep<'state> (renderState : RenderState) (userState : 'state) (compute : 'state -> Vdom) =
@@ -457,7 +360,7 @@ module Render =
                         RenderState.setCursorInvisible renderState
 
                     renderState.Output (TerminalOp.MoveCursor (x, y))
-                    renderState.Output (TerminalOp.WriteChar cell.Char)
+                    renderState.Output (TerminalOp.WriteChar cell)
 
         if haveManipulatedCursor && cursorFlip then
             RenderState.setCursorVisible renderState

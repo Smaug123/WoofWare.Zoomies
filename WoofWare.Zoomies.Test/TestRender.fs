@@ -41,10 +41,16 @@ module TestRender =
 
     [<Test>]
     let ``there is no rerender if nothing changes`` () =
+        let terminalOps = ResizeArray ()
+
+        let console =
+            { IConsole.defaultForTests with
+                Execute = terminalOps.Add
+            }
+
         let state = State.Empty
 
-        let terminalOps = ResizeArray ()
-        let renderState = RenderState.make' (fun () -> 80) (fun () -> 80) terminalOps.Add
+        let renderState = RenderState.make' console
 
         Render.oneStep renderState state vdom
 
@@ -56,12 +62,10 @@ module TestRender =
 
     [<Test>]
     let ``example 1`` () =
+        let console, terminal = ConsoleHarness.make ()
         let state = State.Empty
 
-        let terminal = ConsoleHarness.empty 10 80
-
-        let renderState =
-            RenderState.make' (fun () -> 80) (fun () -> 10) (fun c -> ConsoleHarness.execute c terminal)
+        let renderState = RenderState.make' console
 
         Render.oneStep renderState state vdom
 
