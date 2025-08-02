@@ -13,8 +13,10 @@
 
   <ItemGroup>
     <Compile Include="Vdom.fs" />
-    <Compile Include="WorldFreezer.fs" />
+    <Compile Include="ConsoleColor.fs" />
     <Compile Include="Terminal.fs" />
+    <Compile Include="Console.fs" />
+    <Compile Include="WorldFreezer.fs" />
     <Compile Include="Render.fs" />
   </ItemGroup>
 
