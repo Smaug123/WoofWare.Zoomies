@@ -1,5 +1,6 @@
 ﻿namespace WoofWare.Zoomies.App
 
+open System.Threading
 open WoofWare.Zoomies
 
 type State =
@@ -46,6 +47,6 @@ module Program =
     [<EntryPoint>]
     let main argv =
 
-        App.run (State.Empty ()) processWorld vdom
+        App.run CancellationToken.None (State.Empty ()) processWorld vdom |> _.Wait()
 
         0

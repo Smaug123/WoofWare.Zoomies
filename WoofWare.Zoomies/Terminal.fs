@@ -73,5 +73,5 @@ module TerminalOp =
             else
                 consoleWrite "\x1B[?25l"
         | TerminalOp.ClearScreen -> consoleWrite "\x1B[2J"
-        | TerminalOp.EnterAlternateScreen -> consoleWrite "\x1B[1049h"
-        | TerminalOp.ExitAlternateScreen -> consoleWrite "\x1B[1049l"
+        | TerminalOp.EnterAlternateScreen -> consoleWrite "\x1B[?1049h"
+        | TerminalOp.ExitAlternateScreen -> consoleWrite "\x1B[?1049l"

@@ -1,30 +1,52 @@
 namespace WoofWare.Zoomies
 
+open System
+open System.Threading
+open System.Threading.Tasks
+
 [<RequireQualifiedAccess>]
 module App =
 
-    /// Cancel the cancellation token to dispose the
+    /// We set up a ConsoleCancelEventHandler to suppress one Ctrl+C, and we also listen to stdin,
+    /// for as long as this task is running.
+    /// Cancel the CancellationToken to cause the render loop to quit and to unhook all these state listeners.
     let run<'state>
+        (terminate : CancellationToken)
         (mutableState : 'state)
         (processWorld : WorldStateChange seq -> 'state -> unit)
         (vdom : 'state -> Vdom)
+        : Task
         =
-        // TODO: react to changes in dimension
-        let renderState = RenderState.make ()
+        fun () ->
+            // TODO: react to changes in dimension
+            let renderState = RenderState.make ()
 
-        RenderState.enterAlternateScreen renderState
+            RenderState.enterAlternateScreen renderState
 
-        try
-            RenderState.setCursorInvisible renderState
+            let mutable cancels = 0
 
-            use listener = WorldFreezer.listen ()
+            let ctrlCHandler =
+                ConsoleCancelEventHandler (fun _ args ->
+                    // Double-ctrlc to exit immediately
+                    if Interlocked.Increment &cancels = 1 then
+                        args.Cancel <- true
+                )
 
-            while true do
-                listener.Refresh ()
+            Console.CancelKeyPress.AddHandler ctrlCHandler
 
-                processWorld (listener.Changes ()) mutableState
+            try
+                RenderState.setCursorInvisible renderState
 
-                Render.oneStep renderState mutableState vdom
+                use listener = WorldFreezer.listen ()
 
-        finally
-            RenderState.exitAlternateScreen renderState
+                while cancels = 0 && not terminate.IsCancellationRequested do
+                    listener.Refresh ()
+
+                    processWorld (listener.Changes ()) mutableState
+
+                    Render.oneStep renderState mutableState vdom
+
+            finally
+                Console.CancelKeyPress.RemoveHandler ctrlCHandler
+                RenderState.exitAlternateScreen renderState
+        |> fun f -> Task.Factory.StartNew (f, TaskCreationOptions.LongRunning)
