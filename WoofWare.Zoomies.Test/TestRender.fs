@@ -63,12 +63,12 @@ module TestRender =
             Vdom.panelSplitProportion
                 Direction.Vertical
                 0.5
-                (Vdom.textContent None "This gets displayed when the thing is checked; left")
+                (Vdom.textContent None "only displayed when checked")
                 (Vdom.labelledCheckbox
                     (fun () -> state.FocusedElement <- FocusedElement.Toggle2)
                     state.FocusedElement.IsToggle2
                     state.IsToggle2Checked
-                    "this one is focusable! space to toggle")
+                    "this one is focusable!")
             |> Vdom.panelSplitProportion Direction.Horizontal 0.7 vdom
         else
             vdom
@@ -172,8 +172,8 @@ module TestRender =
    Press Space to toggle                                                        |
 [☑]                                                                             |
                                                                                 |
-This gets displayed when the thing is ch   this one is focusable! space to toggl|
-ecked; left                              ☐ e                                    |
+only displayed when checked                this one is focusable!               |
+                                         ☐                                      |
                                                                                 |
 "
 
@@ -194,8 +194,8 @@ ecked; left                              ☐ e                                  
    Press Space to toggle                                                        |
  ☑                                                                              |
                                                                                 |
-This gets displayed when the thing is ch   this one is focusable! space to toggl|
-ecked; left                             [☐]e                                    |
+only displayed when checked                this one is focusable!               |
+                                        [☐]                                     |
                                                                                 |
 "
 
@@ -216,8 +216,8 @@ ecked; left                             [☐]e                                  
    Press Space to toggle                                                        |
  ☑                                                                              |
                                                                                 |
-This gets displayed when the thing is ch   this one is focusable! space to toggl|
-ecked; left                             [☑]e                                    |
+only displayed when checked                this one is focusable!               |
+                                        [☑]                                     |
                                                                                 |
 "
 
@@ -238,8 +238,8 @@ ecked; left                             [☑]e                                  
    Press Space to toggle                                                        |
 [☑]                                                                             |
                                                                                 |
-This gets displayed when the thing is ch   this one is focusable! space to toggl|
-ecked; left                              ☑ e                                    |
+only displayed when checked                this one is focusable!               |
+                                         ☑                                      |
                                                                                 |
 "
 
@@ -282,8 +282,8 @@ ecked; left                              ☑ e                                  
    Press Space to toggle                                                        |
 [☑]                                                                             |
                                                                                 |
-This gets displayed when the thing is ch   this one is focusable! space to toggl|
-ecked; left                              ☑ e                                    |
+only displayed when checked                this one is focusable!               |
+                                         ☑                                      |
                                                                                 |
 "
 
