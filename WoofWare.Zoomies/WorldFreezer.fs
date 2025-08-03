@@ -9,30 +9,38 @@ open System.Threading.Tasks
 type WorldStateChange = | Keystroke of ConsoleKeyInfo
 
 type WorldFreezer =
-    {
-        IsShutDown : Task
-        /// Calling `Refresh` causes this IReadOnlyList to completely change its contents. You're expected not to
-        /// be touching `Changes` when you call `Refresh` or while `Refresh` is running.
-        Changes : IReadOnlyList<WorldStateChange>
-        Refresh : unit -> unit
-    }
+    private
+        {
+            Cts : CancellationTokenSource
+            _IsShutDown : Task
+            /// Calling `Refresh` causes this IReadOnlyList to completely change its contents. You're expected not to
+            /// be touching `Changes` when you call `Refresh` or while `Refresh` is running.
+            _Changes : IReadOnlyList<WorldStateChange>
+            _Refresh : unit -> unit
+        }
+
+    member this.IsShutDown = this._IsShutDown
+    member this.Refresh () = this._Refresh ()
+    member this.Changes () = this._Changes
+
+    interface IDisposable with
+        member this.Dispose () : unit =
+            this.Cts.Cancel ()
+            this.Cts.Dispose ()
 
 [<RequireQualifiedAccess>]
 module WorldFreezer =
     /// Pass `fun () -> Console.KeyAvailable` for `keyAvailable`, and `fun () -> Console.ReadKey true` for `readKey`.
-    let listen'
-        (keyAvailable : unit -> bool)
-        (readKey : unit -> ConsoleKeyInfo)
-        (cancel : CancellationToken)
-        : WorldFreezer
-        =
+    let listen' (keyAvailable : unit -> bool) (readKey : unit -> ConsoleKeyInfo) : WorldFreezer =
         let isShutDown = TaskCompletionSource ()
         let keystrokeBuffer = ConcurrentQueue ()
+
+        let cts = new CancellationTokenSource ()
 
         let _keystrokeCollector =
             Task.Factory.StartNew (
                 (fun () ->
-                    while not cancel.IsCancellationRequested do
+                    while not cts.Token.IsCancellationRequested do
                         if keyAvailable () then
                             keystrokeBuffer.Enqueue (readKey ())
 
@@ -51,10 +59,11 @@ module WorldFreezer =
                 worldChanges.Add (WorldStateChange.Keystroke change)
 
         {
-            IsShutDown = isShutDown.Task
-            Changes = worldChanges :> IReadOnlyList<_>
-            Refresh = freeze
+            _IsShutDown = isShutDown.Task
+            _Changes = worldChanges :> IReadOnlyList<_>
+            _Refresh = freeze
+            Cts = cts
         }
 
-    let listen (cancel : CancellationToken) : WorldFreezer =
-        listen' (fun () -> Console.KeyAvailable) (fun () -> Console.ReadKey true) cancel
+    let listen () : WorldFreezer =
+        listen' (fun () -> Console.KeyAvailable) (fun () -> Console.ReadKey true)

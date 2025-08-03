@@ -24,6 +24,8 @@ module ConsoleHarness =
 
     let execute (c : ConsoleHarness) (op : TerminalOp) =
         match op with
+        | TerminalOp.EnterAlternateScreen -> ()
+        | TerminalOp.ExitAlternateScreen -> ()
         | TerminalOp.MoveCursor (x, y) ->
             c.CursorX <- x
             c.CursorY <- y
