@@ -45,6 +45,11 @@ module RenderState =
 
     let clearScreen (s : RenderState) = s.Output TerminalOp.ClearScreen
 
+    let enterAlternateScreen (s : RenderState) =
+        s.Output TerminalOp.EnterAlternateScreen
+
+    let exitAlternateScreen (s : RenderState) = s.Output TerminalOp.ExitAlternateScreen
+
     let make' (c : IConsole) =
         let width = c.WindowWidth ()
         let height = c.WindowHeight ()

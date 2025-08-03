@@ -19,18 +19,17 @@ module TestWorldFreezer =
                 Interlocked.Increment &keysRead |> ignore<int>
                 ConsoleKeyInfo ('x', ConsoleKey.X, false, false, false)
 
-            use cts = new CancellationTokenSource ()
+            let freezer = WorldFreezer.listen' keysAvailable readKey
 
-            let freezer = WorldFreezer.listen' keysAvailable readKey cts.Token
+            (freezer :> IDisposable).Dispose ()
 
-            cts.Cancel ()
             do! freezer.IsShutDown.WaitAsync (TimeSpan.FromSeconds 10.0)
             freezer.IsShutDown.IsCompletedSuccessfully |> shouldEqual true
 
             freezer.Refresh ()
-            let _ = freezer.Changes |> Seq.toList
+            let _ = freezer.Changes () |> Seq.toList
             freezer.Refresh ()
-            freezer.Changes |> shouldBeEmpty
+            freezer.Changes () |> shouldBeEmpty
         }
 
     [<Test>]
@@ -52,7 +51,7 @@ module TestWorldFreezer =
 
         use cts = new CancellationTokenSource ()
 
-        let freezer = WorldFreezer.listen' keyAvailable readKey cts.Token
+        use freezer = WorldFreezer.listen' keyAvailable readKey
 
         let seen = ResizeArray ()
         let mutable cont = true
@@ -61,7 +60,7 @@ module TestWorldFreezer =
             freezer.Refresh ()
 
             let result =
-                freezer.Changes
+                freezer.Changes ()
                 |> Seq.map (fun change ->
                     match change with
                     | WorldStateChange.Keystroke c -> c.KeyChar
@@ -77,6 +76,4 @@ module TestWorldFreezer =
         seen |> Seq.toList |> shouldEqual [ 'x' ; 'y' ]
 
         freezer.Refresh ()
-        freezer.Changes |> shouldBeEmpty
-
-        cts.Cancel ()
+        freezer.Changes () |> shouldBeEmpty

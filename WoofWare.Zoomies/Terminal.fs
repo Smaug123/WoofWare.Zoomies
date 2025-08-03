@@ -35,6 +35,8 @@ type TerminalOp =
     | WriteChar of TerminalCell
     | SetCursorVisibility of toVisible : bool
     | ClearScreen
+    | EnterAlternateScreen
+    | ExitAlternateScreen
 
 [<RequireQualifiedAccess>]
 module TerminalOp =
@@ -71,3 +73,5 @@ module TerminalOp =
             else
                 consoleWrite "\x1B[?25l"
         | TerminalOp.ClearScreen -> consoleWrite "\x1B[2J"
+        | TerminalOp.EnterAlternateScreen -> consoleWrite "\x1B[?1049h"
+        | TerminalOp.ExitAlternateScreen -> consoleWrite "\x1B[?1049l"

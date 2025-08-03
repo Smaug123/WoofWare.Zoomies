@@ -8,7 +8,7 @@ type State =
         mutable IsChecked : bool
     }
 
-    static member Empty : State =
+    static member Empty () : State =
         {
             IsChecked = false
         }
@@ -46,20 +46,7 @@ module Program =
 
     [<EntryPoint>]
     let main argv =
-        // TODO: react to changes in dimension
-        let renderState = RenderState.make ()
 
-        RenderState.clearScreen renderState
-        RenderState.setCursorInvisible renderState
-
-        let state = State.Empty
-        let listener = WorldFreezer.listen CancellationToken.None
-
-        while true do
-            listener.Refresh ()
-
-            processWorld listener.Changes state
-
-            Render.oneStep renderState state vdom
+        App.run CancellationToken.None (State.Empty ()) processWorld vdom |> _.Wait()
 
         0
