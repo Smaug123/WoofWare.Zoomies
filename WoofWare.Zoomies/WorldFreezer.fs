@@ -26,6 +26,7 @@ type WorldFreezer =
     interface IDisposable with
         member this.Dispose () : unit =
             this.Cts.Cancel ()
+            this.IsShutDown.Wait ()
             this.Cts.Dispose ()
 
 [<RequireQualifiedAccess>]
