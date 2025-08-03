@@ -167,9 +167,11 @@ module Render =
         | _ ->
 
         match vdom with
-        | Vdom.TextContent s ->
+        | Vdom.TextContent (s, focus, _) ->
             match previousVdom with
-            | Some (Vdom.TextContent prevText, prevNode) when prevNode.Bounds = bounds && prevText = s ->
+            | Some (Vdom.TextContent (prevText, prevFocus, _), prevNode) when
+                prevNode.Bounds = bounds && prevText = s && prevFocus = focus
+                ->
                 {
                     Bounds = bounds
                     OverlaidChildren = []
@@ -240,9 +242,11 @@ module Render =
                     VDomSource = vdom
                 }
 
-        | Vdom.Checkbox isChecked ->
+        | Vdom.Checkbox (isChecked, focus, _) ->
             match previousVdom with
-            | Some (Vdom.Checkbox prevChecked, prevNode) when prevNode.Bounds = bounds ->
+            | Some (Vdom.Checkbox (prevChecked, prevFocus, _), prevNode) when
+                prevNode.Bounds = bounds && focus = prevFocus
+                ->
                 if prevChecked <> isChecked then
                     let content = if isChecked then '☑' else '☐'
 
@@ -259,12 +263,31 @@ module Render =
                     VDomSource = vdom
                 }
             | _ ->
+                // TODO: can short circuit this if focus is the only thing that's changed, too
+
+                if bounds.Width < 3 then
+                    failwith "TODO: not enough room"
 
                 for y = 0 to bounds.Height - 1 do
                     for x = 0 to bounds.Width - 1 do
                         setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
 
                 let content = if isChecked then '☑' else '☐'
+
+                if focus then
+                    setAtRelativeOffset
+                        dirty
+                        bounds
+                        (bounds.Width / 2 - 1)
+                        (bounds.Height / 2)
+                        (ValueSome (TerminalCell.OfChar '['))
+
+                    setAtRelativeOffset
+                        dirty
+                        bounds
+                        (bounds.Width / 2 + 1)
+                        (bounds.Height / 2)
+                        (ValueSome (TerminalCell.OfChar ']'))
 
                 setAtRelativeOffset
                     dirty
