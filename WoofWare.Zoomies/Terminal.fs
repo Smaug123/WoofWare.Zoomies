@@ -1,7 +1,6 @@
 namespace WoofWare.Zoomies
 
 open System
-open System.Text
 
 [<Struct>]
 type TerminalCell =
@@ -21,12 +20,7 @@ type TerminalCell =
 [<RequireQualifiedAccess>]
 module Terminal =
 
-    let moveCursor (x : int) (y : int) =
-        Console.Write $"\x1B[%d{y + 1};%d{x + 1}H"
-
     let clearLine () = Console.Write "\x1B[2K"
-    let hideCursor () = Console.Write "\x1B[?25l"
-    let showCursor () = Console.Write "\x1B[?25h"
     let saveCursorPosition () = Console.Write "\x1B[s"
     let restoreCursorPosition () = Console.Write "\x1B[u"
 

@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <Compile Include="Vdom.fs" />
+    <Compile Include="CtrlCHandler.fs" />
     <Compile Include="ConsoleColor.fs" />
     <Compile Include="Terminal.fs" />
     <Compile Include="Console.fs" />
