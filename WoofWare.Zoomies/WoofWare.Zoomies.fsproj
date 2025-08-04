@@ -18,6 +18,7 @@
     <Compile Include="Terminal.fs" />
     <Compile Include="Console.fs" />
     <Compile Include="WorldFreezer.fs" />
+    <Compile Include="LayoutConstraint.fs" />
     <Compile Include="Render.fs" />
     <Compile Include="App.fs" />
   </ItemGroup>

@@ -141,8 +141,8 @@ module Render =
         {
             TopLeftX = bounds.TopLeftX + 1
             TopLeftY = bounds.TopLeftY + 1
-            Width = bounds.Width - 2
-            Height = bounds.Height - 2
+            Width = max 0 (bounds.Width - 2)
+            Height = max 0 (bounds.Height - 2)
         }
 
     let inline private yIndex (bounds : Rectangle) (relativeY : int) = bounds.TopLeftY + relativeY
@@ -151,211 +151,286 @@ module Render =
     let private setAtRelativeOffset (arr : 'a[,]) (bounds : Rectangle) (relativeX : int) (relativeY : int) (v : 'a) =
         arr.[yIndex bounds relativeY, xIndex bounds relativeX] <- v
 
-    let rec layout
-        (dirty : TerminalCell voption[,])
+    /// Apply layout with given bounds (top-down pass)
+    let rec applyLayout
+        (bounds : Rectangle)
+        (previousVdom : (Vdom * RenderedNode) option)
+        (layoutNode : LayoutNode)
+        (buffer : TerminalCell voption[,])
+        : Result<RenderedNode, LayoutFailure>
+        =
+
+        // Check if bounds satisfy constraints
+        if not (layoutNode.Constraints.IsSatisfiedBy (bounds.Width, bounds.Height)) then
+            {
+                BoundWidth = bounds.Width
+                BoundHeight = bounds.Height
+
+                LayoutConstraints = layoutNode.Constraints
+            }
+            |> LayoutFailure.NoFit
+            |> Error
+        else
+
+        match layoutNode.Vdom with
+        | Vdom.TextContent (text, focused, _) ->
+            // Render text with wrapping/truncation
+            renderText buffer bounds text
+
+            {
+                Bounds = bounds
+                OverlaidChildren = []
+                VDomSource = layoutNode.Vdom
+            }
+            |> Ok
+
+        | Vdom.Checkbox (isChecked, focused, _) ->
+            // Render checkbox with degraded states based on available space
+            renderCheckbox buffer bounds isChecked focused
+
+            {
+                Bounds = bounds
+                OverlaidChildren = []
+                VDomSource = layoutNode.Vdom
+            }
+            |> Ok
+
+        | Vdom.Bordered _ ->
+            let childBounds = shrinkBounds bounds
+
+            match layoutNode.Children with
+            | [ childLayout ] ->
+                // Draw border
+                renderBorder buffer bounds
+                // Recursively layout child
+                match applyLayout childBounds childLayout buffer with
+                | Ok childNode ->
+                    {
+                        Bounds = bounds
+                        OverlaidChildren = [ childNode ]
+                        VDomSource = layoutNode.Vdom
+                    }
+                    |> Ok
+                | Error reason -> Error reason
+            | l -> Error (LayoutFailure.ChildCount ("Bordered", 1, l.Length))
+
+        | Vdom.PanelSplit (dir, split, _, _) ->
+            match layoutNode.Children with
+            | [ layout1 ; layout2 ] ->
+                match splitBoundsWithConstraints dir split bounds layout1.Constraints layout2.Constraints with
+                | Some (b1, b2) ->
+                    match applyLayout b1 layout1 buffer, applyLayout b2 layout2 buffer with
+                    | Ok node1, Ok node2 ->
+                        {
+                            Bounds = bounds
+                            OverlaidChildren = [ node1 ; node2 ]
+                            VDomSource = layoutNode.Vdom
+                        }
+                        |> Ok
+                    | Error reason, _
+                    | _, Error reason -> Error reason
+                | None -> Error LayoutFailure.SplitFailed
+
+            | l -> LayoutFailure.ChildCount ("PanelSplit", 2, l.Length) |> Error
+
+    /// Split bounds respecting child constraints
+    /// If both children's constraints cannot be satisfied, returns None for both.
+    /// The algorithm prioritizes satisfying minimum constraints over maintaining the exact split ratio.
+    and private splitBoundsWithConstraints
+        (direction : Direction)
+        (split : Choice<float, int>)
+        (bounds : Rectangle)
+        (constraints1 : SizeConstraints)
+        (constraints2 : SizeConstraints)
+        : (Rectangle * Rectangle) option
+        =
+
+        match direction with
+        | Direction.Vertical ->
+            // Calculate initial split
+            let targetWidth1 =
+                match split with
+                | Choice1Of2 proportion -> int (float bounds.Width * proportion)
+                | Choice2Of2 absolute -> if absolute < 0 then bounds.Width + absolute else absolute
+
+            // Adjust to satisfy constraints
+            let width1 =
+                targetWidth1
+                |> max constraints1.MinWidth
+                |> min constraints1.MaxWidth
+                |> min (bounds.Width - constraints2.MinWidth)
+
+            let width2 = bounds.Width - width1
+
+            // Check if both constraints can be satisfied
+            if
+                width1 >= constraints1.MinWidth
+                && width1 <= constraints1.MaxWidth
+                && width2 >= constraints2.MinWidth
+                && width2 <= constraints2.MaxWidth
+            then
+                let bounds1 =
+                    {
+                        TopLeftX = bounds.TopLeftX
+                        TopLeftY = bounds.TopLeftY
+                        Width = width1
+                        Height = bounds.Height
+                    }
+
+                let bounds2 =
+                    {
+                        TopLeftX = bounds.TopLeftX + width1
+                        TopLeftY = bounds.TopLeftY
+                        Width = width2
+                        Height = bounds.Height
+                    }
+
+                Some (bounds1, bounds2)
+            else
+                None
+
+        | Direction.Horizontal ->
+            // Similar logic for horizontal split
+            let targetHeight1 =
+                match split with
+                | Choice1Of2 proportion -> int (float bounds.Height * proportion)
+                | Choice2Of2 absolute -> if absolute < 0 then bounds.Height + absolute else absolute
+
+            let height1 =
+                targetHeight1
+                |> max constraints1.MinHeight
+                |> min constraints1.MaxHeight
+                |> min (bounds.Height - constraints2.MinHeight)
+
+            let height2 = bounds.Height - height1
+
+            if
+                height1 >= constraints1.MinHeight
+                && height1 <= constraints1.MaxHeight
+                && height2 >= constraints2.MinHeight
+                && height2 <= constraints2.MaxHeight
+            then
+                let bounds1 =
+                    {
+                        TopLeftX = bounds.TopLeftX
+                        TopLeftY = bounds.TopLeftY
+                        Width = bounds.Width
+                        Height = height1
+                    }
+
+                let bounds2 =
+                    {
+                        TopLeftX = bounds.TopLeftX
+                        TopLeftY = bounds.TopLeftY + height1
+                        Width = bounds.Width
+                        Height = height2
+                    }
+
+                Some (bounds1, bounds2)
+            else
+                None
+
+    /// Helper rendering functions with graceful degradation
+    /// Note: Assumes setAtRelativeOffset is available from the Render module
+    and private renderText (buffer : TerminalCell voption[,]) (bounds : Rectangle) (text : string) =
+        // Clear area
+        for y = 0 to bounds.Height - 1 do
+            for x = 0 to bounds.Width - 1 do
+                setAtRelativeOffset buffer bounds x y (ValueSome (TerminalCell.OfChar ' '))
+
+        // Render text with wrapping
+        let mutable charIndex = 0
+        let mutable x = 0
+        let mutable y = 0
+
+        while charIndex < text.Length && y < bounds.Height do
+            if text.[charIndex] = '\n' then
+                x <- 0
+                y <- y + 1
+                charIndex <- charIndex + 1
+            elif x < bounds.Width then
+                setAtRelativeOffset buffer bounds x y (ValueSome (TerminalCell.OfChar text.[charIndex]))
+                x <- x + 1
+                charIndex <- charIndex + 1
+            else
+                // Need to wrap to next line
+                x <- 0
+                y <- y + 1
+
+    and private renderCheckbox
+        (buffer : TerminalCell voption[,])
+        (bounds : Rectangle)
+        (isChecked : bool)
+        (focused : bool)
+        =
+        // Clear area first
+        for y = 0 to bounds.Height - 1 do
+            for x = 0 to bounds.Width - 1 do
+                setAtRelativeOffset buffer bounds x y (ValueSome (TerminalCell.OfChar ' '))
+
+        let checkChar = if isChecked then '☑' else '☐'
+        let centerY = bounds.Height / 2
+
+        // Graceful degradation based on available width
+        match bounds.Width with
+        | 0 -> () // Nothing we can do
+        | 1 ->
+            // Just the checkbox
+            setAtRelativeOffset buffer bounds 0 centerY (ValueSome (TerminalCell.OfChar checkChar))
+        | 2 ->
+            // Checkbox with space
+            setAtRelativeOffset buffer bounds 0 centerY (ValueSome (TerminalCell.OfChar checkChar))
+        | w when w >= 3 && focused ->
+            // Focused: center with brackets
+            let centerX = w / 2
+            setAtRelativeOffset buffer bounds (centerX - 1) centerY (ValueSome (TerminalCell.OfChar '['))
+            setAtRelativeOffset buffer bounds centerX centerY (ValueSome (TerminalCell.OfChar checkChar))
+            setAtRelativeOffset buffer bounds (centerX + 1) centerY (ValueSome (TerminalCell.OfChar ']'))
+        | w ->
+            // Unfocused: just center the checkbox
+            let centerX = w / 2
+            setAtRelativeOffset buffer bounds centerX centerY (ValueSome (TerminalCell.OfChar checkChar))
+
+    and private renderBorder (buffer : TerminalCell voption[,]) (bounds : Rectangle) =
+        // Degrade gracefully if bounds too small
+        if bounds.Width >= 2 && bounds.Height >= 2 then
+            // Full border rendering (same as original)
+            setAtRelativeOffset buffer bounds 0 0 (ValueSome (TerminalCell.OfChar '┌'))
+            setAtRelativeOffset buffer bounds 0 (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '└'))
+            setAtRelativeOffset buffer bounds (bounds.Width - 1) 0 (ValueSome (TerminalCell.OfChar '┐'))
+
+            setAtRelativeOffset
+                buffer
+                bounds
+                (bounds.Width - 1)
+                (bounds.Height - 1)
+                (ValueSome (TerminalCell.OfChar '┘'))
+
+            for i = 1 to bounds.Width - 2 do
+                setAtRelativeOffset buffer bounds i 0 (ValueSome (TerminalCell.OfChar '─'))
+                setAtRelativeOffset buffer bounds i (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '─'))
+
+            for i = 1 to bounds.Height - 2 do
+                setAtRelativeOffset buffer bounds 0 i (ValueSome (TerminalCell.OfChar '│'))
+                setAtRelativeOffset buffer bounds (bounds.Width - 1) i (ValueSome (TerminalCell.OfChar '│'))
+        elif bounds.Width = 1 && bounds.Height >= 1 then
+            // Just vertical lines
+            for i = 0 to bounds.Height - 1 do
+                setAtRelativeOffset buffer bounds 0 i (ValueSome (TerminalCell.OfChar '│'))
+        elif bounds.Height = 1 && bounds.Width >= 1 then
+            // Just horizontal line
+            for i = 0 to bounds.Width - 1 do
+                setAtRelativeOffset buffer bounds i 0 (ValueSome (TerminalCell.OfChar '─'))
+
+    let layoutWithConstraints
+        (buffer : TerminalCell voption[,])
         (previousVdom : (Vdom * RenderedNode) option)
         (bounds : Rectangle)
         (vdom : Vdom)
-        : RenderedNode
+        : Result<_, _>
         =
-        match previousVdom with
-        | Some (previousVdom, previousNode) when
-            bounds = previousNode.Bounds
-            && Object.ReferenceEquals (previousNode.VDomSource, vdom)
-            ->
-            previousNode
-        | _ ->
-
-        match vdom with
-        | Vdom.TextContent (s, focus, _) ->
-            match previousVdom with
-            | Some (Vdom.TextContent (prevText, prevFocus, _), prevNode) when
-                prevNode.Bounds = bounds && prevText = s && prevFocus = focus
-                ->
-                {
-                    Bounds = bounds
-                    OverlaidChildren = []
-                    VDomSource = vdom
-                }
-            | _ ->
-
-                // TODO: can do better here if we can compute a more efficient diff
-                for y = 0 to bounds.Height - 1 do
-                    for x = 0 to bounds.Width - 1 do
-                        setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
-
-                // dumb implementation! could do much better
-                let mutable index = 0
-                let mutable currX = 0
-                let mutable currY = 0
-
-                while index < s.Length do
-                    setAtRelativeOffset dirty bounds currX currY (ValueSome (TerminalCell.OfChar (s.Chars index)))
-
-                    currX <- currX + 1
-
-                    if currX = bounds.Width then
-                        currX <- 0
-                        currY <- currY + 1
-
-                        if currY >= bounds.Height then
-                            index <- s.Length
-
-                    index <- index + 1
-
-                {
-                    Bounds = bounds
-                    OverlaidChildren = []
-                    VDomSource = vdom
-                }
-
-        | Vdom.PanelSplit (dir, proportion, child1, child2) ->
-            match previousVdom with
-            | Some (Vdom.PanelSplit (prevDir, prevProportion, prevChild1, prevChild2), prevNode) when
-                proportion = prevProportion && prevDir = dir && bounds = prevNode.Bounds
-                ->
-                let bounds1, bounds2 = splitBounds dir proportion bounds
-
-                let rendered1 =
-                    layout dirty (Some (prevChild1, prevNode.OverlaidChildren.[0])) bounds1 child1
-
-                let rendered2 =
-                    layout dirty (Some (prevChild2, prevNode.OverlaidChildren.[1])) bounds2 child2
-
-                {
-                    Bounds = bounds
-                    OverlaidChildren = [ rendered1 ; rendered2 ]
-                    VDomSource = vdom
-                }
-            | _ ->
-                for y = 0 to bounds.Height - 1 do
-                    for x = 0 to bounds.Width - 1 do
-                        setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
-
-                let bounds1, bounds2 = splitBounds dir proportion bounds
-                let rendered1 = layout dirty None bounds1 child1
-                let rendered2 = layout dirty None bounds2 child2
-
-                {
-                    Bounds = bounds
-                    OverlaidChildren = [ rendered1 ; rendered2 ]
-                    VDomSource = vdom
-                }
-
-        | Vdom.Checkbox (isChecked, focus, _) ->
-            match previousVdom with
-            | Some (Vdom.Checkbox (prevChecked, prevFocus, _), prevNode) when
-                prevNode.Bounds = bounds && focus = prevFocus
-                ->
-                if prevChecked <> isChecked then
-                    let content = if isChecked then '☑' else '☐'
-
-                    setAtRelativeOffset
-                        dirty
-                        bounds
-                        (bounds.Width / 2)
-                        (bounds.Height / 2)
-                        (ValueSome (TerminalCell.OfChar content))
-
-                {
-                    Bounds = bounds
-                    OverlaidChildren = []
-                    VDomSource = vdom
-                }
-            | _ ->
-                // TODO: can short circuit this if focus is the only thing that's changed, too
-
-                if bounds.Width < 3 then
-                    failwith "TODO: not enough room"
-
-                for y = 0 to bounds.Height - 1 do
-                    for x = 0 to bounds.Width - 1 do
-                        setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
-
-                let content = if isChecked then '☑' else '☐'
-
-                if focus then
-                    setAtRelativeOffset
-                        dirty
-                        bounds
-                        (bounds.Width / 2 - 1)
-                        (bounds.Height / 2)
-                        (ValueSome (TerminalCell.OfChar '['))
-
-                    setAtRelativeOffset
-                        dirty
-                        bounds
-                        (bounds.Width / 2 + 1)
-                        (bounds.Height / 2)
-                        (ValueSome (TerminalCell.OfChar ']'))
-
-                setAtRelativeOffset
-                    dirty
-                    bounds
-                    (bounds.Width / 2)
-                    (bounds.Height / 2)
-                    (ValueSome (TerminalCell.OfChar content))
-
-                {
-                    Bounds = bounds
-                    OverlaidChildren = []
-                    VDomSource = vdom
-                }
-
-        | Vdom.Bordered child ->
-            match previousVdom with
-            | Some (Vdom.Bordered prevInner, prevNode) when prevNode.Bounds = bounds ->
-                let children =
-                    [
-                        layout dirty (Some (prevInner, prevNode.OverlaidChildren.[0])) (shrinkBounds bounds) child
-                    ]
-
-                {
-                    Bounds = bounds
-                    OverlaidChildren = children
-                    VDomSource = vdom
-                }
-            | _ ->
-                if bounds.Height <= 2 then
-                    failwith $"TODO: too short: %O{bounds}"
-
-                if bounds.Width <= 2 then
-                    failwith $"TODO: too thin: %O{bounds}"
-
-                for y = 0 to bounds.Height - 1 do
-                    for x = 0 to bounds.Width - 1 do
-                        setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
-
-                setAtRelativeOffset dirty bounds 0 0 (ValueSome (TerminalCell.OfChar '┌'))
-
-                setAtRelativeOffset dirty bounds 0 (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '└'))
-
-                setAtRelativeOffset dirty bounds (bounds.Width - 1) 0 (ValueSome (TerminalCell.OfChar '┐'))
-
-                setAtRelativeOffset
-                    dirty
-                    bounds
-                    (bounds.Width - 1)
-                    (bounds.Height - 1)
-                    (ValueSome (TerminalCell.OfChar '┘'))
-
-                for i = 1 to bounds.Width - 2 do
-                    setAtRelativeOffset dirty bounds i 0 (ValueSome (TerminalCell.OfChar '─'))
-
-                    setAtRelativeOffset dirty bounds i (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '─'))
-
-                for i = 1 to bounds.Height - 2 do
-                    setAtRelativeOffset dirty bounds 0 i (ValueSome (TerminalCell.OfChar '│'))
-
-                    setAtRelativeOffset dirty bounds (bounds.Width - 1) i (ValueSome (TerminalCell.OfChar '│'))
-
-                let children = [ layout dirty None (shrinkBounds bounds) child ]
-
-                {
-                    Bounds = bounds
-                    OverlaidChildren = children
-                    VDomSource = vdom
-                }
+        let layoutTree = ConstraintSolver.calculateConstraints vdom
+        applyLayout bounds previousVdom layoutTree buffer
 
     let writeBuffer (dirty : TerminalCell voption[,]) : TerminalOp seq =
         // TODO this is super dumb
@@ -372,7 +447,11 @@ module Render =
         let vdom = compute userState
 
         let rendered =
-            layout renderState.Buffer renderState.PreviousVdom renderState.TerminalBounds vdom
+            match layoutWithConstraints renderState.Buffer renderState.PreviousVdom renderState.TerminalBounds vdom with
+            | Ok r -> r
+            | Error e ->
+                // TODO: handle gracefully
+                failwith $"render failure: %O{e}"
 
         renderState.PreviousVdom <- Some (vdom, rendered)
 
