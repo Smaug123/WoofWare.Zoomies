@@ -160,6 +160,15 @@ module Render =
         : Result<RenderedNode, LayoutFailure>
         =
 
+        // First check: if vdom reference is the same and bounds haven't changed, skip entirely
+        match previousVdom with
+        | Some (previousVdom, previousNode) when
+            bounds = previousNode.Bounds
+            && Object.ReferenceEquals (previousNode.VDomSource, layoutNode.Vdom)
+            ->
+            Ok previousNode
+        | _ ->
+
         // Check if bounds satisfy constraints
         if not (layoutNode.Constraints.IsSatisfiedBy (bounds.Width, bounds.Height)) then
             {
@@ -174,52 +183,106 @@ module Render =
 
         match layoutNode.Vdom with
         | Vdom.TextContent (text, focused, _) ->
-            // Render text with wrapping/truncation
-            renderText buffer bounds text
+            // Check if we can skip re-rendering
+            match previousVdom with
+            | Some (Vdom.TextContent (prevText, prevFocus, _), prevNode) when
+                prevNode.Bounds = bounds && prevText = text && prevFocus = focused
+                ->
+                {
+                    Bounds = bounds
+                    OverlaidChildren = []
+                    VDomSource = layoutNode.Vdom
+                }
+                |> Ok
+            | _ ->
+                // Render text with wrapping/truncation
+                renderText buffer bounds text
 
-            {
-                Bounds = bounds
-                OverlaidChildren = []
-                VDomSource = layoutNode.Vdom
-            }
-            |> Ok
+                {
+                    Bounds = bounds
+                    OverlaidChildren = []
+                    VDomSource = layoutNode.Vdom
+                }
+                |> Ok
 
         | Vdom.Checkbox (isChecked, focused, _) ->
-            // Render checkbox with degraded states based on available space
-            renderCheckbox buffer bounds isChecked focused
+            // Check if we can do a minimal update
+            match previousVdom with
+            | Some (Vdom.Checkbox (prevChecked, prevFocus, _), prevNode) when
+                prevNode.Bounds = bounds && focused = prevFocus
+                ->
+                if prevChecked <> isChecked then
+                    // Only update the checkbox character itself
+                    let checkChar = if isChecked then '☑' else '☐'
+                    let centerY = bounds.Height / 2
+                    let centerX = bounds.Width / 2
+                    setAtRelativeOffset buffer bounds centerX centerY (ValueSome (TerminalCell.OfChar checkChar))
 
-            {
-                Bounds = bounds
-                OverlaidChildren = []
-                VDomSource = layoutNode.Vdom
-            }
-            |> Ok
+                {
+                    Bounds = bounds
+                    OverlaidChildren = []
+                    VDomSource = layoutNode.Vdom
+                }
+                |> Ok
+            | _ ->
+                // Full render
+                renderCheckbox buffer bounds isChecked focused
 
-        | Vdom.Bordered _ ->
+                {
+                    Bounds = bounds
+                    OverlaidChildren = []
+                    VDomSource = layoutNode.Vdom
+                }
+                |> Ok
+
+        | Vdom.Bordered child ->
             let childBounds = shrinkBounds bounds
 
             match layoutNode.Children with
             | [ childLayout ] ->
-                // Draw border
-                renderBorder buffer bounds
-                // Recursively layout child
-                match applyLayout childBounds childLayout buffer with
-                | Ok childNode ->
-                    {
-                        Bounds = bounds
-                        OverlaidChildren = [ childNode ]
-                        VDomSource = layoutNode.Vdom
-                    }
-                    |> Ok
-                | Error reason -> Error reason
+                match previousVdom with
+                | Some (Vdom.Bordered prevInner, prevNode) when prevNode.Bounds = bounds ->
+                    // Border hasn't changed, just recurse for child
+                    match
+                        applyLayout childBounds (Some (prevInner, prevNode.OverlaidChildren.[0])) childLayout buffer
+                    with
+                    | Ok childNode ->
+                        {
+                            Bounds = bounds
+                            OverlaidChildren = [ childNode ]
+                            VDomSource = layoutNode.Vdom
+                        }
+                        |> Ok
+                    | Error reason -> Error reason
+                | _ ->
+                    // Draw border
+                    renderBorder buffer bounds
+                    // Recursively layout child
+                    match applyLayout childBounds None childLayout buffer with
+                    | Ok childNode ->
+                        {
+                            Bounds = bounds
+                            OverlaidChildren = [ childNode ]
+                            VDomSource = layoutNode.Vdom
+                        }
+                        |> Ok
+                    | Error reason -> Error reason
             | l -> Error (LayoutFailure.ChildCount ("Bordered", 1, l.Length))
 
-        | Vdom.PanelSplit (dir, split, _, _) ->
+        | Vdom.PanelSplit (dir, split, child1, child2) ->
             match layoutNode.Children with
             | [ layout1 ; layout2 ] ->
-                match splitBoundsWithConstraints dir split bounds layout1.Constraints layout2.Constraints with
-                | Some (b1, b2) ->
-                    match applyLayout b1 layout1 buffer, applyLayout b2 layout2 buffer with
+                match previousVdom with
+                | Some (Vdom.PanelSplit (prevDir, prevSplit, prevChild1, prevChild2), prevNode) when
+                    split = prevSplit && prevDir = dir && bounds = prevNode.Bounds
+                    ->
+                    // Split hasn't changed, just recurse for children
+                    let bounds1, bounds2 = splitBounds dir split bounds
+
+                    match
+                        applyLayout bounds1 (Some (prevChild1, prevNode.OverlaidChildren.[0])) layout1 buffer,
+                        applyLayout bounds2 (Some (prevChild2, prevNode.OverlaidChildren.[1])) layout2 buffer
+                    with
                     | Ok node1, Ok node2 ->
                         {
                             Bounds = bounds
@@ -229,7 +292,20 @@ module Render =
                         |> Ok
                     | Error reason, _
                     | _, Error reason -> Error reason
-                | None -> Error LayoutFailure.SplitFailed
+                | _ ->
+                    match splitBoundsWithConstraints dir split bounds layout1.Constraints layout2.Constraints with
+                    | Some (b1, b2) ->
+                        match applyLayout b1 None layout1 buffer, applyLayout b2 None layout2 buffer with
+                        | Ok node1, Ok node2 ->
+                            {
+                                Bounds = bounds
+                                OverlaidChildren = [ node1 ; node2 ]
+                                VDomSource = layoutNode.Vdom
+                            }
+                            |> Ok
+                        | Error reason, _
+                        | _, Error reason -> Error reason
+                    | None -> Error LayoutFailure.SplitFailed
 
             | l -> LayoutFailure.ChildCount ("PanelSplit", 2, l.Length) |> Error
 
