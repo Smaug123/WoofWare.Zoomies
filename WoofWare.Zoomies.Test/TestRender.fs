@@ -107,9 +107,9 @@ module TestRender =
     let ``example 1`` () =
         let console, terminal = ConsoleHarness.make ()
 
-        let keyAvailable, readKey, sendKey = WorldFreezerInputs.make ()
+        let world = MockWorld.make ()
 
-        let worldFreezer = WorldFreezer.listen' keyAvailable readKey
+        let worldFreezer = WorldFreezer.listen' world.KeyAvailable world.ReadKey
 
         let state = State.Empty ()
 
@@ -136,7 +136,7 @@ module TestRender =
         }
 
         // Switching focus does nothing, because there's only one focus element
-        sendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+        world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
         App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
@@ -159,7 +159,7 @@ module TestRender =
         }
 
         // Turn on the toggle, revealing a new interface element!
-        sendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
+        world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
         App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
         expect {
@@ -181,7 +181,7 @@ only displayed when checked                this one is focusable!               
         }
 
         // Switch to the other checkbox
-        sendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+        world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
         App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
         expect {
@@ -203,7 +203,7 @@ only displayed when checked                this one is focusable!               
         }
 
         // Toggle the other one on
-        sendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
+        world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
         App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
         expect {
@@ -225,7 +225,7 @@ only displayed when checked                this one is focusable!               
         }
 
         // Switch back to the first one
-        sendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+        world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
         App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
         expect {
@@ -247,7 +247,7 @@ only displayed when checked                this one is focusable!               
         }
 
         // Disable it again
-        sendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
+        world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
         App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
         expect {
@@ -269,7 +269,7 @@ only displayed when checked                this one is focusable!               
         }
 
         // Re-enable; it remembered its state
-        sendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
+        world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
         App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
         expect {

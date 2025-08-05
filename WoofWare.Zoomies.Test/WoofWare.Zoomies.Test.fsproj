@@ -9,8 +9,9 @@
   <ItemGroup>
     <Compile Include="ConsoleHarness.fs" />
     <Compile Include="CtrlCHandler.fs" />
-    <Compile Include="WorldFreezerInputs.fs" />
+    <Compile Include="MockWorld.fs" />
     <Compile Include="TestRender.fs" />
+    <Compile Include="TestFocusCycle.fs" />
     <Compile Include="TestWorldFreezer.fs" />
   </ItemGroup>
 
