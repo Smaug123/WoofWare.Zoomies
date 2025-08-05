@@ -10,29 +10,6 @@ open WoofWare.Zoomies
 module TestWorldFreezer =
 
     [<Test>]
-    let ``stops processing after cancellation`` () =
-        task {
-            let mutable keysRead = 0
-            let keysAvailable () = true
-
-            let readKey () =
-                Interlocked.Increment &keysRead |> ignore<int>
-                ConsoleKeyInfo ('x', ConsoleKey.X, false, false, false)
-
-            let freezer = WorldFreezer.listen' keysAvailable readKey
-
-            (freezer :> IDisposable).Dispose ()
-
-            do! freezer.IsShutDown.WaitAsync (TimeSpan.FromSeconds 10.0)
-            freezer.IsShutDown.IsCompletedSuccessfully |> shouldEqual true
-
-            freezer.Refresh ()
-            let _ = freezer.Changes () |> Seq.toList
-            freezer.Refresh ()
-            freezer.Changes () |> shouldBeEmpty
-        }
-
-    [<Test>]
     let ``clears previous changes on refresh`` () =
         let mutable callCount = 0
 
@@ -51,7 +28,7 @@ module TestWorldFreezer =
 
         use cts = new CancellationTokenSource ()
 
-        use freezer = WorldFreezer.listen' keyAvailable readKey
+        let freezer = WorldFreezer.listen' keyAvailable readKey
 
         let seen = ResizeArray ()
         let mutable cont = true

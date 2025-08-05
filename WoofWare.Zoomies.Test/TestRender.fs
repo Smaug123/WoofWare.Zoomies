@@ -109,7 +109,7 @@ module TestRender =
 
         let keyAvailable, readKey, sendKey = WorldFreezerInputs.make ()
 
-        use worldFreezer = WorldFreezer.listen' keyAvailable readKey
+        let worldFreezer = WorldFreezer.listen' keyAvailable readKey
 
         let state = State.Empty ()
 

@@ -95,7 +95,7 @@ module App =
             try
                 RenderState.setCursorInvisible renderState
 
-                use listener = worldFreezer ()
+                let listener = worldFreezer ()
 
                 while cancels = 0 && not terminate.IsCancellationRequested do
                     pumpOnce listener mutableState haveFrameworkHandleFocus renderState processWorld vdom
