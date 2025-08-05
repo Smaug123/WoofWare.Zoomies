@@ -49,16 +49,20 @@ module ConsoleHarness =
 
         sb.ToString ()
 
-    let make () : IConsole * ConsoleHarness =
-        let fake = empty 10 80
+    let make' (width : unit -> int) (height : unit -> int) : IConsole * ConsoleHarness =
+        // TODO: make console dynamically resize
+        let fake = empty (height ()) (width ())
 
         let result =
             {
                 BackgroundColor = fun () -> ConsoleColor.Black
                 ForegroundColor = fun () -> ConsoleColor.White
-                WindowWidth = fun () -> 80
-                WindowHeight = fun () -> 10
+                WindowWidth = width
+                WindowHeight = height
                 Execute = execute fake
             }
 
         result, fake
+
+    let make () : IConsole * ConsoleHarness =
+        make' (fun () -> 80) (fun () -> 10)
