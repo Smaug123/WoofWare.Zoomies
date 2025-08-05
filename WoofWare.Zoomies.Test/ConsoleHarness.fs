@@ -64,5 +64,4 @@ module ConsoleHarness =
 
         result, fake
 
-    let make () : IConsole * ConsoleHarness =
-        make' (fun () -> 80) (fun () -> 10)
+    let make () : IConsole * ConsoleHarness = make' (fun () -> 80) (fun () -> 10)
