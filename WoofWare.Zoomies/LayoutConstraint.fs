@@ -54,13 +54,13 @@ type LayoutNoFit =
 
 [<RequireQualifiedAccess>]
 type LayoutFailure =
-    | NoFit of LayoutNoFit
+    | NoFit of LayoutNoFit * Vdom
     | ChildCount of nodeType : string * required : int * got : int
     | SplitFailed
 
     override this.ToString () =
         match this with
-        | LayoutFailure.NoFit layoutNoFit -> layoutNoFit.ToString ()
+        | LayoutFailure.NoFit (layoutNoFit, node) -> $"{node}: %O{layoutNoFit}"
         | LayoutFailure.ChildCount (nodeType, required, got) ->
             $"%s{nodeType} node should have %i{required} child(ren) but got %i{got}"
         | LayoutFailure.SplitFailed ->

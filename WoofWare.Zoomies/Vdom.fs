@@ -67,7 +67,8 @@ module Vdom =
 
     type FocusState =
         {
-            FirstUnfocused : (unit -> unit) option
+            FirstUnfocusedAbsolute : (unit -> unit) option
+            FirstUnfocusedAfter : (unit -> unit) option
             FocusFound : bool
         }
 
@@ -79,24 +80,28 @@ module Vdom =
             member _.AtCheckbox isChecked isFocused onReceiveFocus =
                 if isFocused then
                     {
-                        FirstUnfocused = None
+                        FirstUnfocusedAfter = None
+                        FirstUnfocusedAbsolute = None
                         FocusFound = true
                     }
                 else
                     {
-                        FirstUnfocused = Some onReceiveFocus
+                        FirstUnfocusedAfter = None
+                        FirstUnfocusedAbsolute = Some onReceiveFocus
                         FocusFound = false
                     }
 
             member _.AtTextContent contents isFocused onReceiveFocus =
                 if isFocused then
                     {
-                        FirstUnfocused = None
+                        FirstUnfocusedAbsolute = None
+                        FirstUnfocusedAfter = None
                         FocusFound = true
                     }
                 else
                     {
-                        FirstUnfocused = onReceiveFocus
+                        FirstUnfocusedAbsolute = onReceiveFocus
+                        FirstUnfocusedAfter = onReceiveFocus
                         FocusFound = false
                     }
 
@@ -104,16 +109,22 @@ module Vdom =
                 if child1.FocusFound then
                     {
                         FocusFound = true
-                        FirstUnfocused = child1.FirstUnfocused |> Option.orElse child2.FirstUnfocused
+                        FirstUnfocusedAfter = child1.FirstUnfocusedAfter |> Option.orElse child2.FirstUnfocusedAbsolute
+                        FirstUnfocusedAbsolute =
+                            child1.FirstUnfocusedAbsolute |> Option.orElse child2.FirstUnfocusedAbsolute
                     }
                 elif child2.FocusFound then
                     {
                         FocusFound = true
-                        FirstUnfocused = child2.FirstUnfocused |> Option.orElse child1.FirstUnfocused
+                        FirstUnfocusedAfter = child2.FirstUnfocusedAfter
+                        FirstUnfocusedAbsolute =
+                            child1.FirstUnfocusedAbsolute |> Option.orElse child2.FirstUnfocusedAbsolute
                     }
                 else
                     {
                         FocusFound = false
-                        FirstUnfocused = child1.FirstUnfocused |> Option.orElse child2.FirstUnfocused
+                        FirstUnfocusedAfter = None
+                        FirstUnfocusedAbsolute =
+                            child1.FirstUnfocusedAbsolute |> Option.orElse child2.FirstUnfocusedAbsolute
                     }
         }

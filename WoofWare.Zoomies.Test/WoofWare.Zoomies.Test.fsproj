@@ -12,6 +12,7 @@
     <Compile Include="WorldFreezerInputs.fs" />
     <Compile Include="TestRender.fs" />
     <Compile Include="TestWorldFreezer.fs" />
+    <Compile Include="TestConstrainedCheckbox.fs" />
   </ItemGroup>
 
   <ItemGroup>

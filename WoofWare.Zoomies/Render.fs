@@ -177,7 +177,7 @@ module Render =
 
                 LayoutConstraints = layoutNode.Constraints
             }
-            |> LayoutFailure.NoFit
+            |> fun x -> LayoutFailure.NoFit (x, layoutNode.Vdom)
             |> Error
         else
 
@@ -503,7 +503,7 @@ module Render =
         (previousVdom : (Vdom * RenderedNode) option)
         (bounds : Rectangle)
         (vdom : Vdom)
-        : Result<_, _>
+        : Result<_, LayoutFailure>
         =
         let layoutTree = ConstraintSolver.calculateConstraints vdom
         applyLayout bounds previousVdom layoutTree buffer

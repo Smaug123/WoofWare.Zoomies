@@ -37,11 +37,14 @@ module App =
                         // TODO: this is grossly inefficient!
                         let focusChange = Vdom.cata Vdom.advanceFocusCata prevVdom
 
-                        match focusChange.FirstUnfocused with
+                        match focusChange.FirstUnfocusedAfter with
                         | Some changeFocus -> changeFocus ()
                         | None ->
-                            // couldn't find anything to change focus to
-                            ()
+                            match focusChange.FirstUnfocusedAbsolute with
+                            | Some changeFocus -> changeFocus ()
+                            | None ->
+                                // couldn't find anything to change focus to
+                                ()
 
                     start <- i + 1
                     // skip the tab input
