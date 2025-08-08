@@ -61,7 +61,7 @@ module Program =
         else
             vdom
 
-    let processWorld (worldChanges : WorldStateChange seq) (state : State) : unit =
+    let processWorld (worldChanges : WorldStateChange<unit> seq) (state : State) : unit =
         for change in worldChanges do
             match change with
             | Keystroke c when c.KeyChar = ' ' ->
@@ -69,6 +69,7 @@ module Program =
                 | FocusedElement.Toggle1 -> state.IsToggle1Checked <- not state.IsToggle1Checked
                 | FocusedElement.Toggle2 -> state.IsToggle2Checked <- not state.IsToggle2Checked
             | Keystroke _ -> ()
+            | ApplicationEvent () -> failwith "no app events"
 
     [<EntryPoint>]
     let main argv =

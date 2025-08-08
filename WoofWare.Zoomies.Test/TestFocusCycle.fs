@@ -32,11 +32,12 @@ module TestFocusCycle =
         let state = ref 0
         let haveFrameworkHandleFocus _ = true
 
-        let processWorld (inputs : WorldStateChange seq) _ =
+        let processWorld (inputs : WorldStateChange<unit> seq) _ =
             inputs
             |> Seq.map (fun s ->
                 match s with
                 | WorldStateChange.Keystroke c -> string c.Key
+                | WorldStateChange.ApplicationEvent () -> failwith "no app events"
             )
             |> String.concat "\n"
             |> failwithf "should not call: %s"

@@ -1,38 +1,53 @@
 namespace WoofWare.Zoomies
 
 open System
-open System.Collections.Generic
+open System.Collections.Concurrent
 
-type WorldStateChange = | Keystroke of ConsoleKeyInfo
+type WorldStateChange<'appEvent> =
+    | Keystroke of ConsoleKeyInfo
+    | ApplicationEvent of 'appEvent
 
-type WorldFreezer =
+type WorldFreezer<'appEvent> =
     private
         {
-            /// Calling `Refresh` causes this IReadOnlyList to completely change its contents. You're expected not to
-            /// be touching `Changes` when you call `Refresh` or while `Refresh` is running.
-            _Changes : IReadOnlyList<WorldStateChange>
-            _Refresh : unit -> unit
+            _Changes : ConcurrentQueue<WorldStateChange<'appEvent>>
+            _RefreshExternal : unit -> unit
+            _Post : 'appEvent -> unit
         }
 
-    member this.Refresh () = this._Refresh ()
-    member this.Changes () = this._Changes
+    /// Load pending changes from the external world, like keystrokes, into the change list.
+    member this.RefreshExternal () = this._RefreshExternal ()
+
+    /// Dump any pending changes into a freshly cloned array. This clears the state of the internal buffer.
+    member this.Changes () =
+        lock
+            this._Changes
+            (fun () ->
+                let result = this._Changes.ToArray ()
+                this._Changes.Clear ()
+                result
+            )
+
+    member this.PostAppEvent a = this._Post a
 
 [<RequireQualifiedAccess>]
 module WorldFreezer =
     /// Pass `fun () -> Console.KeyAvailable` for `keyAvailable`, and `fun () -> Console.ReadKey true` for `readKey`.
-    let listen' (keyAvailable : unit -> bool) (readKey : unit -> ConsoleKeyInfo) : WorldFreezer =
-        let worldChanges = ResizeArray ()
+    let listen' (keyAvailable : unit -> bool) (readKey : unit -> ConsoleKeyInfo) : WorldFreezer<'appEvent> =
+        let worldChanges = ConcurrentQueue<WorldStateChange<_>> ()
 
-        let freeze () =
-            worldChanges.Clear ()
-
+        let refreshExternal () =
             while keyAvailable () do
-                readKey () |> WorldStateChange.Keystroke |> worldChanges.Add
+                readKey () |> WorldStateChange.Keystroke |> worldChanges.Enqueue
+
+        let postAppEvent evt =
+            worldChanges.Enqueue (WorldStateChange.ApplicationEvent evt)
 
         {
-            _Changes = worldChanges :> IReadOnlyList<_>
-            _Refresh = freeze
+            _Changes = worldChanges
+            _RefreshExternal = refreshExternal
+            _Post = postAppEvent
         }
 
-    let listen () : WorldFreezer =
+    let listen () : WorldFreezer<'appEvent> =
         listen' (fun () -> Console.KeyAvailable) (fun () -> Console.ReadKey true)

@@ -8,18 +8,18 @@ open System.Threading.Tasks
 module App =
 
     let pumpOnce
-        (listener : WorldFreezer)
+        (listener : WorldFreezer<'appEvent>)
         (mutableState : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
         (renderState : RenderState)
-        (processWorld : WorldStateChange seq -> 'state -> unit)
+        (processWorld : WorldStateChange<'appEvent> seq -> 'state -> unit)
         (vdom : 'state -> Vdom)
         : unit
         =
-        listener.Refresh ()
+        listener.RefreshExternal ()
 
         if haveFrameworkHandleFocus mutableState then
-            let changes = listener.Changes () |> Array.ofSeq
+            let changes = listener.Changes ()
             let mutable i = 0
             let mutable start = 0
 
@@ -68,14 +68,14 @@ module App =
     /// We set up a ConsoleCancelEventHandler to suppress one Ctrl+C, and we also listen to stdin,
     /// for as long as this task is running.
     /// Cancel the CancellationToken to cause the render loop to quit and to unhook all these state listeners.
-    let run'<'state>
+    let run'<'state, 'appEvent>
         (terminate : CancellationToken)
         (console : IConsole)
         (ctrlC : CtrlCHandler)
-        (worldFreezer : unit -> WorldFreezer)
+        (worldFreezer : unit -> WorldFreezer<'appEvent>)
         (mutableState : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
-        (processWorld : WorldStateChange seq -> 'state -> unit)
+        (processWorld : WorldStateChange<'appEvent> seq -> 'state -> unit)
         (vdom : 'state -> Vdom)
         : Task
         =

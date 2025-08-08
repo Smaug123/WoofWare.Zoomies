@@ -10,7 +10,7 @@ open WoofWare.Zoomies
 module TestWorldFreezer =
 
     [<Test>]
-    let ``clears previous changes on refresh`` () =
+    let ``clears previous changes on change dump`` () =
         let mutable callCount = 0
 
         let keys =
@@ -34,23 +34,23 @@ module TestWorldFreezer =
         let mutable cont = true
 
         while cont do
-            freezer.Refresh ()
+            freezer.RefreshExternal ()
 
             let result =
                 freezer.Changes ()
-                |> Seq.map (fun change ->
+                |> Array.map (fun change ->
                     match change with
                     | WorldStateChange.Keystroke c -> c.KeyChar
+                    | ApplicationEvent () -> failwith "no app events"
                 )
-                |> Seq.toList
 
             seen.AddRange result
 
-            match List.tryLast result with
+            match Array.tryLast result with
             | Some 'y' -> cont <- false
             | _ -> ()
 
         seen |> Seq.toList |> shouldEqual [ 'x' ; 'y' ]
 
-        freezer.Refresh ()
+        freezer.RefreshExternal ()
         freezer.Changes () |> shouldBeEmpty
