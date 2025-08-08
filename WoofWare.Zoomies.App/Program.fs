@@ -1,78 +1,116 @@
-﻿namespace WoofWare.Zoomies.App
+﻿namespace WoofWare.Zoomies
 
+open System.IO
+open System.Runtime.ExceptionServices
 open System.Threading
+open System.Threading.Tasks
 open WoofWare.Zoomies
 
-type FocusedElement =
-    | Toggle1
-    | Toggle2
+type AppEvent =
+    | FileLoaded of filename : string * content : string
+    | FileLoadError of filename : string * error : string
 
 type State =
     {
-        mutable IsToggle1Checked : bool
-        mutable IsToggle2Checked : bool
-        mutable FocusedElement : FocusedElement
+        File1Path : string
+        File2Path : string
+        mutable ShowingFile1 : bool
+        mutable FileContent : string option
+        mutable IsLoading : bool
     }
 
-    static member Empty () : State =
+    static member Create (file1 : string, file2 : string) =
         {
-            IsToggle1Checked = false
-            IsToggle2Checked = false
-            FocusedElement = FocusedElement.Toggle1
+            File1Path = file1
+            File2Path = file2
+            ShowingFile1 = true
+            FileContent = None
+            IsLoading = false
         }
 
-module Program =
+    member this.CurrentFile = if this.ShowingFile1 then this.File1Path else this.File2Path
 
-    let vdom (state : State) =
-        let left =
-            Vdom.textContent
-                None
-                "not praising the praiseworthy keeps people uncompetitive; not prizing rare treasures keeps people from stealing; not looking at the desirable keeps the mind quiet"
-            |> Vdom.bordered
+module FileBrowser =
 
-        let right =
-            Vdom.textContent
-                None
-                "errybody wants to be a bodybuilder, but don't nobody want to lift no heavy-ass weights"
-            |> Vdom.bordered
+    let loadFileAsync (postEvent : (CancellationToken -> Task<AppEvent>) -> unit) (filepath : string) : unit =
+        fun ct ->
+            task {
+                let! content = File.ReadAllTextAsync (filepath, ct)
+                return FileLoaded (filepath, content)
+            }
+        |> postEvent
 
-        let topHalf = Vdom.panelSplitProportion Direction.Vertical 0.5 left right
+    let processWorld
+        (postEvent : (CancellationToken -> Task<AppEvent>) -> unit)
+        (changes : WorldStateChange<AppEvent> seq)
+        (state : State)
+        : unit
+        =
 
-        let bottomHalf =
-            Vdom.labelledCheckbox
-                (fun () -> state.FocusedElement <- FocusedElement.Toggle1)
-                state.FocusedElement.IsToggle1
-                state.IsToggle1Checked
-                "Press Space to toggle"
-
-        let vdom = Vdom.panelSplitAbsolute Direction.Horizontal -3 topHalf bottomHalf
-
-        if state.IsToggle1Checked then
-            Vdom.panelSplitProportion
-                Direction.Vertical
-                0.5
-                (Vdom.textContent None "This gets displayed when the thing is checked; left")
-                (Vdom.labelledCheckbox
-                    (fun () -> state.FocusedElement <- FocusedElement.Toggle2)
-                    state.FocusedElement.IsToggle2
-                    state.IsToggle2Checked
-                    "this one is focusable! space to toggle")
-            |> Vdom.panelSplitProportion Direction.Horizontal 0.7 vdom
-        else
-            vdom
-
-    let processWorld (worldChanges : WorldStateChange seq) (state : State) : unit =
-        for change in worldChanges do
+        for change in changes do
             match change with
-            | Keystroke c when c.KeyChar = ' ' ->
-                match state.FocusedElement with
-                | FocusedElement.Toggle1 -> state.IsToggle1Checked <- not state.IsToggle1Checked
-                | FocusedElement.Toggle2 -> state.IsToggle2Checked <- not state.IsToggle2Checked
-            | Keystroke _ -> ()
+            | WorldStateChange.Keystroke key when key.KeyChar = ' ' ->
+                // Toggle which file we're showing
+                state.ShowingFile1 <- not state.ShowingFile1
+                state.IsLoading <- true
+                state.FileContent <- None
+                // Trigger async load of the new file
+                loadFileAsync postEvent state.CurrentFile
+            | WorldStateChange.Keystroke _ -> ()
 
+            | WorldStateChange.ApplicationEvent (FileLoaded (filename, content)) ->
+                // Only update if this is still the file we're expecting
+                if filename = state.CurrentFile then
+                    state.FileContent <- Some content
+                    state.IsLoading <- false
+
+            | WorldStateChange.ApplicationEvent (FileLoadError (filename, error)) ->
+                if filename = state.CurrentFile then
+                    state.FileContent <- Some $"Error loading file: {error}"
+                    state.IsLoading <- false
+
+            | WorldStateChange.ApplicationEventException e ->
+                ExceptionDispatchInfo.Throw e
+                failwith "unreachable"
+
+    let view (state : State) : Vdom =
+        let topPane =
+            let label = $"[{state.File1Path}] / [{state.File2Path}]"
+
+            let checkbox =
+                Vdom.checkbox
+                    (fun () -> ())
+                    true // always focused for this simple example
+                    (not state.ShowingFile1)
+
+            Vdom.panelSplitAbsolute Direction.Vertical 3 checkbox (Vdom.textContent None label)
+            |> Vdom.bordered
+
+        let bottomPane =
+            let content =
+                match state.IsLoading, state.FileContent with
+                | true, _ -> "Loading..."
+                | false, Some content -> content
+                | false, None -> "Press space to load a file"
+
+            Vdom.textContent None content |> Vdom.bordered
+
+        Vdom.panelSplitAbsolute Direction.Horizontal 3 topPane bottomPane
+
+    let run (file1 : string) (file2 : string) =
+        let state = State.Create (file1, file2)
+
+        state.IsLoading <- true
+
+        App.run
+            state
+            (fun _ -> true) // framework handles focus
+            processWorld
+            view
+
+// Usage:
+module Program =
     [<EntryPoint>]
     let main argv =
-
-        App.run (State.Empty ()) (fun _ -> true) processWorld vdom |> _.Wait()
-
+        FileBrowser.run "../../../../README.md" "../../../../LICENSE.md" |> _.Wait()
         0
