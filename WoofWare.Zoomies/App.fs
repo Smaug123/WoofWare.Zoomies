@@ -18,51 +18,55 @@ module App =
         =
         listener.RefreshExternal ()
 
-        if haveFrameworkHandleFocus mutableState then
-            let changes = listener.Changes ()
-            let mutable i = 0
-            let mutable start = 0
+        let changes = listener.Changes ()
 
-            while i < changes.Length do
-                match changes.[i] with
-                | WorldStateChange.Keystroke t when
-                    t.Key = ConsoleKey.Tab && (t.Modifiers &&& ConsoleModifiers.Shift = enum 0)
-                    ->
-                    if i > 0 then
-                        processWorld changes.[start .. i - 1] mutableState
+        match changes with
+        | ValueNone -> ()
+        | ValueSome changes ->
 
-                    match renderState.PreviousVdom with
-                    | None -> failwith "expected not to receive input before the first render"
-                    | Some (prevVdom, _) ->
-                        // TODO: this is grossly inefficient!
-                        let focusChange = Vdom.cata Vdom.advanceFocusCata prevVdom
+            if haveFrameworkHandleFocus mutableState then
 
-                        match focusChange.FirstUnfocusedAfter with
-                        | Some changeFocus -> changeFocus ()
-                        | None ->
-                            // Try wrapping round to the first focusable element
-                            match focusChange.FirstUnfocusedAbsolute with
+                let mutable i = 0
+                let mutable start = 0
+
+                while i < changes.Length do
+                    match changes.[i] with
+                    | WorldStateChange.Keystroke t when
+                        t.Key = ConsoleKey.Tab && (t.Modifiers &&& ConsoleModifiers.Shift = enum 0)
+                        ->
+                        if i > 0 then
+                            processWorld changes.[start .. i - 1] mutableState
+
+                        match renderState.PreviousVdom with
+                        | None -> failwith "expected not to receive input before the first render"
+                        | Some (prevVdom, _) ->
+                            // TODO: this is grossly inefficient!
+                            let focusChange = Vdom.cata Vdom.advanceFocusCata prevVdom
+
+                            match focusChange.FirstUnfocusedAfter with
                             | Some changeFocus -> changeFocus ()
                             | None ->
-                                // couldn't find anything to change focus to
-                                ()
+                                // Try wrapping round to the first focusable element
+                                match focusChange.FirstUnfocusedAbsolute with
+                                | Some changeFocus -> changeFocus ()
+                                | None ->
+                                    // couldn't find anything to change focus to
+                                    ()
 
-                    start <- i + 1
-                    // skip the tab input
+                        start <- i + 1
+                        // skip the tab input
+                        i <- i + 1
+                    // TODO: handle shift+tab too
+                    | _ -> ()
+
                     i <- i + 1
-                // TODO: handle shift+tab too
-                | _ -> ()
 
-                i <- i + 1
+                if start < changes.Length then
+                    processWorld changes.[start..] mutableState
+            else
+                processWorld changes mutableState
 
-            if start < changes.Length then
-                processWorld changes.[start..] mutableState
-
-            Render.oneStep renderState mutableState vdom
-        else
-            let changes = listener.Changes ()
-            processWorld changes mutableState
-            Render.oneStep renderState mutableState vdom
+        Render.oneStep renderState mutableState vdom
 
 
     /// We set up a ConsoleCancelEventHandler to suppress one Ctrl+C, and we also listen to stdin,
@@ -75,7 +79,8 @@ module App =
         (worldFreezer : unit -> WorldFreezer<'appEvent>)
         (mutableState : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
-        (processWorld : WorldStateChange<'appEvent> seq -> 'state -> unit)
+        (processWorld :
+            ((CancellationToken -> Task<'appEvent>) -> unit) -> WorldStateChange<'appEvent> seq -> 'state -> unit)
         (vdom : 'state -> Vdom)
         : Task
         =
@@ -102,7 +107,13 @@ module App =
                 let listener = worldFreezer ()
 
                 while cancels = 0 && not terminate.IsCancellationRequested do
-                    pumpOnce listener mutableState haveFrameworkHandleFocus renderState processWorld vdom
+                    pumpOnce
+                        listener
+                        mutableState
+                        haveFrameworkHandleFocus
+                        renderState
+                        (processWorld listener.PostAppEvent)
+                        vdom
 
             finally
                 ctrlC.Unregister ctrlCHandler

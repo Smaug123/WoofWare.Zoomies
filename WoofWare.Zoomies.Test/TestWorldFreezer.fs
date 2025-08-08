@@ -38,10 +38,12 @@ module TestWorldFreezer =
 
             let result =
                 freezer.Changes ()
+                |> ValueOption.defaultValue [||]
                 |> Array.map (fun change ->
                     match change with
                     | WorldStateChange.Keystroke c -> c.KeyChar
                     | ApplicationEvent () -> failwith "no app events"
+                    | ApplicationEventException _ -> failwith "no exceptions possible"
                 )
 
             seen.AddRange result
@@ -53,4 +55,4 @@ module TestWorldFreezer =
         seen |> Seq.toList |> shouldEqual [ 'x' ; 'y' ]
 
         freezer.RefreshExternal ()
-        freezer.Changes () |> shouldBeEmpty
+        freezer.Changes () |> shouldEqual ValueNone

@@ -82,6 +82,7 @@ module TestRender =
                 | FocusedElement.Toggle2 -> state.IsToggle2Checked <- not state.IsToggle2Checked
             | Keystroke _ -> ()
             | ApplicationEvent () -> failwith "no app events"
+            | ApplicationEventException _ -> failwith "no exceptions possible"
 
     [<Test>]
     let ``there is no rerender if nothing changes`` () =

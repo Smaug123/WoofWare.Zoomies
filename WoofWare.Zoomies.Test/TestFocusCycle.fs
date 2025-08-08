@@ -38,6 +38,7 @@ module TestFocusCycle =
                 match s with
                 | WorldStateChange.Keystroke c -> string c.Key
                 | WorldStateChange.ApplicationEvent () -> failwith "no app events"
+                | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
             )
             |> String.concat "\n"
             |> failwithf "should not call: %s"

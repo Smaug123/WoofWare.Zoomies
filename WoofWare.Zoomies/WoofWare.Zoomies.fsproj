@@ -7,11 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Update="FSharp.Core" Version="5.0.0" />
+    <PackageReference Update="FSharp.Core" Version="6.0.0" />
     <PackageReference Include="TypeEquality" Version="0.3.0" />
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="Nursery.fs" />
     <Compile Include="Vdom.fs" />
     <Compile Include="CtrlCHandler.fs" />
     <Compile Include="ConsoleColor.fs" />
