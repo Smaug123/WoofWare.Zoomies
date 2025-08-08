@@ -59,7 +59,7 @@ type internal Nursery () =
     interface IAsyncDisposable with
         member _.DisposeAsync () : ValueTask =
             task {
-                if Interlocked.CompareExchange (&isDisposing, 1, 0) = 1 then
+                if Interlocked.Increment &isDisposing = 1 then
                     cts.Cancel ()
 
                     // Wait for no more submissions to be in flight.
