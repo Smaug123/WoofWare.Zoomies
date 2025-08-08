@@ -11,48 +11,50 @@ module TestWorldFreezer =
 
     [<Test>]
     let ``clears previous changes on change dump`` () =
-        let mutable callCount = 0
+        task {
+            let mutable callCount = 0
 
-        let keys =
-            [|
-                ConsoleKeyInfo ('x', ConsoleKey.X, false, false, false)
-                ConsoleKeyInfo ('y', ConsoleKey.Y, false, false, false)
-            |]
+            let keys =
+                [|
+                    ConsoleKeyInfo ('x', ConsoleKey.X, false, false, false)
+                    ConsoleKeyInfo ('y', ConsoleKey.Y, false, false, false)
+                |]
 
-        let keyAvailable () = callCount < keys.Length
+            let keyAvailable () = callCount < keys.Length
 
-        let readKey () =
-            let key = keys.[callCount]
-            Interlocked.Increment &callCount |> ignore<int>
-            key
+            let readKey () =
+                let key = keys.[callCount]
+                Interlocked.Increment &callCount |> ignore<int>
+                key
 
-        use cts = new CancellationTokenSource ()
+            use cts = new CancellationTokenSource ()
 
-        let freezer = WorldFreezer.listen' keyAvailable readKey
+            use freezer = WorldFreezer.listen' keyAvailable readKey
 
-        let seen = ResizeArray ()
-        let mutable cont = true
+            let seen = ResizeArray ()
+            let mutable cont = true
 
-        while cont do
+            while cont do
+                freezer.RefreshExternal ()
+
+                let result =
+                    freezer.Changes ()
+                    |> ValueOption.defaultValue [||]
+                    |> Array.map (fun change ->
+                        match change with
+                        | WorldStateChange.Keystroke c -> c.KeyChar
+                        | ApplicationEvent () -> failwith "no app events"
+                        | ApplicationEventException _ -> failwith "no exceptions possible"
+                    )
+
+                seen.AddRange result
+
+                match Array.tryLast result with
+                | Some 'y' -> cont <- false
+                | _ -> ()
+
+            seen |> Seq.toList |> shouldEqual [ 'x' ; 'y' ]
+
             freezer.RefreshExternal ()
-
-            let result =
-                freezer.Changes ()
-                |> ValueOption.defaultValue [||]
-                |> Array.map (fun change ->
-                    match change with
-                    | WorldStateChange.Keystroke c -> c.KeyChar
-                    | ApplicationEvent () -> failwith "no app events"
-                    | ApplicationEventException _ -> failwith "no exceptions possible"
-                )
-
-            seen.AddRange result
-
-            match Array.tryLast result with
-            | Some 'y' -> cont <- false
-            | _ -> ()
-
-        seen |> Seq.toList |> shouldEqual [ 'x' ; 'y' ]
-
-        freezer.RefreshExternal ()
-        freezer.Changes () |> shouldEqual ValueNone
+            freezer.Changes () |> shouldEqual ValueNone
+        }

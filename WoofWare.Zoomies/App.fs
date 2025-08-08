@@ -84,43 +84,53 @@ module App =
         (vdom : 'state -> Vdom)
         : Task
         =
-        fun () ->
-            // TODO: react to changes in dimension
-            let renderState = RenderState.make' console
+        let complete = TaskCompletionSource ()
 
-            RenderState.enterAlternateScreen renderState
+        let _thread =
+            fun () ->
+                // TODO: react to changes in dimension
+                let renderState = RenderState.make' console
 
-            let mutable cancels = 0
+                RenderState.enterAlternateScreen renderState
 
-            let ctrlCHandler =
-                ConsoleCancelEventHandler (fun _ args ->
-                    // Double-ctrlc to exit immediately
-                    if Interlocked.Increment &cancels = 1 then
-                        args.Cancel <- true
-                )
+                let mutable cancels = 0
 
-            ctrlC.Register ctrlCHandler
+                let ctrlCHandler =
+                    ConsoleCancelEventHandler (fun _ args ->
+                        // Double-ctrlc to exit immediately
+                        if Interlocked.Increment &cancels = 1 then
+                            args.Cancel <- true
+                    )
 
-            try
-                RenderState.setCursorInvisible renderState
+                ctrlC.Register ctrlCHandler
 
                 let listener = worldFreezer ()
 
-                while cancels = 0 && not terminate.IsCancellationRequested do
-                    pumpOnce
-                        listener
-                        mutableState
-                        haveFrameworkHandleFocus
-                        renderState
-                        (processWorld listener.PostAppEvent)
-                        vdom
+                try
+                    RenderState.setCursorInvisible renderState
 
-            finally
-                ctrlC.Unregister ctrlCHandler
-                RenderState.exitAlternateScreen renderState
-                RenderState.setCursorVisible renderState
+                    while cancels = 0 && not terminate.IsCancellationRequested do
+                        pumpOnce
+                            listener
+                            mutableState
+                            haveFrameworkHandleFocus
+                            renderState
+                            (processWorld listener.PostAppEvent)
+                            vdom
 
-        |> fun f -> Task.Factory.StartNew (f, TaskCreationOptions.LongRunning)
+                finally
+                    ctrlC.Unregister ctrlCHandler
+
+                    (listener :> IAsyncDisposable).DisposeAsync().GetAwaiter().GetResult ()
+
+                    RenderState.exitAlternateScreen renderState
+                    RenderState.setCursorVisible renderState
+
+                    complete.SetResult ()
+            |> Thread
+            |> _.Start()
+
+        complete.Task
 
     let run state haveFrameworkHandleFocus processWorld vdom =
         run'

@@ -22,82 +22,84 @@ module TestFocusCycle =
 
     [<Test>]
     let ``example 1`` () =
-        let console, terminal = ConsoleHarness.make' (fun () -> 16) (fun () -> 1)
+        task {
+            let console, terminal = ConsoleHarness.make' (fun () -> 16) (fun () -> 1)
 
-        let world = MockWorld.make ()
+            let world = MockWorld.make ()
 
-        let worldFreezer = WorldFreezer.listen' world.KeyAvailable world.ReadKey
+            use worldFreezer = WorldFreezer.listen' world.KeyAvailable world.ReadKey
 
-        let renderState = RenderState.make' console
-        let state = ref 0
-        let haveFrameworkHandleFocus _ = true
+            let renderState = RenderState.make' console
+            let state = ref 0
+            let haveFrameworkHandleFocus _ = true
 
-        let processWorld (inputs : WorldStateChange<unit> seq) _ =
-            inputs
-            |> Seq.map (fun s ->
-                match s with
-                | WorldStateChange.Keystroke c -> string c.Key
-                | WorldStateChange.ApplicationEvent () -> failwith "no app events"
-                | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
-            )
-            |> String.concat "\n"
-            |> failwithf "should not call: %s"
+            let processWorld (inputs : WorldStateChange<unit> seq) _ =
+                inputs
+                |> Seq.map (fun s ->
+                    match s with
+                    | WorldStateChange.Keystroke c -> string c.Key
+                    | WorldStateChange.ApplicationEvent () -> failwith "no app events"
+                    | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
+                )
+                |> String.concat "\n"
+                |> failwithf "should not call: %s"
 
-        App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom
+            App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom
 
-        expect {
-            snapshot
-                @"
+            expect {
+                snapshot
+                    @"
   [☐]   ☐  ☐  ☐ |
 "
 
-            return ConsoleHarness.toString terminal
-        }
+                return ConsoleHarness.toString terminal
+            }
 
-        world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-        App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+            App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom
 
-        expect {
-            snapshot
-                @"
+            expect {
+                snapshot
+                    @"
    ☐   [☐] ☐  ☐ |
 "
 
-            return ConsoleHarness.toString terminal
-        }
+                return ConsoleHarness.toString terminal
+            }
 
-        world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-        App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+            App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom
 
-        expect {
-            snapshot
-                @"
+            expect {
+                snapshot
+                    @"
    ☐    ☐ [☐] ☐ |
 "
 
-            return ConsoleHarness.toString terminal
-        }
+                return ConsoleHarness.toString terminal
+            }
 
-        world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-        App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+            App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom
 
-        expect {
-            snapshot
-                @"
+            expect {
+                snapshot
+                    @"
    ☐    ☐  ☐ [☐]|
 "
 
-            return ConsoleHarness.toString terminal
-        }
+                return ConsoleHarness.toString terminal
+            }
 
-        world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-        App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+            App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom
 
-        expect {
-            snapshot
-                @"
+            expect {
+                snapshot
+                    @"
   [☐]   ☐  ☐  ☐ |
 "
 
-            return ConsoleHarness.toString terminal
+                return ConsoleHarness.toString terminal
+            }
         }
