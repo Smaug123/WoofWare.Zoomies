@@ -2,6 +2,7 @@ namespace WoofWare.Zoomies
 
 open System
 open System.Collections.Concurrent
+open System.Collections.Generic
 open System.Threading
 open System.Threading.Tasks
 
@@ -30,9 +31,13 @@ type WorldFreezer<'appEvent> =
             // Fine to have a TOCTTOU here. The next render loop will catch it if any events get added.
             ValueNone
         else
-            let result = this._Changes.ToArray ()
-            this._Changes.Clear ()
-            result |> ValueSome
+            let result = ResizeArray ()
+            let mutable out = Unchecked.defaultof<_>
+
+            while this._Changes.TryDequeue &out do
+                result.Add out
+
+            result.ToArray () |> ValueSome
 
     member this.PostAppEvent a = this._Post a
 
