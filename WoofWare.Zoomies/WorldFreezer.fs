@@ -26,16 +26,13 @@ type WorldFreezer<'appEvent> =
     /// To save allocations, we don't give you back an array for the extremely common case where that array
     /// is empty.
     member this.Changes () =
-        lock
-            this._Changes
-            (fun () ->
-                if this._Changes.IsEmpty then
-                    ValueNone
-                else
-                    let result = this._Changes.ToArray ()
-                    this._Changes.Clear ()
-                    result |> ValueSome
-            )
+        if this._Changes.IsEmpty then
+            // Fine to have a TOCTTOU here. The next render loop will catch it if any events get added.
+            ValueNone
+        else
+            let result = this._Changes.ToArray ()
+            this._Changes.Clear ()
+            result |> ValueSome
 
     member this.PostAppEvent a = this._Post a
 
