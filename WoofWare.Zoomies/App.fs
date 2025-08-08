@@ -121,6 +121,7 @@ module App =
                 finally
                     ctrlC.Unregister ctrlCHandler
 
+                    // We're on a dedicated thread, so this can't deadlock.
                     (listener :> IAsyncDisposable).DisposeAsync().GetAwaiter().GetResult ()
 
                     RenderState.exitAlternateScreen renderState

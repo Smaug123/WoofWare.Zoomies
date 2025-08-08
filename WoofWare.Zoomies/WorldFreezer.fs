@@ -57,6 +57,12 @@ module WorldFreezer =
 
         let postAppEvent (evt : CancellationToken -> Task<'appEvent>) : unit =
             task {
+                // The only exception `runningTasks.Submit` can throw is OperationDisposedException.
+                // If we get that, the listener is already being shut down, so we're no longer rerendering
+                // over on the render thread.
+                // That means there's no point sending a message to the render thread about any errors
+                // (because the render thread will never do anything with that message),
+                // so it's fine to simply ignore any exceptions that are thrown during the `Submit` call itself.
                 let running = runningTasks.Submit evt
 
                 try
