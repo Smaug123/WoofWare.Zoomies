@@ -8,107 +8,130 @@ open System.Threading.Tasks
 module App =
 
     let pumpOnce
-        (listener : WorldFreezer)
+        (listener : WorldFreezer<'appEvent>)
         (mutableState : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
         (renderState : RenderState)
-        (processWorld : WorldStateChange seq -> 'state -> unit)
+        (processWorld : WorldStateChange<'appEvent> seq -> 'state -> unit)
         (vdom : 'state -> Vdom)
         : unit
         =
-        listener.Refresh ()
+        listener.RefreshExternal ()
 
-        if haveFrameworkHandleFocus mutableState then
-            let changes = listener.Changes () |> Array.ofSeq
-            let mutable i = 0
-            let mutable start = 0
+        let changes = listener.Changes ()
 
-            while i < changes.Length do
-                match changes.[i] with
-                | WorldStateChange.Keystroke t when
-                    t.Key = ConsoleKey.Tab && (t.Modifiers &&& ConsoleModifiers.Shift = enum 0)
-                    ->
-                    if i > 0 then
-                        processWorld changes.[start .. i - 1] mutableState
+        match changes with
+        | ValueNone -> ()
+        | ValueSome changes ->
 
-                    match renderState.PreviousVdom with
-                    | None -> failwith "expected not to receive input before the first render"
-                    | Some (prevVdom, _) ->
-                        // TODO: this is grossly inefficient!
-                        let focusChange = Vdom.cata Vdom.advanceFocusCata prevVdom
+            if haveFrameworkHandleFocus mutableState then
 
-                        match focusChange.FirstUnfocusedAfter with
-                        | Some changeFocus -> changeFocus ()
-                        | None ->
-                            match focusChange.FirstUnfocusedAbsolute with
+                let mutable i = 0
+                let mutable start = 0
+
+                while i < changes.Length do
+                    match changes.[i] with
+                    | WorldStateChange.Keystroke t when
+                        t.Key = ConsoleKey.Tab && (t.Modifiers &&& ConsoleModifiers.Shift = enum 0)
+                        ->
+                        if i > 0 then
+                            processWorld changes.[start .. i - 1] mutableState
+
+                        match renderState.PreviousVdom with
+                        | None -> failwith "expected not to receive input before the first render"
+                        | Some (prevVdom, _) ->
+                            // TODO: this is grossly inefficient!
+                            let focusChange = Vdom.cata Vdom.advanceFocusCata prevVdom
+
+                            match focusChange.FirstUnfocusedAfter with
                             | Some changeFocus -> changeFocus ()
                             | None ->
-                                // couldn't find anything to change focus to
-                                ()
+                                // Try wrapping round to the first focusable element
+                                match focusChange.FirstUnfocusedAbsolute with
+                                | Some changeFocus -> changeFocus ()
+                                | None ->
+                                    // couldn't find anything to change focus to
+                                    ()
 
-                    start <- i + 1
-                    // skip the tab input
+                        start <- i + 1
+                        // skip the tab input
+                        i <- i + 1
+                    // TODO: handle shift+tab too
+                    | _ -> ()
+
                     i <- i + 1
-                // TODO: handle shift+tab too
-                | _ -> ()
 
-                i <- i + 1
+                if start < changes.Length then
+                    processWorld changes.[start..] mutableState
+            else
+                processWorld changes mutableState
 
-            if start < changes.Length then
-                processWorld changes.[start..] mutableState
-
-            Render.oneStep renderState mutableState vdom
-        else
-            let changes = listener.Changes ()
-            processWorld changes mutableState
-            Render.oneStep renderState mutableState vdom
+        Render.oneStep renderState mutableState vdom
 
 
     /// We set up a ConsoleCancelEventHandler to suppress one Ctrl+C, and we also listen to stdin,
     /// for as long as this task is running.
     /// Cancel the CancellationToken to cause the render loop to quit and to unhook all these state listeners.
-    let run'<'state>
+    let run'<'state, 'appEvent>
         (terminate : CancellationToken)
         (console : IConsole)
         (ctrlC : CtrlCHandler)
-        (worldFreezer : unit -> WorldFreezer)
+        (worldFreezer : unit -> WorldFreezer<'appEvent>)
         (mutableState : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
-        (processWorld : WorldStateChange seq -> 'state -> unit)
+        (processWorld :
+            ((CancellationToken -> Task<'appEvent>) -> unit) -> WorldStateChange<'appEvent> seq -> 'state -> unit)
         (vdom : 'state -> Vdom)
         : Task
         =
-        fun () ->
-            // TODO: react to changes in dimension
-            let renderState = RenderState.make' console
+        let complete = TaskCompletionSource ()
 
-            RenderState.enterAlternateScreen renderState
+        let _thread =
+            fun () ->
+                // TODO: react to changes in dimension
+                let renderState = RenderState.make' console
 
-            let mutable cancels = 0
+                RenderState.enterAlternateScreen renderState
 
-            let ctrlCHandler =
-                ConsoleCancelEventHandler (fun _ args ->
-                    // Double-ctrlc to exit immediately
-                    if Interlocked.Increment &cancels = 1 then
-                        args.Cancel <- true
-                )
+                let mutable cancels = 0
 
-            ctrlC.Register ctrlCHandler
+                let ctrlCHandler =
+                    ConsoleCancelEventHandler (fun _ args ->
+                        // Double-ctrlc to exit immediately
+                        if Interlocked.Increment &cancels = 1 then
+                            args.Cancel <- true
+                    )
 
-            try
-                RenderState.setCursorInvisible renderState
+                ctrlC.Register ctrlCHandler
 
-                use listener = worldFreezer ()
+                let listener = worldFreezer ()
 
-                while cancels = 0 && not terminate.IsCancellationRequested do
-                    pumpOnce listener mutableState haveFrameworkHandleFocus renderState processWorld vdom
+                try
+                    RenderState.setCursorInvisible renderState
 
-            finally
-                ctrlC.Unregister ctrlCHandler
-                RenderState.exitAlternateScreen renderState
-                RenderState.setCursorVisible renderState
+                    while cancels = 0 && not terminate.IsCancellationRequested do
+                        pumpOnce
+                            listener
+                            mutableState
+                            haveFrameworkHandleFocus
+                            renderState
+                            (processWorld listener.PostAppEvent)
+                            vdom
 
-        |> fun f -> Task.Factory.StartNew (f, TaskCreationOptions.LongRunning)
+                finally
+                    ctrlC.Unregister ctrlCHandler
+
+                    // We're on a dedicated thread, so this can't deadlock.
+                    (listener :> IAsyncDisposable).DisposeAsync().GetAwaiter().GetResult ()
+
+                    RenderState.exitAlternateScreen renderState
+                    RenderState.setCursorVisible renderState
+
+                    complete.SetResult ()
+            |> Thread
+            |> _.Start()
+
+        complete.Task
 
     let run state haveFrameworkHandleFocus processWorld vdom =
         run'

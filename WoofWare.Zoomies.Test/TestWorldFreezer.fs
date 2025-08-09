@@ -10,70 +10,51 @@ open WoofWare.Zoomies
 module TestWorldFreezer =
 
     [<Test>]
-    let ``stops processing after cancellation`` () =
+    let ``clears previous changes on change dump`` () =
         task {
-            let mutable keysRead = 0
-            let keysAvailable () = true
+            let mutable callCount = 0
+
+            let keys =
+                [|
+                    ConsoleKeyInfo ('x', ConsoleKey.X, false, false, false)
+                    ConsoleKeyInfo ('y', ConsoleKey.Y, false, false, false)
+                |]
+
+            let keyAvailable () = callCount < keys.Length
 
             let readKey () =
-                Interlocked.Increment &keysRead |> ignore<int>
-                ConsoleKeyInfo ('x', ConsoleKey.X, false, false, false)
+                let key = keys.[callCount]
+                Interlocked.Increment &callCount |> ignore<int>
+                key
 
-            let freezer = WorldFreezer.listen' keysAvailable readKey
+            use cts = new CancellationTokenSource ()
 
-            (freezer :> IDisposable).Dispose ()
+            use freezer = WorldFreezer.listen' keyAvailable readKey
 
-            do! freezer.IsShutDown.WaitAsync (TimeSpan.FromSeconds 10.0)
-            freezer.IsShutDown.IsCompletedSuccessfully |> shouldEqual true
+            let seen = ResizeArray ()
+            let mutable cont = true
 
-            freezer.Refresh ()
-            let _ = freezer.Changes () |> Seq.toList
-            freezer.Refresh ()
-            freezer.Changes () |> shouldBeEmpty
+            while cont do
+                freezer.RefreshExternal ()
+
+                let result =
+                    freezer.Changes ()
+                    |> ValueOption.defaultValue [||]
+                    |> Array.map (fun change ->
+                        match change with
+                        | WorldStateChange.Keystroke c -> c.KeyChar
+                        | ApplicationEvent () -> failwith "no app events"
+                        | ApplicationEventException _ -> failwith "no exceptions possible"
+                    )
+
+                seen.AddRange result
+
+                match Array.tryLast result with
+                | Some 'y' -> cont <- false
+                | _ -> ()
+
+            seen |> Seq.toList |> shouldEqual [ 'x' ; 'y' ]
+
+            freezer.RefreshExternal ()
+            freezer.Changes () |> shouldEqual ValueNone
         }
-
-    [<Test>]
-    let ``clears previous changes on refresh`` () =
-        let mutable callCount = 0
-
-        let keys =
-            [|
-                ConsoleKeyInfo ('x', ConsoleKey.X, false, false, false)
-                ConsoleKeyInfo ('y', ConsoleKey.Y, false, false, false)
-            |]
-
-        let keyAvailable () = callCount < keys.Length
-
-        let readKey () =
-            let key = keys.[callCount]
-            Interlocked.Increment &callCount |> ignore<int>
-            key
-
-        use cts = new CancellationTokenSource ()
-
-        use freezer = WorldFreezer.listen' keyAvailable readKey
-
-        let seen = ResizeArray ()
-        let mutable cont = true
-
-        while cont do
-            freezer.Refresh ()
-
-            let result =
-                freezer.Changes ()
-                |> Seq.map (fun change ->
-                    match change with
-                    | WorldStateChange.Keystroke c -> c.KeyChar
-                )
-                |> Seq.toList
-
-            seen.AddRange result
-
-            match List.tryLast result with
-            | Some 'y' -> cont <- false
-            | _ -> ()
-
-        seen |> Seq.toList |> shouldEqual [ 'x' ; 'y' ]
-
-        freezer.Refresh ()
-        freezer.Changes () |> shouldBeEmpty

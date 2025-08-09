@@ -73,7 +73,7 @@ module TestRender =
         else
             vdom
 
-    let processWorld (worldChanges : WorldStateChange seq) (state : State) : unit =
+    let processWorld (worldChanges : WorldStateChange<unit> seq) (state : State) : unit =
         for change in worldChanges do
             match change with
             | Keystroke c when c.KeyChar = ' ' ->
@@ -81,6 +81,8 @@ module TestRender =
                 | FocusedElement.Toggle1 -> state.IsToggle1Checked <- not state.IsToggle1Checked
                 | FocusedElement.Toggle2 -> state.IsToggle2Checked <- not state.IsToggle2Checked
             | Keystroke _ -> ()
+            | ApplicationEvent () -> failwith "no app events"
+            | ApplicationEventException _ -> failwith "no exceptions possible"
 
     [<Test>]
     let ``there is no rerender if nothing changes`` () =
@@ -105,21 +107,22 @@ module TestRender =
 
     [<Test>]
     let ``example 1`` () =
-        let console, terminal = ConsoleHarness.make ()
+        task {
+            let console, terminal = ConsoleHarness.make ()
 
-        let keyAvailable, readKey, sendKey = WorldFreezerInputs.make ()
+            let world = MockWorld.make ()
 
-        use worldFreezer = WorldFreezer.listen' keyAvailable readKey
+            use worldFreezer = WorldFreezer.listen' world.KeyAvailable world.ReadKey
 
-        let state = State.Empty ()
+            let state = State.Empty ()
 
-        let renderState = RenderState.make' console
+            let renderState = RenderState.make' console
 
-        App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
-        expect {
-            snapshot
-                @"
+            expect {
+                snapshot
+                    @"
 ┌──────────────────────────────────────┐┌──────────────────────────────────────┐|
 │not praising the praiseworthy keeps pe││errybody wants to be a bodybuilder, bu│|
 │ople uncompetitive; not prizing rare t││t don't nobody want to lift no heavy-a│|
@@ -132,17 +135,17 @@ module TestRender =
                                                                                 |
 "
 
-            return ConsoleHarness.toString terminal
-        }
+                return ConsoleHarness.toString terminal
+            }
 
-        // Switching focus does nothing, because there's only one focus element
-        sendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+            // Switching focus does nothing, because there's only one focus element
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-        App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
-        expect {
-            snapshot
-                @"
+            expect {
+                snapshot
+                    @"
 ┌──────────────────────────────────────┐┌──────────────────────────────────────┐|
 │not praising the praiseworthy keeps pe││errybody wants to be a bodybuilder, bu│|
 │ople uncompetitive; not prizing rare t││t don't nobody want to lift no heavy-a│|
@@ -155,16 +158,16 @@ module TestRender =
                                                                                 |
 "
 
-            return ConsoleHarness.toString terminal
-        }
+                return ConsoleHarness.toString terminal
+            }
 
-        // Turn on the toggle, revealing a new interface element!
-        sendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
-        App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            // Turn on the toggle, revealing a new interface element!
+            world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
+            App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
-        expect {
-            snapshot
-                @"
+            expect {
+                snapshot
+                    @"
 ┌──────────────────────────────────────┐┌──────────────────────────────────────┐|
 │not praising the praiseworthy keeps pe││errybody wants to be a bodybuilder, bu│|
 │ople uncompetitive; not prizing rare t││t don't nobody want to lift no heavy-a│|
@@ -177,16 +180,16 @@ only displayed when checked                this one is focusable!               
                                                                                 |
 "
 
-            return ConsoleHarness.toString terminal
-        }
+                return ConsoleHarness.toString terminal
+            }
 
-        // Switch to the other checkbox
-        sendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-        App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            // Switch to the other checkbox
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+            App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
-        expect {
-            snapshot
-                @"
+            expect {
+                snapshot
+                    @"
 ┌──────────────────────────────────────┐┌──────────────────────────────────────┐|
 │not praising the praiseworthy keeps pe││errybody wants to be a bodybuilder, bu│|
 │ople uncompetitive; not prizing rare t││t don't nobody want to lift no heavy-a│|
@@ -199,16 +202,16 @@ only displayed when checked                this one is focusable!               
                                                                                 |
 "
 
-            return ConsoleHarness.toString terminal
-        }
+                return ConsoleHarness.toString terminal
+            }
 
-        // Toggle the other one on
-        sendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
-        App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            // Toggle the other one on
+            world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
+            App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
-        expect {
-            snapshot
-                @"
+            expect {
+                snapshot
+                    @"
 ┌──────────────────────────────────────┐┌──────────────────────────────────────┐|
 │not praising the praiseworthy keeps pe││errybody wants to be a bodybuilder, bu│|
 │ople uncompetitive; not prizing rare t││t don't nobody want to lift no heavy-a│|
@@ -221,16 +224,16 @@ only displayed when checked                this one is focusable!               
                                                                                 |
 "
 
-            return ConsoleHarness.toString terminal
-        }
+                return ConsoleHarness.toString terminal
+            }
 
-        // Switch back to the first one
-        sendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-        App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            // Switch back to the first one
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+            App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
-        expect {
-            snapshot
-                @"
+            expect {
+                snapshot
+                    @"
 ┌──────────────────────────────────────┐┌──────────────────────────────────────┐|
 │not praising the praiseworthy keeps pe││errybody wants to be a bodybuilder, bu│|
 │ople uncompetitive; not prizing rare t││t don't nobody want to lift no heavy-a│|
@@ -243,16 +246,16 @@ only displayed when checked                this one is focusable!               
                                                                                 |
 "
 
-            return ConsoleHarness.toString terminal
-        }
+                return ConsoleHarness.toString terminal
+            }
 
-        // Disable it again
-        sendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
-        App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            // Disable it again
+            world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
+            App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
-        expect {
-            snapshot
-                @"
+            expect {
+                snapshot
+                    @"
 ┌──────────────────────────────────────┐┌──────────────────────────────────────┐|
 │not praising the praiseworthy keeps pe││errybody wants to be a bodybuilder, bu│|
 │ople uncompetitive; not prizing rare t││t don't nobody want to lift no heavy-a│|
@@ -265,16 +268,16 @@ only displayed when checked                this one is focusable!               
                                                                                 |
 "
 
-            return ConsoleHarness.toString terminal
-        }
+                return ConsoleHarness.toString terminal
+            }
 
-        // Re-enable; it remembered its state
-        sendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
-        App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            // Re-enable; it remembered its state
+            world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
+            App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
-        expect {
-            snapshot
-                @"
+            expect {
+                snapshot
+                    @"
 ┌──────────────────────────────────────┐┌──────────────────────────────────────┐|
 │not praising the praiseworthy keeps pe││errybody wants to be a bodybuilder, bu│|
 │ople uncompetitive; not prizing rare t││t don't nobody want to lift no heavy-a│|
@@ -287,5 +290,6 @@ only displayed when checked                this one is focusable!               
                                                                                 |
 "
 
-            return ConsoleHarness.toString terminal
+                return ConsoleHarness.toString terminal
+            }
         }

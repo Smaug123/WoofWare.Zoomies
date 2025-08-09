@@ -1,168 +1,116 @@
-﻿namespace WoofWare.Zoomies.App
+﻿namespace WoofWare.Zoomies
 
-open System
+open System.IO
+open System.Runtime.ExceptionServices
+open System.Threading
+open System.Threading.Tasks
 open WoofWare.Zoomies
 
-type FocusedElement =
-    | Option1
-    | Option2
-    | Option3
-    | ShowDetails
-    | CompactMode
-    | DebugInfo
+type AppEvent =
+    | FileLoaded of filename : string * content : string
+    | FileLoadError of filename : string * error : string
 
-type TestState =
+type State =
     {
-        mutable FocusedElement : FocusedElement
-        mutable SelectedOption : int
-        mutable ShowDetails : bool
-        mutable CompactMode : bool
-        mutable DebugInfo : bool
+        File1Path : string
+        File2Path : string
+        mutable ShowingFile1 : bool
+        mutable FileContent : string option
+        mutable IsLoading : bool
     }
 
-    static member Initial () =
+    static member Create (file1 : string, file2 : string) =
         {
-            SelectedOption = 0
-            ShowDetails = false
-            CompactMode = false
-            DebugInfo = true
-            FocusedElement = FocusedElement.Option1
+            File1Path = file1
+            File2Path = file2
+            ShowingFile1 = true
+            FileContent = None
+            IsLoading = false
         }
 
-module Program =
+    member this.CurrentFile = if this.ShowingFile1 then this.File1Path else this.File2Path
 
-    /// Creates a VDOM that will stress-test the constraint system
-    let vdom (state : TestState) : Vdom =
+module FileBrowser =
 
-        // Header with title - needs reasonable width
-        let header =
-            Vdom.textContent None "Constraint Test Application - Resize terminal to test!"
+    let loadFileAsync (postEvent : (CancellationToken -> Task<AppEvent>) -> unit) (filepath : string) : unit =
+        fun ct ->
+            task {
+                let! content = File.ReadAllTextAsync (filepath, ct)
+                return FileLoaded (filepath, content)
+            }
+        |> postEvent
+
+    let processWorld
+        (postEvent : (CancellationToken -> Task<AppEvent>) -> unit)
+        (changes : WorldStateChange<AppEvent> seq)
+        (state : State)
+        : unit
+        =
+
+        for change in changes do
+            match change with
+            | WorldStateChange.Keystroke key when key.KeyChar = ' ' ->
+                // Toggle which file we're showing
+                state.ShowingFile1 <- not state.ShowingFile1
+                state.IsLoading <- true
+                state.FileContent <- None
+                // Trigger async load of the new file
+                loadFileAsync postEvent state.CurrentFile
+            | WorldStateChange.Keystroke _ -> ()
+
+            | WorldStateChange.ApplicationEvent (FileLoaded (filename, content)) ->
+                // Only update if this is still the file we're expecting
+                if filename = state.CurrentFile then
+                    state.FileContent <- Some content
+                    state.IsLoading <- false
+
+            | WorldStateChange.ApplicationEvent (FileLoadError (filename, error)) ->
+                if filename = state.CurrentFile then
+                    state.FileContent <- Some $"Error loading file: {error}"
+                    state.IsLoading <- false
+
+            | WorldStateChange.ApplicationEventException e ->
+                ExceptionDispatchInfo.Throw e
+                failwith "unreachable"
+
+    let view (state : State) : Vdom =
+        let topPane =
+            let label = $"[{state.File1Path}] / [{state.File2Path}]"
+
+            let checkbox =
+                Vdom.checkbox
+                    (fun () -> ())
+                    true // always focused for this simple example
+                    (not state.ShowingFile1)
+
+            Vdom.panelSplitAbsolute Direction.Vertical 3 checkbox (Vdom.textContent None label)
             |> Vdom.bordered
 
-        // Left panel with options that degrade gracefully
-        let optionsPanel =
-            let option1 =
-                Vdom.labelledCheckbox
-                    (fun () -> state.FocusedElement <- FocusedElement.Option1)
-                    state.FocusedElement.IsOption1
-                    (state.SelectedOption = 0)
-                    "First Option"
-
-            let option2 =
-                Vdom.labelledCheckbox
-                    (fun () -> state.FocusedElement <- FocusedElement.Option2)
-                    state.FocusedElement.IsOption2
-                    (state.SelectedOption = 1)
-                    "Second Option"
-
-            let option3 =
-                Vdom.labelledCheckbox
-                    (fun () -> state.FocusedElement <- FocusedElement.Option3)
-                    state.FocusedElement.IsOption3
-                    (state.SelectedOption = 2)
-                    "Third Option"
-
-            // Stack options vertically
-            option3
-            |> Vdom.panelSplitProportion Direction.Horizontal 0.33 option2
-            |> Vdom.panelSplitProportion Direction.Horizontal 0.5 option1
-            |> Vdom.bordered
-
-        // Center panel with long text that needs wrapping
-        let contentPanel =
+        let bottomPane =
             let content =
-                if state.ShowDetails then
-                    """This is a long piece of text that will need to wrap when the terminal width is constrained.
-It contains multiple lines and should gracefully handle being rendered in a small space.
-The constraint solver should ensure that even if this panel gets very small, it will still render something.
-Lines will wrap at word boundaries when possible.
-If the space gets really tight, we might only see a few characters per line, but it should never crash."""
-                else
-                    "Toggle 'Show Details' to see more content. This shorter text should fit in most reasonable terminal sizes."
+                match state.IsLoading, state.FileContent with
+                | true, _ -> "Loading..."
+                | false, Some content -> content
+                | false, None -> "Press space to load a file"
 
             Vdom.textContent None content |> Vdom.bordered
 
-        // Right panel with nested borders and controls
-        let controlPanel =
-            let showDetailsToggle =
-                Vdom.labelledCheckbox
-                    (fun () -> state.FocusedElement <- FocusedElement.ShowDetails)
-                    state.FocusedElement.IsShowDetails
-                    state.ShowDetails
-                    "Show Details"
+        Vdom.panelSplitAbsolute Direction.Horizontal 3 topPane bottomPane
 
-            let compactModeToggle =
-                Vdom.labelledCheckbox
-                    (fun () -> state.FocusedElement <- FocusedElement.CompactMode)
-                    state.FocusedElement.IsCompactMode
-                    state.CompactMode
-                    "Compact Mode"
+    let run (file1 : string) (file2 : string) =
+        let state = State.Create (file1, file2)
 
-            let debugToggle =
-                Vdom.labelledCheckbox
-                    (fun () -> state.FocusedElement <- FocusedElement.DebugInfo)
-                    state.FocusedElement.IsDebugInfo
-                    state.DebugInfo
-                    "Debug Info"
+        state.IsLoading <- true
 
-            // Nested borders to test constraint propagation
-            showDetailsToggle
-            |> Vdom.panelSplitProportion Direction.Horizontal 0.33 compactModeToggle
-            |> Vdom.panelSplitProportion Direction.Horizontal 0.5 debugToggle
-            |> Vdom.bordered
-            |> Vdom.bordered // Double border!
+        App.run
+            state
+            (fun _ -> true) // framework handles focus
+            processWorld
+            view
 
-        // Status bar at bottom
-        let statusBar =
-            let statusText =
-                if state.DebugInfo then
-                    sprintf
-                        "Option: %d | Details: %b | Compact: %b | Press TAB to navigate, SPACE to toggle"
-                        state.SelectedOption
-                        state.ShowDetails
-                        state.CompactMode
-                else
-                    "Press TAB to navigate, SPACE to toggle"
-
-            Vdom.textContent None statusText
-
-        // Build the complete layout
-        let mainContent =
-            if state.CompactMode then
-                // In compact mode, just show options and content side-by-side
-                optionsPanel |> Vdom.panelSplitProportion Direction.Vertical 0.3 contentPanel
-            else
-                // Normal mode with all three panels
-                let leftAndCenter =
-                    optionsPanel |> Vdom.panelSplitProportion Direction.Vertical 0.25 contentPanel
-
-                Vdom.panelSplitProportion Direction.Vertical 0.8 leftAndCenter controlPanel
-
-        // Combine with header and status
-        let mainWindow =
-            header |> Vdom.panelSplitProportion Direction.Horizontal 0.5 mainContent
-
-        Vdom.panelSplitAbsolute Direction.Horizontal -1 mainWindow statusBar
-
-    let processInput (changes : WorldStateChange seq) (state : TestState) =
-        for change in changes do
-            match change with
-            | Keystroke key when key.Key = ConsoleKey.Spacebar ->
-                match state.FocusedElement with
-                | FocusedElement.Option1 -> state.SelectedOption <- 1
-                | FocusedElement.Option2 -> state.SelectedOption <- 2
-                | FocusedElement.Option3 -> state.SelectedOption <- 3
-                | FocusedElement.ShowDetails -> state.ShowDetails <- not state.ShowDetails
-                | FocusedElement.CompactMode -> state.CompactMode <- not state.CompactMode
-                | FocusedElement.DebugInfo -> state.DebugInfo <- not state.DebugInfo
-            | Keystroke key when key.KeyChar = 'd' || key.KeyChar = 'D' -> state.ShowDetails <- not state.ShowDetails
-            | Keystroke key when key.KeyChar = 'c' || key.KeyChar = 'C' -> state.CompactMode <- not state.CompactMode
-            | Keystroke key when key.KeyChar = 'i' || key.KeyChar = 'I' -> state.DebugInfo <- not state.DebugInfo
-            | _ -> ()
-
+// Usage:
+module Program =
     [<EntryPoint>]
     let main argv =
-
-        App.run (TestState.Initial ()) (fun _ -> true) processInput vdom |> _.Wait()
-
+        FileBrowser.run "../../../../README.md" "../../../../LICENSE.md" |> _.Wait()
         0

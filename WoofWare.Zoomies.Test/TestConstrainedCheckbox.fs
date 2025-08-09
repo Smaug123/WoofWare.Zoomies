@@ -138,7 +138,7 @@ If the space gets really tight, we might only see a few characters per line, but
         |> Vdom.panelSplitAbsolute Direction.Horizontal -1 statusBar
 
     /// Process keyboard input
-    let processInput (changes : WorldStateChange seq) (state : TestState) =
+    let processInput (changes : WorldStateChange<unit> seq) (state : TestState) =
         for change in changes do
             match change with
             | Keystroke key when key.Key = ConsoleKey.D1 -> state.SelectedOption <- 0
@@ -151,21 +151,22 @@ If the space gets really tight, we might only see a few characters per line, but
 
     [<Test>]
     let ``Standard terminal`` () =
-        let console, harness = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
+        task {
+            let console, harness = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
 
-        let keyAvailable, readKey, sendKey = WorldFreezerInputs.make ()
+            let world = MockWorld.make ()
 
-        use worldFreezer = WorldFreezer.listen' keyAvailable readKey
+            use worldFreezer = WorldFreezer.listen' world.KeyAvailable world.ReadKey
 
-        let state = TestState.Initial ()
+            let state = TestState.Initial ()
 
-        let renderState = RenderState.make' console
+            let renderState = RenderState.make' console
 
-        App.pumpOnce worldFreezer state (fun _ -> true) renderState processInput createTestVdom
+            App.pumpOnce worldFreezer state (fun _ -> true) renderState processInput createTestVdom
 
-        expect' {
-            snapshot
-                @"
+            expect' {
+                snapshot
+                    @"
 Option: 0 | Details: false | Compact: false | Press TAB to navigate, SPACE to to|
 ggle                                                                            |
                                                                                 |
@@ -192,7 +193,8 @@ ggle                                                                            
 └──────────────────────────────────────────────────────────────────────────────┘|
 "
 
-            return ConsoleHarness.toString harness
+                return ConsoleHarness.toString harness
+            }
         }
 
 (*
