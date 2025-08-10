@@ -15,7 +15,7 @@ type ConsoleHarness =
 [<RequireQualifiedAccess>]
 module ConsoleHarness =
 
-    let empty (height : int) (width : int) : ConsoleHarness =
+    let empty (width : int) (height : int) : ConsoleHarness =
         {
             Display = Array2D.create height width ' '
             CursorX = 0
@@ -32,16 +32,16 @@ module ConsoleHarness =
         | TerminalOp.WriteChar ch -> c.Display.[c.CursorY, c.CursorX] <- ch.Char
         | SetCursorVisibility _ -> ()
         | ClearScreen ->
-            for y = 0 to Array2D.length1 c.Display - 1 do
-                for x = 0 to Array2D.length2 c.Display - 1 do
+            for y = 0 to c.Display.GetLength 0 - 1 do
+                for x = 0 to c.Display.GetLength 1 - 1 do
                     c.Display.[y, x] <- ' '
 
     let toString (c : ConsoleHarness) : string =
         let sb = StringBuilder ()
         sb.Append '\n' |> ignore
 
-        for y = 0 to Array2D.length1 c.Display - 1 do
-            for x = 0 to Array2D.length2 c.Display - 1 do
+        for y = 0 to c.Display.GetLength 0 - 1 do
+            for x = 0 to c.Display.GetLength 1 - 1 do
                 sb.Append c.Display.[y, x] |> ignore
 
             // Don't want whitespace stripping in the IDE to catch us out
