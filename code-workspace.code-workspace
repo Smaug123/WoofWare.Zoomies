@@ -1,0 +1,22 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../WoofWare.Incremental"
+		},
+		{
+			"path": "../bonsai"
+		},
+		{
+			"path": "../incremental"
+		}
+	],
+	"settings": {
+		"ocaml.sandbox": {
+			"kind": "opam",
+			"switch": "default"
+		}
+	}
+}

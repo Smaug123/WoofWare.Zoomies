@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <Authors>Patrick Stevens</Authors>
+    <Copyright>Copyright (c) Patrick Stevens 2025</Copyright>
+    <Description>A port of Jane Street's Bonsai library to F#.</Description>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/Smaug123/WoofWare.Zoomies</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>bonsai;reactive;ui</PackageTags>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="External.fs"/>
+    <Compile Include="Action.fs"/>
+    <!-- Modules will be added here in topological order -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="TypeEquality" Version="0.3.0"/>
+    <PackageReference Include="WoofWare.Incremental" Version="0.1.3"/>
+    <PackageReference Include="WoofWare.TimingWheel" Version="0.6.1"/>
+  </ItemGroup>
+
+</Project>
