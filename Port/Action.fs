@@ -3,7 +3,6 @@ namespace WoofWare.Zoomies.Port
 #nowarn "3559"
 
 open TypeEquality
-open WoofWare.Zoomies.Port
 
 type TypeId<'a> = private | TypeId
 
@@ -241,7 +240,10 @@ and AssocOnCrate<'a> =
     abstract Apply<'ret> : AssocOnEval<'a, 'ret> -> 'ret
 
 module ActionId =
-    /// Recursive same_witness function to check if two ActionIds have the same type structure
+
+    /// It's unclear that recursing over the data structure is necessary when reflection exists, but:
+    /// - It proves we've got the types correct, as this function is implementable.
+    /// - This is a useful demonstration of recursing over the ActionId type.
     let rec sameWitness<'a, 'b> (idA : ActionId<'a>) (idB : ActionId<'b>) : Teq<'a, 'b> option =
         match idA, idB with
         | LeafId crateA, LeafId crateB ->
