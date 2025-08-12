@@ -29,21 +29,30 @@ module AnnotateIncr =
     let private emptyAttrs = Map.empty<string, string>
 
     let private attributePackedInternal (pos : string) (t : NodeCrate) =
-        let pos = pos.Replace("lib/", "").Replace ("app/", "")
+        t.Apply
+            { new NodeEval<_> with
+                member _.Eval node =
+                    let pos = pos.Replace("lib/", "").Replace ("app/", "")
 
-        let labels =
-            match pos.LastIndexOf ('/') with
-            | -1 -> [ pos ]
-            | i ->
-                let l = pos.Substring (0, i)
-                let r = pos.Substring (i + 1)
-                [ "bound: " + l ; "bound: " + r ]
+                    let labels =
+                        match pos.LastIndexOf ('/') with
+                        | -1 -> [ pos ]
+                        | i ->
+                            let l = pos.Substring (0, i)
+                            let r = pos.Substring (i + 1)
+                            [ "bound: " + l ; "bound: " + r ]
 
-        for label in labels do
-            let labelList = [ label ]
-            // Note: WoofWare.Incremental may not have exact equivalent,
-            // but we simulate the interface
-            ()
+                    for label in labels do
+                        let labelList = [ label ]
+
+                        // Note: WoofWare.Incremental may not have exact equivalent,
+                        // but we simulate the interface
+                        ()
+
+                    FakeUnit
+
+            }
+        |> ignore<FakeUnit>
 
     [<RequireQualifiedAccess>]
     type Kind =

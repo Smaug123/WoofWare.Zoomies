@@ -18,6 +18,10 @@
     <Compile Include="External.fs"/>
     <Compile Include="Action.fs"/>
     <Compile Include="AnnotateIncr.fs"/>
+    <Compile Include="ApplyActionContext.fs"/>
+    <Compile Include="Keyed.fs"/>
+    <Compile Include="MayContain.fs"/>
+    <Compile Include="Trampoline.fs"/>
     <!-- Modules will be added here in topological order -->
   </ItemGroup>
 
