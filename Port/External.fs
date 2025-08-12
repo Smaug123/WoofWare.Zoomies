@@ -12,9 +12,6 @@ module External =
     /// Note: Only works correctly for reference types
     let physSame (x : 'a) (y : 'a) = obj.ReferenceEquals (x, y)
 
-    /// Unsafe type coercion for type equality witnesses
-    let inline unsafeCoerce<'a, 'b> (x : 'a) : 'b = (box x) :?> 'b
-
 /// FakeUnit type for existential type encodings
 [<Struct>]
 type FakeUnit = FakeUnit

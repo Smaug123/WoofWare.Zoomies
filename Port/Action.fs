@@ -55,14 +55,14 @@ and ActionId<'a> =
     | AssocId of AssocIdCrate<'a>
     | AssocOnId of AssocOnIdCrate<'a>
 
-and LeafIdEval<'action, 'ret> =
-    abstract Eval : Teq<'a, Leaf<'action>> * TypeId<'action> -> 'ret
+and LeafIdEval<'a, 'ret> =
+    abstract Eval<'action> : Teq<'a, Leaf<'action>> * TypeId<'action> -> 'ret
 
 and LeafIdCrate<'a> =
-    abstract Apply<'action, 'ret> : LeafIdEval<'action, 'ret> -> 'ret
+    abstract Apply<'ret> : LeafIdEval<'a, 'ret> -> 'ret
 
 and SubIdEval<'a, 'ret> =
-    abstract Eval<'from, 'into> : Teq<'a, Sub<'from, 'into>> * ActionIdCrate * ActionIdCrate -> 'ret
+    abstract Eval<'from, 'into> : Teq<'a, Sub<'from, 'into>> * ActionId<'from> * ActionId<'into> -> 'ret
 
 and SubIdCrate<'a> =
     abstract Apply<'ret> : SubIdEval<'a, 'ret> -> 'ret
@@ -192,263 +192,209 @@ and AssocOnEval<'a, 'ret> =
 and AssocOnCrate<'a> =
     abstract Apply<'ret> : AssocOnEval<'a, 'ret> -> 'ret
 
+module ActionId =
+
+    /// Create a LeafId ActionId for a specific action type
+    let leafId<'action> (typeId : TypeId<'action>) : ActionId<Leaf<'action>> =
+        let teq = Teq.refl<Leaf<'action>>
+
+        LeafId
+            { new LeafIdCrate<_> with
+                member _.Apply e = e.Eval (teq, typeId)
+            }
+
+
+    /// Create a SubId ActionId for from/into types
+    let subId<'from, 'into> (fromId : ActionId<'from>) (intoId : ActionId<'into>) : ActionId<Sub<'from, 'into>> =
+        let teq = Teq.refl<Sub<'from, 'into>>
+
+        SubId (
+            { new SubIdCrate<Sub<'from, 'into>> with
+                member _.Apply e = e.Eval (teq, fromId, intoId)
+            }
+        )
+
+    /// Create a WrapId ActionId for inner/outer types
+    let wrapId<'inner, 'outer> (inner : ActionIdCrate) : ActionId<Wrap<'inner, 'outer>> =
+        let teq = Teq.refl<Wrap<'inner, 'outer>>
+
+        WrapId (
+            { new WrapIdCrate<Wrap<'inner, 'outer>> with
+                member _.Apply e = e.Eval (teq, inner)
+            }
+        )
+
+    /// Create a ModelResetId ActionId
+    let modelResetId<'inner> (inner : ActionIdCrate) : ActionId<ModelResetter<'inner>> =
+        let teq = Teq.refl<ModelResetter<'inner>>
+
+        ModelResetId
+            { new ModelResetIdCrate<ModelResetter<'inner>> with
+                member _.Apply e = e.Eval (teq, inner)
+            }
+
+
+    /// Create a SwitchId ActionId
+    let switchId () : ActionId<Switch> =
+        let teq = Teq.refl<Switch>
+        SwitchId teq
+
+    /// Create a LazyId ActionId
+    let lazyId () : ActionId<Lazy'> =
+        let teq = Teq.refl<Lazy'>
+        LazyId teq
+
+    /// Create an AssocId ActionId
+    let assocId<'key, 'inner> (action : ActionId<'inner>) : ActionId<Assoc<'key, 'inner>> =
+        let teq = Teq.refl<Assoc<'key, 'inner>>
+
+        AssocId
+            { new AssocIdCrate<Assoc<'key, 'inner>> with
+                member _.Apply e = e.Eval (teq, action)
+            }
+
+
+    /// Create an AssocOnId ActionId
+    let assocOnId<'ioKey, 'modelKey, 'inner> (action : ActionIdCrate) : ActionId<AssocOn<'ioKey, 'modelKey, 'inner>> =
+        let teq = Teq.refl<AssocOn<'ioKey, 'modelKey, 'inner>>
+
+        AssocOnId
+            { new AssocOnIdCrate<AssocOn<'ioKey, 'modelKey, 'inner>> with
+                member _.Apply e = e.Eval (teq, action)
+            }
+
+
 module Action =
+    /// Create a LeafStatic Action
+    let leafStatic<'static'> (value : 'static') : Action<Leaf<'static'>> =
+        let teq = Teq.refl<Leaf<'static'>>
 
-    /// Module for creating ActionId crates
-    module ActionIdCrate =
-        let make<'a> (value : ActionId<'a>) : ActionIdCrate =
-            { new ActionIdCrate with
-                member _.Apply e = e.Eval value
+        LeafStatic
+            { new LeafStaticCrate<Leaf<'static'>> with
+                member _.Apply e = e.Eval (teq, value)
             }
 
-    /// Module for creating Action crates
-    module ActionCrate =
-        let make<'a> (value : Action<'a>) : ActionCrate =
-            { new ActionCrate with
-                member _.Apply e = e.Eval value
+
+    /// Create a LeafDynamic Action
+    let leafDynamic<'dynamic> (value : 'dynamic) : Action<Leaf<'dynamic>> =
+        let teq = Teq.refl<Leaf<'dynamic>>
+
+        LeafDynamic
+            { new LeafDynamicCrate<Leaf<'dynamic>> with
+                member _.Apply e = e.Eval (teq, value)
             }
 
-    /// Module for LeafIdCrate construction
-    module LeafIdCrate =
-        let make (action : Teq<'action, 'action>) : LeafIdCrate<'a> =
-            { new LeafIdCrate<'a> with
-                member _.Apply e = e.Eval action
+
+    /// Create a SubFrom Action
+    let subFrom<'from, 'into> (action : Action<'from>) : Action<Sub<'from, 'into>> =
+        let teq = Teq.refl<Sub<'from, 'into>>
+
+        SubFrom
+            { new SubFromCrate<Sub<'from, 'into>> with
+                member _.Apply e = e.Eval (teq, action)
             }
 
-    /// Module for SubIdCrate construction
-    module SubIdCrate =
-        let make (fromId : ActionIdCrate) (intoId : ActionIdCrate) : SubIdCrate<'a> =
-            { new SubIdCrate<'a> with
-                member _.Apply e = e.Eval (fromId, intoId)
+
+    /// Create a SubInto Action
+    let subInto<'from, 'into> (action : Action<'into>) : Action<Sub<'from, 'into>> =
+        let teq = Teq.refl<Sub<'from, 'into>>
+
+        SubInto
+            { new SubIntoCrate<Sub<'from, 'into>> with
+                member _.Apply e = e.Eval (teq, action)
             }
 
-    /// Module for WrapIdCrate construction
-    module WrapIdCrate =
-        let make (inner : ActionIdCrate) (outer : Teq<'outer, 'outer>) : WrapIdCrate<'a> =
-            { new WrapIdCrate<'a> with
-                member _.Apply e = e.Eval (inner, outer)
+
+    /// Create a WrapInner Action
+    let wrapInner<'inner, 'outer> (action : Action<'inner>) : Action<Wrap<'inner, 'outer>> =
+        let teq = Teq.refl<Wrap<'inner, 'outer>>
+
+        WrapInner
+            { new WrapInnerCrate<Wrap<'inner, 'outer>> with
+                member _.Apply e = e.Eval (teq, action)
             }
 
-    /// Module for ModelResetIdCrate construction
-    module ModelResetIdCrate =
-        let make (inner : ActionIdCrate) : ModelResetIdCrate<'a> =
-            { new ModelResetIdCrate<'a> with
-                member _.Apply e = e.Eval inner
+
+    /// Create a WrapOuter Action
+    let wrapOuter<'inner, 'outer> (action : Action<'outer>) : Action<Wrap<'inner, 'outer>> =
+        let teq = Teq.refl<Wrap<'inner, 'outer>>
+
+        WrapOuter
+            { new WrapOuterCrate<Wrap<'inner, 'outer>> with
+                member _.Apply e = e.Eval (teq, action)
             }
 
-    /// Module for SwitchIdCrate construction
-    module SwitchIdCrate =
-        let make () : SwitchIdCrate<'a> =
-            { new SwitchIdCrate<'a> with
-                member _.Apply e = e.Eval ()
+
+    /// Create a ModelResetInner Action
+    let modelResetInner<'inner> (action : Action<'inner>) : Action<ModelResetter<'inner>> =
+        let teq = Teq.refl<ModelResetter<'inner>>
+
+        ModelResetInner
+            { new ModelResetInnerCrate<ModelResetter<'inner>> with
+                member _.Apply e = e.Eval (teq, action)
             }
 
-    /// Module for LazyIdCrate construction
-    module LazyIdCrate =
-        let make () : LazyIdCrate<'a> =
-            { new LazyIdCrate<'a> with
-                member _.Apply e = e.Eval ()
+
+    /// Create a ModelResetOuter Action
+    let modelResetOuter<'inner> () : Action<ModelResetter<'inner>> =
+        let teq = Teq.refl<ModelResetter<'inner>>
+
+        ModelResetOuter
+            { new ModelResetOuterCrate<ModelResetter<'inner>> with
+                member _.Apply e = e.Eval (teq)
             }
 
-    /// Module for AssocIdCrate construction
-    module AssocIdCrate =
-        let make (key : Teq<'key, 'key>) (action : ActionIdCrate) : AssocIdCrate<'a> =
-            { new AssocIdCrate<'a> with
-                member _.Apply e = e.Eval (key, action)
+
+    /// Create a Switch Action
+    let switch<'inner> (branch : int) (action : Action<'inner>) (typeId : ActionId<'inner>) : Action<Switch> =
+        let teq = Teq.refl<Switch>
+
+        Switch
+            { new SwitchCrate<Switch> with
+                member _.Apply e = e.Eval (teq, branch, action, typeId)
             }
 
-    /// Module for AssocOnIdCrate construction
-    module AssocOnIdCrate =
-        let make
-            (ioKey : Teq<'ioKey, 'ioKey>)
-            (modelKey : Teq<'modelKey, 'modelKey>)
-            (action : ActionIdCrate)
-            : AssocOnIdCrate<'a>
-            =
-            { new AssocOnIdCrate<'a> with
-                member _.Apply e = e.Eval (ioKey, modelKey, action)
+
+    /// Create a Lazy Action
+    let lazy_<'inner> (action : Action<'inner>) (typeId : ActionId<'inner>) : Action<Lazy'> =
+        let teq = Teq.refl<Lazy'>
+
+        Lazy
+            { new LazyCrate<Lazy'> with
+                member _.Apply e = e.Eval (teq, action, typeId)
             }
 
-    /// Module for LeafStaticCrate construction
-    module LeafStaticCrate =
-        let make (value : 'static') : LeafStaticCrate<'a> =
-            { new LeafStaticCrate<'a> with
-                member _.Apply e = e.Eval (box value)
-            }
 
-    /// Module for LeafDynamicCrate construction
-    module LeafDynamicCrate =
-        let make (value : 'dynamic) : LeafDynamicCrate<'a> =
-            { new LeafDynamicCrate<'a> with
-                member _.Apply e = e.Eval (box value)
-            }
-
-    /// Module for SubFromCrate construction
-    module SubFromCrate =
-        let make (action : ActionCrate) : SubFromCrate<'a> =
-            { new SubFromCrate<'a> with
-                member _.Apply e = e.Eval action
-            }
-
-    /// Module for SubIntoCrate construction
-    module SubIntoCrate =
-        let make (action : ActionCrate) : SubIntoCrate<'a> =
-            { new SubIntoCrate<'a> with
-                member _.Apply e = e.Eval action
-            }
-
-    /// Module for WrapInnerCrate construction
-    module WrapInnerCrate =
-        let make (action : ActionCrate) : WrapInnerCrate<'a> =
-            { new WrapInnerCrate<'a> with
-                member _.Apply e = e.Eval action
-            }
-
-    /// Module for WrapOuterCrate construction
-    module WrapOuterCrate =
-        let make (value : 'outer) : WrapOuterCrate<'a> =
-            { new WrapOuterCrate<'a> with
-                member _.Apply e = e.Eval (box value)
-            }
-
-    /// Module for ModelResetInnerCrate construction
-    module ModelResetInnerCrate =
-        let make (action : ActionCrate) : ModelResetInnerCrate<'a> =
-            { new ModelResetInnerCrate<'a> with
-                member _.Apply e = e.Eval action
-            }
-
-    /// Module for ModelResetOuterCrate construction
-    module ModelResetOuterCrate =
-        let make () : ModelResetOuterCrate<'a> =
-            { new ModelResetOuterCrate<'a> with
-                member _.Apply e = e.Eval ()
-            }
-
-    /// Module for SwitchCrate construction
-    module SwitchCrate =
-        let make (branch : int) (action : ActionCrate) (typeId : ActionIdCrate) : SwitchCrate<'a> =
-            { new SwitchCrate<'a> with
-                member _.Apply e = e.Eval (branch, action, typeId)
-            }
-
-    /// Module for LazyCrate construction
-    module LazyCrate =
-        let make (action : ActionCrate) (typeId : ActionIdCrate) : LazyCrate<'a> =
-            { new LazyCrate<'a> with
-                member _.Apply e = e.Eval (action, typeId)
-            }
-
-    /// Module for AssocCrate construction
-    module AssocCrate =
-        let make
-            (key : 'key)
-            (action : ActionCrate)
-            (id : Teq<'key, 'key>)
-            (compare : 'key -> 'key -> int)
-            : AssocCrate<'a>
-            =
-            { new AssocCrate<'a> with
-                member _.Apply e =
-                    e.Eval (box key, action, External.unsafeCoerce id, fun x y -> compare (unbox x) (unbox y))
-            }
-
-    /// Module for AssocOnCrate construction
-    module AssocOnCrate =
-        let make
-            (ioKey : 'ioKey)
-            (modelKey : 'modelKey)
-            (action : ActionCrate)
-            (ioId : Teq<'ioKey, 'ioKey>)
-            (ioCompare : 'ioKey -> 'ioKey -> int)
-            : AssocOnCrate<'a>
-            =
-            { new AssocOnCrate<'a> with
-                member _.Apply e =
-                    e.Eval (
-                        box ioKey,
-                        box modelKey,
-                        action,
-                        External.unsafeCoerce ioId,
-                        fun x y -> ioCompare (unbox x) (unbox y)
-                    )
-            }
-
-    /// Type ID construction functions
-    module TypeId =
-        let nothingTypeId : Teq<obj, obj> = Teq.refl
-
-        let nothing : ActionIdCrate =
-            ActionIdCrate.make (LeafId (LeafIdCrate.make nothingTypeId))
-
-        let leaf (typeId : Teq<'action, 'action>) : ActionIdCrate =
-            ActionIdCrate.make (LeafId (LeafIdCrate.make (External.unsafeCoerce typeId)))
-
-        let sub (from : ActionIdCrate) (into : ActionIdCrate) : ActionIdCrate =
-            ActionIdCrate.make (SubId (SubIdCrate.make from into))
-
-        let wrap (inner : ActionIdCrate) (outer : Teq<'outer, 'outer>) : ActionIdCrate =
-            ActionIdCrate.make (WrapId (WrapIdCrate.make inner (External.unsafeCoerce outer)))
-
-        let modelReset (inner : ActionIdCrate) : ActionIdCrate =
-            ActionIdCrate.make (ModelResetId (ModelResetIdCrate.make inner))
-
-        let lazy_ : ActionIdCrate = ActionIdCrate.make (LazyId (LazyIdCrate.make ()))
-        let switch : ActionIdCrate = ActionIdCrate.make (SwitchId (SwitchIdCrate.make ()))
-
-        let assoc (key : Teq<'key, 'key>) (action : ActionIdCrate) : ActionIdCrate =
-            ActionIdCrate.make (AssocId (AssocIdCrate.make (External.unsafeCoerce key) action))
-
-        let assocOn
-            (ioKey : Teq<'ioKey, 'ioKey>)
-            (modelKey : Teq<'modelKey, 'modelKey>)
-            (action : ActionIdCrate)
-            : ActionIdCrate
-            =
-            ActionIdCrate.make (
-                AssocOnId (AssocOnIdCrate.make (External.unsafeCoerce ioKey) (External.unsafeCoerce modelKey) action)
-            )
-
-    /// Action construction functions
-    let staticLeaf (action : 'static') : ActionCrate =
-        ActionCrate.make (LeafStatic (LeafStaticCrate.make action))
-
-    let dynamicLeaf (action : 'dynamic) : ActionCrate =
-        ActionCrate.make (LeafDynamic (LeafDynamicCrate.make action))
-
-    let subFrom (action : ActionCrate) : ActionCrate =
-        ActionCrate.make (SubFrom (SubFromCrate.make action))
-
-    let subInto (action : ActionCrate) : ActionCrate =
-        ActionCrate.make (SubInto (SubIntoCrate.make action))
-
-    let wrapInner (action : ActionCrate) : ActionCrate =
-        ActionCrate.make (WrapInner (WrapInnerCrate.make action))
-
-    let wrapOuter (action : 'outer) : ActionCrate =
-        ActionCrate.make (WrapOuter (WrapOuterCrate.make action))
-
-    let modelResetInner (action : ActionCrate) : ActionCrate =
-        ActionCrate.make (ModelResetInner (ModelResetInnerCrate.make action))
-
-    let modelResetOuter : ActionCrate =
-        ActionCrate.make (ModelResetOuter (ModelResetOuterCrate.make ()))
-
-    let switch (branch : int) (typeId : ActionIdCrate) (action : ActionCrate) : ActionCrate =
-        ActionCrate.make (Switch (SwitchCrate.make branch action typeId))
-
-    let lazy_ (typeId : ActionIdCrate) (action : ActionCrate) : ActionCrate =
-        ActionCrate.make (Lazy (LazyCrate.make action typeId))
-
-    let assoc (key : 'key) (id : Teq<'key, 'key>) (compare : 'key -> 'key -> int) (action : ActionCrate) : ActionCrate =
-        ActionCrate.make (Assoc (AssocCrate.make key action id compare))
-
-    let assocOn
-        (ioKey : 'ioKey)
-        (ioId : Teq<'ioKey, 'ioKey>)
-        (ioCompare : 'ioKey -> 'ioKey -> int)
-        (modelKey : 'modelKey)
-        (action : ActionCrate)
-        : ActionCrate
+    /// Create an Assoc Action
+    let assoc<'key, 'inner>
+        (key : 'key)
+        (action : Action<'inner>)
+        (typeId : TypeId<'key>)
+        (compare : 'key -> 'key -> int)
+        : Action<Assoc<'key, 'inner>>
         =
-        ActionCrate.make (AssocOn (AssocOnCrate.make ioKey modelKey action ioId ioCompare))
+        let teq = Teq.refl<Assoc<'key, 'inner>>
+
+        Assoc
+            { new AssocCrate<Assoc<'key, 'inner>> with
+                member _.Apply e =
+                    e.Eval (teq, key, action, typeId, compare)
+            }
+
+
+    /// Create an AssocOn Action
+    let assocOn<'ioKey, 'modelKey, 'inner>
+        (ioKey : 'ioKey)
+        (modelKey : 'modelKey)
+        (action : Action<'inner>)
+        (ioTypeId : TypeId<'ioKey>)
+        (ioCompare : 'ioKey -> 'ioKey -> int)
+        : Action<AssocOn<'ioKey, 'modelKey, 'inner>>
+        =
+        let teq = Teq.refl<AssocOn<'ioKey, 'modelKey, 'inner>>
+
+        AssocOn
+            { new AssocOnCrate<AssocOn<'ioKey, 'modelKey, 'inner>> with
+                member _.Apply e =
+                    e.Eval (teq, ioKey, modelKey, action, ioTypeId, ioCompare)
+            }
