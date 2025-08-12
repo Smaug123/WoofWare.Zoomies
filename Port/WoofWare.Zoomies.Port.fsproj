@@ -17,6 +17,7 @@
   <ItemGroup>
     <Compile Include="External.fs"/>
     <Compile Include="Action.fs"/>
+    <Compile Include="AnnotateIncr.fs"/>
     <!-- Modules will be added here in topological order -->
   </ItemGroup>
 
