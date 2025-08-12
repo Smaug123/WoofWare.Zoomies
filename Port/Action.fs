@@ -7,6 +7,14 @@ open WoofWare.Zoomies.Port
 
 type TypeId<'a> = private | TypeId
 
+
+module TypeId =
+
+    let same_witness (_ : TypeId<'a>) (id' : TypeId<'b>) : Teq<'a, 'b> option =
+        match box id' with
+        | :? TypeId<'a> -> Some (Teq.Cong.believeMe Teq.refl)
+        | _ -> None
+
 /// Private phantom types for GADTs
 [<Struct>]
 type Leaf<'a> = private | Leaf
@@ -37,6 +45,10 @@ type Assoc<'key, 'inner> = private | Assoc
 
 [<Struct>]
 type AssocOn<'ioKey, 'modelKey, 'inner> = private | AssocOn
+
+module Teq =
+    module Cong =
+        let leaf (teq : Teq<'a, 'b>) : Teq<'a Leaf, 'b Leaf> = Teq.Cong.believeMe teq
 
 /// GADT for action IDs using crate pattern
 type ActionIdEval<'ret> =
@@ -192,7 +204,31 @@ and AssocOnEval<'a, 'ret> =
 and AssocOnCrate<'a> =
     abstract Apply<'ret> : AssocOnEval<'a, 'ret> -> 'ret
 
+
+
 module ActionId =
+    /// Recursive same_witness function to check if two ActionIds have the same type structure
+    let rec sameWitness<'a, 'b> (idA : ActionId<'a>) (idB : ActionId<'b>) : Teq<'a, 'b> option =
+        match idA, idB with
+        | LeafId crateA, LeafId crateB ->
+            crateA.Apply
+                { new LeafIdEval<_, _> with
+                    member _.Eval (teqA, typeIdA) =
+                        crateB.Apply
+                            { new LeafIdEval<_, _> with
+                                member _.Eval (teqB, typeIdB) =
+                                    match TypeId.same_witness typeIdA typeIdB with
+                                    | None -> None
+                                    | Some teqAB ->
+                                        let teqLeafAB = Teq.Cong.leaf teqAB
+                                        let step1 = Teq.transitivity teqA teqLeafAB
+                                        let step2 = Teq.symmetry teqB
+                                        Some (Teq.transitivity step1 step2)
+                            }
+                }
+        | _ ->
+            // For now, return None for all other cases
+            None
 
     /// Create a LeafId ActionId for a specific action type
     let leafId<'action> (typeId : TypeId<'action>) : ActionId<Leaf<'action>> =
