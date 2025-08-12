@@ -50,6 +50,41 @@ module Teq =
     module Cong =
         let leaf (teq : Teq<'a, 'b>) : Teq<'a Leaf, 'b Leaf> = Teq.Cong.believeMe teq
 
+        let sub
+            (teqFrom : Teq<'from1, 'from2>)
+            (teqInto : Teq<'into1, 'into2>)
+            : Teq<Sub<'from1, 'into1>, Sub<'from2, 'into2>>
+            =
+            Teq.Cong.believeMe (Teq.refl)
+
+        let wrap
+            (teqInner : Teq<'inner1, 'inner2>)
+            (teqOuter : Teq<'outer1, 'outer2>)
+            : Teq<Wrap<'inner1, 'outer1>, Wrap<'inner2, 'outer2>>
+            =
+            Teq.Cong.believeMe (Teq.refl)
+
+        let assoc
+            (teqKey : Teq<'key1, 'key2>)
+            (teqInner : Teq<'inner1, 'inner2>)
+            : Teq<Assoc<'key1, 'inner1>, Assoc<'key2, 'inner2>>
+            =
+            Teq.Cong.believeMe (Teq.refl)
+
+        let assocOn
+            (teqIoKey : Teq<'ioKey1, 'ioKey2>)
+            (teqModelKey : Teq<'modelKey1, 'modelKey2>)
+            (teqInner : Teq<'inner1, 'inner2>)
+            : Teq<AssocOn<'ioKey1, 'modelKey1, 'inner1>, AssocOn<'ioKey2, 'modelKey2, 'inner2>>
+            =
+            Teq.Cong.believeMe (Teq.refl)
+
+        let modelResetter (teqInner : Teq<'inner1, 'inner2>) : Teq<ModelResetter<'inner1>, ModelResetter<'inner2>> =
+            Teq.Cong.believeMe (Teq.refl)
+
+
+
+
 /// GADT for action IDs using crate pattern
 type ActionIdEval<'ret> =
     abstract Eval<'a> : ActionId<'a> -> 'ret
@@ -80,25 +115,26 @@ and SubIdCrate<'a> =
     abstract Apply<'ret> : SubIdEval<'a, 'ret> -> 'ret
 
 and WrapIdEval<'a, 'ret> =
-    abstract Eval<'inner, 'outer> : Teq<'a, Wrap<'inner, 'outer>> * ActionIdCrate -> 'ret
+    abstract Eval<'inner, 'outer> : Teq<'a, Wrap<'inner, 'outer>> * ActionId<'inner> * TypeId<'outer> -> 'ret
 
 and WrapIdCrate<'a> =
     abstract Apply<'ret> : WrapIdEval<'a, 'ret> -> 'ret
 
 and ModelResetIdEval<'a, 'ret> =
-    abstract Eval<'inner> : Teq<'a, ModelResetter<'inner>> * ActionIdCrate -> 'ret
+    abstract Eval<'inner> : Teq<'a, ModelResetter<'inner>> * ActionId<'inner> -> 'ret
 
 and ModelResetIdCrate<'a> =
     abstract Apply<'ret> : ModelResetIdEval<'a, 'ret> -> 'ret
 
 and AssocIdEval<'a, 'ret> =
-    abstract Eval<'key, 'inner> : Teq<'a, Assoc<'key, 'inner>> * ActionId<'inner> -> 'ret
+    abstract Eval<'key, 'inner> : Teq<'a, Assoc<'key, 'inner>> * TypeId<'key> * ActionId<'inner> -> 'ret
 
 and AssocIdCrate<'a> =
     abstract Apply<'ret> : AssocIdEval<'a, 'ret> -> 'ret
 
 and AssocOnIdEval<'a, 'ret> =
-    abstract Eval<'ioKey, 'modelKey, 'inner> : Teq<'a, AssocOn<'ioKey, 'modelKey, 'inner>> * ActionIdCrate -> 'ret
+    abstract Eval<'ioKey, 'modelKey, 'inner> :
+        Teq<'a, AssocOn<'ioKey, 'modelKey, 'inner>> * TypeId<'ioKey> * TypeId<'modelKey> * ActionId<'inner> -> 'ret
 
 and AssocOnIdCrate<'a> =
     abstract Apply<'ret> : AssocOnIdEval<'a, 'ret> -> 'ret
@@ -204,8 +240,6 @@ and AssocOnEval<'a, 'ret> =
 and AssocOnCrate<'a> =
     abstract Apply<'ret> : AssocOnEval<'a, 'ret> -> 'ret
 
-
-
 module ActionId =
     /// Recursive same_witness function to check if two ActionIds have the same type structure
     let rec sameWitness<'a, 'b> (idA : ActionId<'a>) (idB : ActionId<'b>) : Teq<'a, 'b> option =
@@ -226,8 +260,140 @@ module ActionId =
                                         Some (Teq.transitivity step1 step2)
                             }
                 }
+        | SubId crateA, SubId crateB ->
+            crateA.Apply
+                { new SubIdEval<_, _> with
+                    member _.Eval
+                        (teqA : Teq<'a, Sub<'from1, 'into1>>, fromIdA : ActionId<'from1>, intoIdA : ActionId<'into1>)
+                        =
+                        crateB.Apply
+                            { new SubIdEval<_, _> with
+                                member _.Eval
+                                    (
+                                        teqB : Teq<'b, Sub<'from2, 'into2>>,
+                                        fromIdB : ActionId<'from2>,
+                                        intoIdB : ActionId<'into2>
+                                    )
+                                    =
+                                    match sameWitness fromIdA fromIdB, sameWitness intoIdA intoIdB with
+                                    | Some teqFrom, Some teqInto ->
+                                        let teqSubAB = Teq.Cong.sub teqFrom teqInto
+                                        let step1 = Teq.transitivity teqA teqSubAB
+                                        let step2 = Teq.symmetry teqB
+                                        Some (Teq.transitivity step1 step2)
+                                    | _ -> None
+                            }
+                }
+        | WrapId crateA, WrapId crateB ->
+            crateA.Apply
+                { new WrapIdEval<_, _> with
+                    member _.Eval
+                        (
+                            teqA : Teq<'a, Wrap<'inner1, 'outer1>>,
+                            innerIdA : ActionId<'inner1>,
+                            outerIdA : TypeId<'outer1>
+                        )
+                        =
+                        crateB.Apply
+                            { new WrapIdEval<_, _> with
+                                member _.Eval
+                                    (
+                                        teqB : Teq<'b, Wrap<'inner2, 'outer2>>,
+                                        innerIdB : ActionId<'inner2>,
+                                        outerIdB : TypeId<'outer2>
+                                    )
+                                    =
+                                    match sameWitness innerIdA innerIdB, TypeId.same_witness outerIdA outerIdB with
+                                    | Some teqInner, Some teqOuter ->
+                                        let teqWrapAB = Teq.Cong.wrap teqInner teqOuter
+                                        let step1 = Teq.transitivity teqA teqWrapAB
+                                        let step2 = Teq.symmetry teqB
+                                        Some (Teq.transitivity step1 step2)
+                                    | _ -> None
+                            }
+                }
+        | ModelResetId crateA, ModelResetId crateB ->
+            crateA.Apply
+                { new ModelResetIdEval<_, _> with
+                    member _.Eval<'inner1> (teqA : Teq<'a, ModelResetter<'inner1>>, innerIdA : ActionId<'inner1>) =
+                        crateB.Apply
+                            { new ModelResetIdEval<_, _> with
+                                member _.Eval<'inner2>
+                                    (teqB : Teq<'b, ModelResetter<'inner2>>, innerIdB : ActionId<'inner2>)
+                                    =
+                                    match sameWitness innerIdA innerIdB with
+                                    | Some teqInner ->
+                                        let teqModelResetAB = Teq.Cong.modelResetter teqInner
+                                        let step1 = Teq.transitivity teqA teqModelResetAB
+                                        let step2 = Teq.symmetry teqB
+                                        Some (Teq.transitivity step1 step2)
+                                    | None -> None
+                            }
+                }
+        | SwitchId teqA, SwitchId teqB ->
+            let step1 = teqA
+            let step2 = Teq.symmetry teqB
+            Some (Teq.transitivity step1 step2)
+        | LazyId teqA, LazyId teqB ->
+            let step1 = teqA
+            let step2 = Teq.symmetry teqB
+            Some (Teq.transitivity step1 step2)
+        | AssocId crateA, AssocId crateB ->
+            crateA.Apply
+                { new AssocIdEval<_, _> with
+                    member _.Eval<'key1, 'inner1>
+                        (teqA : Teq<'a, Assoc<'key1, 'inner1>>, keyIdA, innerIdA : ActionId<'inner1>)
+                        =
+                        crateB.Apply
+                            { new AssocIdEval<_, _> with
+                                member _.Eval<'key2, 'inner2>
+                                    (teqB : Teq<'b, Assoc<'key2, 'inner2>>, keyIdB, innerIdB : ActionId<'inner2>)
+                                    =
+                                    match sameWitness innerIdA innerIdB, TypeId.same_witness keyIdA keyIdB with
+                                    | Some teqInner, Some teqKey ->
+                                        let teqAssocAB = Teq.Cong.assoc teqKey teqInner
+                                        let step1 = Teq.transitivity teqA teqAssocAB
+                                        let step2 = Teq.symmetry teqB
+                                        Some (Teq.transitivity step1 step2)
+                                    | _ -> None
+                            }
+                }
+        | AssocOnId crateA, AssocOnId crateB ->
+            crateA.Apply
+                { new AssocOnIdEval<_, _> with
+                    member _.Eval<'ioKey1, 'modelKey1, 'inner1>
+                        (
+                            teqA : Teq<'a, AssocOn<'ioKey1, 'modelKey1, 'inner1>>,
+                            ioKeyIdA : TypeId<'ioKey1>,
+                            modelKeyIdA : TypeId<'modelKey1>,
+                            innerIdA : ActionId<'inner1>
+                        )
+                        =
+                        crateB.Apply
+                            { new AssocOnIdEval<_, _> with
+                                member _.Eval<'ioKey2, 'modelKey2, 'inner2>
+                                    (
+                                        teqB : Teq<'b, AssocOn<'ioKey2, 'modelKey2, 'inner2>>,
+                                        ioKeyIdB : TypeId<'ioKey2>,
+                                        modelKeyIdB : TypeId<'modelKey2>,
+                                        innerIdB : ActionId<'inner2>
+                                    )
+                                    =
+                                    match
+                                        sameWitness innerIdA innerIdB,
+                                        TypeId.same_witness ioKeyIdA ioKeyIdB,
+                                        TypeId.same_witness modelKeyIdA modelKeyIdB
+                                    with
+                                    | Some teqInner, Some teqIoKey, Some teqModelKey ->
+                                        let teqAssocOnAB = Teq.Cong.assocOn teqIoKey teqModelKey teqInner
+                                        let step1 = Teq.transitivity teqA teqAssocOnAB
+                                        let step2 = Teq.symmetry teqB
+                                        Some (Teq.transitivity step1 step2)
+                                    | _ -> None
+                            }
+                }
         | _ ->
-            // For now, return None for all other cases
+            // Different constructor types cannot be equal
             None
 
     /// Create a LeafId ActionId for a specific action type
@@ -244,24 +410,24 @@ module ActionId =
     let subId<'from, 'into> (fromId : ActionId<'from>) (intoId : ActionId<'into>) : ActionId<Sub<'from, 'into>> =
         let teq = Teq.refl<Sub<'from, 'into>>
 
-        SubId (
+        SubId
             { new SubIdCrate<Sub<'from, 'into>> with
                 member _.Apply e = e.Eval (teq, fromId, intoId)
             }
-        )
+
 
     /// Create a WrapId ActionId for inner/outer types
-    let wrapId<'inner, 'outer> (inner : ActionIdCrate) : ActionId<Wrap<'inner, 'outer>> =
+    let wrapId<'inner, 'outer> (inner : ActionId<'inner>) (outer : TypeId<'outer>) : ActionId<Wrap<'inner, 'outer>> =
         let teq = Teq.refl<Wrap<'inner, 'outer>>
 
-        WrapId (
+        WrapId
             { new WrapIdCrate<Wrap<'inner, 'outer>> with
-                member _.Apply e = e.Eval (teq, inner)
+                member _.Apply e = e.Eval (teq, inner, outer)
             }
-        )
+
 
     /// Create a ModelResetId ActionId
-    let modelResetId<'inner> (inner : ActionIdCrate) : ActionId<ModelResetter<'inner>> =
+    let modelResetId<'inner> (inner : ActionId<'inner>) : ActionId<ModelResetter<'inner>> =
         let teq = Teq.refl<ModelResetter<'inner>>
 
         ModelResetId
@@ -281,22 +447,27 @@ module ActionId =
         LazyId teq
 
     /// Create an AssocId ActionId
-    let assocId<'key, 'inner> (action : ActionId<'inner>) : ActionId<Assoc<'key, 'inner>> =
+    let assocId<'key, 'inner> key (action : ActionId<'inner>) : ActionId<Assoc<'key, 'inner>> =
         let teq = Teq.refl<Assoc<'key, 'inner>>
 
         AssocId
             { new AssocIdCrate<Assoc<'key, 'inner>> with
-                member _.Apply e = e.Eval (teq, action)
+                member _.Apply e = e.Eval (teq, key, action)
             }
 
 
     /// Create an AssocOnId ActionId
-    let assocOnId<'ioKey, 'modelKey, 'inner> (action : ActionIdCrate) : ActionId<AssocOn<'ioKey, 'modelKey, 'inner>> =
+    let assocOnId<'ioKey, 'modelKey, 'inner>
+        ioKey
+        modelKey
+        (action : ActionId<'inner>)
+        : ActionId<AssocOn<'ioKey, 'modelKey, 'inner>>
+        =
         let teq = Teq.refl<AssocOn<'ioKey, 'modelKey, 'inner>>
 
         AssocOnId
             { new AssocOnIdCrate<AssocOn<'ioKey, 'modelKey, 'inner>> with
-                member _.Apply e = e.Eval (teq, action)
+                member _.Apply e = e.Eval (teq, ioKey, modelKey, action)
             }
 
 
