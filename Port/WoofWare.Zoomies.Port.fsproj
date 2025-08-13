@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <Compile Include="External.fs"/>
+    <Compile Include="TypeId.fs"/>
     <Compile Include="Action.fs"/>
     <Compile Include="AnnotateIncr.fs"/>
     <Compile Include="ApplyActionContext.fs"/>

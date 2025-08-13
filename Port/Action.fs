@@ -1,18 +1,7 @@
 namespace WoofWare.Zoomies.Port
 
-#nowarn "3559"
 
 open TypeEquality
-
-type TypeId<'a> = private | TypeId
-
-
-module TypeId =
-
-    let same_witness (_ : TypeId<'a>) (id' : TypeId<'b>) : Teq<'a, 'b> option =
-        match box id' with
-        | :? TypeId<'a> -> Some (Teq.Cong.believeMe Teq.refl)
-        | _ -> None
 
 /// Private phantom types for GADTs
 [<Struct>]
@@ -54,21 +43,21 @@ module Teq =
             (teqInto : Teq<'into1, 'into2>)
             : Teq<Sub<'from1, 'into1>, Sub<'from2, 'into2>>
             =
-            Teq.Cong.believeMe (Teq.refl)
+            Teq.Cong.believeMe teqFrom
 
         let wrap
             (teqInner : Teq<'inner1, 'inner2>)
             (teqOuter : Teq<'outer1, 'outer2>)
             : Teq<Wrap<'inner1, 'outer1>, Wrap<'inner2, 'outer2>>
             =
-            Teq.Cong.believeMe (Teq.refl)
+            Teq.Cong.believeMe teqInner
 
         let assoc
             (teqKey : Teq<'key1, 'key2>)
             (teqInner : Teq<'inner1, 'inner2>)
             : Teq<Assoc<'key1, 'inner1>, Assoc<'key2, 'inner2>>
             =
-            Teq.Cong.believeMe (Teq.refl)
+            Teq.Cong.believeMe teqKey
 
         let assocOn
             (teqIoKey : Teq<'ioKey1, 'ioKey2>)
@@ -76,10 +65,10 @@ module Teq =
             (teqInner : Teq<'inner1, 'inner2>)
             : Teq<AssocOn<'ioKey1, 'modelKey1, 'inner1>, AssocOn<'ioKey2, 'modelKey2, 'inner2>>
             =
-            Teq.Cong.believeMe (Teq.refl)
+            Teq.Cong.believeMe teqIoKey
 
         let modelResetter (teqInner : Teq<'inner1, 'inner2>) : Teq<ModelResetter<'inner1>, ModelResetter<'inner2>> =
-            Teq.Cong.believeMe (Teq.refl)
+            Teq.Cong.believeMe teqInner
 
 
 
