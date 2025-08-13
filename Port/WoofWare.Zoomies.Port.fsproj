@@ -23,6 +23,8 @@
     <Compile Include="Keyed.fs"/>
     <Compile Include="MayContain.fs"/>
     <Compile Include="Trampoline.fs"/>
+    <Compile Include="Path.fs"/>
+    <Compile Include="Lifecycle.fs"/>
     <!-- Modules will be added here in topological order -->
   </ItemGroup>
 

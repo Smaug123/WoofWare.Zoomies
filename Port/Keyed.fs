@@ -12,8 +12,24 @@ module Keyed =
         abstract Apply<'ret> : KeyedEval<'ret> -> 'ret
 
     [<RequireQualifiedAccess>]
+    [<CustomComparison>]
+    [<CustomEquality>]
     type Keyed = 
         | Keyed of KeyedCrate
+        interface System.IComparable<Keyed> with
+            member this.CompareTo(other) = compare this other
+        interface System.IComparable with
+            member this.CompareTo(obj) = 
+                match obj with
+                | :? Keyed as other -> compare this other
+                | _ -> failwith "Cannot compare Keyed with different type"
+        override this.Equals(obj) =
+            match obj with
+            | :? Keyed as other -> compare this other = 0
+            | _ -> false
+        override this.GetHashCode() =
+            // Simple hash implementation
+            hash "Keyed"
 
     module KeyedCrate =
         let make<'k> (key: 'k) (id: TypeId<'k>) (compare: 'k -> 'k -> int) : KeyedCrate =
