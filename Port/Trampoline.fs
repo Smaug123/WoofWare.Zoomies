@@ -1,53 +1,107 @@
 namespace WoofWare.Zoomies.Port
 
-// Trampoline monad for stack-safe tail-recursive computations
-// Simplified implementation that focuses on getting the API correct
+open TypeEquality
+
+type TrampolineBindEval<'b, 'ret> =
+    abstract Eval<'a> : 'a Trampoline -> ('a -> 'b Trampoline) -> 'ret
+
+and TrampolineBindCrate<'b> =
+    abstract Apply<'ret> : TrampolineBindEval<'b, 'ret> -> 'ret
+
+and Trampoline<'a> =
+    | Lazy of Lazy<Trampoline<'a>>
+    | Return of 'a
+    | Bind of TrampolineBindCrate<'a>
+
+[<RequireQualifiedAccess>]
 module Trampoline =
+    let ofLazy t = Trampoline.Lazy t
+    let lift a = Trampoline.Return a
 
-    [<RequireQualifiedAccess>]
-    type Trampoline<'a> =
-        | Lazy of System.Lazy<Trampoline<'a>>
-        | Return of 'a
-        | Bind of obj * obj  // Simplified to avoid complex type constraints for now
+    let bind (f : 'a -> 'b Trampoline) (t : Trampoline<'a>) : 'b Trampoline =
+        { new TrampolineBindCrate<_> with
+            member _.Apply e = e.Eval<'a> t f
+        }
+        |> Trampoline.Bind
 
-    let lazy_ (t: System.Lazy<Trampoline<'a>>) : Trampoline<'a> = 
-        Trampoline.Lazy t
+    type StackConsEval<'a, 'b, 'ret> =
+        abstract Eval<'c> : ('a -> 'c Trampoline) * Stack<'c, 'b> -> 'ret
 
-    let return_ (a: 'a) : Trampoline<'a> = 
-        Trampoline.Return a
+    and StackConsCrate<'a, 'b> =
+        abstract Apply<'ret> : StackConsEval<'a, 'b, 'ret> -> 'ret
 
-    let bind (t: Trampoline<'a>) (f: 'a -> Trampoline<'b>) : Trampoline<'b> =
-        Trampoline.Bind (box t, box f)
+    and Stack<'a, 'b> =
+        | Empty of Teq<'a, 'b>
+        | Cons of StackConsCrate<'a, 'b>
 
-    // Simple recursive runner - not fully stack-safe but functional
-    let rec run (t: Trampoline<'a>) : 'a =
+    let stackCons k stack =
+        { new StackConsCrate<_, _> with
+            member _.Apply e = e.Eval (k, stack)
+        }
+        |> Stack.Cons
+
+    let rec runAux<'a, 'b> (t : Trampoline<'a>) (stack : Stack<'a, 'b>) : 'b =
         match t with
-        | Trampoline.Lazy lazyT -> 
-            run (lazyT.Value)
-        | Trampoline.Return a -> 
-            a
-        | Trampoline.Bind (innerObj, fObj) ->
-            // Unsafe casting for simplicity - in a real implementation we'd use proper GADTs
-            // We'll cast to specific types to avoid generalization issues
-            failwith "Trampoline.Bind execution not implemented - placeholder for compilation"
+        | Trampoline.Lazy t -> runAux (t.Force ()) stack
+        | Trampoline.Bind cr ->
+            { new TrampolineBindEval<_, _> with
+                member _.Eval t k = runAux t (stackCons k stack)
+            }
+            |> cr.Apply
+        | Trampoline.Return a ->
+            match stack with
+            | Stack.Empty t -> Teq.cast t a
+            | Stack.Cons cr ->
+                { new StackConsEval<_, _, _> with
+                    member _.Eval (k, stack) = runAux (k a) stack
+                }
+                |> cr.Apply
 
-    // Monad operations
-    let map (f: 'a -> 'b) (t: Trampoline<'a>) : Trampoline<'b> =
-        bind t (fun a -> return_ (f a))
+    let run t = runAux t (Stack.Empty Teq.refl)
 
-    // Map over all values in a map, collecting results
-    let allMap (m: Map<'k, Trampoline<'v>>) : Trampoline<Map<'k, 'v>> =
-        let folder (acc: Trampoline<Map<'k, 'v>>) (key: 'k) (trampolineValue: Trampoline<'v>) =
-            bind acc (fun accMap ->
-                bind trampolineValue (fun value ->
-                    return_ (Map.add key value accMap)))
-        
-        Map.fold folder (return_ Map.empty) m
+    let map (f : 'a -> 'b) (t : Trampoline<'a>) : Trampoline<'b> = bind (fun x -> f x |> lift) t
 
-    // Let syntax for computation expressions
-    module LetSyntax =
-        let returnT = return_
+    let all (ts : 'a Trampoline seq) : 'a list Trampoline =
+        (lift [], ts)
+        ||> Seq.fold (fun acc t -> bind (fun xs -> map (fun x -> x :: xs) t) acc)
+        |> map List.rev
 
-        module LetSyntax =
-            let returnT = return_
-            let bind = bind
+    let allMap m =
+        m
+        |> Map.toSeq
+        |> Seq.map (fun (k, v) -> map (fun v -> k, v) v)
+        |> all
+        |> bind (fun alist -> lift (Map.ofList alist))
+
+    let both a b =
+        a |> bind (fun a -> b |> bind (fun b -> lift (a, b)))
+
+[<Sealed>]
+type TrampolineBuilder () =
+    member _.Return (x) = Trampoline.lift x
+    member _.ReturnFrom (t : Trampoline<'a>) = t
+    member _.Bind (t : Trampoline<'a>, f : 'a -> Trampoline<'b>) = Trampoline.bind f t
+    member _.Zero () = Trampoline.lift ()
+
+    // For 'map' functionality - this enables let! with a non-monadic continuation
+    member _.BindReturn (t : Trampoline<'a>, f : 'a -> 'b) = Trampoline.map f t
+
+    // For 'both' functionality - this enables and! syntax for parallel composition
+    member _.MergeSources (ta : Trampoline<'a>, tb : Trampoline<'b>) = Trampoline.both ta tb
+
+    // Additional useful operations
+    member _.Delay (f : unit -> Trampoline<'a>) = Trampoline.ofLazy (lazy f ())
+    member _.Combine (t1 : Trampoline<unit>, t2 : Trampoline<'a>) = Trampoline.bind (fun () -> t2) t1
+
+    // For if-then-else
+    member _.Source (t : Trampoline<'a>) = t
+
+    member _.Using (disposable : System.IDisposable, body : _ -> Trampoline<'a>) =
+        try
+            body disposable
+        finally
+            disposable.Dispose ()
+
+[<AutoOpen>]
+module TrampolineBuilders =
+    let trampoline = TrampolineBuilder ()
