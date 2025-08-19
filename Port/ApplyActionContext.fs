@@ -10,31 +10,16 @@ module ApplyActionContext =
 
     type ApplyActionContext<'action> =
         {
-            Inject: 'action -> Effect<unit>
-            ScheduleEvent: Effect<unit> -> unit
+            Inject : 'action -> Effect<unit>
+            ScheduleEvent : Effect<unit> -> unit
         }
 
-    let inject (context: ApplyActionContext<'action>) (action: 'action) = 
-        context.Inject action
+    let inject (context : ApplyActionContext<'action>) (action : 'action) = context.Inject action
 
-    let scheduleEvent (context: ApplyActionContext<_>) (event: Effect<unit>) = 
-        context.ScheduleEvent event
+    let scheduleEvent (context : ApplyActionContext<_>) (event : Effect<unit>) = context.ScheduleEvent event
 
-    let create (inject: 'action -> Effect<unit>) (scheduleEvent: Effect<unit> -> unit) =
+    let create (inject : 'action -> Effect<unit>) (scheduleEvent : Effect<unit> -> unit) =
         {
             Inject = inject
             ScheduleEvent = scheduleEvent
         }
-
-    module Private =
-        type ApplyActionContextInternal<'action> =
-            {
-                Inject: 'action -> Effect<unit>
-                ScheduleEvent: Effect<unit> -> unit
-            }
-
-        let reveal (context: ApplyActionContext<'action>) : ApplyActionContextInternal<'action> =
-            {
-                Inject = context.Inject
-                ScheduleEvent = context.ScheduleEvent
-            }

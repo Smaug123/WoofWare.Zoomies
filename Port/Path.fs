@@ -7,7 +7,7 @@ module Path =
 
     [<RequireQualifiedAccess>]
     module Elem =
-        let keyed (compare: 'a -> 'a -> int) (id: TypeId<'a>) : ('a -> Keyed.Keyed) =
+        let keyed (compare : 'a -> 'a -> int) (id : TypeId<'a>) : ('a -> Keyed.Keyed) =
             fun key -> Keyed.create key id compare
 
         [<RequireQualifiedAccess>]
@@ -19,7 +19,7 @@ module Path =
             | Assoc of Keyed.Keyed
             | Switch of int
 
-        let compare (a: Elem) (b: Elem) =
+        let compare (a : Elem) (b : Elem) =
             match a, b with
             | Elem.SubstFrom, Elem.SubstFrom -> 0
             | Elem.SubstFrom, _ -> -1
@@ -27,34 +27,39 @@ module Path =
             | Elem.SubstInto, Elem.SubstInto -> 0
             | Elem.SubstInto, _ -> -1
             | _, Elem.SubstInto -> 1
-            | Elem.Assoc keyedA, Elem.Assoc keyedB -> Keyed.compare keyedA keyedB
+            | Elem.Assoc keyedA, Elem.Assoc keyedB -> compare keyedA keyedB
             | Elem.Assoc _, _ -> -1
             | _, Elem.Assoc _ -> 1
-            | Elem.Switch a, Elem.Switch b -> a.CompareTo(b)
+            | Elem.Switch a, Elem.Switch b -> a.CompareTo (b)
 
-        let toString (elem: Elem) =
+        let toString (elem : Elem) =
             let offset = int 'a'
             let lowerNibbleToAlpha c = (c &&& 0b1111) + offset |> char
-            let charToAlpha (buf: StringBuilder) (c: char) =
+
+            let charToAlpha (buf : StringBuilder) (c : char) =
                 let c = int c
                 let lower = lowerNibbleToAlpha c
                 let upper = lowerNibbleToAlpha (c >>> 4)
-                buf.Append(upper).Append(lower) |> ignore
+                buf.Append(upper).Append (lower) |> ignore
 
-            let keyedToString (k: Keyed.Keyed) =
-                let buf = StringBuilder()
+            let keyedToString (k : Keyed.Keyed) =
+                let buf = StringBuilder ()
                 // For now, use a simplified string representation
                 let keyStr = Keyed.toString k
+
                 for c in keyStr do
                     charToAlpha buf c
-                buf.ToString()
 
-            let intToString (i: int) =
-                let buf = StringBuilder()
-                let str = i.ToString()
+                buf.ToString ()
+
+            let intToString (i : int) =
+                let buf = StringBuilder ()
+                let str = i.ToString ()
+
                 for c in str do
                     charToAlpha buf c
-                buf.ToString()
+
+                buf.ToString ()
 
             match elem with
             | Elem.SubstFrom -> "x"
@@ -64,62 +69,91 @@ module Path =
 
     [<RequireQualifiedAccess>]
     module RunLengthEncoding =
-        type Run = 
+        type Run =
             {
-                Element: Elem.Elem
-                Count: int
+                Element : Elem.Elem
+                Count : int
             }
 
         type RunLengthEncoding = Run list
 
-        let rec compare (a: RunLengthEncoding) (b: RunLengthEncoding) =
+        let rec compare (a : RunLengthEncoding) (b : RunLengthEncoding) =
             match a, b with
             | [], [] -> 0
             | [], _ -> -1
             | _, [] -> 1
             | aRun :: aRest, bRun :: bRest ->
                 let c = Elem.compare aRun.Element bRun.Element
+
                 if c = 0 then
                     match aRun.Count - bRun.Count with
                     | 0 -> compare aRest bRest
-                    | diff when diff > 0 -> 
-                        compare ({ aRun with Count = diff } :: aRest) bRest
-                    | diff -> 
-                        compare aRest ({ bRun with Count = -diff } :: bRest)
-                else c
+                    | diff when diff > 0 ->
+                        compare
+                            ({ aRun with
+                                Count = diff
+                             }
+                             :: aRest)
+                            bRest
+                    | diff ->
+                        compare
+                            aRest
+                            ({ bRun with
+                                Count = -diff
+                             }
+                             :: bRest)
+                else
+                    c
 
-        let ofElemList (elements: Elem.Elem list) : RunLengthEncoding =
+        let ofElemList (elements : Elem.Elem list) : RunLengthEncoding =
             let rec helper acc elements =
                 match acc, elements with
-                | [], first :: rest -> 
-                    helper [{ Element = first; Count = 1 }] rest
+                | [], first :: rest ->
+                    helper
+                        [
+                            {
+                                Element = first
+                                Count = 1
+                            }
+                        ]
+                        rest
                 | _, [] -> List.rev acc
                 | current :: accRest, elem :: rest ->
                     if Elem.compare current.Element elem = 0 then
-                        let updated = { current with Count = current.Count + 1 }
+                        let updated =
+                            { current with
+                                Count = current.Count + 1
+                            }
+
                         helper (updated :: accRest) rest
                     else
-                        let newRun = { Element = elem; Count = 1 }
+                        let newRun =
+                            {
+                                Element = elem
+                                Count = 1
+                            }
+
                         helper (newRun :: current :: accRest) rest
+
             helper [] elements
 
     // Internal representation for string building
     [<RequireQualifiedAccess>]
     type StringRepr<'a> =
         | Stringified of string
-        | Parts of parent: 'a * elem: Elem.Elem
+        | Parts of parent : 'a * elem : Elem.Elem
 
     [<StructuralComparison>]
     [<StructuralEquality>]
     type Path =
         {
-            ItemsReversed: Elem.Elem list
-            mutable ItemsForTesting: Elem.Elem list option
-            mutable StringRepr: StringRepr<Path>
-            mutable RunLengthEncodedItems: RunLengthEncoding.RunLengthEncoding option
+            ItemsReversed : Elem.Elem list
+            mutable ItemsForTesting : Elem.Elem list option
+            mutable StringRepr : StringRepr<Path>
+            mutable RunLengthEncodedItems : RunLengthEncoding.RunLengthEncoding option
         }
 
-    let private runLengthEncoding (path: Path) =
+    let private runLengthEncoding (path : Path) =
         match path.RunLengthEncodedItems with
         | Some items -> items
         | None ->
@@ -127,9 +161,11 @@ module Path =
             path.RunLengthEncodedItems <- Some items
             items
 
-    let compare (a: Path) (b: Path) =
-        if obj.ReferenceEquals(a, b) then 0
-        else RunLengthEncoding.compare (runLengthEncoding a) (runLengthEncoding b)
+    let compare (a : Path) (b : Path) =
+        if obj.ReferenceEquals (a, b) then
+            0
+        else
+            RunLengthEncoding.compare (runLengthEncoding a) (runLengthEncoding b)
 
     let empty =
         {
@@ -139,7 +175,7 @@ module Path =
             RunLengthEncodedItems = Some []
         }
 
-    let append (path: Path) (elem: Elem.Elem) =
+    let append (path : Path) (elem : Elem.Elem) =
         {
             ItemsReversed = elem :: path.ItemsReversed
             ItemsForTesting = None
@@ -147,7 +183,7 @@ module Path =
             RunLengthEncodedItems = None
         }
 
-    let rec toUniqueIdentifierString (path: Path) =
+    let rec toUniqueIdentifierString (path : Path) =
         match path.StringRepr with
         | StringRepr.Stringified s -> s
         | StringRepr.Parts (parent, elem) ->
@@ -157,11 +193,13 @@ module Path =
             path.StringRepr <- StringRepr.Stringified result
             result
 
-    let raiseDuplicate (path: Path) : 'a =
-        failwithf "BUG: [Bonsai.Path.t] should be unique for all components, but duplicate paths were discovered. Path: %A" path
+    let raiseDuplicate (path : Path) : 'a =
+        failwithf
+            "BUG: [Bonsai.Path.t] should be unique for all components, but duplicate paths were discovered. Path: %A"
+            path
 
     module ForTesting =
-        let items (path: Path) =
+        let items (path : Path) =
             match path.ItemsForTesting with
             | Some items -> items
             | None ->
@@ -169,11 +207,13 @@ module Path =
                 path.ItemsForTesting <- Some items
                 items
 
-        let slowButCorrectCompareForBisimulation (a: Path) (b: Path) =
-            if obj.ReferenceEquals(a, b) then 0
-            else 
+        let slowButCorrectCompareForBisimulation (a : Path) (b : Path) =
+            if obj.ReferenceEquals (a, b) then
+                0
+            else
                 let itemsA = items a
                 let itemsB = items b
+
                 let rec compareItems listA listB =
                     match listA, listB with
                     | [], [] -> 0
@@ -182,4 +222,5 @@ module Path =
                     | x :: xs, y :: ys ->
                         let c = Elem.compare x y
                         if c = 0 then compareItems xs ys else c
+
                 compareItems itemsA itemsB
