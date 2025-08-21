@@ -25,6 +25,8 @@
     <Compile Include="Trampoline.fs"/>
     <Compile Include="Path.fs"/>
     <Compile Include="Lifecycle.fs"/>
+    <Compile Include="Environment.fs"/>
+    <Compile Include="Input.fs"/>
     <!-- Modules will be added here in topological order -->
   </ItemGroup>
 

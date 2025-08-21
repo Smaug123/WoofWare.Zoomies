@@ -15,3 +15,7 @@ module External =
 /// FakeUnit type for existential type encodings
 [<Struct>]
 type FakeUnit = FakeUnit
+
+/// Effect type - placeholder for actual effect system
+/// In the real Bonsai, this would be more sophisticated
+type Effect<'a> = unit -> 'a

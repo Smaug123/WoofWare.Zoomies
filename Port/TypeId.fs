@@ -9,12 +9,6 @@ type TypeId<'a> =
             Name : string
         }
 
-module TypeId =
-
-    let same_witness (_ : TypeId<'a>) (id' : TypeId<'b>) : Teq<'a, 'b> option =
-        match box id' with
-        | :? TypeId<'a> -> Some (Teq.Cong.believeMe Teq.refl<'a>)
-        | _ -> None
 
 /// <summary>
 /// A function to apply to some TypeId.
@@ -31,6 +25,21 @@ type TypeIdCrate =
 
     abstract Uid : int
     abstract Name : string
+
+/// Module for creating TypeIds
+[<RequireQualifiedAccess>]
+module TypeId =
+    
+    let private nextUid = ref 0
+    
+    let create<'a> (name : string) : TypeId<'a> =
+        let uid = System.Threading.Interlocked.Increment nextUid
+        { Uid = uid; Name = name }
+    
+    let same_witness (_ : TypeId<'a>) (id' : TypeId<'b>) : Teq<'a, 'b> option =
+        match box id' with
+        | :? TypeId<'a> -> Some (Teq.Cong.believeMe Teq.refl<'a>)
+        | _ -> None
 
 [<RequireQualifiedAccess>]
 module TypeIdCrate =
