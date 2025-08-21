@@ -1,88 +1,70 @@
 namespace WoofWare.Zoomies.Port
 
-open WoofWare.Incremental
+/// Lifecycle management for component activation, deactivation, and after-display events
+type Lifecycle = {
+    OnActivate : ApplyActionContext.Effect<unit> option
+    OnDeactivate : ApplyActionContext.Effect<unit> option  
+    AfterDisplay : ApplyActionContext.Effect<unit> option
+}
 
-// Create incremental computation instance
-module private IncrementalInstance =
-    let I : Incremental = Incremental.make ()
-
-// Component lifecycle management - handles activation, deactivation, and display events
+[<RequireQualifiedAccess>]
 module Lifecycle =
-
-    // For now, represent effects as simple unit functions
-    // This will need to be integrated with the actual effect system later
-    type Effect = unit -> unit
-
-    type Lifecycle =
-        {
-            OnActivate : Effect option
-            OnDeactivate : Effect option
-            AfterDisplay : Effect option
-        }
-
-    [<RequireQualifiedAccess>]
+    
+    /// Collection of lifecycle events keyed by Path
     module Collection =
-        type Collection = Map<Path.Path, Lifecycle>
-
-        let empty : Collection = Map.empty
-
-        let hasAfterDisplay (collection : Collection) : bool =
-            Map.exists (fun _path lifecycle -> Option.isSome lifecycle.AfterDisplay) collection
-
-        let private maybeCons (head : 'a option) (tail : 'a list) : 'a list =
-            match head with
-            | Some a -> a :: tail
-            | None -> tail
-
-        // Compute the difference between old and new lifecycle collections
-        // Returns effects to run in the proper order: deactivations, activations, after_displays
-        let diff (old : Collection) (new_ : Collection) : Effect list =
+        type t = Path.Map.t<Lifecycle>
+        
+        let empty : t = Path.Map.empty
+        
+        let hasAfterDisplay (lifecycles : t) : bool =
+            Path.Map.exists lifecycles (fun lifecycle -> Option.isSome lifecycle.AfterDisplay)
+        
+        /// Helper to add optional effect to accumulator list
+        let private maybeCons (effect : ApplyActionContext.Effect<unit> option) (acc : ApplyActionContext.Effect<unit> list) =
+            match effect with
+            | Some eff -> eff :: acc
+            | None -> acc
+        
+        /// Compute the diff between old and new lifecycle collections
+        let diff (old : t) (new_ : t) : ApplyActionContext.Effect<unit> =
             // Collect after_display effects from new collection
-            let afterDisplays = new_ |> Map.toList |> List.map snd |> List.choose _.AfterDisplay
-
-            // Collect activations and deactivations by comparing old and new
+            let afterDisplays =
+                Path.Map.fold new_ [] (fun acc _ lifecycle ->
+                    maybeCons lifecycle.AfterDisplay acc)
+            
+            // Collect activations and deactivations
             let activations, deactivations =
-                let processPath path oldLifecycle newLifecycle (activations, deactivations) =
-                    match oldLifecycle, newLifecycle with
-                    | Some old, None ->
-                        // Component was removed - deactivate
-                        (activations, maybeCons old.OnDeactivate deactivations)
-                    | None, Some new_ ->
-                        // Component was added - activate
-                        (maybeCons new_.OnActivate activations, deactivations)
-                    | Some old, Some new_ when not (obj.ReferenceEquals (old, new_)) ->
-                        // Component changed - deactivate old, activate new
-                        let deactivations = maybeCons old.OnDeactivate deactivations
-                        let activations = maybeCons new_.OnActivate activations
-                        (activations, deactivations)
-                    | _ ->
-                        // No change
-                        (activations, deactivations)
-
-                let allPaths = Set.union (Map.keys old |> Set.ofSeq) (Map.keys new_ |> Set.ofSeq)
-
-                allPaths
-                |> Set.fold
-                    (fun (activations, deactivations) path ->
-                        let oldLifecycle = Map.tryFind path old
-                        let newLifecycle = Map.tryFind path new_
-                        processPath path oldLifecycle newLifecycle (activations, deactivations)
-                    )
-                    ([], [])
-
-            // Return effects in proper order: deactivations first, then activations, then after_displays
-            let deactivationEffects = List.rev deactivations
-            let activationEffects = List.rev activations
-
-            deactivationEffects @ activationEffects @ afterDisplays
-
-        // Merge two disjoint lifecycle collections (for incremental computation)
-        let merge (a : Collection Node) (b : Collection Node) : Collection Node =
-            IncrementalInstance.I.Map2
-                (fun collectionA collectionB ->
-                    // Simple merge - assumes collections are disjoint
-                    // In a real implementation, this would need proper conflict resolution
-                    Map.fold (fun acc key value -> Map.add key value acc) collectionA collectionB
-                )
-                a
-                b
+                let collectDiff acc (path, diffResult) =
+                    let (activations, deactivations) = acc
+                    match diffResult with
+                    | Path.Map.DiffResult.Left lifecycle ->
+                        // Component removed - add deactivation
+                        activations, maybeCons lifecycle.OnDeactivate deactivations
+                    | Path.Map.DiffResult.Right lifecycle ->
+                        // Component added - add activation  
+                        maybeCons lifecycle.OnActivate activations, deactivations
+                    | Path.Map.DiffResult.Unequal _ ->
+                        // Component changed but not handled for now
+                        activations, deactivations
+                        
+                let dataEqual (a : Lifecycle) (b : Lifecycle) = System.Object.ReferenceEquals(a, b)
+                Path.Map.foldSymmetricDiff old new_ dataEqual ([], []) collectDiff
+            
+            // Create a combined effect that runs all three phases in order:
+            // 1. Deactivations (in reverse order)
+            // 2. Activations (in reverse order) 
+            // 3. After displays (in reverse order)
+            let allEffects = 
+                (List.rev deactivations) @ 
+                (List.rev activations) @ 
+                (List.rev afterDisplays)
+            
+            // Return a single effect that runs all collected effects
+            fun () ->
+                for effect in allEffects do
+                    effect ()
+        
+        /// Merge two disjoint lifecycle collections
+        let merge (a : t) (b : t) : t =
+            // Simple merge - assumes disjoint keys
+            Map.fold (fun acc key value -> Map.add key value acc) a b

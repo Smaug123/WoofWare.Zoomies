@@ -224,3 +224,32 @@ module Path =
                         if c = 0 then compareItems xs ys else c
 
                 compareItems itemsA itemsB
+
+    // Map module for Path-keyed maps
+    module Map =
+        type t<'a> = Map<Path, 'a>
+        
+        let empty<'a> : t<'a> = Map.empty
+        
+        let exists (map : t<'a>) (predicate : 'a -> bool) : bool =
+            Map.exists (fun _ value -> predicate value) map
+            
+        let fold (map : t<'a>) (init : 'acc) (folder : 'acc -> Path -> 'a -> 'acc) : 'acc =
+            Map.fold folder init map
+            
+        [<RequireQualifiedAccess>]
+        type DiffResult<'a> = 
+            | Left of 'a 
+            | Right of 'a 
+            | Unequal of 'a * 'a
+        
+        let foldSymmetricDiff (oldMap : t<'a>) (newMap : t<'a>) (dataEqual : 'a -> 'a -> bool) (init : 'acc) (folder : 'acc -> Path * DiffResult<'a> -> 'acc) : 'acc =
+            let allKeys = Set.union (oldMap |> Map.keys |> Set.ofSeq) (newMap |> Map.keys |> Set.ofSeq)
+            allKeys
+            |> Set.fold (fun acc key ->
+                match Map.tryFind key oldMap, Map.tryFind key newMap with
+                | Some oldVal, None -> folder acc (key, DiffResult.Left oldVal)
+                | None, Some newVal -> folder acc (key, DiffResult.Right newVal)
+                | Some oldVal, Some newVal when not (dataEqual oldVal newVal) -> folder acc (key, DiffResult.Unequal (oldVal, newVal))
+                | _ -> acc
+            ) init

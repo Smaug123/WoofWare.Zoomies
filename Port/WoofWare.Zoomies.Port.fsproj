@@ -27,6 +27,10 @@
     <Compile Include="Lifecycle.fs"/>
     <Compile Include="Environment.fs"/>
     <Compile Include="Input.fs"/>
+    <Compile Include="Meta.fs"/>
+    <Compile Include="NodePath.fs"/>
+    <Compile Include="StabilizationTracker.fs"/>
+    <Compile Include="Value.fs"/>
     <!-- Modules will be added here in topological order -->
   </ItemGroup>
 
