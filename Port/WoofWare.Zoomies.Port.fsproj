@@ -33,6 +33,8 @@
     <Compile Include="Value.fs"/>
     <Compile Include="Snapshot.fs"/>
     <Compile Include="Var.fs"/>
+    <Compile Include="Computation.fs"/>
+    <Compile Include="ProcMin.fs"/>
     <!-- Modules will be added here in topological order -->
   </ItemGroup>
 
