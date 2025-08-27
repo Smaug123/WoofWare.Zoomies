@@ -79,6 +79,10 @@ Import modules are not necessary in F#. Ignore them.
 
 ===
 
+Interface files (ending with `_intf.ml` or similar) should be SKIPPED entirely. Do not create F# equivalents of these files. They define module signatures which are not needed in F#.
+
+===
+
 Functors are inexpressible in F#, they need to be inlined.
 
 ===
