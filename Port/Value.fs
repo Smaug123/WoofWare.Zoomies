@@ -40,9 +40,8 @@ and ValueWithoutPosition<'a> =
 [<RequireQualifiedAccess>]
 module Value =
     
-    // Create incremental computation instance
-    module private ValueIncrInstance =
-        let I : Incremental = Incremental.make ()
+    // Use shared incremental computation instance
+    let private I : Incremental = SharedIncremental.Instance
     
     let private createValue (withoutPosition : 'a ValueWithoutPosition) : Value<'a> =
         { WithoutPosition = withoutPosition }
@@ -66,30 +65,30 @@ module Value =
     /// Convert a Value to an incremental Node (basic implementation)
     let rec toIncr (value : Value<'a>) : 'a Node =
         match value.WithoutPosition with
-        | Constant x -> ValueIncrInstance.I.Return x
+        | Constant x -> I.Return x
         | Incr node -> node
         | Named _ -> failwith "Cannot convert named value to incremental without binding"
-        | Exception exn -> ValueIncrInstance.I.Map (fun () -> raise exn) (ValueIncrInstance.I.Return ())
+        | Exception exn -> I.Map (fun () -> raise exn) (I.Return ())
 
     /// Combine two values into a tuple
     let both (a : Value<'a>) (b : Value<'b>) : Value<'a * 'b> =
         let nodeA = toIncr a
         let nodeB = toIncr b
-        createValue (Incr (ValueIncrInstance.I.Both nodeA nodeB))
+        createValue (Incr (I.Both nodeA nodeB))
     
     /// Apply a function to transform a value
     let map (f : 'a -> 'b) (value : Value<'a>) : Value<'b> =
         let node = toIncr value
-        createValue (Incr (ValueIncrInstance.I.Map f node))
+        createValue (Incr (I.Map f node))
     
     /// Apply a binary function to two values
     let map2 (f : 'a -> 'b -> 'c) (valueA : Value<'a>) (valueB : Value<'b>) : Value<'c> =
         let nodeA = toIncr valueA
         let nodeB = toIncr valueB
-        createValue (Incr (ValueIncrInstance.I.Map2 f nodeA nodeB))
+        createValue (Incr (I.Map2 f nodeA nodeB))
     
     /// Add cutoff behavior to a value to prevent unnecessary recomputation
     let cutoff (equal : 'a -> 'a -> bool) (value : Value<'a>) : Value<'a> =
         let node = toIncr value
         // TODO: WoofWare.Incremental may support cutoff, but for now we'll just return the mapped value
-        createValue (Incr (ValueIncrInstance.I.Map (fun x -> x) node))
+        createValue (Incr (I.Map (fun x -> x) node))

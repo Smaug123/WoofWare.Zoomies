@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <Compile Include="External.fs"/>
+    <Compile Include="SharedIncremental.fs"/>
     <Compile Include="TypeId.fs"/>
     <Compile Include="Action.fs"/>
     <Compile Include="AnnotateIncr.fs"/>
@@ -35,6 +36,7 @@
     <Compile Include="Var.fs"/>
     <Compile Include="Computation.fs"/>
     <Compile Include="ProcMin.fs"/>
+    <Compile Include="EvalSub.fs"/>
     <!-- Modules will be added here in topological order -->
   </ItemGroup>
 

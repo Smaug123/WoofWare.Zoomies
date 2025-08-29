@@ -12,9 +12,8 @@ type Snapshot<'model, 'input, 'result> = {
 [<RequireQualifiedAccess>]
 module Snapshot =
     
-    // Create incremental computation instance
-    module private SnapshotIncrInstance =
-        let I : Incremental = Incremental.make ()
+    // Use shared incremental computation instance
+    let private I : Incremental = SharedIncremental.Instance
     
     /// Create a new snapshot with the given components
     let create (input : Input<'input>) (lifecycle : Lifecycle.Collection.t Node option) (result : 'result Node) : Snapshot<'model, 'input, 'result> =
@@ -37,7 +36,7 @@ module Snapshot =
     let lifecycleOrEmpty (snapshot : Snapshot<'model, 'input, 'result>) : Lifecycle.Collection.t Node =
         match snapshot.Lifecycle with
         | None ->
-            let emptyLifecycle = SnapshotIncrInstance.I.Return Lifecycle.Collection.empty
+            let emptyLifecycle = I.Return Lifecycle.Collection.empty
             // TODO: Add annotation when available
             // annotate Empty_lifecycle emptyLifecycle
             emptyLifecycle

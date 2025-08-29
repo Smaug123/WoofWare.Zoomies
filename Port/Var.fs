@@ -8,13 +8,12 @@ type Var<'a> = WoofWare.Incremental.Var<'a>
 [<RequireQualifiedAccess>]
 module Var =
     
-    // Create incremental computation instance
-    module private VarIncrInstance =
-        let I : Incremental = Incremental.make ()
+    // Use shared incremental computation instance
+    let private I : Incremental = SharedIncremental.Instance
     
     /// Create a new variable with the given initial value
     let create (initial : 'a) : Var<'a> =
-        VarIncrInstance.I.Var.Create initial
+        I.Var.Create initial
     
     /// Set the value of the variable
     let set (var : Var<'a>) (value : 'a) : unit =
@@ -22,23 +21,23 @@ module Var =
         StabilizationTracker.markIncrementalDirty ()
         
         // Check if we're currently stabilizing - this would be an error
-        if VarIncrInstance.I.AmStabilizing then
+        if I.AmStabilizing then
             failwith "Bonsai.Var mutated during the computation of a Bonsai value"
         
-        VarIncrInstance.I.Var.Set var value
+        I.Var.Set var value
     
     /// Update the variable using a function
     let update (var : Var<'a>) (f : 'a -> 'a) : unit =
-        let oldValue = VarIncrInstance.I.Var.Value var
+        let oldValue = I.Var.Value var
         set var (f oldValue)
     
     /// Get the current value of the variable
     let get (var : Var<'a>) : 'a =
-        VarIncrInstance.I.Var.Value var
+        I.Var.Value var
     
     /// Get a Value that tracks this variable
     let value (var : Var<'a>) : Value<'a> =
-        let watchNode = VarIncrInstance.I.Var.Watch var
+        let watchNode = I.Var.Watch var
         Value.fromIncr watchNode
     
     /// Get the underlying incremental variable (identity function)

@@ -1,5 +1,7 @@
 namespace WoofWare.Zoomies.Port
 
+open WoofWare.Incremental
+
 /// External dependencies from Jane Street libraries that need to be implemented
 module External =
     /// Equivalent to OCaml's Fn.const
@@ -11,6 +13,10 @@ module External =
     /// Equivalent to OCaml's phys_same but for F#
     /// Note: Only works correctly for reference types
     let physSame (x : 'a) (y : 'a) = obj.ReferenceEquals (x, y)
+    
+    /// Unreachable action for stateless computations
+    let unreachableAction (action : 'a) : unit =
+        failwith "This action should never be called in a stateless computation"
 
 /// FakeUnit type for existential type encodings
 [<Struct>]

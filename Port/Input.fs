@@ -3,10 +3,6 @@ namespace WoofWare.Zoomies.Port
 open WoofWare.Incremental
 open WoofWare.Zoomies.Port.External
 
-// Create incremental computation instance for Input module
-module private InputIncrInstance =
-    let I : Incremental = Incremental.make ()
-
 /// A crate for the Join case that hides the intermediate types
 type InputJoinEval<'input, 'ret> =
     abstract Eval<'a> : 'a Node * ('a -> 'input) -> 'ret
@@ -35,13 +31,16 @@ type Input<'input> =
 [<RequireQualifiedAccess>]
 module Input =
     
+    // Use shared incremental computation instance for Input module
+    let private I : Incremental = SharedIncremental.Instance
+    
     let dynamic (input : 'input Node) : Input<'input> = Dynamic input
     
     let staticValue : Input<unit> = Static ()
     
     let map (t : Input<'a>) (f : 'a -> 'b) : Input<'b> =
         match t with
-        | Dynamic input -> Dynamic (InputIncrInstance.I.Map f input)
+        | Dynamic input -> Dynamic (I.Map f input)
         | Static input -> Static (f input)
         | Join joinCrate ->
             joinCrate.Apply { new InputJoinEval<'a, Input<'b>> with
@@ -59,20 +58,20 @@ module Input =
     let toIncremental (input : Input<'a>) : 'a Node =
         match input with
         | Dynamic input -> input
-        | Static input -> InputIncrInstance.I.Return input
+        | Static input -> I.Return input
         | Join joinCrate ->
             joinCrate.Apply { new InputJoinEval<'a, 'a Node> with
-                member _.Eval (incr, f) = InputIncrInstance.I.Map f incr }
+                member _.Eval (incr, f) = I.Map f incr }
     
     let merge (a : Input<'a>) (b : Input<'b>) : Input<'a * 'b> =
         match a, b with
-        | Dynamic a, Dynamic b -> Dynamic (InputIncrInstance.I.Both a b)
+        | Dynamic a, Dynamic b -> Dynamic (I.Both a b)
         | Dynamic a, Static b -> Join (InputJoinCrate.make a (fun a -> a, b))
         | Static a, Dynamic b -> Join (InputJoinCrate.make b (fun b -> a, b))
         | Static a, Static b -> Static (a, b)
         | Dynamic a, Join joinCrateB ->
             joinCrateB.Apply { new InputJoinEval<'b, Input<'a * 'b>> with
-                member _.Eval (b, f) = Join (InputJoinCrate.make (InputIncrInstance.I.Both a b) (fun (a, b) -> a, f b)) }
+                member _.Eval (b, f) = Join (InputJoinCrate.make (I.Both a b) (fun (a, b) -> a, f b)) }
         | Static a, Join joinCrateB ->
             joinCrateB.Apply { new InputJoinEval<'b, Input<'a * 'b>> with
                 member _.Eval (b, f) = Join (InputJoinCrate.make b (fun b -> a, f b)) }
@@ -81,9 +80,9 @@ module Input =
                 member _.Eval (a, f) = Join (InputJoinCrate.make a (fun a -> f a, b)) }
         | Join joinCrateA, Dynamic b ->
             joinCrateA.Apply { new InputJoinEval<'a, Input<'a * 'b>> with
-                member _.Eval (a, f) = Join (InputJoinCrate.make (InputIncrInstance.I.Both a b) (fun (a, b) -> f a, b)) }
+                member _.Eval (a, f) = Join (InputJoinCrate.make (I.Both a b) (fun (a, b) -> f a, b)) }
         | Join joinCrateA, Join joinCrateB ->
             joinCrateA.Apply { new InputJoinEval<'a, Input<'a * 'b>> with
                 member _.Eval (a, f) = 
                     joinCrateB.Apply { new InputJoinEval<'b, Input<'a * 'b>> with
-                        member _.Eval (b, g) = Join (InputJoinCrate.make (InputIncrInstance.I.Both a b) (fun (a, b) -> f a, g b)) } }
+                        member _.Eval (b, g) = Join (InputJoinCrate.make (I.Both a b) (fun (a, b) -> f a, g b)) } }
