@@ -21,9 +21,9 @@ module Var =
         // Mark incremental as dirty to trigger stabilization
         StabilizationTracker.markIncrementalDirty ()
         
-        // TODO: Add stabilization check when available
-        // if Incr.amStabilizing () then
-        //     failwith "Bonsai.Var mutated during the computation of a Bonsai value"
+        // Check if we're currently stabilizing - this would be an error
+        if VarIncrInstance.I.AmStabilizing then
+            failwith "Bonsai.Var mutated during the computation of a Bonsai value"
         
         VarIncrInstance.I.Var.Set var value
     

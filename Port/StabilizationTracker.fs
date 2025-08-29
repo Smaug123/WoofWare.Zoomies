@@ -83,8 +83,9 @@ module StabilizationTracker =
     
     /// Insert an action into the tracker
     let insert (tracker : StabilizationTracker<'action>) (action : Action<'action>) : unit =
-        // Simplified implementation - in the full version this would update a complex trie structure
-        // For now, just increment generation to indicate an action occurred
+        // Update the action tracking state
+        // In the full implementation, this would maintain a complex trie of action paths
+        // For now, we track that an action has occurred and increment generation
         tracker.CurrentGeneration <- Generation.next tracker.CurrentGeneration
     
     /// Check if stabilization is required before applying an action
