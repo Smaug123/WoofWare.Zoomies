@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <Authors>Patrick Stevens</Authors>
     <Copyright>Copyright (c) Patrick Stevens 2025</Copyright>
@@ -37,6 +37,8 @@
     <Compile Include="Computation.fs"/>
     <Compile Include="ProcMin.fs"/>
     <Compile Include="EvalSub.fs"/>
+    <Compile Include="Eval.fs"/>
+    <Compile Include="Incr0.fs"/>
     <!-- Modules will be added here in topological order -->
   </ItemGroup>
 
