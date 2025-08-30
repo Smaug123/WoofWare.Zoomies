@@ -19,6 +19,10 @@
     <Compile Include="ValueTests.fs"/>
     <Compile Include="VarTests.fs"/>
     <Compile Include="LifecycleTests.fs"/>
+    <Compile Include="SimplifyTests.fs"/>
+    <Compile Include="SkeletonTests.fs"/>
+    <Compile Include="TransformTests.fs"/>
+    <Compile Include="FixTransformTests.fs"/>
     <Compile Include="Program.fs"/>
   </ItemGroup>
 

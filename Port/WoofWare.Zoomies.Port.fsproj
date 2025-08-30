@@ -37,6 +37,10 @@
     <Compile Include="Computation.fs"/>
     <Compile Include="ProcMin.fs"/>
     <Compile Include="EvalSub.fs"/>
+    <Compile Include="Simplify.fs"/>
+    <Compile Include="Skeleton.fs"/>
+    <Compile Include="Transform.fs"/>
+    <Compile Include="FixTransform.fs"/>
     <Compile Include="Eval.fs"/>
     <Compile Include="Incr0.fs"/>
     <!-- Modules will be added here in topological order -->
