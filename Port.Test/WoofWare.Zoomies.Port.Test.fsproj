@@ -24,6 +24,9 @@
     <Compile Include="TransformTests.fs"/>
     <Compile Include="FixTransformTests.fs"/>
     <Compile Include="GraphInfoTests.fs"/>
+    <Compile Include="ConstantFoldTests.fs"/>
+    <Compile Include="FlattenValuesTests.fs"/>
+    <Compile Include="ToDotTests.fs"/>
     <Compile Include="Program.fs"/>
   </ItemGroup>
 

@@ -42,6 +42,9 @@
     <Compile Include="Transform.fs"/>
     <Compile Include="FixTransform.fs"/>
     <Compile Include="GraphInfo.fs"/>
+    <Compile Include="ConstantFold.fs"/>
+    <Compile Include="FlattenValues.fs"/>
+    <Compile Include="ToDot.fs"/>
     <Compile Include="Eval.fs"/>
     <Compile Include="Incr0.fs"/>
     <!-- Modules will be added here in topological order -->
