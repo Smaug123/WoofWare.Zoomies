@@ -23,6 +23,7 @@
     <Compile Include="SkeletonTests.fs"/>
     <Compile Include="TransformTests.fs"/>
     <Compile Include="FixTransformTests.fs"/>
+    <Compile Include="GraphInfoTests.fs"/>
     <Compile Include="Program.fs"/>
   </ItemGroup>
 
