@@ -16,6 +16,7 @@
   <ItemGroup>
     <Compile Include="TestHelpers.fs"/>
     <Compile Include="BasicComputationTests.fs"/>
+    <Compile Include="BonsaiStateMachineTests.fs"/>
     <Compile Include="ValueTests.fs"/>
     <Compile Include="VarTests.fs"/>
     <Compile Include="LifecycleTests.fs"/>
