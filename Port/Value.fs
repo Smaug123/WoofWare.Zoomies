@@ -87,6 +87,15 @@ module Value =
         let nodeB = toIncr valueB
         createValue (Incr (I.Map2 f nodeA nodeB))
     
+    /// Apply a ternary function to three values
+    let map3 (f : 'a -> 'b -> 'c -> 'd) (valueA : Value<'a>) (valueB : Value<'b>) (valueC : Value<'c>) : Value<'d> =
+        let nodeA = toIncr valueA
+        let nodeB = toIncr valueB
+        let nodeC = toIncr valueC
+        // Since Map3 doesn't exist, we'll use Map2 twice
+        let combined = I.Map2 (fun a b -> (a, b)) nodeA nodeB
+        createValue (Incr (I.Map2 (fun (a, b) c -> f a b c) combined nodeC))
+    
     /// Add cutoff behavior to a value to prevent unnecessary recomputation
     let cutoff (equal : 'a -> 'a -> bool) (value : Value<'a>) : Value<'a> =
         let node = toIncr value
