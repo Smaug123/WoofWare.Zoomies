@@ -23,17 +23,26 @@ module Driver =
 
     /// Create a driver from a Cont-based computation
     let create (computation : Cont.Graph -> Value<'result>) : T<'result> =
-        // Simple implementation: create with unit model and dummy result
-        let dummyState = 
+        // Execute the computation to get the initial result
+        let graph = { Cont.Graph.Transform = id }
+        let resultValue = computation graph
+        
+        // Extract the result if it's a constant, otherwise use default
+        let initialResult = 
+            match resultValue.WithoutPosition with
+            | ValueWithoutPosition.Constant value -> value
+            | _ -> Unchecked.defaultof<'result>
+        
+        let state = 
             {
-                ModelVar = box (Var.create ())
+                ModelVar = box (Var.create (box ()))
                 DefaultModel = box ()
-                Queue = box (Queue<unit>())
-                Result = None
+                Queue = box (Queue<obj>())
+                Result = Some (box initialResult)
                 ApplyAction = fun model action -> model
-                GetResult = fun model -> box (Unchecked.defaultof<'result>)
+                GetResult = fun model -> box initialResult
             }
-        DriverT dummyState
+        DriverT state
 
     /// Create a driver directly from a computation
     let createDirect (computation : Computation<'result>) : T<'result> =
@@ -43,9 +52,16 @@ module Driver =
     /// Flush pending actions and update state
     let flush (DriverT state) : unit =
         let state = unbox<DriverState> state
-        // Process all queued actions - simplified for testing
-        // In real implementation, would properly handle queue
-        ()
+        
+        // Process all queued actions if we have a proper queue
+        match state.Queue with
+        | :? Queue<obj> as queue when queue.Count > 0 ->
+            // For now, just clear the queue - in a real implementation
+            // would apply actions to update state
+            queue.Clear()
+        | _ -> 
+            // No actions to process
+            ()
 
     /// Get the current result value
     let result (DriverT state) : 'result =
@@ -72,8 +88,10 @@ module Driver =
         
         /// Reset model to default value
         let resetModelToDefault (DriverT state) : unit =
-            // Simplified: in real implementation would reset model var
-            ()
+            let state = unbox<DriverState> state
+            // In a real implementation, would reset the model variable
+            // For now, just update the cached result
+            state.Result <- None
 
         /// Enable action printing for debugging
         let printActions (driver : T<'result>) : unit =
@@ -93,10 +111,10 @@ module Driver =
         let createSimple (initialModel : 'model) (applyAction : 'model -> 'action -> 'model) (getResult : 'model -> 'result) : T<'result> =
             let state =
                 {
-                    ModelVar = box (Var.create initialModel)
+                    ModelVar = box (Var.create (box initialModel))
                     DefaultModel = box initialModel
-                    Queue = box (Queue<'action>())
-                    Result = None
+                    Queue = box (Queue<obj>())  // Use Queue<obj> for consistent type handling
+                    Result = Some (box (getResult initialModel))
                     ApplyAction = fun model action -> box (applyAction (unbox model) (unbox action))
                     GetResult = fun model -> box (getResult (unbox model))
                 }
@@ -104,5 +122,10 @@ module Driver =
             
         /// Inject an action directly for testing
         let injectAction (DriverT state) (action : 'action) : unit =
-            // Simplified: in real implementation would enqueue action
-            ()
+            let state = unbox<DriverState> state
+            match state.Queue with
+            | :? Queue<obj> as queue ->
+                queue.Enqueue(box action)
+            | _ -> 
+                // Can't enqueue to this type of queue
+                ()
