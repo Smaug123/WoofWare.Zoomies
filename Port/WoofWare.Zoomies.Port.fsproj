@@ -46,6 +46,8 @@
     <Compile Include="ConstantFold.fs"/>
     <Compile Include="FlattenValues.fs"/>
     <Compile Include="ToDot.fs"/>
+    <Compile Include="Cont.fs"/>
+    <Compile Include="Driver.fs"/>
     <Compile Include="Proc.fs"/>
     <Compile Include="Bonsai.fs"/>
     <Compile Include="Eval.fs"/>

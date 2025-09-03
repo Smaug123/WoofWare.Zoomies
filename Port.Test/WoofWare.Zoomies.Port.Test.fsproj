@@ -14,21 +14,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="TestHelpers.fs"/>
-    <Compile Include="BasicComputationTests.fs"/>
-    <Compile Include="BonsaiStateMachineTests.fs"/>
-    <Compile Include="ValueTests.fs"/>
-    <Compile Include="VarTests.fs"/>
-    <Compile Include="LifecycleTests.fs"/>
-    <Compile Include="SimplifyTests.fs"/>
-    <Compile Include="SkeletonTests.fs"/>
-    <Compile Include="TransformTests.fs"/>
-    <Compile Include="FixTransformTests.fs"/>
-    <Compile Include="GraphInfoTests.fs"/>
-    <Compile Include="ConstantFoldTests.fs"/>
-    <Compile Include="FlattenValuesTests.fs"/>
-    <Compile Include="ToDotTests.fs"/>
-    <Compile Include="Program.fs"/>
+    <Compile Include="ContTests.fs"/>
+    <Compile Include="DriverTests.fs"/>
   </ItemGroup>
 
   <ItemGroup>
