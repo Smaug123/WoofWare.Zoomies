@@ -45,16 +45,51 @@ module ProcMin =
         Computation.switch matchValue arms (here |> Option.defaultValue "switch")
     
     /// State machine with one input
-    let stateMachine1 (defaultModel : 'model) (applyAction : ApplyActionContext.ApplyActionContext<'input option> -> 'input option -> 'model -> 'action -> 'model) (input : Value<'input>) : Computation<'model * ('action -> unit Effect.Effect)> =
-        // For now, return a simplified version - this needs proper state machine implementation
-        let modelValue = Value.return' (defaultModel, fun _ -> Effect.ignore ())
-        Computation.return' modelValue
+    let stateMachine1<'model, 'input, 'action when 'model : equality> (defaultModel : 'model) (applyAction : ApplyActionContext.ApplyActionContext<'action> -> 'input option -> 'model -> 'action -> 'model) (input : Value<'input>) : Computation<'model * ('action -> Effect.Effect<unit>)> =
+        let name = "state_machine1"
+        let modelInfo = Model.ofModule string (Some (=)) defaultModel name
+        let inputId = MetaInput.create<'input> ()
+        let dynamicActionId = TypeId.create<'action> (sprintf "%s-action" name)
+        
+        let applyActionImpl (inject : 'action -> Effect.Effect<unit>) (scheduleEvent : Effect.Effect<unit> -> unit) (inputOpt : 'input option) (model : 'model) (action : 'action) : 'model =
+            // Convert Effect.Effect<unit> to ApplyActionContext.Effect<unit> and vice versa
+            let applyActionInject (action : 'action) : ApplyActionContext.Effect<unit> = 
+                fun () -> 
+                    let effect = inject action
+                    scheduleEvent effect
+            let applyActionSchedule (effect : ApplyActionContext.Effect<unit>) : unit = 
+                let unitEffect = Effect.ofThunk effect
+                scheduleEvent unitEffect
+            let context = ApplyActionContext.create applyActionInject applyActionSchedule
+            applyAction context inputOpt model action
+        
+        let resetImpl (inject : 'action -> Effect.Effect<unit>) (scheduleEvent : Effect.Effect<unit> -> unit) (model : 'model) : 'model =
+            defaultModel
+        
+        Computation.leaf1 modelInfo inputId dynamicActionId applyActionImpl resetImpl input
     
     /// State machine with no input
-    let stateMachine0 (defaultModel : 'model) (applyAction : ApplyActionContext.ApplyActionContext<unit> -> unit -> 'model -> 'action -> 'model) : Computation<'model * ('action -> unit Effect.Effect)> =
-        // For now, return a simplified version - this needs proper state machine implementation
-        let modelValue = Value.return' (defaultModel, fun _ -> Effect.ignore ())
-        Computation.return' modelValue
+    let stateMachine0<'model, 'action when 'model : equality> (defaultModel : 'model) (applyAction : ApplyActionContext.ApplyActionContext<'action> -> unit -> 'model -> 'action -> 'model) : Computation<'model * ('action -> Effect.Effect<unit>)> =
+        let name = "state_machine0"
+        let modelInfo = Model.ofModule string (Some (=)) defaultModel name
+        let staticActionId = TypeId.create<'action> (sprintf "%s-action" name)
+        
+        let applyActionImpl (inject : 'action -> Effect.Effect<unit>) (scheduleEvent : Effect.Effect<unit> -> unit) (model : 'model) (action : 'action) : 'model =
+            // Convert Effect.Effect<unit> to ApplyActionContext.Effect<unit> and vice versa
+            let applyActionInject (action : 'action) : ApplyActionContext.Effect<unit> = 
+                fun () -> 
+                    let effect = inject action
+                    scheduleEvent effect
+            let applyActionSchedule (effect : ApplyActionContext.Effect<unit>) : unit = 
+                let unitEffect = Effect.ofThunk effect
+                scheduleEvent unitEffect
+            let context = ApplyActionContext.create applyActionInject applyActionSchedule
+            applyAction context () model action
+        
+        let resetImpl (inject : 'action -> Effect.Effect<unit>) (scheduleEvent : Effect.Effect<unit> -> unit) (model : 'model) : 'model =
+            defaultModel
+        
+        Computation.leaf0 modelInfo staticActionId applyActionImpl resetImpl
     
     /// Associate over a map structure
     let assoc (map : Value<Map<'key, 'data>>) (f : Value<'key> -> Value<'data> -> Computation<'result>) : Computation<Map<'key, 'result>> =
