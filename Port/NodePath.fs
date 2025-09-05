@@ -1,3 +1,4 @@
+// Human reviewed
 namespace WoofWare.Zoomies.Port
 
 /// Represents the shortest unambiguous path through the Computation.t data
@@ -17,55 +18,55 @@ type NodePath = string
 
 [<RequireQualifiedAccess>]
 module NodePath =
-    
+
     /// Builder for constructing node paths incrementally
-    type Builder = {
-        Choices : int list
-        Depth : int
-    }
-    
+    type Builder =
+        {
+            Choices : int list
+            Depth : int
+        }
+
     let toString (builder : Builder) : string =
-        let buffer = System.Text.StringBuilder(10)
+        let buffer = System.Text.StringBuilder (10)
+
         match builder.Choices with
         | [] -> ()
         | choice :: choices ->
-            buffer.Append(choice.ToString()) |> ignore
-            choices |> List.iter (fun choice ->
-                buffer.Append('-') |> ignore
-                buffer.Append(choice.ToString()) |> ignore)
-        buffer.Append('_') |> ignore
-        buffer.Append(builder.Depth.ToString()) |> ignore
-        buffer.ToString()
-    
+            buffer.Append (choice.ToString ()) |> ignore
+
+            choices
+            |> List.iter (fun choice ->
+                buffer.Append ('-') |> ignore
+                buffer.Append (choice.ToString ()) |> ignore
+            )
+
+        buffer.Append ('_') |> ignore
+        buffer.Append (builder.Depth.ToString ()) |> ignore
+        buffer.ToString ()
+
     /// The empty node path
-    let empty : Builder = { Choices = []; Depth = 0 }
-    
+    let empty : Builder =
+        {
+            Choices = []
+            Depth = 0
+        }
+
     /// Adds a choice point to that input path. The provided number says which of
     /// the choices at that point was taken. When traversing a computation or
     /// value, if any case has multiple recursive calls, you should add a choice
     /// point to the path built up in each of those calls, with each call using a
     /// different number.
     let choicePoint (builder : Builder) (n : int) : Builder =
-        { Choices = builder.Choices @ [n]; Depth = 0 }
-    
+        {
+            Choices = builder.Choices @ [ n ]
+            Depth = 0
+        }
+
     /// Adds an extra segment to the input path. All such segments get forgotten
     /// when the next choice point is added.
     let descend (builder : Builder) : Builder =
-        { builder with Depth = builder.Depth + 1 }
-    
-    let finalize (builder : Builder) : NodePath =
-        toString builder
-    
-    /// Parse a node path string back into a Builder (for completeness)
-    let parse (path : string) : Builder option =
-        try
-            let parts = path.Split('_')
-            if parts.Length <> 2 then None
-            else
-                let depth = System.Int32.Parse(parts.[1])
-                let choices = 
-                    if parts.[0] = "" then []
-                    else parts.[0].Split('-') |> Array.map System.Int32.Parse |> Array.toList
-                Some { Choices = choices; Depth = depth }
-        with
-        | _ -> None
+        { builder with
+            Depth = builder.Depth + 1
+        }
+
+    let finalize (builder : Builder) : NodePath = toString builder

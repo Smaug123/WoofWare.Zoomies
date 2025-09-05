@@ -6,29 +6,24 @@ This file documents the topological ordering for migrating Bonsai files from OCa
 - **action.ml/mli** 🔄 TODO → Action.fs
 - **annotate_incr.ml/mli** 🔄 TODO → AnnotateIncr.fs
 - **apply_action_context.ml/mli** 🔄 TODO → ApplyActionContext.fs
-- **import_stable.ml** 🔄 TODO → ImportStable.fs (Note: import modules should be ignored per CLAUDE.md)
 - **keyed.ml/mli** 🔄 TODO → Keyed.fs
 - **may_contain.ml/mli** 🔄 TODO → MayContain.fs
 - **trampoline.ml/mli** 🔄 TODO → Trampoline.fs
 
 ## Level 1
-- **import.ml** → Import.fs (depends on: action, annotate_incr, module_types) - IGNORE per CLAUDE.md
-- **module_types.ml** → ModuleTypes.fs (depends on: apply_action_context)
 
 ## Level 2
 - **environment.ml/mli** → Environment.fs (depends on: import) 
 - **input.ml/mli** → Input.fs (depends on: import)
-- **legacy_api_intf.ml** → LegacyApiIntf.fs (depends on: import)
-- **map0_intf.ml** → Map0Intf.fs (depends on: import)
 - **meta.ml/mli** → Meta.fs (depends on: import)
 - **node_path.ml/mli** → NodePath.fs (depends on: import)
+HUMAN REVIEWED ^
 - **path.ml/mli** → Path.fs (depends on: import, keyed)
 - **stabilization_tracker.ml/mli** → StabilizationTracker.fs (depends on: import, keyed)
 
 ## Level 3
 - **value.ml/mli** → Value.fs (depends on: environment)
 - **lifecycle.ml/mli** → Lifecycle.fs (depends on: path)
-- **proc_intf.ml** → ProcIntf.fs (depends on: map0_intf, path)
 
 ## Level 4
 - **computation.ml** → Computation.fs (depends on: may_contain, meta, snapshot, trampoline, value)
@@ -38,7 +33,6 @@ This file documents the topological ordering for migrating Bonsai files from OCa
 
 ## Level 5
 - **eval_sub.ml/mli** → EvalSub.fs (depends on: computation)
-- **fix_transform_intf.ml** → FixTransformIntf.fs (depends on: computation)
 - **proc_min.ml/mli** → ProcMin.fs (depends on: computation)
 - **simplify.ml/mli** → Simplify.fs (depends on: computation)
 - **skeleton.ml/mli** → Skeleton.fs (depends on: computation, node_path)
