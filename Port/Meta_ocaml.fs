@@ -57,11 +57,6 @@ module Model =
             SexpOf : 'a -> string
         }
 
-    and HiddenModelEval<'ret> =
-        abstract Eval<'m when 'm : equality> : 'm * 'm Model -> 'ret
-
-    and HiddenModel =
-        abstract Apply<'ret> : HiddenModelEval<'ret> -> 'ret
 
     [<RequireQualifiedAccess>]
     module TupleModelIdCrate =

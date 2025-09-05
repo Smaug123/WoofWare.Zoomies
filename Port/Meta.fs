@@ -56,6 +56,19 @@ module Model =
             default_ = Map.empty<'key, 'keyIo * 'value>
         }
 
+    let ofModule<'a when 'a : equality>
+        (sexpOf : 'a -> string)
+        (equal : ('a -> 'a -> bool) option)
+        (defaultValue : 'a)
+        (name : string)
+        : 'a Model
+        =
+        // For the simplified Model structure, we just need the default value
+        // The sexpOf, equal, and name parameters are not used in this implementation
+        {
+            default_ = defaultValue
+        }
+
 type MultiModel = Map<int, Model.Hidden>
 
 module MultiModel =
@@ -65,33 +78,33 @@ module MultiModel =
             default_ = default_
         }
 
-type Input<'a> =
+type MetaInput<'a> =
     {
         typeId : TypeId<'a>
     }
 
-module Input =
+module MetaInput =
 
     type HiddenEval<'key, 'ret> =
-        abstract Eval<'input> : 'input * 'input Input * 'key -> 'ret
+        abstract Eval<'input> : 'input * 'input MetaInput * 'key -> 'ret
 
     and Hidden<'key> =
         abstract Apply<'key, 'ret> : HiddenEval<'key, 'ret> -> 'ret
 
 
-    let create<'a> () : 'a Input =
+    let create<'a> () : 'a MetaInput =
         {
             typeId = TypeId.create "input"
         }
 
-    let both (_ : 'a Input) (_ : 'b Input) = create<'a * 'b> ()
+    let both (_ : 'a MetaInput) (_ : 'b MetaInput) = create<'a * 'b> ()
 
-    let unit : unit Input =
+    let unit : unit MetaInput =
         {
             typeId = TypeId.create "lazy input"
         }
 
-    let int : int Input =
+    let int : int MetaInput =
         {
             typeId = TypeId.create "enum input"
         }
