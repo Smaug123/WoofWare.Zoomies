@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <Compile Include="External.fs"/>
+    <Compile Include="Map.fs"/>
     <Compile Include="SharedIncremental.fs"/>
     <Compile Include="TypeId.fs"/>
     <Compile Include="Effect.fs"/>

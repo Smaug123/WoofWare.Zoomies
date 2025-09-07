@@ -17,8 +17,8 @@ This file documents the topological ordering for migrating Bonsai files from OCa
 - **input.ml/mli** → Input.fs (depends on: import)
 - **meta.ml/mli** → Meta.fs (depends on: import)
 - **node_path.ml/mli** → NodePath.fs (depends on: import)
-HUMAN REVIEWED ^
 - **path.ml/mli** → Path.fs (depends on: import, keyed)
+HUMAN REVIEWED ^
 - **stabilization_tracker.ml/mli** → StabilizationTracker.fs (depends on: import, keyed)
 
 ## Level 3

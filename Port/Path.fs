@@ -1,5 +1,7 @@
+// Human reviewed
 namespace WoofWare.Zoomies.Port
 
+open System
 open System.Text
 
 // Path tracking for computation graphs - represents the location of a component in the tree
@@ -7,8 +9,6 @@ module Path =
 
     [<RequireQualifiedAccess>]
     module Elem =
-        let keyed (compare : 'a -> 'a -> int) (id : TypeId<'a>) : ('a -> Keyed.Keyed) =
-            fun key -> Keyed.create key id compare
 
         [<RequireQualifiedAccess>]
         [<StructuralComparison>]
@@ -18,19 +18,6 @@ module Path =
             | SubstInto
             | Assoc of Keyed.Keyed
             | Switch of int
-
-        let compare (a : Elem) (b : Elem) =
-            match a, b with
-            | Elem.SubstFrom, Elem.SubstFrom -> 0
-            | Elem.SubstFrom, _ -> -1
-            | _, Elem.SubstFrom -> 1
-            | Elem.SubstInto, Elem.SubstInto -> 0
-            | Elem.SubstInto, _ -> -1
-            | _, Elem.SubstInto -> 1
-            | Elem.Assoc keyedA, Elem.Assoc keyedB -> compare keyedA keyedB
-            | Elem.Assoc _, _ -> -1
-            | _, Elem.Assoc _ -> 1
-            | Elem.Switch a, Elem.Switch b -> a.CompareTo (b)
 
         let toString (elem : Elem) =
             let offset = int 'a'
@@ -75,15 +62,13 @@ module Path =
                 Count : int
             }
 
-        type RunLengthEncoding = Run list
-
-        let rec compare (a : RunLengthEncoding) (b : RunLengthEncoding) =
+        let rec compareRLE (a : Run list) (b : Run list) =
             match a, b with
             | [], [] -> 0
             | [], _ -> -1
             | _, [] -> 1
             | aRun :: aRest, bRun :: bRest ->
-                let c = Elem.compare aRun.Element bRun.Element
+                let c = compare aRun.Element bRun.Element
 
                 if c = 0 then
                     match aRun.Count - bRun.Count with
@@ -105,6 +90,37 @@ module Path =
                 else
                     c
 
+
+        [<CustomComparison ; CustomEquality>]
+        type RunLengthEncoding =
+            {
+                List : Run list
+            }
+
+            interface IComparable<RunLengthEncoding> with
+                member this.CompareTo (other : RunLengthEncoding) : int =
+                    if obj.ReferenceEquals (this, other) then
+                        0
+                    else
+                        compareRLE this.List other.List
+
+            interface IComparable with
+                member this.CompareTo (obj : obj) : int =
+                    match obj with
+                    | :? RunLengthEncoding as other -> (this :> IComparable<RunLengthEncoding>).CompareTo other
+                    | _ -> invalidArg "obj" "type mismatch"
+
+            interface IEquatable<RunLengthEncoding> with
+                member this.Equals (other : RunLengthEncoding) : bool =
+                    (this :> IComparable<RunLengthEncoding>).CompareTo (other) = 0
+
+            override this.Equals (obj : obj) : bool =
+                match obj with
+                | :? RunLengthEncoding as other -> (this :> IEquatable<RunLengthEncoding>).Equals other
+                | _ -> false
+
+            override this.GetHashCode () : int = this.List.GetHashCode ()
+
         let ofElemList (elements : Elem.Elem list) : RunLengthEncoding =
             let rec helper acc elements =
                 match acc, elements with
@@ -119,7 +135,7 @@ module Path =
                         rest
                 | _, [] -> List.rev acc
                 | current :: accRest, elem :: rest ->
-                    if Elem.compare current.Element elem = 0 then
+                    if current.Element = elem then
                         let updated =
                             { current with
                                 Count = current.Count + 1
@@ -135,7 +151,9 @@ module Path =
 
                         helper (newRun :: current :: accRest) rest
 
-            helper [] elements
+            {
+                List = helper [] elements
+            }
 
     // Internal representation for string building
     [<RequireQualifiedAccess>]
@@ -143,8 +161,8 @@ module Path =
         | Stringified of string
         | Parts of parent : 'a * elem : Elem.Elem
 
-    [<StructuralComparison>]
-    [<StructuralEquality>]
+    [<CustomComparison>]
+    [<CustomEquality>]
     type Path =
         {
             ItemsReversed : Elem.Elem list
@@ -153,26 +171,49 @@ module Path =
             mutable RunLengthEncodedItems : RunLengthEncoding.RunLengthEncoding option
         }
 
-    let private runLengthEncoding (path : Path) =
-        match path.RunLengthEncodedItems with
-        | Some items -> items
-        | None ->
-            let items = RunLengthEncoding.ofElemList (List.rev path.ItemsReversed)
-            path.RunLengthEncodedItems <- Some items
-            items
+        member path.RunLengthEncoding =
+            match path.RunLengthEncodedItems with
+            | Some items -> items
+            | None ->
+                let items = RunLengthEncoding.ofElemList (List.rev path.ItemsReversed)
+                path.RunLengthEncodedItems <- Some items
+                items
 
-    let compare (a : Path) (b : Path) =
-        if obj.ReferenceEquals (a, b) then
-            0
-        else
-            RunLengthEncoding.compare (runLengthEncoding a) (runLengthEncoding b)
+        interface IComparable<Path> with
+            member this.CompareTo (other : Path) : int =
+                if obj.ReferenceEquals (this, other) then
+                    0
+                else
+                    compare this.RunLengthEncoding other.RunLengthEncoding
+
+        interface IComparable with
+            member this.CompareTo (obj : obj) : int =
+                match obj with
+                | :? Path as other -> (this :> IComparable<Path>).CompareTo other
+                | _ -> invalidArg "obj" "type mismatch"
+
+        interface IEquatable<Path> with
+            member this.Equals (other : Path) : bool =
+                (this :> IComparable<Path>).CompareTo (other) = 0
+
+        override this.Equals (obj : obj) : bool =
+            match obj with
+            | :? Path as other -> (this :> IEquatable<Path>).Equals other
+            | _ -> false
+
+        override this.GetHashCode () : int = this.ItemsReversed.GetHashCode ()
+
 
     let empty =
         {
             ItemsForTesting = Some []
             ItemsReversed = []
             StringRepr = StringRepr.Stringified "bonsai_path"
-            RunLengthEncodedItems = Some []
+            RunLengthEncodedItems =
+                Some
+                    {
+                        List = []
+                    }
         }
 
     let append (path : Path) (elem : Elem.Elem) =
@@ -188,8 +229,7 @@ module Path =
         | StringRepr.Stringified s -> s
         | StringRepr.Parts (parent, elem) ->
             let parentStr = toUniqueIdentifierString parent
-            let elemStr = Elem.toString elem
-            let result = parentStr + "_" + elemStr
+            let result = parentStr + "_" + Elem.toString elem
             path.StringRepr <- StringRepr.Stringified result
             result
 
@@ -220,36 +260,7 @@ module Path =
                     | [], _ -> -1
                     | _, [] -> 1
                     | x :: xs, y :: ys ->
-                        let c = Elem.compare x y
+                        let c = compare x y
                         if c = 0 then compareItems xs ys else c
 
                 compareItems itemsA itemsB
-
-    // Map module for Path-keyed maps
-    module Map =
-        type t<'a> = Map<Path, 'a>
-        
-        let empty<'a> : t<'a> = Map.empty
-        
-        let exists (map : t<'a>) (predicate : 'a -> bool) : bool =
-            Map.exists (fun _ value -> predicate value) map
-            
-        let fold (map : t<'a>) (init : 'acc) (folder : 'acc -> Path -> 'a -> 'acc) : 'acc =
-            Map.fold folder init map
-            
-        [<RequireQualifiedAccess>]
-        type DiffResult<'a> = 
-            | Left of 'a 
-            | Right of 'a 
-            | Unequal of 'a * 'a
-        
-        let foldSymmetricDiff (oldMap : t<'a>) (newMap : t<'a>) (dataEqual : 'a -> 'a -> bool) (init : 'acc) (folder : 'acc -> Path * DiffResult<'a> -> 'acc) : 'acc =
-            let allKeys = Set.union (oldMap |> Map.keys |> Set.ofSeq) (newMap |> Map.keys |> Set.ofSeq)
-            allKeys
-            |> Set.fold (fun acc key ->
-                match Map.tryFind key oldMap, Map.tryFind key newMap with
-                | Some oldVal, None -> folder acc (key, DiffResult.Left oldVal)
-                | None, Some newVal -> folder acc (key, DiffResult.Right newVal)
-                | Some oldVal, Some newVal when not (dataEqual oldVal newVal) -> folder acc (key, DiffResult.Unequal (oldVal, newVal))
-                | _ -> acc
-            ) init
