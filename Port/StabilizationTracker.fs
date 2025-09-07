@@ -1,44 +1,49 @@
 namespace WoofWare.Zoomies.Port
 
+open TypeEquality
+
+
 /// A collection of stats about the stabilization tracker
 [<RequireQualifiedAccess>]
 module StabilizationStats =
-    
-    type Stats = {
-        mutable NumStabilize : int
-        mutable NumDontStabilize : int  
-        mutable NumStabilizeCausedByVars : int
-        mutable NumPrunesRun : int
-        mutable NumBranchesPruned : int
-    }
-    
-    let create () = {
-        NumStabilize = 0
-        NumDontStabilize = 0
-        NumStabilizeCausedByVars = 0
-        NumPrunesRun = 0
-        NumBranchesPruned = 0
-    }
-    
-    let incrStabilize (stats : Stats) = 
+
+    type Stats =
+        {
+            mutable NumStabilize : int
+            mutable NumDontStabilize : int
+            mutable NumStabilizeCausedByVars : int
+            mutable NumPrunesRun : int
+            mutable NumBranchesPruned : int
+        }
+
+    let create () =
+        {
+            NumStabilize = 0
+            NumDontStabilize = 0
+            NumStabilizeCausedByVars = 0
+            NumPrunesRun = 0
+            NumBranchesPruned = 0
+        }
+
+    let incrStabilize (stats : Stats) =
         stats.NumStabilize <- stats.NumStabilize + 1
-        
-    let incrDontStabilize (stats : Stats) = 
+
+    let incrDontStabilize (stats : Stats) =
         stats.NumDontStabilize <- stats.NumDontStabilize + 1
-        
-    let incrStabilizeCausedByVars (stats : Stats) = 
+
+    let incrStabilizeCausedByVars (stats : Stats) =
         stats.NumStabilizeCausedByVars <- stats.NumStabilizeCausedByVars + 1
-        
-    let incrPrunesRun (stats : Stats) = 
+
+    let incrPrunesRun (stats : Stats) =
         stats.NumPrunesRun <- stats.NumPrunesRun + 1
-        
-    let incrBranchesPruned (stats : Stats) = 
+
+    let incrBranchesPruned (stats : Stats) =
         stats.NumBranchesPruned <- stats.NumBranchesPruned + 1
-    
+
     let display (stats : Stats) =
         printfn "Stabilization Stats:"
         printfn "  Stabilizations before actions: %d" stats.NumStabilize
-        printfn "  Stabilizations caused by var changes: %d" stats.NumStabilizeCausedByVars  
+        printfn "  Stabilizations caused by var changes: %d" stats.NumStabilizeCausedByVars
         printfn "  Stabilizations skipped: %d" stats.NumDontStabilize
         printfn "  Prunes run: %d" stats.NumPrunesRun
         printfn "  Branches pruned: %d" stats.NumBranchesPruned
@@ -46,85 +51,224 @@ module StabilizationStats =
 /// Generation tracking for stabilization
 [<RequireQualifiedAccess>]
 module Generation =
-    
+
     type Generation = int
-    
+
     let initial : Generation = 0
     let next (gen : Generation) : Generation = gen + 1
 
+/// ActionTrie module containing the complex GADT structures
+[<RequireQualifiedAccess>]
+module ActionTrie =
+
+    let maxSecondsBetweenPrunes = 15
+    let numGenerationsToStale = 3 * 60 * maxSecondsBetweenPrunes
+
+    /// WithGeneration wrapper for tracking generation information
+    type WithGeneration<'inner> =
+        {
+            mutable Generation : Generation.Generation
+            mutable Inner : 'inner
+        }
+
+    /// Helper for creating empty generation wrappers
+    let withEmptyGeneration inner =
+        {
+            Generation = -1
+            Inner = inner
+        }
+
+    /// Helper for creating current generation wrappers
+    let withCurrentGeneration generation inner =
+        {
+            Generation = generation
+            Inner = inner
+        }
+
+    type Node<'inner> =
+        | Unexplored
+        | Terminal of TerminalCrate<'inner>
+        | Sub of SubCrate<'inner>
+        | Wrap of WrapCrate<'inner>
+        | ModelReset of ModelResetCrate<'inner>
+        | Lazy of PackedCrate * Teq<'inner, Lazy'>
+        | Assoc of AssocCrate<'inner>
+        | AssocOn of AssocOnCrate<'inner>
+        | Switch of SwitchData * Teq<'inner, Switch>
+
+    and TerminalCrate<'inner> =
+        abstract Apply : TerminalEval<'inner, 'ret> -> 'ret
+
+    and TerminalEval<'inner, 'ret> =
+        abstract Eval<'inner2> : Teq<'inner, 'inner2 Leaf> -> 'ret
+
+    and AssocCrate<'inner> =
+        abstract Apply : AssocEval<'inner, 'ret> -> 'ret
+
+    and AssocEval<'inner, 'ret> =
+        abstract Eval<'key, 'inner2> : AssocData<'inner2> * Teq<'inner, Assoc<'key, 'inner2>> -> 'ret
+
+    and AssocOnCrate<'inner> =
+        abstract Apply : AssocOnEval<'inner, 'ret> -> 'ret
+
+    and AssocOnEval<'inner, 'ret> =
+        abstract Eval<'ioKey, 'modelKey, 'inner2> :
+            AssocOnData<'inner2> * Teq<'inner, AssocOn<'ioKey, 'modelKey, 'inner2>> -> 'ret
+
+    and SubCrate<'inner> =
+        abstract Apply : SubEval<'inner, 'ret> -> 'ret
+
+    and SubEval<'inner, 'ret> =
+        abstract Eval<'from, 'into> :
+            from : 'from Node WithGeneration * into : 'into Node WithGeneration * Teq<'inner, Sub<'from, 'into>> -> 'ret
+
+    and WrapCrate<'inner> =
+        abstract Apply : WrapEval<'inner, 'ret> -> 'ret
+
+    and WrapEval<'inner, 'ret> =
+        abstract Eval<'inner2, 'outer> :
+            outer : unit WithGeneration * inner : 'inner2 Node WithGeneration * Teq<'inner, Wrap<'inner2, 'outer>> ->
+                'ret
+
+    and ModelResetCrate<'inner> =
+        abstract Apply : ModelResetEval<'inner, 'ret> -> 'ret
+
+    and ModelResetEval<'inner, 'ret> =
+        abstract Eval<'inner2> :
+            outer : unit WithGeneration * inner : 'inner2 Node WithGeneration * Teq<'inner, ModelResetter<'inner2>> ->
+                'ret
+
+    /// Packed type using crate pattern for existential types - corresponds to OCaml "packed"
+    and PackedEval<'ret> =
+        abstract Eval<'inner> : Node<'inner> WithGeneration * ActionId<'inner> -> 'ret
+
+    and PackedCrate =
+        abstract Apply<'ret> : PackedEval<'ret> -> 'ret
+
+    /// Supporting data structures for the Node GADT
+    and AssocData<'inner> =
+        {
+            mutable ByKey : Map<Keyed.Keyed, Node<'inner> WithGeneration>
+        }
+
+    and AssocOnData<'inner> =
+        {
+            mutable ByIoKey : Map<Keyed.Keyed, Node<'inner> WithGeneration>
+        }
+
+    and SwitchData =
+        {
+            mutable ByBranch : Map<int, PackedCrate>
+        }
+
+    /// Traverser type for walking through ActionTrie nodes
+    [<Interface>]
+    type Traverser<'state> =
+
+        abstract Unexplored : 'state -> Node<'stripped> WithGeneration -> Action<'stripped> -> 'state
+        abstract DynamicLeaf : 'state -> 'state
+        abstract StaticLeaf : 'state -> 'state
+
+        abstract Sub :
+            'state -> Node<'from> WithGeneration -> Node<'into> WithGeneration -> Action<Sub<'from, 'into>> -> 'state
+
+        abstract Wrap :
+            'state -> Node<'inner> WithGeneration -> unit WithGeneration -> Action<Wrap<'inner, 'outer>> -> 'state
+
+        abstract ModelReset :
+            'state -> Node<'inner> WithGeneration -> unit WithGeneration -> Action<ModelResetter<'inner>> -> 'state
+
+        abstract Lazy : 'state -> Node<'stripped> WithGeneration -> Action<'stripped> -> 'state
+        abstract Assoc : 'state -> AssocData<'inner> -> Keyed.Keyed -> Action<Assoc<'key, 'inner>> -> 'state
+
+        abstract AssocOn :
+            'state -> AssocOnData<'inner> -> Keyed.Keyed -> Action<AssocOn<'ioKey, 'modelKey, 'inner>> -> 'state
+
+        abstract Switch : 'state -> SwitchData -> int -> Action<Switch> -> 'state
+
+    /// Create empty node
+    let empty () : Node<'inner> WithGeneration = withEmptyGeneration Unexplored
+
+    /// Helper functions for creating nodes
+    module PackedCrate =
+        let make<'inner> (inner : Node<'inner> WithGeneration) (typeId : ActionId<'inner>) : PackedCrate =
+            { new PackedCrate with
+                member _.Apply e = e.Eval (inner, typeId)
+            }
+
 /// Simplified stabilization tracker implementation
-type StabilizationTracker<'action> = {
-    mutable Stats : StabilizationStats.Stats
-    mutable CurrentGeneration : Generation.Generation
-    mutable AmDebuggingTest : bool
-}
+type StabilizationTracker<'action> =
+    {
+        mutable Stats : StabilizationStats.Stats
+        mutable CurrentGeneration : Generation.Generation
+        mutable AmDebuggingTest : bool
+    }
 
 /// Global flag tracking whether incremental variables are dirty
 module private IncrementalState =
     let mutable dirtyIncrementalVars = false
-    
-    let markIncrementalDirty () = 
-        dirtyIncrementalVars <- true
-        
-    let markIncrementalClean () = 
-        dirtyIncrementalVars <- false
-        
+
+    let markIncrementalDirty () = dirtyIncrementalVars <- true
+
+    let markIncrementalClean () = dirtyIncrementalVars <- false
+
     let isDirty () = dirtyIncrementalVars
 
 [<RequireQualifiedAccess>]
 module StabilizationTracker =
-    
+
     /// Create an empty stabilization tracker
-    let empty () : StabilizationTracker<'action> = {
-        Stats = StabilizationStats.create ()
-        CurrentGeneration = Generation.initial
-        AmDebuggingTest = false
-    }
-    
+    let empty () : StabilizationTracker<'action> =
+        {
+            Stats = StabilizationStats.create ()
+            CurrentGeneration = Generation.initial
+            AmDebuggingTest = false
+        }
+
     /// Insert an action into the tracker
     let insert (tracker : StabilizationTracker<'action>) (action : Action<'action>) : unit =
         // Update the action tracking state
         // In the full implementation, this would maintain a complex trie of action paths
         // For now, we track that an action has occurred and increment generation
         tracker.CurrentGeneration <- Generation.next tracker.CurrentGeneration
-    
+
     /// Check if stabilization is required before applying an action
     let requiresStabilization (tracker : StabilizationTracker<'action>) (action : Action<'action>) : bool =
         // Simplified logic - in the full version this would check complex conditions
         let requiresStabilization = IncrementalState.isDirty ()
-        
+
         if requiresStabilization then
             StabilizationStats.incrStabilize tracker.Stats
+
             if IncrementalState.isDirty () then
                 StabilizationStats.incrStabilizeCausedByVars tracker.Stats
         else
             StabilizationStats.incrDontStabilize tracker.Stats
-            
+
         if tracker.AmDebuggingTest then
             if requiresStabilization then
                 printfn "stabilized"
             else
                 printfn "skipped stabilization"
-                
+
         requiresStabilization
-    
+
     /// Mark that incremental variables are dirty and require stabilization
     let markIncrementalDirty () : unit =
         IncrementalState.markIncrementalDirty ()
-    
+
     /// Mark that stabilization has occurred
     let markStabilization (tracker : StabilizationTracker<'action>) : unit =
         IncrementalState.markIncrementalClean ()
         tracker.CurrentGeneration <- Generation.next tracker.CurrentGeneration
-    
+
     /// Testing utilities
     [<RequireQualifiedAccess>]
     module ForTesting =
-        
-        let startDebugging (tracker : StabilizationTracker<'action>) : unit =
-            tracker.AmDebuggingTest <- true
-            
+
+        let startDebugging (tracker : StabilizationTracker<'action>) : unit = tracker.AmDebuggingTest <- true
+
         let numGenerationsForPruning : int = 2700 // 3 * 60 * 15 from original
-        
+
         let displayStats (tracker : StabilizationTracker<'action>) : unit =
             StabilizationStats.display tracker.Stats
