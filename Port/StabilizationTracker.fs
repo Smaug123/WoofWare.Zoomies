@@ -161,6 +161,231 @@ module ActionTrie =
             mutable ByBranch : Map<int, PackedCrate>
         }
 
+    module PackedCrate =
+        let create node actionId =
+            { new PackedCrate with
+                member _.Apply eval = eval.Eval (node, actionId)
+            }
+
+    module Node =
+        let empty () : Node<'inner> WithGeneration = withEmptyGeneration Unexplored
+
+        let with_current_generation currentGeneration inner =
+            {
+                Generation = currentGeneration
+                Inner = inner
+            }
+
+        let with_empty_generation inner =
+            {
+                Generation = -1
+                Inner = inner
+            }
+
+        let rec node_of_action<'a> (currentGeneration : Generation.Generation) (action : Action<'a>) : Node<'a> =
+            match action with
+            | LeafStatic leafStaticCrate ->
+                leafStaticCrate.Apply
+                    { new LeafStaticEval<_, _> with
+                        member _.Eval (teq, _) =
+                            Terminal
+                                { new TerminalCrate<_> with
+                                    member _.Apply eval = eval.Eval teq
+                                }
+                    }
+            | LeafDynamic leafDynamicCrate ->
+                leafDynamicCrate.Apply
+                    { new LeafDynamicEval<_, _> with
+                        member _.Eval (teq, _) =
+                            Terminal
+                                { new TerminalCrate<_> with
+                                    member _.Apply eval = eval.Eval teq
+                                }
+                    }
+            | SubFrom from ->
+                from.Apply
+                    { new SubFromEval<_, _> with
+                        member _.Eval<'from, 'into>
+                            (teq : Teq<'a, Sub<'from, 'into>>, from : Action<'from>)
+                            : Node<'a>
+                            =
+                            let from : WithGeneration<Node<'from>> =
+                                with_current_generation currentGeneration (node_of_action<'from> currentGeneration from)
+
+                            Sub
+                                { new SubCrate<_> with
+                                    member _.Apply eval = eval.Eval (from, empty (), teq)
+                                }
+
+                    }
+            | SubInto into ->
+                into.Apply
+                    { new SubIntoEval<_, _> with
+                        member _.Eval<'from, 'into>
+                            (teq : Teq<'a, Sub<'from, 'into>>, into : Action<'into>)
+                            : Node<'a>
+                            =
+                            let into : WithGeneration<Node<'into>> =
+                                with_current_generation currentGeneration (node_of_action<'into> currentGeneration into)
+
+                            Sub
+                                { new SubCrate<_> with
+                                    member _.Apply eval = eval.Eval (empty (), into, teq)
+                                }
+
+                    }
+            | WrapInner inner ->
+                inner.Apply
+                    { new WrapInnerEval<_, _> with
+                        member _.Eval<'inner, 'outer>
+                            (teq : Teq<'a, Wrap<'inner, 'outer>>, inner : Action<'inner>)
+                            : Node<'a>
+                            =
+                            let inner : WithGeneration<Node<'inner>> =
+                                with_current_generation
+                                    currentGeneration
+                                    (node_of_action<'inner> currentGeneration inner)
+
+                            Wrap
+                                { new WrapCrate<_> with
+                                    member _.Apply eval =
+                                        eval.Eval (withEmptyGeneration (), inner, teq)
+                                }
+
+                    }
+            | WrapOuter outer ->
+                outer.Apply
+                    { new WrapOuterEval<_, _> with
+                        member _.Eval (teq, _) =
+                            Wrap
+                                { new WrapCrate<_> with
+                                    member _.Apply eval =
+                                        eval.Eval (withCurrentGeneration currentGeneration (), empty (), teq)
+                                }
+                    }
+            | ModelResetInner inner ->
+                inner.Apply
+                    { new ModelResetInnerEval<_, _> with
+                        member _.Eval<'inner>
+                            (teq : Teq<'a, ModelResetter<'inner>>, inner : Action<'inner>)
+                            : Node<'a>
+                            =
+                            let inner : WithGeneration<Node<'inner>> =
+                                with_current_generation
+                                    currentGeneration
+                                    (node_of_action<'inner> currentGeneration inner)
+
+                            ModelReset
+                                { new ModelResetCrate<_> with
+                                    member _.Apply eval =
+                                        eval.Eval (withEmptyGeneration (), inner, teq)
+                                }
+
+                    }
+            | ModelResetOuter outer ->
+                outer.Apply
+                    { new ModelResetOuterEval<_, _> with
+                        member _.Eval teq =
+                            ModelReset
+                                { new ModelResetCrate<_> with
+                                    member _.Apply eval =
+                                        eval.Eval (withCurrentGeneration currentGeneration (), empty (), teq)
+                                }
+                    }
+            | Action.Switch switchCrate ->
+                switchCrate.Apply
+                    { new SwitchEval<_, _> with
+                        member _.Eval<'inner>
+                            (teq : Teq<'a, Switch>, branch : int, action : Action<'inner>, typeId : ActionId<'inner>)
+                            =
+                            let inner : WithGeneration<Node<'inner>> =
+                                with_current_generation
+                                    currentGeneration
+                                    (node_of_action<'inner> currentGeneration action)
+
+                            let packedInner =
+                                { new PackedCrate with
+                                    member _.Apply eval = eval.Eval (inner, typeId)
+                                }
+
+                            Switch (
+                                {
+                                    ByBranch = Map.ofList [ branch, packedInner ]
+                                },
+                                teq
+                            )
+                    }
+            | Action.Lazy lazyCrate ->
+                lazyCrate.Apply
+                    { new LazyEval<_, _> with
+                        member _.Eval<'inner>
+                            (teq : Teq<'a, Lazy'>, action : Action<'inner>, typeId : ActionId<'inner>)
+                            =
+                            let inner : WithGeneration<Node<'inner>> =
+                                with_current_generation
+                                    currentGeneration
+                                    (node_of_action<'inner> currentGeneration action)
+
+                            let packedInner = PackedCrate.create inner typeId
+
+                            Lazy (packedInner, teq)
+                    }
+            | Action.Assoc assocCrate ->
+                assocCrate.Apply
+                    { new ActionAssocEval<_, _> with
+                        member _.Eval<'key, 'inner when 'key : comparison>
+                            (teq : Teq<'a, Assoc<'key, 'inner>>, key, action, typeId)
+                            =
+                            let inner : WithGeneration<Node<'inner>> =
+                                with_current_generation
+                                    currentGeneration
+                                    (node_of_action<'inner> currentGeneration action)
+
+                            let keyedKey = Keyed.create key
+
+                            Assoc
+                                { new AssocCrate<_> with
+                                    member _.Apply eval =
+                                        eval.Eval (
+                                            {
+                                                ByKey = Map.ofList [ keyedKey, inner ]
+                                            },
+                                            teq
+                                        )
+                                }
+                    }
+            | Action.AssocOn assocOnCrate ->
+                assocOnCrate.Apply
+                    { new ActionAssocOnEval<_, _> with
+                        member _.Eval<'ioKey, 'modelKey, 'inner when 'ioKey : comparison>
+                            (
+                                teq : Teq<'a, AssocOn<'ioKey, 'modelKey, 'inner>>,
+                                ioKey : 'ioKey,
+                                modelKey : 'modelKey,
+                                action : Action<'inner>,
+                                ioTypeId : TypeId<'ioKey>
+                            )
+                            =
+                            let inner : WithGeneration<Node<'inner>> =
+                                with_current_generation
+                                    currentGeneration
+                                    (node_of_action<'inner> currentGeneration action)
+
+                            let keyedIoKey = Keyed.create ioKey
+
+                            AssocOn
+                                { new AssocOnCrate<_> with
+                                    member _.Apply eval =
+                                        eval.Eval (
+                                            {
+                                                ByIoKey = Map.ofList [ keyedIoKey, inner ]
+                                            },
+                                            teq
+                                        )
+                                }
+                    }
+
+
     /// Traverser type for walking through ActionTrie nodes
     [<Interface>]
     type Traverser<'state> =
@@ -185,16 +410,6 @@ module ActionTrie =
             'state -> AssocOnData<'inner> -> Keyed.Keyed -> Action<AssocOn<'ioKey, 'modelKey, 'inner>> -> 'state
 
         abstract Switch : 'state -> SwitchData -> int -> Action<Switch> -> 'state
-
-    /// Create empty node
-    let empty () : Node<'inner> WithGeneration = withEmptyGeneration Unexplored
-
-    /// Helper functions for creating nodes
-    module PackedCrate =
-        let make<'inner> (inner : Node<'inner> WithGeneration) (typeId : ActionId<'inner>) : PackedCrate =
-            { new PackedCrate with
-                member _.Apply e = e.Eval (inner, typeId)
-            }
 
 /// Simplified stabilization tracker implementation
 type StabilizationTracker<'action> =

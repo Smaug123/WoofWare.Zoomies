@@ -1,7 +1,6 @@
 // Human-reviewed
 namespace WoofWare.Zoomies.Port
 
-
 open TypeEquality
 
 /// Private phantom types for GADTs
@@ -88,8 +87,8 @@ and ActionId<'a> =
     | ModelResetId of ModelResetIdCrate<'a>
     | SwitchId of Teq<'a, Switch>
     | LazyId of Teq<'a, Lazy'>
-    | AssocId of AssocIdCrate<'a>
-    | AssocOnId of AssocOnIdCrate<'a>
+    | AssocId of ActionAssocIdCrate<'a>
+    | AssocOnId of ActionAssocOnIdCrate<'a>
 
 and LeafIdEval<'a, 'ret> =
     abstract Eval<'action> : Teq<'a, Leaf<'action>> * TypeId<'action> -> 'ret
@@ -115,18 +114,18 @@ and ModelResetIdEval<'a, 'ret> =
 and ModelResetIdCrate<'a> =
     abstract Apply<'ret> : ModelResetIdEval<'a, 'ret> -> 'ret
 
-and AssocIdEval<'a, 'ret> =
+and ActionAssocIdEval<'a, 'ret> =
     abstract Eval<'key, 'inner> : Teq<'a, Assoc<'key, 'inner>> * TypeId<'key> * ActionId<'inner> -> 'ret
 
-and AssocIdCrate<'a> =
-    abstract Apply<'ret> : AssocIdEval<'a, 'ret> -> 'ret
+and ActionAssocIdCrate<'a> =
+    abstract Apply<'ret> : ActionAssocIdEval<'a, 'ret> -> 'ret
 
-and AssocOnIdEval<'a, 'ret> =
+and ActionAssocOnIdEval<'a, 'ret> =
     abstract Eval<'ioKey, 'modelKey, 'inner> :
         Teq<'a, AssocOn<'ioKey, 'modelKey, 'inner>> * TypeId<'ioKey> * TypeId<'modelKey> * ActionId<'inner> -> 'ret
 
-and AssocOnIdCrate<'a> =
-    abstract Apply<'ret> : AssocOnIdEval<'a, 'ret> -> 'ret
+and ActionAssocOnIdCrate<'a> =
+    abstract Apply<'ret> : ActionAssocOnIdEval<'a, 'ret> -> 'ret
 
 /// GADT for actions using crate pattern
 and ActionEval<'ret> =
@@ -146,7 +145,7 @@ and Action<'a> =
     | ModelResetOuter of ModelResetOuterCrate<'a>
     | Switch of SwitchCrate<'a>
     | Lazy of LazyCrate<'a>
-    | Assoc of AssocCrate<'a>
+    | Assoc of ActionAssocCrate<'a>
     | AssocOn of AssocOnCrate<'a>
 
 and LeafStaticEval<'a, 'ret> =
@@ -209,25 +208,19 @@ and LazyEval<'a, 'ret> =
 and LazyCrate<'a> =
     abstract Apply<'ret> : LazyEval<'a, 'ret> -> 'ret
 
-and AssocEval<'a, 'ret> =
-    abstract Eval<'key, 'inner> :
-        Teq<'a, Assoc<'key, 'inner>> * 'key * Action<'inner> * TypeId<'key> * ('key -> 'key -> int) -> 'ret
+and ActionAssocEval<'a, 'ret> =
+    abstract Eval<'key, 'inner when 'key : comparison> :
+        Teq<'a, Assoc<'key, 'inner>> * 'key * Action<'inner> * TypeId<'key> -> 'ret
 
-and AssocCrate<'a> =
-    abstract Apply<'ret> : AssocEval<'a, 'ret> -> 'ret
+and ActionAssocCrate<'a> =
+    abstract Apply<'ret> : ActionAssocEval<'a, 'ret> -> 'ret
 
-and AssocOnEval<'a, 'ret> =
-    abstract Eval<'ioKey, 'modelKey, 'inner> :
-        Teq<'a, AssocOn<'ioKey, 'modelKey, 'inner>> *
-        'ioKey *
-        'modelKey *
-        Action<'inner> *
-        TypeId<'ioKey> *
-        ('ioKey -> 'ioKey -> int) ->
-            'ret
+and ActionAssocOnEval<'a, 'ret> =
+    abstract Eval<'ioKey, 'modelKey, 'inner when 'ioKey : comparison> :
+        Teq<'a, AssocOn<'ioKey, 'modelKey, 'inner>> * 'ioKey * 'modelKey * Action<'inner> * TypeId<'ioKey> -> 'ret
 
 and AssocOnCrate<'a> =
-    abstract Apply<'ret> : AssocOnEval<'a, 'ret> -> 'ret
+    abstract Apply<'ret> : ActionAssocOnEval<'a, 'ret> -> 'ret
 
 module ActionId =
 
@@ -332,12 +325,12 @@ module ActionId =
             Some (Teq.transitivity step1 step2)
         | AssocId crateA, AssocId crateB ->
             crateA.Apply
-                { new AssocIdEval<_, _> with
+                { new ActionAssocIdEval<_, _> with
                     member _.Eval<'key1, 'inner1>
                         (teqA : Teq<'a, Assoc<'key1, 'inner1>>, keyIdA, innerIdA : ActionId<'inner1>)
                         =
                         crateB.Apply
-                            { new AssocIdEval<_, _> with
+                            { new ActionAssocIdEval<_, _> with
                                 member _.Eval<'key2, 'inner2>
                                     (teqB : Teq<'b, Assoc<'key2, 'inner2>>, keyIdB, innerIdB : ActionId<'inner2>)
                                     =
@@ -352,7 +345,7 @@ module ActionId =
                 }
         | AssocOnId crateA, AssocOnId crateB ->
             crateA.Apply
-                { new AssocOnIdEval<_, _> with
+                { new ActionAssocOnIdEval<_, _> with
                     member _.Eval<'ioKey1, 'modelKey1, 'inner1>
                         (
                             teqA : Teq<'a, AssocOn<'ioKey1, 'modelKey1, 'inner1>>,
@@ -362,7 +355,7 @@ module ActionId =
                         )
                         =
                         crateB.Apply
-                            { new AssocOnIdEval<_, _> with
+                            { new ActionAssocOnIdEval<_, _> with
                                 member _.Eval<'ioKey2, 'modelKey2, 'inner2>
                                     (
                                         teqB : Teq<'b, AssocOn<'ioKey2, 'modelKey2, 'inner2>>,
@@ -443,7 +436,7 @@ module ActionId =
         let teq = Teq.refl<Assoc<'key, 'inner>>
 
         AssocId
-            { new AssocIdCrate<Assoc<'key, 'inner>> with
+            { new ActionAssocIdCrate<Assoc<'key, 'inner>> with
                 member _.Apply e = e.Eval (teq, key, action)
             }
 
@@ -458,7 +451,7 @@ module ActionId =
         let teq = Teq.refl<AssocOn<'ioKey, 'modelKey, 'inner>>
 
         AssocOnId
-            { new AssocOnIdCrate<AssocOn<'ioKey, 'modelKey, 'inner>> with
+            { new ActionAssocOnIdCrate<AssocOn<'ioKey, 'modelKey, 'inner>> with
                 member _.Apply e = e.Eval (teq, ioKey, modelKey, action)
             }
 
@@ -565,29 +558,26 @@ module Action =
 
 
     /// Create an Assoc Action
-    let assoc<'key, 'inner>
+    let assoc<'key, 'inner when 'key : comparison>
         (key : 'key)
         (action : Action<'inner>)
         (typeId : TypeId<'key>)
-        (compare : 'key -> 'key -> int)
         : Action<Assoc<'key, 'inner>>
         =
         let teq = Teq.refl<Assoc<'key, 'inner>>
 
         Assoc
-            { new AssocCrate<Assoc<'key, 'inner>> with
-                member _.Apply e =
-                    e.Eval (teq, key, action, typeId, compare)
+            { new ActionAssocCrate<Assoc<'key, 'inner>> with
+                member _.Apply e = e.Eval (teq, key, action, typeId)
             }
 
 
     /// Create an AssocOn Action
-    let assocOn<'ioKey, 'modelKey, 'inner>
+    let assocOn<'ioKey, 'modelKey, 'inner when 'ioKey : comparison>
         (ioKey : 'ioKey)
         (modelKey : 'modelKey)
         (action : Action<'inner>)
         (ioTypeId : TypeId<'ioKey>)
-        (ioCompare : 'ioKey -> 'ioKey -> int)
         : Action<AssocOn<'ioKey, 'modelKey, 'inner>>
         =
         let teq = Teq.refl<AssocOn<'ioKey, 'modelKey, 'inner>>
@@ -595,5 +585,5 @@ module Action =
         AssocOn
             { new AssocOnCrate<AssocOn<'ioKey, 'modelKey, 'inner>> with
                 member _.Apply e =
-                    e.Eval (teq, ioKey, modelKey, action, ioTypeId, ioCompare)
+                    e.Eval (teq, ioKey, modelKey, action, ioTypeId)
             }
