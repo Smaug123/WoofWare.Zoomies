@@ -265,3 +265,13 @@ This guide represents BINDING CONSTRAINTS, not suggestions.
 **If the pattern seems "too complex"**: Complexity is INTENTIONAL for type safety. The user chose this pattern for a reason.
 
 Your job is to implement the Crate Pattern correctly, not to judge its complexity or suggest alternatives.
+
+===
+
+## GADT Traversal Rules
+
+When implementing GADT traversal functions:
+1. **Annotate ALL type variables** explicitly, especially for recursive functions
+2. **The recursive function must be top-level**, not nested/private
+3. **Use explicit type annotations** on function parameters and return types
+4. **Each pattern match branch** should handle the specific GADT constructor properly

@@ -411,6 +411,147 @@ module ActionTrie =
 
         abstract Switch : 'state -> SwitchData -> int -> Action<Switch> -> 'state
 
+    /// Traverse function for walking through ActionTrie nodes  
+    let rec traverse (state : 'state) (traverser : Traverser<'state>) (action : Action<'stripped>) (t : Node<'stripped> WithGeneration) : 'state =
+        match t.Inner with
+        | Unexplored -> traverser.Unexplored state t action
+        | Terminal _ ->
+            match action with
+            | LeafDynamic _ -> traverser.DynamicLeaf state
+            | LeafStatic _ -> traverser.StaticLeaf state
+            | _ -> state
+        | Sub subCrate ->
+            subCrate.Apply {
+                new SubEval<_, _> with
+                member _.Eval(from, into, teq) =
+                    let state = traverser.Sub state from into action
+                    match action with
+                    | SubFrom fromCrate ->
+                        fromCrate.Apply {
+                            new SubFromEval<_, _> with
+                            member _.Eval(teq, fromAction) = traverse state traverser fromAction from
+                        }
+                    | SubInto intoCrate ->
+                        intoCrate.Apply {
+                            new SubIntoEval<_, _> with  
+                            member _.Eval(teq, intoAction) = traverse state traverser intoAction into
+                        }
+                    | _ -> state
+            }
+        | Wrap wrapCrate ->
+            wrapCrate.Apply {
+                new WrapEval<_, _> with
+                member _.Eval(outer, inner, teq) =
+                    let state = traverser.Wrap state inner outer action
+                    match action with
+                    | WrapInner innerCrate ->
+                        innerCrate.Apply {
+                            new WrapInnerEval<_, _> with
+                            member _.Eval(teq, innerAction) = traverse state traverser innerAction inner
+                        }
+                    | WrapOuter outerCrate ->
+                        outerCrate.Apply {
+                            new WrapOuterEval<_, _> with
+                            member _.Eval(teq, outerAction) = traverser.DynamicLeaf state
+                        }
+                    | _ -> state
+            }
+        | ModelReset modelResetCrate ->
+            modelResetCrate.Apply {
+                new ModelResetEval<_, _> with
+                member _.Eval(outer, inner, teq) =
+                    let state = traverser.ModelReset state inner outer action
+                    match action with
+                    | ModelResetInner innerCrate ->
+                        innerCrate.Apply {
+                            new ModelResetInnerEval<_, _> with
+                            member _.Eval(teq, innerAction) = traverse state traverser innerAction inner
+                        }
+                    | ModelResetOuter outerCrate ->
+                        outerCrate.Apply {
+                            new ModelResetOuterEval<_, _> with
+                            member _.Eval(teq) = traverser.StaticLeaf state
+                        }
+                    | _ -> state
+            }
+        | Lazy (packedCrate, teq) ->
+            packedCrate.Apply {
+                new PackedEval<_> with
+                member _.Eval(inner, typeId) =
+                    match action with
+                    | Action.Lazy lazyCrate ->
+                        lazyCrate.Apply {
+                            new LazyEval<_, _> with
+                            member _.Eval(teq, innerAction, actionTypeId) =
+                                let state = traverser.Lazy state inner innerAction
+                                traverse state traverser innerAction inner
+                        }
+                    | _ -> state
+            }
+        | Assoc assocCrate ->
+            assocCrate.Apply {
+                new AssocEval<_, _> with
+                member _.Eval(assocData, teq) =
+                    match action with
+                    | Action.Assoc actionAssocCrate ->
+                        actionAssocCrate.Apply {
+                            new ActionAssocEval<_, _> with
+                            member _.Eval(teq, key, innerAction, typeId) =
+                                let keyedKey = Keyed.create key
+                                let state = traverser.Assoc state assocData keyedKey action
+                                match Map.tryFind keyedKey assocData.ByKey with
+                                | None ->
+                                    let empty = Node.empty ()
+                                    assocData.ByKey <- Map.add keyedKey empty assocData.ByKey
+                                    traverser.Unexplored state empty innerAction
+                                | Some inner -> 
+                                    traverse state traverser innerAction inner
+                        }
+                    | _ -> state
+            }
+        | AssocOn assocOnCrate ->
+            assocOnCrate.Apply {
+                new AssocOnEval<_, _> with
+                member _.Eval(assocOnData, teq) =
+                    match action with
+                    | Action.AssocOn actionAssocOnCrate ->
+                        actionAssocOnCrate.Apply {
+                            new ActionAssocOnEval<_, _> with
+                            member _.Eval(teq, ioKey, modelKey, innerAction, ioTypeId) =
+                                let keyedIoKey = Keyed.create ioKey
+                                let state = traverser.AssocOn state assocOnData keyedIoKey action
+                                match Map.tryFind keyedIoKey assocOnData.ByIoKey with
+                                | None ->
+                                    let empty = Node.empty ()
+                                    assocOnData.ByIoKey <- Map.add keyedIoKey empty assocOnData.ByIoKey
+                                    traverser.Unexplored state empty innerAction
+                                | Some inner ->
+                                    traverse state traverser innerAction inner
+                        }
+                    | _ -> state
+            }
+        | Switch (switchData, teq) ->
+            match action with
+            | Action.Switch switchCrate ->
+                switchCrate.Apply {
+                    new SwitchEval<_, _> with
+                    member _.Eval(teq, branch, innerAction, actionTypeId) =
+                        let state = traverser.Switch state switchData branch action
+                        match Map.tryFind branch switchData.ByBranch with
+                        | None ->
+                            let empty = Node.empty ()
+                            let packedEmpty = PackedCrate.create empty actionTypeId
+                            switchData.ByBranch <- Map.add branch packedEmpty switchData.ByBranch
+                            traverser.Unexplored state empty innerAction
+                        | Some packedInner ->
+                            packedInner.Apply {
+                                new PackedEval<_> with
+                                member _.Eval(inner, typeId) =
+                                    traverse state traverser innerAction inner
+                            }
+                }
+            | _ -> state
+
 /// Simplified stabilization tracker implementation
 type StabilizationTracker<'action> =
     {
