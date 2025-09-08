@@ -6,6 +6,10 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "WoofWare.Zoomies.App", "Woo
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "WoofWare.Zoomies.Test", "WoofWare.Zoomies.Test\WoofWare.Zoomies.Test.fsproj", "{26450225-A904-42B8-A916-38040EF4F3DF}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "WoofWare.Zoomies.Port", "Port\WoofWare.Zoomies.Port.fsproj", "{A1234567-1234-1234-1234-123456789ABC}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "WoofWare.Zoomies.Port.Test", "Port.Test\WoofWare.Zoomies.Port.Test.fsproj", "{B1234567-1234-1234-1234-123456789ABC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +28,13 @@ Global
 		{26450225-A904-42B8-A916-38040EF4F3DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{26450225-A904-42B8-A916-38040EF4F3DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{26450225-A904-42B8-A916-38040EF4F3DF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1234567-1234-1234-1234-123456789ABC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1234567-1234-1234-1234-123456789ABC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1234567-1234-1234-1234-123456789ABC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1234567-1234-1234-1234-123456789ABC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B1234567-1234-1234-1234-123456789ABC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B1234567-1234-1234-1234-123456789ABC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B1234567-1234-1234-1234-123456789ABC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B1234567-1234-1234-1234-123456789ABC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

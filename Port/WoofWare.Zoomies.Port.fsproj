@@ -1,0 +1,65 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <Authors>Patrick Stevens</Authors>
+    <Copyright>Copyright (c) Patrick Stevens 2025</Copyright>
+    <Description>A port of Jane Street's Bonsai library to F#.</Description>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/Smaug123/WoofWare.Zoomies</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>bonsai;reactive;ui</PackageTags>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="External.fs"/>
+    <Compile Include="Map.fs"/>
+    <Compile Include="SharedIncremental.fs"/>
+    <Compile Include="TypeId.fs"/>
+    <Compile Include="Effect.fs"/>
+    <Compile Include="Action.fs"/>
+    <Compile Include="AnnotateIncr.fs"/>
+    <Compile Include="ApplyActionContext.fs"/>
+    <Compile Include="Keyed.fs"/>
+    <Compile Include="MayContain.fs"/>
+    <Compile Include="Trampoline.fs"/>
+    <Compile Include="Path.fs"/>
+    <Compile Include="Lifecycle.fs"/>
+    <Compile Include="Environment.fs"/>
+    <Compile Include="Input.fs"/>
+    <Compile Include="Meta.fs"/>
+    <Compile Include="NodePath.fs"/>
+    <Compile Include="StabilizationTracker.fs"/>
+    <Compile Include="Value.fs"/>
+    <Compile Include="Snapshot.fs"/>
+    <Compile Include="Var.fs"/>
+    <Compile Include="Computation.fs"/>
+    <Compile Include="ProcMin.fs"/>
+    <Compile Include="EvalSub.fs"/>
+    <Compile Include="Simplify.fs"/>
+    <Compile Include="Skeleton.fs"/>
+    <Compile Include="Transform.fs"/>
+    <Compile Include="FixTransform.fs"/>
+    <Compile Include="GraphInfo.fs"/>
+    <Compile Include="ConstantFold.fs"/>
+    <Compile Include="FlattenValues.fs"/>
+    <Compile Include="ToDot.fs"/>
+    <Compile Include="Cont.fs"/>
+    <Compile Include="Driver.fs"/>
+    <Compile Include="Proc.fs"/>
+    <Compile Include="Bonsai.fs"/>
+    <Compile Include="Eval.fs"/>
+    <Compile Include="Incr0.fs"/>
+    <!-- Modules will be added here in topological order -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="TypeEquality" Version="0.3.0"/>
+    <PackageReference Include="WoofWare.Incremental" Version="0.1.3"/>
+    <PackageReference Include="WoofWare.TimingWheel" Version="0.6.1"/>
+  </ItemGroup>
+
+</Project>
