@@ -4,9 +4,16 @@
     <TargetFramework>net9.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <OutputType>Exe</OutputType>
+    <WoofWareMyriadPluginVersion>8.1.1</WoofWareMyriadPluginVersion>
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="GeneratedStopwatch.fs">
+      <MyriadFile>../WoofWare.Zoomies/IStopwatch.fs</MyriadFile>
+      <MyriadParams>
+        <IStopwatch>GenerateMock</IStopwatch>
+      </MyriadParams>
+    </Compile>
     <Compile Include="ConsoleHarness.fs" />
     <Compile Include="CtrlCHandler.fs" />
     <Compile Include="MockWorld.fs" />
@@ -25,6 +32,11 @@
     <PackageReference Include="NUnit" Version="4.3.2" />
     <PackageReference Include="NUnit3TestAdapter" Version="5.0.0" />
     <PackageReference Include="WoofWare.Expect" Version="0.8.1" />
+    <PackageReference Include="WoofWare.Myriad.Plugins" Version="$(WoofWareMyriadPluginVersion)" PrivateAssets="all" />
+    <PackageReference Include="Myriad.Sdk" Version="0.8.3" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <MyriadSdkGenerator Include="$(NuGetPackageRoot)/woofware.myriad.plugins/$(WoofWareMyriadPluginVersion)/lib/net6.0/WoofWare.Myriad.Plugins.dll" />
   </ItemGroup>
 </Project>
 

@@ -49,9 +49,10 @@ type WorldStateChange<'appEvent> =
 
 type private DequeueState =
     | Normal
-    | EscReceived of ConsoleKeyInfo
-    | OpenCSI of esc : ConsoleKeyInfo * bracket : ConsoleKeyInfo
+    | EscReceived of timestamp : int64 * esc : ConsoleKeyInfo
+    | OpenCSI of escTimestamp : int64 * esc : ConsoleKeyInfo * bracket : ConsoleKeyInfo
     | SgrTracking of
+        escTimestamp : int64 *
         esc : ConsoleKeyInfo *
         bracket : ConsoleKeyInfo *
         angle : ConsoleKeyInfo *
@@ -59,21 +60,49 @@ type private DequeueState =
         parameters : int list *
         pending : ConsoleKeyInfo list *
         processed : ConsoleKeyInfo list
-    | ConsumingCSI of esc : ConsoleKeyInfo * bracket : ConsoleKeyInfo * keys : ConsoleKeyInfo list
+    | ConsumingCSI of
+        escTimestamp : int64 *
+        esc : ConsoleKeyInfo *
+        bracket : ConsoleKeyInfo *
+        keys : ConsoleKeyInfo list
+
+    member this.ReemitIfTime (sw : IStopwatch) =
+        match this with
+        | DequeueState.Normal -> None
+        | DequeueState.EscReceived (timestamp = ts ; esc = esc) ->
+            if (sw.GetTimestamp () - ts |> float) / float sw.Frequency > 0.01 then
+                Some [| esc |]
+            else
+                None
+        | DequeueState.OpenCSI (escTimestamp = ts ; esc = esc ; bracket = bracket) ->
+            if (sw.GetTimestamp () - ts |> float) / float sw.Frequency > 0.01 then
+                Some [| esc ; bracket |]
+            else
+                None
+        | DequeueState.SgrTracking (ts, esc, bracket, angle, _, _, _, processed) ->
+            if (sw.GetTimestamp () - ts |> float) / float sw.Frequency > 0.01 then
+                Some [| esc ; bracket ; angle ; yield! List.rev processed |]
+            else
+                None
+        | DequeueState.ConsumingCSI (ts, esc, bracket, keys) ->
+            if (sw.GetTimestamp () - ts |> float) / float sw.Frequency > 0.01 then
+                Some [| esc ; bracket ; yield! List.rev keys |]
+            else
+                None
 
     override this.ToString () =
         match this with
         | DequeueState.Normal -> "<waiting>"
         | DequeueState.EscReceived _ -> "ESC"
         | DequeueState.OpenCSI _ -> "ESC]"
-        | DequeueState.SgrTracking (_, _, _, mode, parameters, pending, _) ->
+        | DequeueState.SgrTracking (mode = mode ; parameters = parameters ; pending = pending) ->
             let parameters = parameters |> List.rev |> List.map string<int> |> String.concat ";"
 
             let pending =
                 pending |> List.map (fun c -> c.KeyChar) |> List.rev |> List.toArray |> String
 
             $"ESC]< %O{mode} %s{parameters} ; pending: %s{pending}"
-        | DequeueState.ConsumingCSI (_, _, keys) ->
+        | DequeueState.ConsumingCSI (keys = keys) ->
             let keys =
                 keys |> List.map (fun c -> c.KeyChar) |> List.rev |> List.toArray |> String
 
@@ -88,6 +117,7 @@ type WorldFreezer<'appEvent> =
             _Changes : ConcurrentQueue<RawWorldStateChange<'appEvent>>
             /// Invariant: this is only mutated within `this.Changes()`.
             mutable _DequeueState : DequeueState
+            _Stopwatch : IStopwatch
             _RefreshExternal : unit -> unit
             _Post : (CancellationToken -> Task<'appEvent>) -> unit
         }
@@ -109,7 +139,6 @@ type WorldFreezer<'appEvent> =
             let mutable out = Unchecked.defaultof<_>
 
             while this._Changes.TryDequeue &out do
-                // TODO: if it's been enough time since we saw the opening of an escape sequence, flush
                 match this._DequeueState, out with
                 | _, RawWorldStateChange.ApplicationEvent evt -> result.Add (WorldStateChange.ApplicationEvent evt)
                 | _, RawWorldStateChange.ApplicationEventException exc ->
@@ -117,30 +146,30 @@ type WorldFreezer<'appEvent> =
                 | DequeueState.Normal, RawWorldStateChange.Keystroke key ->
                     // not in the middle of an escape sequence
                     if key.Key = ConsoleKey.Escape && key.Modifiers = ConsoleModifiers.None then
-                        this._DequeueState <- DequeueState.EscReceived key
+                        this._DequeueState <- DequeueState.EscReceived (this._Stopwatch.GetTimestamp (), key)
                     else
                         result.Add (WorldStateChange.Keystroke key)
-                | DequeueState.EscReceived esc, RawWorldStateChange.Keystroke key ->
+                | DequeueState.EscReceived (ts, esc), RawWorldStateChange.Keystroke key ->
                     // escape sequence begun
                     if key.KeyChar = '[' && key.Modifiers = ConsoleModifiers.None then
-                        this._DequeueState <- DequeueState.OpenCSI (esc, key)
+                        this._DequeueState <- DequeueState.OpenCSI (ts, esc, key)
                     else
                         result.Add (WorldStateChange.Keystroke esc)
                         result.Add (WorldStateChange.Keystroke key)
                         this._DequeueState <- DequeueState.Normal
-                | DequeueState.OpenCSI (esc, bracket), RawWorldStateChange.Keystroke key ->
+                | DequeueState.OpenCSI (ts, esc, bracket), RawWorldStateChange.Keystroke key ->
                     match key.KeyChar with
                     | '<' ->
                         // SGR tracking mouse sequence
-                        this._DequeueState <- DequeueState.SgrTracking (esc, bracket, key, None, [], [], [])
+                        this._DequeueState <- DequeueState.SgrTracking (ts, esc, bracket, key, None, [], [], [])
                     | i when '0' <= i && i <= '9' ->
-                        this._DequeueState <- DequeueState.ConsumingCSI (esc, bracket, [ key ])
+                        this._DequeueState <- DequeueState.ConsumingCSI (ts, esc, bracket, [ key ])
                     | c ->
                         failwith
                             $"TODO (Unrecognised ANSI control sequence: received char '%c{c}'): emit the processed keys instead"
-                | DequeueState.ConsumingCSI (esc, bracket, pending), RawWorldStateChange.Keystroke key ->
+                | DequeueState.ConsumingCSI (ts, esc, bracket, pending), RawWorldStateChange.Keystroke key ->
                     if '0' <= key.KeyChar && key.KeyChar <= '9' then
-                        this._DequeueState <- DequeueState.ConsumingCSI (esc, bracket, key :: pending)
+                        this._DequeueState <- DequeueState.ConsumingCSI (ts, esc, bracket, key :: pending)
                     else
                         let code =
                             (0, List.rev pending)
@@ -154,7 +183,7 @@ type WorldFreezer<'appEvent> =
                             result.Add (WorldStateChange.KeyboardEvent KeyboardEvent.EndBracketedPaste)
                             this._DequeueState <- DequeueState.Normal
                         | _ -> failwith $"TODO: don't know how to handle CSI code %i{code} with key %c{key.KeyChar}"
-                | DequeueState.SgrTracking (esc, bracket, angle, button, parameters, pending, processed),
+                | DequeueState.SgrTracking (ts, esc, bracket, angle, button, parameters, pending, processed),
                   RawWorldStateChange.Keystroke key ->
                     match key.KeyChar with
                     | ';' ->
@@ -204,6 +233,7 @@ type WorldFreezer<'appEvent> =
 
                             this._DequeueState <-
                                 DequeueState.SgrTracking (
+                                    ts,
                                     esc,
                                     bracket,
                                     angle,
@@ -220,6 +250,7 @@ type WorldFreezer<'appEvent> =
 
                             this._DequeueState <-
                                 DequeueState.SgrTracking (
+                                    ts,
                                     esc,
                                     bracket,
                                     angle,
@@ -231,6 +262,7 @@ type WorldFreezer<'appEvent> =
                     | x when '0' <= x && x <= '9' ->
                         this._DequeueState <-
                             DequeueState.SgrTracking (
+                                ts,
                                 esc,
                                 bracket,
                                 angle,
@@ -273,6 +305,12 @@ type WorldFreezer<'appEvent> =
                             this._DequeueState <- DequeueState.Normal
                     | c -> failwith $"TODO: unrecognised char '%c{c}'"
 
+            match this._DequeueState.ReemitIfTime this._Stopwatch with
+            | Some expiredKeys ->
+                this._DequeueState <- DequeueState.Normal
+                expiredKeys |> Seq.map WorldStateChange.Keystroke |> result.AddRange
+            | None -> ()
+
             result.ToArray () |> ValueSome
 
     member this.PostAppEvent a = this._Post a
@@ -283,8 +321,14 @@ type WorldFreezer<'appEvent> =
 
 [<RequireQualifiedAccess>]
 module WorldFreezer =
-    /// Pass `fun () -> Console.KeyAvailable` for `keyAvailable`, and `fun () -> Console.ReadKey true` for `readKey`.
-    let listen'<'appEvent> (keyAvailable : unit -> bool) (readKey : unit -> ConsoleKeyInfo) : WorldFreezer<'appEvent> =
+    /// Pass `fun () -> Console.KeyAvailable` for `keyAvailable`, `Stopwatch.system` for `stopwatch`,
+    /// and `fun () -> Console.ReadKey true` for `readKey`.
+    let listen'<'appEvent>
+        (stopwatch : IStopwatch)
+        (keyAvailable : unit -> bool)
+        (readKey : unit -> ConsoleKeyInfo)
+        : WorldFreezer<'appEvent>
+        =
         let worldChanges = ConcurrentQueue<RawWorldStateChange<_>> ()
 
         let runningTasks = Nursery ()
@@ -317,8 +361,9 @@ module WorldFreezer =
             _RefreshExternal = refreshExternal
             _Post = postAppEvent
             _Nursery = runningTasks
+            _Stopwatch = stopwatch
             _DequeueState = DequeueState.Normal
         }
 
     let listen<'appEvent> () : WorldFreezer<'appEvent> =
-        listen' (fun () -> Console.KeyAvailable) (fun () -> Console.ReadKey true)
+        listen' Stopwatch.system (fun () -> Console.KeyAvailable) (fun () -> Console.ReadKey true)

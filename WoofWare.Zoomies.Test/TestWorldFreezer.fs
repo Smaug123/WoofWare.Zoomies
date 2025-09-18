@@ -27,9 +27,7 @@ module TestWorldFreezer =
                 Interlocked.Increment &callCount |> ignore<int>
                 key
 
-            use cts = new CancellationTokenSource ()
-
-            use freezer = WorldFreezer.listen' keyAvailable readKey
+            use freezer = WorldFreezer.listen' StopwatchMock.Empty keyAvailable readKey
 
             let seen = ResizeArray ()
             let mutable cont = true

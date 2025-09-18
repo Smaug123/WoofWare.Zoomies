@@ -114,7 +114,8 @@ module TestRender =
 
             let world = MockWorld.make ()
 
-            use worldFreezer = WorldFreezer.listen' world.KeyAvailable world.ReadKey
+            use worldFreezer =
+                WorldFreezer.listen' StopwatchMock.Empty world.KeyAvailable world.ReadKey
 
             let state = State.Empty ()
 
