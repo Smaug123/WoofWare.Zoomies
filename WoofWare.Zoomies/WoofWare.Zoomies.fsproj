@@ -12,6 +12,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="Exception.fs" />
+    <Compile Include="ConsoleModifiers.fs" />
     <Compile Include="Nursery.fs" />
     <Compile Include="Vdom.fs" />
     <Compile Include="CtrlCHandler.fs" />

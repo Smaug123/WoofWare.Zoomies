@@ -44,6 +44,8 @@ module TestWorldFreezer =
                         match change with
                         | WorldStateChange.Keystroke c -> c.KeyChar
                         | ApplicationEvent () -> failwith "no app events"
+                        | MouseEvent _ -> failwith "no mouse events"
+                        | KeyboardEvent _ -> failwith "no keyboard events"
                         | ApplicationEventException _ -> failwith "no exceptions possible"
                     )
 

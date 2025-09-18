@@ -38,7 +38,9 @@ module TestFocusCycle =
                 |> Seq.map (fun s ->
                     match s with
                     | WorldStateChange.Keystroke c -> string c.Key
+                    | WorldStateChange.MouseEvent _ -> failwith "no mouse events"
                     | WorldStateChange.ApplicationEvent () -> failwith "no app events"
+                    | WorldStateChange.KeyboardEvent _ -> failwith "no keyboard events"
                     | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
                 )
                 |> String.concat "\n"

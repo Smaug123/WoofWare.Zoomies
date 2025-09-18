@@ -1,5 +1,6 @@
 ﻿namespace WoofWare.Zoomies
 
+open System
 open System.IO
 open System.Runtime.ExceptionServices
 open System.Threading
@@ -49,6 +50,12 @@ module FileBrowser =
 
         for change in changes do
             match change with
+            | WorldStateChange.MouseEvent _ ->
+                // ignore mouse events
+                ()
+            | WorldStateChange.KeyboardEvent _ ->
+                // ignore keyboard events
+                ()
             | WorldStateChange.Keystroke key when key.KeyChar = ' ' ->
                 // Toggle which file we're showing
                 state.ShowingFile1 <- not state.ShowingFile1

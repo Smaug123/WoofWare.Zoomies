@@ -26,6 +26,10 @@ module ConsoleHarness =
         match op with
         | TerminalOp.EnterAlternateScreen -> ()
         | TerminalOp.ExitAlternateScreen -> ()
+        | TerminalOp.RegisterMouseMode -> ()
+        | TerminalOp.UnregisterMouseMode -> ()
+        | TerminalOp.RegisterBracketedPaste -> ()
+        | TerminalOp.UnregisterBracketedPaste -> ()
         | TerminalOp.MoveCursor (x, y) ->
             c.CursorX <- x
             c.CursorY <- y

@@ -50,6 +50,15 @@ module RenderState =
 
     let exitAlternateScreen (s : RenderState) = s.Output TerminalOp.ExitAlternateScreen
 
+    let registerMouseMode (s : RenderState) = s.Output TerminalOp.RegisterMouseMode
+    let unregisterMouseMode (s : RenderState) = s.Output TerminalOp.UnregisterMouseMode
+
+    let registerBracketedPaste (s : RenderState) =
+        s.Output TerminalOp.RegisterBracketedPaste
+
+    let unregisterBracketedPaste (s : RenderState) =
+        s.Output TerminalOp.UnregisterBracketedPaste
+
     let make' (c : IConsole) =
         let width = c.WindowWidth ()
         let height = c.WindowHeight ()

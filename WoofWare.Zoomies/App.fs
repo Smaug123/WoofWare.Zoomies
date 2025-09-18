@@ -92,6 +92,8 @@ module App =
                 let renderState = RenderState.make' console
 
                 RenderState.enterAlternateScreen renderState
+                RenderState.registerMouseMode renderState
+                RenderState.registerBracketedPaste renderState
 
                 let mutable cancels = 0
 
@@ -106,28 +108,44 @@ module App =
 
                 let listener = worldFreezer ()
 
-                try
-                    RenderState.setCursorInvisible renderState
-
-                    while cancels = 0 && not terminate.IsCancellationRequested do
-                        pumpOnce
-                            listener
-                            mutableState
-                            haveFrameworkHandleFocus
-                            renderState
-                            (processWorld listener.PostAppEvent)
-                            vdom
-
-                finally
+                let cleanUp () =
                     ctrlC.Unregister ctrlCHandler
 
                     // We're on a dedicated thread, so this can't deadlock.
                     (listener :> IAsyncDisposable).DisposeAsync().GetAwaiter().GetResult ()
 
+                    RenderState.unregisterBracketedPaste renderState
+                    RenderState.unregisterMouseMode renderState
                     RenderState.exitAlternateScreen renderState
                     RenderState.setCursorVisible renderState
 
                     complete.SetResult ()
+
+                let exc =
+                    try
+                        RenderState.setCursorInvisible renderState
+
+                        while cancels = 0 && not terminate.IsCancellationRequested do
+                            pumpOnce
+                                listener
+                                mutableState
+                                haveFrameworkHandleFocus
+                                renderState
+                                (processWorld listener.PostAppEvent)
+                                vdom
+
+                        None
+                    with e ->
+                        Some e
+
+                cleanUp ()
+
+                match exc with
+                | None -> ()
+                | Some exc ->
+                    // report critical exceptions to the user *after* disabling the alternate buffer, so they can actually
+                    // see it
+                    Exception.reraiseWithOriginalStackTrace exc
             |> Thread
             |> _.Start()
 
