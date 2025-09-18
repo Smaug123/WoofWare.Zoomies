@@ -108,6 +108,10 @@ type private DequeueState =
 
             $"<consuming CSI code: %s{keys}>"
 
+type UnrecognisedEscapeCodeBehaviour =
+    | Throw
+    | PassThrough
+
 type WorldFreezer<'appEvent> =
     private
         {
@@ -119,6 +123,7 @@ type WorldFreezer<'appEvent> =
             mutable _DequeueState : DequeueState
             _Stopwatch : IStopwatch
             _RefreshExternal : unit -> unit
+            _Behaviour : UnrecognisedEscapeCodeBehaviour
             _Post : (CancellationToken -> Task<'appEvent>) -> unit
         }
 
@@ -150,8 +155,8 @@ type WorldFreezer<'appEvent> =
                     else
                         result.Add (WorldStateChange.Keystroke key)
                 | DequeueState.EscReceived (ts, esc), RawWorldStateChange.Keystroke key ->
-                    // escape sequence begun
                     if key.KeyChar = '[' && key.Modifiers = ConsoleModifiers.None then
+                        // escape sequence begun
                         this._DequeueState <- DequeueState.OpenCSI (ts, esc, key)
                     else
                         result.Add (WorldStateChange.Keystroke esc)
@@ -165,8 +170,14 @@ type WorldFreezer<'appEvent> =
                     | i when '0' <= i && i <= '9' ->
                         this._DequeueState <- DequeueState.ConsumingCSI (ts, esc, bracket, [ key ])
                     | c ->
-                        failwith
-                            $"TODO (Unrecognised ANSI control sequence: received char '%c{c}'): emit the processed keys instead"
+                        match this._Behaviour with
+                        | UnrecognisedEscapeCodeBehaviour.Throw ->
+                            failwith $"Unrecognised ANSI control sequence: received char '%c{c}'"
+                        | UnrecognisedEscapeCodeBehaviour.PassThrough ->
+                            result.Add (WorldStateChange.Keystroke esc)
+                            result.Add (WorldStateChange.Keystroke bracket)
+                            result.Add (WorldStateChange.Keystroke key)
+                            this._DequeueState <- DequeueState.Normal
                 | DequeueState.ConsumingCSI (ts, esc, bracket, pending), RawWorldStateChange.Keystroke key ->
                     if '0' <= key.KeyChar && key.KeyChar <= '9' then
                         this._DequeueState <- DequeueState.ConsumingCSI (ts, esc, bracket, key :: pending)
@@ -182,7 +193,19 @@ type WorldFreezer<'appEvent> =
                         | 201, '~' ->
                             result.Add (WorldStateChange.KeyboardEvent KeyboardEvent.EndBracketedPaste)
                             this._DequeueState <- DequeueState.Normal
-                        | _ -> failwith $"TODO: don't know how to handle CSI code %i{code} with key %c{key.KeyChar}"
+                        | _ ->
+                            match this._Behaviour with
+                            | UnrecognisedEscapeCodeBehaviour.Throw ->
+                                failwith $"don't know how to handle CSI code %i{code} with key %c{key.KeyChar}"
+                            | UnrecognisedEscapeCodeBehaviour.PassThrough ->
+                                result.Add (WorldStateChange.Keystroke esc)
+                                result.Add (WorldStateChange.Keystroke bracket)
+
+                                for p in List.rev pending do
+                                    result.Add (WorldStateChange.Keystroke p)
+
+                                result.Add (WorldStateChange.Keystroke key)
+                                this._DequeueState <- DequeueState.Normal
                 | DequeueState.SgrTracking (ts, esc, bracket, angle, button, parameters, pending, processed),
                   RawWorldStateChange.Keystroke key ->
                     match key.KeyChar with
@@ -196,17 +219,32 @@ type WorldFreezer<'appEvent> =
                             let button =
                                 if code &&& 64 > 0 then
                                     if code &&& 1 = 0 then
-                                        MouseButton.ScrollUp
+                                        Some MouseButton.ScrollUp
                                     else
-                                        MouseButton.ScrollDown
+                                        Some MouseButton.ScrollDown
                                 else
                                     match code &&& 3 with
-                                    | 0 -> MouseButton.Left
-                                    | 1 -> MouseButton.Middle
-                                    | 2 -> MouseButton.Right
-                                    | _ ->
-                                        failwith
-                                            $"TODO (unexpected mouse specifier: %i{code}): emit the processed keys instead"
+                                    | 0 -> Some MouseButton.Left
+                                    | 1 -> Some MouseButton.Middle
+                                    | 2 -> Some MouseButton.Right
+                                    | _ -> None
+
+                            match button with
+                            | None ->
+                                match this._Behaviour with
+                                | UnrecognisedEscapeCodeBehaviour.Throw ->
+                                    failwith $"unexpected mouse specifier: %i{code}"
+                                | UnrecognisedEscapeCodeBehaviour.PassThrough ->
+                                    result.Add (WorldStateChange.Keystroke esc)
+                                    result.Add (WorldStateChange.Keystroke bracket)
+                                    result.Add (WorldStateChange.Keystroke angle)
+
+                                    for p in List.rev processed do
+                                        result.Add (WorldStateChange.Keystroke p)
+
+                                    this._DequeueState <- DequeueState.Normal
+
+                            | Some button ->
 
                             let mutable modifiers = MouseModifiers.None
 
@@ -274,7 +312,11 @@ type WorldFreezer<'appEvent> =
                     | 'm'
                     | 'M' ->
                         match button with
-                        | None -> failwith "TODO: expected mouse button, got M"
+                        | None ->
+                            match this._Behaviour with
+                            | UnrecognisedEscapeCodeBehaviour.Throw ->
+                                failwith $"Expected mouse button specifier; got %c{key.KeyChar}"
+                            | UnrecognisedEscapeCodeBehaviour.PassThrough -> failwith "todo"
                         | Some (button, modifiers) ->
                             match parameters with
                             | [ x ] ->
@@ -289,21 +331,27 @@ type WorldFreezer<'appEvent> =
                                     }
 
                                 if key.KeyChar = 'M' then
-                                    result.Add (
-                                        WorldStateChange.MouseEvent (MouseEvent.Press (button, modifiers, coordinates))
-                                    )
+                                    WorldStateChange.MouseEvent (MouseEvent.Press (button, modifiers, coordinates))
+                                    |> result.Add
                                 else
                                     assert (key.KeyChar = 'm')
 
-                                    result.Add (
-                                        WorldStateChange.MouseEvent (
-                                            MouseEvent.Release (button, modifiers, coordinates)
-                                        )
-                                    )
-                            | _ -> failwith $"TODO: expected exactly one parameter already parsed"
+                                    MouseEvent.Release (button, modifiers, coordinates)
+                                    |> WorldStateChange.MouseEvent
+                                    |> result.Add
+                            | actual ->
+                                match this._Behaviour with
+                                | UnrecognisedEscapeCodeBehaviour.Throw ->
+                                    let s = actual |> List.map string<int> |> String.concat ";"
+                                    failwith $"expected exactly one parameter already parsed; got %s{s}"
+                                | UnrecognisedEscapeCodeBehaviour.PassThrough -> failwith "todo"
 
                             this._DequeueState <- DequeueState.Normal
-                    | c -> failwith $"TODO: unrecognised char '%c{c}'"
+                    | c ->
+                        match this._Behaviour with
+                        | UnrecognisedEscapeCodeBehaviour.Throw ->
+                            failwith $"TODO: unrecognised char '%c{c}' in ANSI SGR mouse-handling escape code"
+                        | UnrecognisedEscapeCodeBehaviour.PassThrough -> failwith "todo"
 
             match this._DequeueState.ReemitIfTime this._Stopwatch with
             | Some expiredKeys ->
@@ -324,6 +372,7 @@ module WorldFreezer =
     /// Pass `fun () -> Console.KeyAvailable` for `keyAvailable`, `Stopwatch.system` for `stopwatch`,
     /// and `fun () -> Console.ReadKey true` for `readKey`.
     let listen'<'appEvent>
+        (behaviour : UnrecognisedEscapeCodeBehaviour)
         (stopwatch : IStopwatch)
         (keyAvailable : unit -> bool)
         (readKey : unit -> ConsoleKeyInfo)
@@ -363,7 +412,12 @@ module WorldFreezer =
             _Nursery = runningTasks
             _Stopwatch = stopwatch
             _DequeueState = DequeueState.Normal
+            _Behaviour = behaviour
         }
 
     let listen<'appEvent> () : WorldFreezer<'appEvent> =
-        listen' Stopwatch.system (fun () -> Console.KeyAvailable) (fun () -> Console.ReadKey true)
+        listen'
+            UnrecognisedEscapeCodeBehaviour.PassThrough
+            Stopwatch.system
+            (fun () -> Console.KeyAvailable)
+            (fun () -> Console.ReadKey true)

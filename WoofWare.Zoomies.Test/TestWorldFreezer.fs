@@ -27,7 +27,8 @@ module TestWorldFreezer =
                 Interlocked.Increment &callCount |> ignore<int>
                 key
 
-            use freezer = WorldFreezer.listen' StopwatchMock.Empty keyAvailable readKey
+            use freezer =
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty keyAvailable readKey
 
             let seen = ResizeArray ()
             let mutable cont = true

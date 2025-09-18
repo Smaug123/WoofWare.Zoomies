@@ -28,7 +28,11 @@ module TestFocusCycle =
             let world = MockWorld.make ()
 
             use worldFreezer =
-                WorldFreezer.listen' StopwatchMock.Empty world.KeyAvailable world.ReadKey
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
 
             let renderState = RenderState.make' console
             let state = ref 0
