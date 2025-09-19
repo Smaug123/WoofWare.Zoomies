@@ -243,28 +243,13 @@ module TestWorldFreezer =
         let change =
             {
                 ChunkingInput.InputChar1 = '\u001B'
-                InputRest =
-                    [
-                        '['
-                        '<'
-                        buttonChar
-                        ';'
-                        '4'
-                        '3'
-                        ';'
-                        '8'
-                        '4'
-                        ';'
-                        pressRelease
-                    ]
+                InputRest = [ '[' ; '<' ; buttonChar ; ';' ; '4' ; '3' ; ';' ; '8' ; '4' ; pressRelease ]
                 ChangesPerChunk = []
             }
-            |> computeExpected
-            |> List.exactlyOne
 
-        match expectedIsPress, change with
-        | true, WorldStateChange.MouseEvent (MouseEvent.Press (actualButton, modifiers, coords))
-        | false, WorldStateChange.MouseEvent (MouseEvent.Release (actualButton, modifiers, coords)) ->
+        match expectedIsPress, computeExpected change with
+        | true, [ WorldStateChange.MouseEvent (MouseEvent.Press (actualButton, modifiers, coords)) ]
+        | false, [ WorldStateChange.MouseEvent (MouseEvent.Release (actualButton, modifiers, coords)) ] ->
             coords
             |> shouldEqual
                 {
@@ -276,6 +261,16 @@ module TestWorldFreezer =
             actualButton |> shouldEqual expectedButton
         | _ -> failwith $"unexpected: %O{change}"
 
+        let prop =
+            fun l ->
+                chunkingInvariantProperty
+                    { change with
+                        ChangesPerChunk = l
+                    }
+            |> Prop.forAll (Arb.fromGen (Gen.listOf (Gen.choose (0, 20))))
+
+        Check.One (propConfig, prop)
+
     [<Test>]
     let ``Property: the same sequence of inputs eventually results in the same sequence of outputs`` () =
         let ansiCharGen =
@@ -283,21 +278,83 @@ module TestWorldFreezer =
             let digits = [ '0' .. '9' ]
             let letters = List.concat [ [ 'a' .. 'z' ] ; [ 'A' .. 'Z' ] ]
             let extras = [ ' ' ; ',' ; '.' ; ':' ; '/' ; '(' ; ')' ]
-            Gen.elements (baseSet @ digits @ letters @ extras)
 
-        let chunkingInputGen =
             gen {
-                let! inputChar1 = ansiCharGen
-                let! rest = Gen.listOf ansiCharGen
-                let! changes = Gen.listOf (Gen.choose (0, 15))
+                let! tag = Gen.choose (0, 3)
 
-                return
-                    {
-                        InputChar1 = inputChar1
-                        InputRest = rest
-                        ChangesPerChunk = changes
-                    }
+                match tag with
+                | 0 -> return! Gen.elements baseSet
+                | 1 -> return! Gen.elements digits
+                | 2 -> return! Gen.elements letters
+                | 3 -> return! Gen.elements extras
+                | _ -> return failwith "logic error"
             }
 
-        let prop = Prop.forAll (Arb.fromGen chunkingInputGen) chunkingInvariantProperty
-        Check.One (propConfig, prop)
+        do
+            let chunkingInputGen =
+                gen {
+                    let! rest = Gen.listOf ansiCharGen
+                    let! changes = Gen.listOf (Gen.choose (0, 15))
+
+                    return
+                        {
+                            InputChar1 = '\u001B'
+                            InputRest = rest
+                            ChangesPerChunk = changes
+                        }
+                }
+
+            let prop = Prop.forAll (Arb.fromGen chunkingInputGen) chunkingInvariantProperty
+            Check.One (propConfig, prop)
+
+        do
+            let chunkingInputGen =
+                gen {
+                    let! rest = Gen.listOf ansiCharGen
+                    let! changes = Gen.listOf (Gen.choose (0, 15))
+
+                    return
+                        {
+                            InputChar1 = '\u001B'
+                            InputRest = '[' :: rest
+                            ChangesPerChunk = changes
+                        }
+                }
+
+            let prop = Prop.forAll (Arb.fromGen chunkingInputGen) chunkingInvariantProperty
+            Check.One (propConfig, prop)
+
+        do
+            let chunkingInputGen =
+                gen {
+                    let! rest = Gen.listOf ansiCharGen
+                    let! changes = Gen.listOf (Gen.choose (0, 15))
+
+                    return
+                        {
+                            InputChar1 = '\u001B'
+                            InputRest = '[' :: '<' :: rest
+                            ChangesPerChunk = changes
+                        }
+                }
+
+            let prop = Prop.forAll (Arb.fromGen chunkingInputGen) chunkingInvariantProperty
+            Check.One (propConfig, prop)
+
+        do
+            let chunkingInputGen =
+                gen {
+                    let! inputChar1 = ansiCharGen
+                    let! rest = Gen.listOf ansiCharGen
+                    let! changes = Gen.listOf (Gen.choose (0, 15))
+
+                    return
+                        {
+                            InputChar1 = inputChar1
+                            InputRest = rest
+                            ChangesPerChunk = changes
+                        }
+                }
+
+            let prop = Prop.forAll (Arb.fromGen chunkingInputGen) chunkingInvariantProperty
+            Check.One (propConfig, prop)
