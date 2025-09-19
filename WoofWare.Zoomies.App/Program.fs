@@ -40,46 +40,43 @@ module FileBrowser =
             }
         |> postEvent
 
-    let processWorld
-        (postEvent : (CancellationToken -> Task<AppEvent>) -> unit)
-        (changes : WorldStateChange<AppEvent> seq)
-        (state : State)
-        : unit
-        =
+    let processWorld (postEvent : (CancellationToken -> Task<AppEvent>) -> unit) =
+        { new WorldProcessor<AppEvent, State> with
+            member _.ProcessWorld changes prevVdom state =
+                for change in changes do
+                    match change with
+                    | WorldStateChange.MouseEvent _ ->
+                        // ignore mouse events
+                        ()
+                    | WorldStateChange.KeyboardEvent _ ->
+                        // ignore keyboard events
+                        ()
+                    | WorldStateChange.Keystroke key when key.KeyChar = ' ' ->
+                        // Toggle which file we're showing
+                        state.ShowingFile1 <- not state.ShowingFile1
+                        state.IsLoading <- true
+                        state.FileContent <- None
+                        // Trigger async load of the new file
+                        loadFileAsync postEvent state.CurrentFile
+                    | WorldStateChange.Keystroke _ -> ()
 
-        for change in changes do
-            match change with
-            | WorldStateChange.MouseEvent _ ->
-                // ignore mouse events
-                ()
-            | WorldStateChange.KeyboardEvent _ ->
-                // ignore keyboard events
-                ()
-            | WorldStateChange.Keystroke key when key.KeyChar = ' ' ->
-                // Toggle which file we're showing
-                state.ShowingFile1 <- not state.ShowingFile1
-                state.IsLoading <- true
-                state.FileContent <- None
-                // Trigger async load of the new file
-                loadFileAsync postEvent state.CurrentFile
-            | WorldStateChange.Keystroke _ -> ()
+                    | WorldStateChange.ApplicationEvent (FileLoaded (filename, content)) ->
+                        // Only update if this is still the file we're expecting
+                        if filename = state.CurrentFile then
+                            state.FileContent <- Some content
+                            state.IsLoading <- false
 
-            | WorldStateChange.ApplicationEvent (FileLoaded (filename, content)) ->
-                // Only update if this is still the file we're expecting
-                if filename = state.CurrentFile then
-                    state.FileContent <- Some content
-                    state.IsLoading <- false
+                    | WorldStateChange.ApplicationEvent (FileLoadError (filename, error)) ->
+                        if filename = state.CurrentFile then
+                            state.FileContent <- Some $"Error loading file: {error}"
+                            state.IsLoading <- false
 
-            | WorldStateChange.ApplicationEvent (FileLoadError (filename, error)) ->
-                if filename = state.CurrentFile then
-                    state.FileContent <- Some $"Error loading file: {error}"
-                    state.IsLoading <- false
+                    | WorldStateChange.ApplicationEventException e ->
+                        ExceptionDispatchInfo.Throw e
+                        failwith "unreachable"
+        }
 
-            | WorldStateChange.ApplicationEventException e ->
-                ExceptionDispatchInfo.Throw e
-                failwith "unreachable"
-
-    let view (state : State) : Vdom =
+    let view (state : State) : Vdom<DesiredBounds> =
         let topPane =
             let label = $"[{state.File1Path}] / [{state.File2Path}]"
 

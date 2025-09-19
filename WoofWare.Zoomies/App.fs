@@ -4,6 +4,9 @@ open System
 open System.Threading
 open System.Threading.Tasks
 
+type WorldProcessor<'appEvent, 'userState> =
+    abstract ProcessWorld : events : WorldStateChange<'appEvent> seq -> prevVdom : Vdom<Rectangle> -> 'userState -> unit
+
 [<RequireQualifiedAccess>]
 module App =
 
@@ -12,8 +15,8 @@ module App =
         (mutableState : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
         (renderState : RenderState)
-        (processWorld : WorldStateChange<'appEvent> seq -> 'state -> unit)
-        (vdom : 'state -> Vdom)
+        (processWorld : WorldProcessor<'appEvent, 'state>)
+        (vdom : 'state -> Vdom<DesiredBounds>)
         : unit
         =
         listener.RefreshExternal ()
@@ -24,6 +27,12 @@ module App =
         | ValueNone -> ()
         | ValueSome changes ->
 
+            match renderState.PreviousVdom with
+            | None -> failwith "expected not to receive input before the first render"
+            | Some node ->
+
+            let prevVdom = node.Self
+
             if haveFrameworkHandleFocus mutableState then
 
                 let mutable i = 0
@@ -31,27 +40,22 @@ module App =
 
                 while i < changes.Length do
                     match changes.[i] with
-                    | WorldStateChange.Keystroke t when
-                        t.Key = ConsoleKey.Tab && (t.Modifiers &&& ConsoleModifiers.Shift = enum 0)
-                        ->
+                    | WorldStateChange.Keystroke t when t.Key = ConsoleKey.Tab && t.Modifiers = enum 0 ->
                         if i > 0 then
-                            processWorld changes.[start .. i - 1] mutableState
+                            processWorld.ProcessWorld changes.[start .. i - 1] prevVdom mutableState
 
-                        match renderState.PreviousVdom with
-                        | None -> failwith "expected not to receive input before the first render"
-                        | Some (prevVdom, _) ->
-                            // TODO: this is grossly inefficient!
-                            let focusChange = Vdom.cata Vdom.advanceFocusCata prevVdom
+                        // TODO: this is grossly inefficient!
+                        let focusChange = Vdom.cata Vdom.advanceFocusCata prevVdom
 
-                            match focusChange.FirstUnfocusedAfter with
+                        match focusChange.FirstUnfocusedAfter with
+                        | Some changeFocus -> changeFocus ()
+                        | None ->
+                            // Try wrapping round to the first focusable element
+                            match focusChange.FirstUnfocusedAbsolute with
                             | Some changeFocus -> changeFocus ()
                             | None ->
-                                // Try wrapping round to the first focusable element
-                                match focusChange.FirstUnfocusedAbsolute with
-                                | Some changeFocus -> changeFocus ()
-                                | None ->
-                                    // couldn't find anything to change focus to
-                                    ()
+                                // couldn't find anything to change focus to
+                                ()
 
                         start <- i + 1
                         // skip the tab input
@@ -62,9 +66,9 @@ module App =
                     i <- i + 1
 
                 if start < changes.Length then
-                    processWorld changes.[start..] mutableState
+                    processWorld.ProcessWorld changes.[start..] prevVdom mutableState
             else
-                processWorld changes mutableState
+                processWorld.ProcessWorld changes prevVdom mutableState
 
         Render.oneStep renderState mutableState vdom
 
@@ -79,9 +83,8 @@ module App =
         (worldFreezer : unit -> WorldFreezer<'appEvent>)
         (mutableState : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
-        (processWorld :
-            ((CancellationToken -> Task<'appEvent>) -> unit) -> WorldStateChange<'appEvent> seq -> 'state -> unit)
-        (vdom : 'state -> Vdom)
+        (processWorld : ((CancellationToken -> Task<'appEvent>) -> unit) -> WorldProcessor<'appEvent, 'state>)
+        (vdom : 'state -> Vdom<DesiredBounds>)
         : Task
         =
         let complete = TaskCompletionSource ()
@@ -143,15 +146,21 @@ module App =
                 match exc with
                 | None -> ()
                 | Some exc ->
-                    // report critical exceptions to the user *after* disabling the alternate buffer, so they can actually
-                    // see it
+                    // report critical exceptions to the user *after* disabling the alternate buffer, so they can
+                    // actually see them
                     Exception.reraiseWithOriginalStackTrace exc
             |> Thread
             |> _.Start()
 
         complete.Task
 
-    let run state haveFrameworkHandleFocus processWorld vdom =
+    let run<'state, 'appEvent>
+        (state : 'state)
+        (haveFrameworkHandleFocus : 'state -> bool)
+        (processWorld : ((CancellationToken -> Task<'appEvent>) -> unit) -> WorldProcessor<'appEvent, 'state>)
+        (vdom : 'state -> Vdom<DesiredBounds>)
+        : Task
+        =
         run'
             CancellationToken.None
             (IConsole.make ())

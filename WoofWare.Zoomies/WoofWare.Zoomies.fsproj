@@ -12,6 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="Object.fs" />
     <Compile Include="Exception.fs" />
     <Compile Include="ConsoleModifiers.fs" />
     <Compile Include="Nursery.fs" />

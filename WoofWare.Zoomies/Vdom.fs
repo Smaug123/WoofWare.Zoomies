@@ -6,9 +6,11 @@ type Direction =
 
 type Border = | Yes
 
-type Vdom =
-    | Bordered of Vdom
-    | PanelSplit of Direction * Choice<float, int> * child1 : Vdom * child2 : Vdom
+type DesiredBounds = unit
+
+type Vdom<'bounds> =
+    | Bordered of Vdom<'bounds>
+    | PanelSplit of Direction * Choice<float, int> * child1 : Vdom<'bounds> * child2 : Vdom<'bounds>
     | TextContent of string * focused : bool * onReceiveFocus : (unit -> unit) option
     | Checkbox of isChecked : bool * isFocused : bool * onReceiveFocus : (unit -> unit)
 
@@ -38,12 +40,18 @@ module Vdom =
 
     let bordered inner = Vdom.Bordered inner
 
-    let labelledCheckbox (onReceiveFocus : unit -> unit) (isFocused : bool) (isChecked : bool) (label : string) : Vdom =
+    let labelledCheckbox
+        (onReceiveFocus : unit -> unit)
+        (isFocused : bool)
+        (isChecked : bool)
+        (label : string)
+        : Vdom<DesiredBounds>
+        =
         // TODO: centre this text horizontally so it's next to the checkbox
         textContent None label
         |> panelSplitAbsolute Direction.Vertical 3 (checkbox onReceiveFocus isFocused isChecked)
 
-    let rec cata<'ret> (c : VdomCata<'ret>) (vdom : Vdom) : 'ret =
+    let rec cata<'bounds, 'ret> (c : VdomCata<'ret>) (vdom : Vdom<'bounds>) : 'ret =
         match vdom with
         | Vdom.Bordered vdom -> c.AtBordered (cata c vdom)
         | Vdom.PanelSplit (direction, prop, child1, child2) ->
@@ -51,7 +59,7 @@ module Vdom =
         | Vdom.TextContent (s, focused, onReceiveFocus) -> c.AtTextContent s focused onReceiveFocus
         | Vdom.Checkbox (isChecked, isFocused, onReceiveFocus) -> c.AtCheckbox isChecked isFocused onReceiveFocus
 
-    let idCata : VdomCata<Vdom> =
+    let idCata : VdomCata<Vdom<'bounds>> =
         { new VdomCata<_> with
             member _.AtBordered v = Vdom.Bordered v
 
