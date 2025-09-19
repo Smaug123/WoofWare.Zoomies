@@ -48,6 +48,12 @@ type WorldStateChange<'appEvent> =
     | ApplicationEventException of exn
 
 type private DequeueState =
+    //{
+    //     Processed : ResizeArray<ConsoleKeyInfo>
+    //     EscTimestamp : int64
+    //     EscKeystroke : ConsoleKeyInfo voption
+    // }
+
     | Normal
     | EscReceived of timestamp : int64 * esc : ConsoleKeyInfo
     | OpenCSI of escTimestamp : int64 * esc : ConsoleKeyInfo * bracket : ConsoleKeyInfo
@@ -136,7 +142,7 @@ type WorldFreezer<'appEvent> =
     ///
     /// This function is *not* safe to call multiple times concurrently.
     member this.Changes () : WorldStateChange<'appEvent>[] voption =
-        if this._Changes.IsEmpty then
+        if this._Changes.IsEmpty && this._DequeueState.IsNormal then
             // Fine to have a TOCTTOU here. The next render loop will catch it if any events get added.
             ValueNone
         else
@@ -325,7 +331,7 @@ type WorldFreezer<'appEvent> =
                                 result.Add (WorldStateChange.Keystroke bracket)
                                 result.Add (WorldStateChange.Keystroke angle)
 
-                                for p in processed do
+                                for p in List.rev processed do
                                     result.Add (WorldStateChange.Keystroke p)
 
                                 result.Add (WorldStateChange.Keystroke key)
@@ -352,19 +358,38 @@ type WorldFreezer<'appEvent> =
                                     MouseEvent.Release (button, modifiers, coordinates)
                                     |> WorldStateChange.MouseEvent
                                     |> result.Add
+
+                                this._DequeueState <- DequeueState.Normal
                             | actual ->
                                 match this._Behaviour with
                                 | UnrecognisedEscapeCodeBehaviour.Throw ->
                                     let s = actual |> List.map string<int> |> String.concat ";"
                                     failwith $"expected exactly one parameter already parsed; got %s{s}"
-                                | UnrecognisedEscapeCodeBehaviour.PassThrough -> failwith "todo"
+                                | UnrecognisedEscapeCodeBehaviour.PassThrough ->
+                                    result.Add (WorldStateChange.Keystroke esc)
+                                    result.Add (WorldStateChange.Keystroke bracket)
+                                    result.Add (WorldStateChange.Keystroke angle)
 
-                            this._DequeueState <- DequeueState.Normal
+                                    for p in List.rev processed do
+                                        result.Add (WorldStateChange.Keystroke p)
+
+                                    result.Add (WorldStateChange.Keystroke key)
+
+                                    this._DequeueState <- DequeueState.Normal
                     | c ->
                         match this._Behaviour with
                         | UnrecognisedEscapeCodeBehaviour.Throw ->
-                            failwith $"TODO: unrecognised char '%c{c}' in ANSI SGR mouse-handling escape code"
-                        | UnrecognisedEscapeCodeBehaviour.PassThrough -> failwith "todo"
+                            failwith $"Unrecognised char '%c{c}' in ANSI SGR mouse-handling escape code"
+                        | UnrecognisedEscapeCodeBehaviour.PassThrough ->
+                            result.Add (WorldStateChange.Keystroke esc)
+                            result.Add (WorldStateChange.Keystroke bracket)
+                            result.Add (WorldStateChange.Keystroke angle)
+
+                            for p in List.rev processed do
+                                result.Add (WorldStateChange.Keystroke p)
+
+                            result.Add (WorldStateChange.Keystroke key)
+                            this._DequeueState <- DequeueState.Normal
 
             match this._DequeueState.ReemitIfTime this._Stopwatch with
             | Some expiredKeys ->
@@ -372,7 +397,11 @@ type WorldFreezer<'appEvent> =
                 expiredKeys |> Seq.map WorldStateChange.Keystroke |> result.AddRange
             | None -> ()
 
-            result.ToArray () |> ValueSome
+            if result.Count = 0 then
+                // This can happen if we are awaiting more keystrokes in an ANSI escape sequence.
+                ValueNone
+            else
+                result.ToArray () |> ValueSome
 
     member this.PostAppEvent a = this._Post a
 

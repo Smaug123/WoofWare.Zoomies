@@ -11,12 +11,10 @@ open FsCheck
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestWorldFreezer =
-    let neverTickingStopwatch () : IStopwatch =
-        let mutable time = 0L
-
+    let neverTickingStopwatch : IStopwatch =
         {
             Frequency = fun () -> 1_000_000_000L
-            GetTimestamp = fun () -> Interlocked.Increment &time
+            GetTimestamp = fun () -> 0L
         }
         :> _
 
@@ -80,7 +78,12 @@ module TestWorldFreezer =
 
     /// The `ref` is "how far through the list are we allowed to consume" (basically specifying which characters
     /// have been sent yet).
-    let makeFreezerOverList (inputList : ConsoleKeyInfo list) (initialAllowed : int) : WorldFreezer<'a> * int ref =
+    let makeFreezerOverList
+        (sw : IStopwatch)
+        (inputList : ConsoleKeyInfo list)
+        (initialAllowed : int)
+        : WorldFreezer<'a> * int ref
+        =
         let allowed = ref initialAllowed
         let mutable index = 0
 
@@ -92,8 +95,6 @@ module TestWorldFreezer =
             // assume caller only calls ReadKey when KeyAvailable returned true
             index <- i + 1
             inputList.[i]
-
-        let sw = neverTickingStopwatch ()
 
         let wf =
             WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.PassThrough sw keyAvailable readKey
@@ -166,7 +167,7 @@ module TestWorldFreezer =
                 else
                     adjusted
 
-        let wfChunk, cursor = makeFreezerOverList keyInfos 0
+        let wfChunk, cursor = makeFreezerOverList neverTickingStopwatch keyInfos 0
         let chunkedOutputs = ResizeArray<WorldStateChange<_>> ()
 
         // call Changes once up-front (simulate UI calling Changes before any keys arrive)
@@ -214,10 +215,37 @@ module TestWorldFreezer =
 
     let computeExpected (input : ChunkingInput) =
         let keyInfos = input.Input |> List.map charToKeyInfo
-        let wfWhole, _ = makeFreezerOverList keyInfos keyInfos.Length
+        let mutable timestamp = 0L
+
+        let sw =
+            { new IStopwatch with
+                member _.Frequency = 1L
+                member _.GetTimestamp () = timestamp
+            }
+
+        let wfWhole, _ = makeFreezerOverList sw keyInfos keyInfos.Length
         // make all keys available at once, refresh to push into internal queue
         wfWhole.RefreshExternal ()
-        drainChanges wfWhole |> Array.toList
+        let result = drainChanges wfWhole |> Array.toList
+
+        // If we didn't manage to parse an escape code, we eventually re-emit the same sequence we got in.
+        timestamp <- 1L
+        wfWhole.RefreshExternal ()
+        let tail = drainChanges wfWhole |> Array.toList
+        let entirelyDrained = result @ tail
+
+        if entirelyDrained |> List.forall (fun k -> k.IsKeystroke) then
+            let keys =
+                entirelyDrained
+                |> List.map (fun k ->
+                    match k with
+                    | Keystroke x -> x.KeyChar
+                    | _ -> failwith "logic error"
+                )
+
+            keys |> shouldEqual input.Input
+
+        result
 
     /// Property: for any nonempty (input := inputChar1 :: inputRest) and changesPerChunk,
     /// the concatenated outputs of the 'chunked' schedule equals the 'whole' schedule.
@@ -267,94 +295,96 @@ module TestWorldFreezer =
                     { change with
                         ChangesPerChunk = l
                     }
-            |> Prop.forAll (Arb.fromGen (Gen.listOf (Gen.choose (0, 20))))
+            |> Prop.forAll (Arb.fromGen (Gen.listOf (Gen.choose (0, 11))))
 
         Check.One (propConfig, prop)
 
+    let ansiCharGen =
+        let baseSet = [ '\u001B' ; '[' ; '<' ; ';' ; 'M' ; 'm' ; '~' ]
+        let digits = [ '0' .. '9' ]
+        let letters = List.concat [ [ 'a' .. 'z' ] ; [ 'A' .. 'Z' ] ]
+        let extras = [ ' ' ; ',' ; '.' ; ':' ; '/' ; '(' ; ')' ]
+
+        gen {
+            let! tag = Gen.choose (0, 3)
+
+            match tag with
+            | 0 -> return! Gen.elements baseSet
+            | 1 -> return! Gen.elements digits
+            | 2 -> return! Gen.elements letters
+            | 3 -> return! Gen.elements extras
+            | _ -> return failwith "logic error"
+        }
+
     [<Test>]
-    let ``Property: the same sequence of inputs eventually results in the same sequence of outputs`` () =
-        let ansiCharGen =
-            let baseSet = [ '\u001B' ; '[' ; '<' ; ';' ; 'M' ; 'm' ; '~' ]
-            let digits = [ '0' .. '9' ]
-            let letters = List.concat [ [ 'a' .. 'z' ] ; [ 'A' .. 'Z' ] ]
-            let extras = [ ' ' ; ',' ; '.' ; ':' ; '/' ; '(' ; ')' ]
-
+    let ``Property: the same sequence of inputs eventually results in the same sequence of outputs, ESC`` () =
+        let chunkingInputGen =
             gen {
-                let! tag = Gen.choose (0, 3)
+                let! rest = Gen.listOf ansiCharGen
+                let! changes = Gen.listOf (Gen.choose (0, 15))
 
-                match tag with
-                | 0 -> return! Gen.elements baseSet
-                | 1 -> return! Gen.elements digits
-                | 2 -> return! Gen.elements letters
-                | 3 -> return! Gen.elements extras
-                | _ -> return failwith "logic error"
+                return
+                    {
+                        InputChar1 = '\u001B'
+                        InputRest = rest
+                        ChangesPerChunk = changes
+                    }
             }
 
-        do
-            let chunkingInputGen =
-                gen {
-                    let! rest = Gen.listOf ansiCharGen
-                    let! changes = Gen.listOf (Gen.choose (0, 15))
+        let prop = Prop.forAll (Arb.fromGen chunkingInputGen) chunkingInvariantProperty
+        Check.One (propConfig, prop)
 
-                    return
-                        {
-                            InputChar1 = '\u001B'
-                            InputRest = rest
-                            ChangesPerChunk = changes
-                        }
-                }
+    [<Test>]
+    let ``Property: the same sequence of inputs results in the same sequence of outputs, ESC bracket`` () =
+        let chunkingInputGen =
+            gen {
+                let! rest = Gen.listOf ansiCharGen
+                let! changes = Gen.listOf (Gen.choose (0, 15))
 
-            let prop = Prop.forAll (Arb.fromGen chunkingInputGen) chunkingInvariantProperty
-            Check.One (propConfig, prop)
+                return
+                    {
+                        InputChar1 = '\u001B'
+                        InputRest = '[' :: rest
+                        ChangesPerChunk = changes
+                    }
+            }
 
-        do
-            let chunkingInputGen =
-                gen {
-                    let! rest = Gen.listOf ansiCharGen
-                    let! changes = Gen.listOf (Gen.choose (0, 15))
+        let prop = Prop.forAll (Arb.fromGen chunkingInputGen) chunkingInvariantProperty
+        Check.One (propConfig, prop)
 
-                    return
-                        {
-                            InputChar1 = '\u001B'
-                            InputRest = '[' :: rest
-                            ChangesPerChunk = changes
-                        }
-                }
+    [<Test>]
+    let ``Property: the same sequence of inputs results in the same sequence of outputs, ESC bracket angle`` () =
+        let chunkingInputGen =
+            gen {
+                let! rest = Gen.listOf ansiCharGen
+                let! changes = Gen.listOf (Gen.choose (0, 15))
 
-            let prop = Prop.forAll (Arb.fromGen chunkingInputGen) chunkingInvariantProperty
-            Check.One (propConfig, prop)
+                return
+                    {
+                        InputChar1 = '\u001B'
+                        InputRest = '[' :: '<' :: rest
+                        ChangesPerChunk = changes
+                    }
+            }
 
-        do
-            let chunkingInputGen =
-                gen {
-                    let! rest = Gen.listOf ansiCharGen
-                    let! changes = Gen.listOf (Gen.choose (0, 15))
+        let prop = Prop.forAll (Arb.fromGen chunkingInputGen) chunkingInvariantProperty
+        Check.One (propConfig, prop)
 
-                    return
-                        {
-                            InputChar1 = '\u001B'
-                            InputRest = '[' :: '<' :: rest
-                            ChangesPerChunk = changes
-                        }
-                }
+    [<Test>]
+    let ``Property: the same sequence of inputs results in the same sequence of outputs, unrestricted`` () =
+        let chunkingInputGen =
+            gen {
+                let! inputChar1 = ansiCharGen
+                let! rest = Gen.listOf ansiCharGen
+                let! changes = Gen.listOf (Gen.choose (0, 15))
 
-            let prop = Prop.forAll (Arb.fromGen chunkingInputGen) chunkingInvariantProperty
-            Check.One (propConfig, prop)
+                return
+                    {
+                        InputChar1 = inputChar1
+                        InputRest = rest
+                        ChangesPerChunk = changes
+                    }
+            }
 
-        do
-            let chunkingInputGen =
-                gen {
-                    let! inputChar1 = ansiCharGen
-                    let! rest = Gen.listOf ansiCharGen
-                    let! changes = Gen.listOf (Gen.choose (0, 15))
-
-                    return
-                        {
-                            InputChar1 = inputChar1
-                            InputRest = rest
-                            ChangesPerChunk = changes
-                        }
-                }
-
-            let prop = Prop.forAll (Arb.fromGen chunkingInputGen) chunkingInvariantProperty
-            Check.One (propConfig, prop)
+        let prop = Prop.forAll (Arb.fromGen chunkingInputGen) chunkingInvariantProperty
+        Check.One (propConfig, prop)

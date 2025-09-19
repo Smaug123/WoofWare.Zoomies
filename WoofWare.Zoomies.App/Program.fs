@@ -1,6 +1,5 @@
 ﻿namespace WoofWare.Zoomies
 
-open System
 open System.IO
 open System.Runtime.ExceptionServices
 open System.Threading
