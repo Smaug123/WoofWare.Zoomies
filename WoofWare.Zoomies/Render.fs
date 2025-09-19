@@ -16,13 +16,14 @@ type RenderedNode =
     {
         Bounds : Rectangle
         OverlaidChildren : RenderedNode list
-        VDomSource : Vdom
+        VDomSource : Vdom<DesiredBounds>
+        Self : Vdom<Rectangle>
     }
 
 type RenderState =
     private
         {
-            mutable PreviousVdom : (Vdom * RenderedNode) option
+            mutable PreviousVdom : RenderedNode option
             mutable Buffer : TerminalCell voption[,]
             mutable TerminalBounds : Rectangle
             mutable CursorVisible : bool
@@ -162,21 +163,21 @@ module Render =
 
     let rec layout
         (dirty : TerminalCell voption[,])
-        (previousVdom : (Vdom * RenderedNode) option)
+        (previousVdom : (Vdom<Rectangle> * RenderedNode) option)
         (bounds : Rectangle)
-        (vdom : Vdom)
+        (vdom : Vdom<DesiredBounds>)
         : RenderedNode
         =
         match previousVdom with
-        | Some (previousVdom, previousNode) when
+        | Some (_, previousNode) when
             bounds = previousNode.Bounds
-            && Object.ReferenceEquals (previousNode.VDomSource, vdom)
+            && Object.referenceEquals previousNode.VDomSource vdom
             ->
             previousNode
         | _ ->
 
         match vdom with
-        | Vdom.TextContent (s, focus, _) ->
+        | Vdom.TextContent (s, focus, onReceiveFocus) ->
             match previousVdom with
             | Some (Vdom.TextContent (prevText, prevFocus, _), prevNode) when
                 prevNode.Bounds = bounds && prevText = s && prevFocus = focus
@@ -185,9 +186,9 @@ module Render =
                     Bounds = bounds
                     OverlaidChildren = []
                     VDomSource = vdom
+                    Self = Vdom.TextContent (s, focus, onReceiveFocus)
                 }
             | _ ->
-
                 // TODO: can do better here if we can compute a more efficient diff
                 for y = 0 to bounds.Height - 1 do
                     for x = 0 to bounds.Width - 1 do
@@ -216,6 +217,7 @@ module Render =
                     Bounds = bounds
                     OverlaidChildren = []
                     VDomSource = vdom
+                    Self = Vdom.TextContent (s, focus, onReceiveFocus)
                 }
 
         | Vdom.PanelSplit (dir, proportion, child1, child2) ->
@@ -235,6 +237,7 @@ module Render =
                     Bounds = bounds
                     OverlaidChildren = [ rendered1 ; rendered2 ]
                     VDomSource = vdom
+                    Self = Vdom.PanelSplit (dir, proportion, rendered1.Self, rendered2.Self)
                 }
             | _ ->
                 for y = 0 to bounds.Height - 1 do
@@ -249,9 +252,10 @@ module Render =
                     Bounds = bounds
                     OverlaidChildren = [ rendered1 ; rendered2 ]
                     VDomSource = vdom
+                    Self = Vdom.PanelSplit (dir, proportion, rendered1.Self, rendered2.Self)
                 }
 
-        | Vdom.Checkbox (isChecked, focus, _) ->
+        | Vdom.Checkbox (isChecked, focus, onReceiveFocus) ->
             match previousVdom with
             | Some (Vdom.Checkbox (prevChecked, prevFocus, _), prevNode) when
                 prevNode.Bounds = bounds && focus = prevFocus
@@ -270,6 +274,7 @@ module Render =
                     Bounds = bounds
                     OverlaidChildren = []
                     VDomSource = vdom
+                    Self = Vdom.Checkbox (isChecked, focus, onReceiveFocus)
                 }
             | _ ->
                 // TODO: can short circuit this if focus is the only thing that's changed, too
@@ -309,6 +314,7 @@ module Render =
                     Bounds = bounds
                     OverlaidChildren = []
                     VDomSource = vdom
+                    Self = Vdom.Checkbox (isChecked, focus, onReceiveFocus)
                 }
 
         | Vdom.Bordered child ->
@@ -323,6 +329,7 @@ module Render =
                     Bounds = bounds
                     OverlaidChildren = children
                     VDomSource = vdom
+                    Self = Vdom.Bordered children.[0].Self
                 }
             | _ ->
                 if bounds.Height <= 2 then
@@ -364,6 +371,7 @@ module Render =
                     Bounds = bounds
                     OverlaidChildren = children
                     VDomSource = vdom
+                    Self = Vdom.Bordered children.[0].Self
                 }
 
     let writeBuffer (dirty : TerminalCell voption[,]) : TerminalOp seq =
@@ -376,14 +384,15 @@ module Render =
                     | ValueSome cell -> yield! [ TerminalOp.MoveCursor (x, y) ; TerminalOp.WriteChar cell ]
         }
 
-    let oneStep<'state> (renderState : RenderState) (userState : 'state) (compute : 'state -> Vdom) =
+    let oneStep<'state> (renderState : RenderState) (userState : 'state) (compute : 'state -> Vdom<DesiredBounds>) =
         Array.Clear renderState.Buffer
         let vdom = compute userState
 
         let rendered =
-            layout renderState.Buffer renderState.PreviousVdom renderState.TerminalBounds vdom
+            let prev = renderState.PreviousVdom |> Option.map (fun node -> node.Self, node)
+            layout renderState.Buffer prev renderState.TerminalBounds vdom
 
-        renderState.PreviousVdom <- Some (vdom, rendered)
+        renderState.PreviousVdom <- Some rendered
 
         let cursorFlip = RenderState.isCursorVisible renderState
         let mutable haveManipulatedCursor = false

@@ -74,7 +74,11 @@ type internal Nursery () =
                     // callers to `Submit`, and all existing callers have got through to the last line,
                     // which decremented `activeSubmissions`.
                     // So we can simply await all the tasks in it.
-                    do! childTasks |> Seq.map (fun (KeyValue (_, t)) -> t) |> Task.WhenAll
+                    try
+                        do! childTasks |> Seq.map (fun (KeyValue (_, t)) -> t) |> Task.WhenAll
+                    with _ ->
+                        // WhenAll enters the faulted state if any task failed, but it does wait for all of them
+                        ()
 
                     // Nothing else now depends on the CancellationTokenSource.
                     cts.Dispose ()
