@@ -299,6 +299,56 @@ module TestWorldFreezer =
 
         Check.One (propConfig, prop)
 
+    [<Test>]
+    let ``Can emit begin-bracketed-paste`` () =
+        let change =
+            {
+                ChunkingInput.InputChar1 = '\u001B'
+                InputRest = [ '[' ; '2' ; '0' ; '0' ; '~' ]
+                ChangesPerChunk = []
+            }
+
+        let actual = computeExpected change
+
+        actual
+        |> List.exactlyOne
+        |> shouldEqual (WorldStateChange.KeyboardEvent KeyboardEvent.BeginBracketedPaste)
+
+        let prop =
+            fun l ->
+                chunkingInvariantProperty
+                    { change with
+                        ChangesPerChunk = l
+                    }
+            |> Prop.forAll (Arb.fromGen (Gen.listOf (Gen.choose (0, 11))))
+
+        Check.One (propConfig, prop)
+
+    [<Test>]
+    let ``Can emit end-bracketed-paste`` () =
+        let change =
+            {
+                ChunkingInput.InputChar1 = '\u001B'
+                InputRest = [ '[' ; '2' ; '0' ; '1' ; '~' ]
+                ChangesPerChunk = []
+            }
+
+        let actual = computeExpected change
+
+        actual
+        |> List.exactlyOne
+        |> shouldEqual (WorldStateChange.KeyboardEvent KeyboardEvent.EndBracketedPaste)
+
+        let prop =
+            fun l ->
+                chunkingInvariantProperty
+                    { change with
+                        ChangesPerChunk = l
+                    }
+            |> Prop.forAll (Arb.fromGen (Gen.listOf (Gen.choose (0, 11))))
+
+        Check.One (propConfig, prop)
+
     let ansiCharGen =
         let baseSet = [ '\u001B' ; '[' ; '<' ; ';' ; 'M' ; 'm' ; '~' ]
         let digits = [ '0' .. '9' ]

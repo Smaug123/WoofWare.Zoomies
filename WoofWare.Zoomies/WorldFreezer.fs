@@ -2,6 +2,7 @@ namespace WoofWare.Zoomies
 
 open System
 open System.Collections.Concurrent
+open System.Runtime.InteropServices
 open System.Threading
 open System.Threading.Tasks
 
@@ -47,72 +48,69 @@ type WorldStateChange<'appEvent> =
     | ApplicationEvent of 'appEvent
     | ApplicationEventException of exn
 
-type private DequeueState =
-    //{
-    //     Processed : ResizeArray<ConsoleKeyInfo>
-    //     EscTimestamp : int64
-    //     EscKeystroke : ConsoleKeyInfo voption
-    // }
+type private SgrDecode =
+    {
+        mutable Mode : (MouseButton * MouseModifiers) option
+        Parameters : ResizeArray<int>
+        mutable Cursor : int
+    }
 
-    | Normal
-    | EscReceived of timestamp : int64 * esc : ConsoleKeyInfo
-    | OpenCSI of escTimestamp : int64 * esc : ConsoleKeyInfo * bracket : ConsoleKeyInfo
-    | SgrTracking of
-        escTimestamp : int64 *
-        esc : ConsoleKeyInfo *
-        bracket : ConsoleKeyInfo *
-        angle : ConsoleKeyInfo *
-        mode : (MouseButton * MouseModifiers) option *
-        parameters : int list *
-        pending : ConsoleKeyInfo list *
-        processed : ConsoleKeyInfo list
-    | ConsumingCSI of
-        escTimestamp : int64 *
-        esc : ConsoleKeyInfo *
-        bracket : ConsoleKeyInfo *
-        keys : ConsoleKeyInfo list
+    static member Empty (cursor : int) =
+        {
+            Mode = None
+            Parameters = ResizeArray ()
+            Cursor = cursor
+        }
+
+type private CsiDecodeState =
+    | ConsumingIdentifier
+    | SgrTracking of SgrDecode
+
+type private AnsiDecodeState = | Csi of bracket : ConsoleKeyInfo * CsiDecodeState
+
+type private DequeueState =
+    {
+        /// All the characters after the initial `ESC`.
+        Processed : ResizeArray<ConsoleKeyInfo>
+        /// The int64 is the timestamp at which we consumed this Esc.
+        mutable Esc : (int64 * ConsoleKeyInfo) voption
+        mutable Bracket : ConsoleKeyInfo voption
+        mutable AngleBracket : ConsoleKeyInfo voption
+        mutable State : AnsiDecodeState voption
+        ParsedParameters : ResizeArray<int>
+    }
+
+    static member Empty () =
+        {
+            Processed = ResizeArray ()
+            Esc = ValueNone
+            Bracket = ValueNone
+            AngleBracket = ValueNone
+            State = ValueNone
+            ParsedParameters = ResizeArray ()
+        }
+
+    member inline this.IsNormal = this.Esc.IsNone
 
     member this.ReemitIfTime (sw : IStopwatch) =
-        match this with
-        | DequeueState.Normal -> None
-        | DequeueState.EscReceived (timestamp = ts ; esc = esc) ->
+        match this.Esc with
+        | ValueNone -> None
+        | ValueSome (ts, esc) ->
             if (sw.GetTimestamp () - ts |> float) / float sw.Frequency > 0.01 then
-                Some [| esc |]
-            else
-                None
-        | DequeueState.OpenCSI (escTimestamp = ts ; esc = esc ; bracket = bracket) ->
-            if (sw.GetTimestamp () - ts |> float) / float sw.Frequency > 0.01 then
-                Some [| esc ; bracket |]
-            else
-                None
-        | DequeueState.SgrTracking (ts, esc, bracket, angle, _, _, _, processed) ->
-            if (sw.GetTimestamp () - ts |> float) / float sw.Frequency > 0.01 then
-                Some [| esc ; bracket ; angle ; yield! List.rev processed |]
-            else
-                None
-        | DequeueState.ConsumingCSI (ts, esc, bracket, keys) ->
-            if (sw.GetTimestamp () - ts |> float) / float sw.Frequency > 0.01 then
-                Some [| esc ; bracket ; yield! List.rev keys |]
+                let result = Array.zeroCreate (this.Processed.Count + 1)
+                result.[0] <- esc
+                CollectionsMarshal.AsSpan(this.Processed).CopyTo (result.AsSpan (1))
+                Some result
             else
                 None
 
-    override this.ToString () =
-        match this with
-        | DequeueState.Normal -> "<waiting>"
-        | DequeueState.EscReceived _ -> "ESC"
-        | DequeueState.OpenCSI _ -> "ESC]"
-        | DequeueState.SgrTracking (mode = mode ; parameters = parameters ; pending = pending) ->
-            let parameters = parameters |> List.rev |> List.map string<int> |> String.concat ";"
-
-            let pending =
-                pending |> List.map (fun c -> c.KeyChar) |> List.rev |> List.toArray |> String
-
-            $"ESC]< %O{mode} %s{parameters} ; pending: %s{pending}"
-        | DequeueState.ConsumingCSI (keys = keys) ->
-            let keys =
-                keys |> List.map (fun c -> c.KeyChar) |> List.rev |> List.toArray |> String
-
-            $"<consuming CSI code: %s{keys}>"
+    member this.Clear () =
+        this.Processed.Clear ()
+        this.ParsedParameters.Clear ()
+        this.AngleBracket <- ValueNone
+        this.Bracket <- ValueNone
+        this.Esc <- ValueNone
+        this.State <- ValueNone
 
 type UnrecognisedEscapeCodeBehaviour =
     | Throw
@@ -154,77 +152,99 @@ type WorldFreezer<'appEvent> =
                 // Modifiers are only ever compared to None.
                 // Don't break that property!
 
-                match this._DequeueState, out with
-                | _, RawWorldStateChange.ApplicationEvent evt -> result.Add (WorldStateChange.ApplicationEvent evt)
-                | _, RawWorldStateChange.ApplicationEventException exc ->
+                match out with
+                | RawWorldStateChange.ApplicationEvent evt -> result.Add (WorldStateChange.ApplicationEvent evt)
+                | RawWorldStateChange.ApplicationEventException exc ->
                     result.Add (WorldStateChange.ApplicationEventException exc)
-                | DequeueState.Normal, RawWorldStateChange.Keystroke key ->
+                | RawWorldStateChange.Keystroke key ->
+
+                match this._DequeueState.Esc with
+                | ValueNone ->
                     // not in the middle of an escape sequence
                     if key.Key = ConsoleKey.Escape && key.Modifiers = ConsoleModifiers.None then
-                        this._DequeueState <- DequeueState.EscReceived (this._Stopwatch.GetTimestamp (), key)
+                        this._DequeueState.Esc <- ValueSome (this._Stopwatch.GetTimestamp (), key)
                     else
                         result.Add (WorldStateChange.Keystroke key)
-                | DequeueState.EscReceived (ts, esc), RawWorldStateChange.Keystroke key ->
+                | ValueSome (_ts, esc) ->
+
+                let emitBuffered () =
+                    result.Add (WorldStateChange.Keystroke esc)
+
+                    for p in this._DequeueState.Processed do
+                        result.Add (WorldStateChange.Keystroke p)
+
+                    this._DequeueState.Clear ()
+
+                this._DequeueState.Processed.Add key
+
+                match this._DequeueState.Bracket with
+                | ValueNone ->
                     if key.KeyChar = '[' && key.Modifiers = ConsoleModifiers.None then
                         // escape sequence begun
-                        this._DequeueState <- DequeueState.OpenCSI (ts, esc, key)
+                        this._DequeueState.Bracket <- ValueSome key
                     else
-                        result.Add (WorldStateChange.Keystroke esc)
-                        result.Add (WorldStateChange.Keystroke key)
-                        this._DequeueState <- DequeueState.Normal
-                | DequeueState.OpenCSI (ts, esc, bracket), RawWorldStateChange.Keystroke key ->
-                    match key.KeyChar with
-                    | '<' ->
+                        emitBuffered ()
+                | ValueSome bracket ->
+
+                match this._DequeueState.State with
+                | ValueNone ->
+                    if key.KeyChar = '<' then
                         // SGR tracking mouse sequence
-                        this._DequeueState <- DequeueState.SgrTracking (ts, esc, bracket, key, None, [], [], [])
-                    | i when '0' <= i && i <= '9' ->
-                        this._DequeueState <- DequeueState.ConsumingCSI (ts, esc, bracket, [ key ])
-                    | c ->
+                        this._DequeueState.State <-
+                            ValueSome (
+                                AnsiDecodeState.Csi (
+                                    key,
+                                    CsiDecodeState.SgrTracking (SgrDecode.Empty this._DequeueState.Processed.Count)
+                                )
+                            )
+                    elif '0' <= key.KeyChar && key.KeyChar <= '9' then
+                        // consuming a numerical parameter
+                        this._DequeueState.State <-
+                            ValueSome (AnsiDecodeState.Csi (key, CsiDecodeState.ConsumingIdentifier))
+                    else
                         match this._Behaviour with
                         | UnrecognisedEscapeCodeBehaviour.Throw ->
-                            failwith $"Unrecognised ANSI control sequence: received char '%c{c}'"
-                        | UnrecognisedEscapeCodeBehaviour.PassThrough ->
-                            result.Add (WorldStateChange.Keystroke esc)
-                            result.Add (WorldStateChange.Keystroke bracket)
-                            result.Add (WorldStateChange.Keystroke key)
-                            this._DequeueState <- DequeueState.Normal
-                | DequeueState.ConsumingCSI (ts, esc, bracket, pending), RawWorldStateChange.Keystroke key ->
+                            failwith $"Unrecognised ANSI control sequence: received char '%c{key.KeyChar}'"
+                        | UnrecognisedEscapeCodeBehaviour.PassThrough -> emitBuffered ()
+                | ValueSome (AnsiDecodeState.Csi (angleBracket, CsiDecodeState.ConsumingIdentifier)) ->
+
                     if '0' <= key.KeyChar && key.KeyChar <= '9' then
-                        this._DequeueState <- DequeueState.ConsumingCSI (ts, esc, bracket, key :: pending)
+                        ()
                     else
                         let code =
-                            (0, List.rev pending)
-                            ||> Seq.fold (fun sum key -> sum * 10 + (int key.KeyChar - int '0'))
+                            let mutable result = 0
+                            // The last element is the (non-numeric) character we're parsing right now, so skip it;
+                            // the first character is [, so skip that too.
+                            for i = 1 to this._DequeueState.Processed.Count - 2 do
+                                result <- result * 10 + int this._DequeueState.Processed.[i].KeyChar - int '0'
+
+                            result
 
                         match code, key.KeyChar with
                         | 200, '~' ->
                             result.Add (WorldStateChange.KeyboardEvent KeyboardEvent.BeginBracketedPaste)
-                            this._DequeueState <- DequeueState.Normal
+                            this._DequeueState.Clear ()
                         | 201, '~' ->
                             result.Add (WorldStateChange.KeyboardEvent KeyboardEvent.EndBracketedPaste)
-                            this._DequeueState <- DequeueState.Normal
+                            this._DequeueState.Clear ()
                         | _ ->
                             match this._Behaviour with
                             | UnrecognisedEscapeCodeBehaviour.Throw ->
                                 failwith $"don't know how to handle CSI code %i{code} with key %c{key.KeyChar}"
-                            | UnrecognisedEscapeCodeBehaviour.PassThrough ->
-                                result.Add (WorldStateChange.Keystroke esc)
-                                result.Add (WorldStateChange.Keystroke bracket)
-
-                                for p in List.rev pending do
-                                    result.Add (WorldStateChange.Keystroke p)
-
-                                result.Add (WorldStateChange.Keystroke key)
-                                this._DequeueState <- DequeueState.Normal
-                | DequeueState.SgrTracking (ts, esc, bracket, angle, button, parameters, pending, processed),
-                  RawWorldStateChange.Keystroke key ->
+                            | UnrecognisedEscapeCodeBehaviour.PassThrough -> emitBuffered ()
+                | ValueSome (AnsiDecodeState.Csi (angleBracket, CsiDecodeState.SgrTracking state)) ->
                     match key.KeyChar with
                     | ';' ->
-                        match button with
+                        match state.Mode with
                         | None ->
                             let code =
-                                (0, List.rev pending)
-                                ||> Seq.fold (fun sum key -> sum * 10 + (int key.KeyChar - int '0'))
+                                let mutable result = 0
+                                // The last element is the semicolon we're parsing right now, so skip it.
+                                for i = state.Cursor to this._DequeueState.Processed.Count - 2 do
+                                    result <- result * 10 + int this._DequeueState.Processed.[i].KeyChar - int '0'
+
+                                state.Cursor <- this._DequeueState.Processed.Count
+                                result
 
                             let button =
                                 if code &&& 64 > 0 then
@@ -244,15 +264,7 @@ type WorldFreezer<'appEvent> =
                                 match this._Behaviour with
                                 | UnrecognisedEscapeCodeBehaviour.Throw ->
                                     failwith $"unexpected mouse specifier: %i{code}"
-                                | UnrecognisedEscapeCodeBehaviour.PassThrough ->
-                                    result.Add (WorldStateChange.Keystroke esc)
-                                    result.Add (WorldStateChange.Keystroke bracket)
-                                    result.Add (WorldStateChange.Keystroke angle)
-
-                                    for p in List.rev processed do
-                                        result.Add (WorldStateChange.Keystroke p)
-
-                                    this._DequeueState <- DequeueState.Normal
+                                | UnrecognisedEscapeCodeBehaviour.PassThrough -> emitBuffered ()
 
                             | Some button ->
 
@@ -279,69 +291,40 @@ type WorldFreezer<'appEvent> =
                                      else
                                          MouseModifiers.None)
 
-                            this._DequeueState <-
-                                DequeueState.SgrTracking (
-                                    ts,
-                                    esc,
-                                    bracket,
-                                    angle,
-                                    Some (button, modifiers),
-                                    parameters,
-                                    [],
-                                    key :: processed
-                                )
+                            state.Mode <- Some (button, modifiers)
+                            state.Cursor <- this._DequeueState.Processed.Count
                         | Some button ->
-                            // End the parameter!
                             let paramValue =
-                                (0, List.rev pending)
-                                ||> Seq.fold (fun sum key -> sum * 10 + (int key.KeyChar - int '0'))
+                                let mutable result = 0
+                                // The last element is the semicolon we're parsing right now, so skip it.
+                                for i = state.Cursor to this._DequeueState.Processed.Count - 2 do
+                                    result <- result * 10 + int this._DequeueState.Processed.[i].KeyChar - int '0'
 
-                            this._DequeueState <-
-                                DequeueState.SgrTracking (
-                                    ts,
-                                    esc,
-                                    bracket,
-                                    angle,
-                                    Some button,
-                                    paramValue :: parameters,
-                                    [],
-                                    key :: processed
-                                )
-                    | x when '0' <= x && x <= '9' ->
-                        this._DequeueState <-
-                            DequeueState.SgrTracking (
-                                ts,
-                                esc,
-                                bracket,
-                                angle,
-                                button,
-                                parameters,
-                                key :: pending,
-                                key :: processed
-                            )
+                                state.Cursor <- this._DequeueState.Processed.Count
+                                result
+
+                            state.Parameters.Add paramValue
+                    | x when '0' <= x && x <= '9' -> ()
                     | 'm'
                     | 'M' ->
-                        match button with
+                        match state.Mode with
                         | None ->
                             match this._Behaviour with
                             | UnrecognisedEscapeCodeBehaviour.Throw ->
                                 failwith $"Expected mouse button specifier; got %c{key.KeyChar}"
-                            | UnrecognisedEscapeCodeBehaviour.PassThrough ->
-                                result.Add (WorldStateChange.Keystroke esc)
-                                result.Add (WorldStateChange.Keystroke bracket)
-                                result.Add (WorldStateChange.Keystroke angle)
+                            | UnrecognisedEscapeCodeBehaviour.PassThrough -> emitBuffered ()
 
-                                for p in List.rev processed do
-                                    result.Add (WorldStateChange.Keystroke p)
-
-                                result.Add (WorldStateChange.Keystroke key)
-                                this._DequeueState <- DequeueState.Normal
                         | Some (button, modifiers) ->
-                            match parameters with
-                            | [ x ] ->
+                            if state.Parameters.Count = 1 then
+                                let x = state.Parameters.[0]
+
                                 let code =
-                                    (0, List.rev pending)
-                                    ||> Seq.fold (fun sum key -> sum * 10 + (int key.KeyChar - int '0'))
+                                    let mutable result = 0
+                                    // The last element is the semicolon we're parsing right now, so skip it.
+                                    for i = state.Cursor to this._DequeueState.Processed.Count - 2 do
+                                        result <- result * 10 + int this._DequeueState.Processed.[i].KeyChar - int '0'
+
+                                    result
 
                                 let coordinates =
                                     {
@@ -359,42 +342,23 @@ type WorldFreezer<'appEvent> =
                                     |> WorldStateChange.MouseEvent
                                     |> result.Add
 
-                                this._DequeueState <- DequeueState.Normal
-                            | actual ->
+                                this._DequeueState.Clear ()
+                            else
                                 match this._Behaviour with
                                 | UnrecognisedEscapeCodeBehaviour.Throw ->
-                                    let s = actual |> List.map string<int> |> String.concat ";"
+                                    let s = state.Parameters |> Seq.map string<int> |> String.concat ";"
                                     failwith $"expected exactly one parameter already parsed; got %s{s}"
-                                | UnrecognisedEscapeCodeBehaviour.PassThrough ->
-                                    result.Add (WorldStateChange.Keystroke esc)
-                                    result.Add (WorldStateChange.Keystroke bracket)
-                                    result.Add (WorldStateChange.Keystroke angle)
-
-                                    for p in List.rev processed do
-                                        result.Add (WorldStateChange.Keystroke p)
-
-                                    result.Add (WorldStateChange.Keystroke key)
-
-                                    this._DequeueState <- DequeueState.Normal
+                                | UnrecognisedEscapeCodeBehaviour.PassThrough -> emitBuffered ()
                     | c ->
                         match this._Behaviour with
                         | UnrecognisedEscapeCodeBehaviour.Throw ->
                             failwith $"Unrecognised char '%c{c}' in ANSI SGR mouse-handling escape code"
-                        | UnrecognisedEscapeCodeBehaviour.PassThrough ->
-                            result.Add (WorldStateChange.Keystroke esc)
-                            result.Add (WorldStateChange.Keystroke bracket)
-                            result.Add (WorldStateChange.Keystroke angle)
-
-                            for p in List.rev processed do
-                                result.Add (WorldStateChange.Keystroke p)
-
-                            result.Add (WorldStateChange.Keystroke key)
-                            this._DequeueState <- DequeueState.Normal
+                        | UnrecognisedEscapeCodeBehaviour.PassThrough -> emitBuffered ()
 
             match this._DequeueState.ReemitIfTime this._Stopwatch with
             | Some expiredKeys ->
-                this._DequeueState <- DequeueState.Normal
                 expiredKeys |> Seq.map WorldStateChange.Keystroke |> result.AddRange
+                this._DequeueState.Clear ()
             | None -> ()
 
             if result.Count = 0 then
@@ -453,7 +417,7 @@ module WorldFreezer =
             _Post = postAppEvent
             _Nursery = runningTasks
             _Stopwatch = stopwatch
-            _DequeueState = DequeueState.Normal
+            _DequeueState = DequeueState.Empty ()
             _Behaviour = behaviour
         }
 

@@ -4,4 +4,5 @@ open FsCheck
 
 [<AutoOpen>]
 module FsCheck =
-    let propConfig = Config.QuickThrowOnFailure.WithMaxTest(100).WithQuietOnSuccess true
+    let propConfig =
+        Config.QuickThrowOnFailure.WithMaxTest(10000).WithQuietOnSuccess true
