@@ -14,6 +14,7 @@
         <IStopwatch>GenerateMock</IStopwatch>
       </MyriadParams>
     </Compile>
+    <Compile Include="FsCheck.fs" />
     <Compile Include="ConsoleHarness.fs" />
     <Compile Include="CtrlCHandler.fs" />
     <Compile Include="MockWorld.fs" />
@@ -27,6 +28,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="FsCheck" Version="3.3.1" />
     <PackageReference Include="FsUnit" Version="7.1.1"/>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1"/>
     <PackageReference Include="NUnit" Version="4.3.2" />

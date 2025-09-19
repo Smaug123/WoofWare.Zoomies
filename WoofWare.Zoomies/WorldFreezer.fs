@@ -144,6 +144,10 @@ type WorldFreezer<'appEvent> =
             let mutable out = Unchecked.defaultof<_>
 
             while this._Changes.TryDequeue &out do
+                // Note: the tests assume that key.Key is only ever compared to ConsoleKey.Escape, and that the
+                // Modifiers are only ever compared to None.
+                // Don't break that property!
+
                 match this._DequeueState, out with
                 | _, RawWorldStateChange.ApplicationEvent evt -> result.Add (WorldStateChange.ApplicationEvent evt)
                 | _, RawWorldStateChange.ApplicationEventException exc ->
@@ -316,7 +320,16 @@ type WorldFreezer<'appEvent> =
                             match this._Behaviour with
                             | UnrecognisedEscapeCodeBehaviour.Throw ->
                                 failwith $"Expected mouse button specifier; got %c{key.KeyChar}"
-                            | UnrecognisedEscapeCodeBehaviour.PassThrough -> failwith "todo"
+                            | UnrecognisedEscapeCodeBehaviour.PassThrough ->
+                                result.Add (WorldStateChange.Keystroke esc)
+                                result.Add (WorldStateChange.Keystroke bracket)
+                                result.Add (WorldStateChange.Keystroke angle)
+
+                                for p in processed do
+                                    result.Add (WorldStateChange.Keystroke p)
+
+                                result.Add (WorldStateChange.Keystroke key)
+                                this._DequeueState <- DequeueState.Normal
                         | Some (button, modifiers) ->
                             match parameters with
                             | [ x ] ->

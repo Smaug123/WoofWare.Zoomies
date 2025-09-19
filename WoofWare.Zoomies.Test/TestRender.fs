@@ -25,6 +25,7 @@ type State =
         }
 
 [<TestFixture>]
+[<Parallelizable(ParallelScope.All)>]
 module TestRender =
     [<OneTimeSetUp>]
     let setUp () =

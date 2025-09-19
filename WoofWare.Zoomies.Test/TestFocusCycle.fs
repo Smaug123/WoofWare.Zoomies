@@ -6,6 +6,7 @@ open WoofWare.Expect
 open WoofWare.Zoomies
 
 [<TestFixture>]
+[<Parallelizable(ParallelScope.All)>]
 module TestFocusCycle =
     [<OneTimeSetUp>]
     let setUp () =
