@@ -12,12 +12,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="Exception.fs" />
+    <Compile Include="ConsoleModifiers.fs" />
     <Compile Include="Nursery.fs" />
     <Compile Include="Vdom.fs" />
     <Compile Include="CtrlCHandler.fs" />
     <Compile Include="ConsoleColor.fs" />
     <Compile Include="Terminal.fs" />
     <Compile Include="Console.fs" />
+    <Compile Include="IStopwatch.fs" />
     <Compile Include="WorldFreezer.fs" />
     <Compile Include="Render.fs" />
     <Compile Include="App.fs" />

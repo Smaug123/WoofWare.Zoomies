@@ -31,6 +31,10 @@ type TerminalOp =
     | ClearScreen
     | EnterAlternateScreen
     | ExitAlternateScreen
+    | RegisterMouseMode
+    | UnregisterMouseMode
+    | RegisterBracketedPaste
+    | UnregisterBracketedPaste
 
 [<RequireQualifiedAccess>]
 module TerminalOp =
@@ -69,3 +73,7 @@ module TerminalOp =
         | TerminalOp.ClearScreen -> consoleWrite "\x1B[2J"
         | TerminalOp.EnterAlternateScreen -> consoleWrite "\x1B[?1049h"
         | TerminalOp.ExitAlternateScreen -> consoleWrite "\x1B[?1049l"
+        | TerminalOp.RegisterMouseMode -> consoleWrite "\u001b[?1000;1006h"
+        | TerminalOp.UnregisterMouseMode -> consoleWrite "\u001b[?1000;1006l"
+        | TerminalOp.RegisterBracketedPaste -> consoleWrite "\u001b[?2004h"
+        | TerminalOp.UnregisterBracketedPaste -> consoleWrite "\u001b[?1000;1006l"

@@ -25,6 +25,7 @@ type State =
         }
 
 [<TestFixture>]
+[<Parallelizable(ParallelScope.All)>]
 module TestRender =
     [<OneTimeSetUp>]
     let setUp () =
@@ -81,6 +82,8 @@ module TestRender =
                 | FocusedElement.Toggle1 -> state.IsToggle1Checked <- not state.IsToggle1Checked
                 | FocusedElement.Toggle2 -> state.IsToggle2Checked <- not state.IsToggle2Checked
             | Keystroke _ -> ()
+            | KeyboardEvent _ -> failwith "no keyboard events"
+            | MouseEvent _ -> failwith "no mouse events"
             | ApplicationEvent () -> failwith "no app events"
             | ApplicationEventException _ -> failwith "no exceptions possible"
 
@@ -112,7 +115,12 @@ module TestRender =
 
             let world = MockWorld.make ()
 
-            use worldFreezer = WorldFreezer.listen' world.KeyAvailable world.ReadKey
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
 
             let state = State.Empty ()
 

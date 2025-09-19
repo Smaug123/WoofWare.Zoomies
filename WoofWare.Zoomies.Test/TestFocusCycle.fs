@@ -6,6 +6,7 @@ open WoofWare.Expect
 open WoofWare.Zoomies
 
 [<TestFixture>]
+[<Parallelizable(ParallelScope.All)>]
 module TestFocusCycle =
     [<OneTimeSetUp>]
     let setUp () =
@@ -27,7 +28,12 @@ module TestFocusCycle =
 
             let world = MockWorld.make ()
 
-            use worldFreezer = WorldFreezer.listen' world.KeyAvailable world.ReadKey
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
 
             let renderState = RenderState.make' console
             let state = ref 0
@@ -38,7 +44,9 @@ module TestFocusCycle =
                 |> Seq.map (fun s ->
                     match s with
                     | WorldStateChange.Keystroke c -> string c.Key
+                    | WorldStateChange.MouseEvent _ -> failwith "no mouse events"
                     | WorldStateChange.ApplicationEvent () -> failwith "no app events"
+                    | WorldStateChange.KeyboardEvent _ -> failwith "no keyboard events"
                     | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
                 )
                 |> String.concat "\n"

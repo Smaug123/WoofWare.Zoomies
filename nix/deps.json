@@ -5,9 +5,24 @@
     "hash": "sha256-v4bXmvjZOYxl5RSIHuqVfDzBQdRz5SrmzZtD6SeEYTY="
   },
   {
+    "pname": "Fantomas.Core",
+    "version": "6.1.1",
+    "hash": "sha256-FcTLHQFvKkQY/kV08jhhy/St/+FmXpp3epp/R3zUXMA="
+  },
+  {
+    "pname": "Fantomas.FCS",
+    "version": "6.1.1",
+    "hash": "sha256-NuZ8msPEHYA8T3EYREB28F1RcNgUU8V54eg2+UttYxw="
+  },
+  {
     "pname": "Fantomas.FCS",
     "version": "7.0.3",
     "hash": "sha256-BmCUq+ZQ3b25nrMBTc5tcxdO2soryEjNx9Fn/FJpi1c="
+  },
+  {
+    "pname": "FsCheck",
+    "version": "3.3.1",
+    "hash": "sha256-k65ksdOSOGz+meRUUND+yuqJtm5ChaKuaxmRIdKzx2Y="
   },
   {
     "pname": "fsharp-analyzers",
@@ -180,6 +195,16 @@
     "hash": "sha256-1cxHWcvHRD7orQ3EEEPPxVGEkTpxom1/zoICC9SInJs="
   },
   {
+    "pname": "Myriad.Core",
+    "version": "0.8.3",
+    "hash": "sha256-vBOxfq8QriX/yUtaXN69rEQaY/psRNJWxqATLidrt2g="
+  },
+  {
+    "pname": "Myriad.Sdk",
+    "version": "0.8.3",
+    "hash": "sha256-7O397WKhskKOvE3MkJT37BvxorDWngDR6gTUogtDZ2M="
+  },
+  {
     "pname": "Nerdbank.GitVersioning",
     "version": "3.8.38-alpha",
     "hash": "sha256-gPMrVbjOZxXoofczF/pn6eVkLhjVSJIyQrLO2oljrDc="
@@ -268,5 +293,20 @@
     "pname": "WoofWare.Expect",
     "version": "0.8.1",
     "hash": "sha256-OeOay7YvrTBysPAvJhlN3ff+4y5z95ah6F4lPT/fjh0="
+  },
+  {
+    "pname": "WoofWare.Myriad.Plugins",
+    "version": "8.1.1",
+    "hash": "sha256-Cx7/+5+qc8lhxb0On/OW58PrabadMfbcNP1TvLZGHrY="
+  },
+  {
+    "pname": "WoofWare.Myriad.Plugins.Attributes",
+    "version": "3.7.1",
+    "hash": "sha256-Mn0OVvC/AwTYg6+3MCKLkNKGGSdzLfBOaLapxHsUDCw="
+  },
+  {
+    "pname": "WoofWare.Whippet.Fantomas",
+    "version": "0.6.3",
+    "hash": "sha256-FkW/HtVp8/HE2k6d7yFpnJcnP3FNNe9kGlkoIWmNgDw="
   }
 ]
