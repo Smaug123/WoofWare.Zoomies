@@ -23,22 +23,22 @@ type VdomCata<'ret> =
 [<RequireQualifiedAccess>]
 module Vdom =
 
-    let textContent (onReceiveFocus : (unit -> unit) option) s =
+    let textContent (onReceiveFocus : (unit -> unit) option) s : Vdom<DesiredBounds> =
         Vdom.TextContent (s, false, onReceiveFocus)
 
-    let panelSplitProportion d p c1 c2 =
+    let panelSplitProportion d p c1 c2 : Vdom<DesiredBounds> =
         if not (p > 0.0 && p < 1.0) then
             invalidArg "p" "proportion must be between 0 and 1"
 
         Vdom.PanelSplit (d, Choice1Of2 p, c1, c2)
 
-    let panelSplitAbsolute d p c1 c2 =
+    let panelSplitAbsolute d p c1 c2 : Vdom<DesiredBounds> =
         Vdom.PanelSplit (d, Choice2Of2 p, c1, c2)
 
-    let checkbox (onReceiveFocus : unit -> unit) (isFocused : bool) isChecked =
+    let checkbox (onReceiveFocus : unit -> unit) (isFocused : bool) isChecked : Vdom<DesiredBounds> =
         Vdom.Checkbox (isChecked, isFocused, onReceiveFocus)
 
-    let bordered inner = Vdom.Bordered inner
+    let bordered inner : Vdom<DesiredBounds> = Vdom.Bordered inner
 
     let labelledCheckbox
         (onReceiveFocus : unit -> unit)

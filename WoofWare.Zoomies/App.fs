@@ -76,6 +76,8 @@ module App =
     /// We set up a ConsoleCancelEventHandler to suppress one Ctrl+C, and we also listen to stdin,
     /// for as long as this task is running.
     /// Cancel the CancellationToken to cause the render loop to quit and to unhook all these state listeners.
+    ///
+    /// The resulting Task faults if any user logic raises an exception.
     let run'<'state, 'appEvent>
         (terminate : CancellationToken)
         (console : IConsole)
@@ -87,7 +89,11 @@ module App =
         (vdom : 'state -> Vdom<DesiredBounds>)
         : Task
         =
-        let complete = TaskCompletionSource ()
+        // RunContinuationsAsynchronously so that we don't force continuation on the UI thread.
+        // I want to make sure the UI thread could in principle be torn down once execution of the UI has finished.
+        // Synchronous continuations would run on that thread.
+        let complete =
+            TaskCompletionSource TaskCreationOptions.RunContinuationsAsynchronously
 
         let _thread =
             fun () ->
@@ -122,8 +128,6 @@ module App =
                     RenderState.exitAlternateScreen renderState
                     RenderState.setCursorVisible renderState
 
-                    complete.SetResult ()
-
                 let exc =
                     try
                         RenderState.setCursorInvisible renderState
@@ -144,11 +148,11 @@ module App =
                 cleanUp ()
 
                 match exc with
-                | None -> ()
+                | None -> complete.SetResult ()
                 | Some exc ->
                     // report critical exceptions to the user *after* disabling the alternate buffer, so they can
                     // actually see them
-                    Exception.reraiseWithOriginalStackTrace exc
+                    complete.SetException exc
             |> Thread
             |> _.Start()
 
