@@ -117,9 +117,11 @@ module Program =
     [<EntryPoint>]
     let main argv =
         let cwd = DirectoryInfo Environment.CurrentDirectory
+
         let file1, file2 =
             match cwd.EnumerateFiles () |> Seq.take 2 |> Seq.toList with
             | [ a ; b ] -> a, b
             | _ -> failwith "oh no"
+
         FileBrowser.run file1.FullName file2.FullName |> _.Wait()
         0
