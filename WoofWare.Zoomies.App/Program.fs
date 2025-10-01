@@ -1,5 +1,6 @@
 ﻿namespace WoofWare.Zoomies
 
+open System
 open System.IO
 open System.Runtime.ExceptionServices
 open System.Threading
@@ -115,5 +116,10 @@ module FileBrowser =
 module Program =
     [<EntryPoint>]
     let main argv =
-        FileBrowser.run "../../../../README.md" "../../../../LICENSE.md" |> _.Wait()
+        let cwd = DirectoryInfo Environment.CurrentDirectory
+        let file1, file2 =
+            match cwd.EnumerateFiles () |> Seq.take 2 |> Seq.toList with
+            | [ a ; b ] -> a, b
+            | _ -> failwith "oh no"
+        FileBrowser.run file1.FullName file2.FullName |> _.Wait()
         0
