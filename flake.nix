@@ -3,7 +3,7 @@
 
   inputs = {
     flake-utils.url = "github:numtide/flake-utils";
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/master";
   };
 
   outputs = {
@@ -65,19 +65,13 @@
       devShell = pkgs.mkShell {
         buildInputs = [dotnet-sdk];
         DOTNET_CLI_TELEMETRY_OPTOUT = "1";
-        packages =
-          [
-            pkgs.alejandra
-            pkgs.nodePackages.markdown-link-check
-            pkgs.shellcheck
-            pkgs.xmlstarlet
-            pkgs.claude-code
-          ]
-          ++ (
-            if pkgs.stdenv.isDarwin
-            then [pkgs.darwin.ICU pkgs.darwin.binutils]
-            else []
-          );
+        packages = [
+          pkgs.alejandra
+          pkgs.nodePackages.markdown-link-check
+          pkgs.shellcheck
+          pkgs.xmlstarlet
+          pkgs.claude-code
+        ];
       };
     });
 }

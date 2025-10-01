@@ -1,6 +1,7 @@
 namespace WoofWare.Zoomies
 
 open System
+open System.Collections.Generic
 
 [<Struct>]
 type Rectangle =
@@ -30,6 +31,8 @@ type RenderState =
             Output : TerminalOp -> unit
             mutable BackgroundColor : ConsoleColor
             mutable ForegroundColor : ConsoleColor
+            KeyToNode : Dictionary<NodeKey, RenderedNode>
+            mutable FocusedKey : NodeKey option
         }
 
 [<RequireQualifiedAccess>]
@@ -60,6 +63,15 @@ module RenderState =
     let unregisterBracketedPaste (s : RenderState) =
         s.Output TerminalOp.UnregisterBracketedPaste
 
+    /// Query which key had focus in the previous frame
+    let focusedKey (s : RenderState) : NodeKey option = s.FocusedKey
+
+    /// Query the rendered bounds of a keyed node
+    let layoutOf (key : NodeKey) (s : RenderState) : Rectangle option =
+        match s.KeyToNode.TryGetValue key with
+        | true, node -> Some node.Bounds
+        | false, _ -> None
+
     let make' (c : IConsole) =
         let width = c.WindowWidth ()
         let height = c.WindowHeight ()
@@ -85,6 +97,8 @@ module RenderState =
             CursorVisible = true
             BackgroundColor = bg
             ForegroundColor = fg
+            KeyToNode = Dictionary<NodeKey, RenderedNode> ()
+            FocusedKey = None
         }
 
     let make () =
@@ -163,6 +177,7 @@ module Render =
 
     let rec layout
         (dirty : TerminalCell voption[,])
+        (keyToNode : Dictionary<NodeKey, RenderedNode>)
         (previousVdom : (Vdom<Rectangle> * RenderedNode) option)
         (bounds : Rectangle)
         (vdom : Vdom<DesiredBounds>)
@@ -228,10 +243,10 @@ module Render =
                 let bounds1, bounds2 = splitBounds dir proportion bounds
 
                 let rendered1 =
-                    layout dirty (Some (prevChild1, prevNode.OverlaidChildren.[0])) bounds1 child1
+                    layout dirty keyToNode (Some (prevChild1, prevNode.OverlaidChildren.[0])) bounds1 child1
 
                 let rendered2 =
-                    layout dirty (Some (prevChild2, prevNode.OverlaidChildren.[1])) bounds2 child2
+                    layout dirty keyToNode (Some (prevChild2, prevNode.OverlaidChildren.[1])) bounds2 child2
 
                 {
                     Bounds = bounds
@@ -245,8 +260,8 @@ module Render =
                         setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
 
                 let bounds1, bounds2 = splitBounds dir proportion bounds
-                let rendered1 = layout dirty None bounds1 child1
-                let rendered2 = layout dirty None bounds2 child2
+                let rendered1 = layout dirty keyToNode None bounds1 child1
+                let rendered2 = layout dirty keyToNode None bounds2 child2
 
                 {
                     Bounds = bounds
@@ -322,7 +337,7 @@ module Render =
             | Some (Vdom.Bordered prevInner, prevNode) when prevNode.Bounds = bounds ->
                 let children =
                     [
-                        layout dirty (Some (prevInner, prevNode.OverlaidChildren.[0])) (shrinkBounds bounds) child
+                        layout dirty keyToNode (Some (prevInner, prevNode.OverlaidChildren.[0])) (shrinkBounds bounds) child
                     ]
 
                 {
@@ -365,7 +380,7 @@ module Render =
 
                     setAtRelativeOffset dirty bounds (bounds.Width - 1) i (ValueSome (TerminalCell.OfChar '│'))
 
-                let children = [ layout dirty None (shrinkBounds bounds) child ]
+                let children = [ layout dirty keyToNode None (shrinkBounds bounds) child ]
 
                 {
                     Bounds = bounds
@@ -373,6 +388,16 @@ module Render =
                     VDomSource = vdom
                     Self = Vdom.Bordered children.[0].Self
                 }
+
+        | Vdom.WithKey (key, inner) ->
+            // Render the inner node and track it in the dictionary
+            let rendered = layout dirty keyToNode previousVdom bounds inner
+            keyToNode.[key] <- rendered
+            rendered
+
+        | Vdom.Focusable inner ->
+            // Focusable is just a marker, render the inner node
+            layout dirty keyToNode previousVdom bounds inner
 
     let writeBuffer (dirty : TerminalCell voption[,]) : TerminalOp seq =
         // TODO this is super dumb
@@ -384,13 +409,14 @@ module Render =
                     | ValueSome cell -> yield! [ TerminalOp.MoveCursor (x, y) ; TerminalOp.WriteChar cell ]
         }
 
-    let oneStep<'state> (renderState : RenderState) (userState : 'state) (compute : 'state -> Vdom<DesiredBounds>) =
+    let oneStep<'state, 'keyed> (renderState : RenderState) (userState : 'state) (compute : 'state -> Vdom<DesiredBounds>) =
         Array.Clear renderState.Buffer
+        renderState.KeyToNode.Clear ()
         let vdom = compute userState
 
         let rendered =
             let prev = renderState.PreviousVdom |> Option.map (fun node -> node.Self, node)
-            layout renderState.Buffer prev renderState.TerminalBounds vdom
+            layout renderState.Buffer renderState.KeyToNode prev renderState.TerminalBounds vdom
 
         renderState.PreviousVdom <- Some rendered
 
