@@ -17,7 +17,7 @@ module App =
         (haveFrameworkHandleFocus : 'state -> bool)
         (renderState : RenderState)
         (processWorld : WorldProcessor<'appEvent, 'state>)
-        (vdom : 'state -> Vdom<DesiredBounds>)
+        (vdom : RenderState -> 'state -> Vdom<DesiredBounds>)
         : unit
         =
         listener.RefreshExternal ()
@@ -49,18 +49,8 @@ module App =
                                 mutableState
                             )
 
-                        // TODO: this is grossly inefficient!
-                        let focusChange = Vdom.cata Vdom.advanceFocusCata prevVdom
-
-                        match focusChange.FirstUnfocusedAfter with
-                        | Some changeFocus -> changeFocus ()
-                        | None ->
-                            // Try wrapping round to the first focusable element
-                            match focusChange.FirstUnfocusedAbsolute with
-                            | Some changeFocus -> changeFocus ()
-                            | None ->
-                                // couldn't find anything to change focus to
-                                ()
+                        // Advance focus to the next focusable element
+                        RenderState.advanceFocus renderState
 
                         start <- i + 1
                         // skip the tab input
@@ -75,7 +65,7 @@ module App =
             else
                 processWorld.ProcessWorld (changes.AsSpan (), prevVdom, mutableState)
 
-        Render.oneStep renderState mutableState vdom
+        Render.oneStep renderState mutableState (vdom renderState)
 
 
     /// We set up a ConsoleCancelEventHandler to suppress one Ctrl+C, and we also listen to stdin,
@@ -91,7 +81,7 @@ module App =
         (mutableState : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
         (processWorld : ((CancellationToken -> Task<'appEvent>) -> unit) -> WorldProcessor<'appEvent, 'state>)
-        (vdom : 'state -> Vdom<DesiredBounds>)
+        (vdom : RenderState -> 'state -> Vdom<DesiredBounds>)
         : Task
         =
         // RunContinuationsAsynchronously so that we don't force continuation on the UI thread.
@@ -167,7 +157,7 @@ module App =
         (state : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
         (processWorld : ((CancellationToken -> Task<'appEvent>) -> unit) -> WorldProcessor<'appEvent, 'state>)
-        (vdom : 'state -> Vdom<DesiredBounds>)
+        (vdom : RenderState -> 'state -> Vdom<DesiredBounds>)
         : Task
         =
         run'
