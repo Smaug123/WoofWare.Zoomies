@@ -5,7 +5,8 @@ open System.Threading
 open System.Threading.Tasks
 
 type WorldProcessor<'appEvent, 'userState> =
-    abstract ProcessWorld : events : WorldStateChange<'appEvent> seq -> prevVdom : Vdom<Rectangle> -> 'userState -> unit
+    abstract ProcessWorld :
+        events : ReadOnlySpan<WorldStateChange<'appEvent>> * prevVdom : Vdom<Rectangle> * 'userState -> unit
 
 [<RequireQualifiedAccess>]
 module App =
@@ -42,7 +43,11 @@ module App =
                     match changes.[i] with
                     | WorldStateChange.Keystroke t when t.Key = ConsoleKey.Tab && t.Modifiers = enum 0 ->
                         if i > 0 then
-                            processWorld.ProcessWorld changes.[start .. i - 1] prevVdom mutableState
+                            processWorld.ProcessWorld (
+                                changes.AsSpan().Slice (start, i - 1 - start),
+                                prevVdom,
+                                mutableState
+                            )
 
                         // TODO: this is grossly inefficient!
                         let focusChange = Vdom.cata Vdom.advanceFocusCata prevVdom
@@ -66,9 +71,9 @@ module App =
                     i <- i + 1
 
                 if start < changes.Length then
-                    processWorld.ProcessWorld changes.[start..] prevVdom mutableState
+                    processWorld.ProcessWorld (changes.AsSpan().Slice start, prevVdom, mutableState)
             else
-                processWorld.ProcessWorld changes prevVdom mutableState
+                processWorld.ProcessWorld (changes.AsSpan (), prevVdom, mutableState)
 
         Render.oneStep renderState mutableState vdom
 
