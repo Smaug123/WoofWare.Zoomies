@@ -76,7 +76,7 @@ module TestRender =
 
     let processWorld =
         { new WorldProcessor<unit, State> with
-            member _.ProcessWorld worldChanges _ state =
+            member _.ProcessWorld (worldChanges, _, state) =
                 for change in worldChanges do
                     match change with
                     | Keystroke c when c.KeyChar = ' ' ->
