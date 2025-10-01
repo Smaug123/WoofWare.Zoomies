@@ -49,7 +49,7 @@ module TestRender =
                 "errybody wants to be a bodybuilder, but don't nobody want to lift no heavy-ass weights"
             |> Vdom.bordered
 
-        let topHalf = Vdom.panelSplitProportion Direction.Vertical 0.5 left right
+        let topHalf = Vdom.panelSplitProportion SplitDirection.Vertical 0.5 left right
 
         let bottomHalf =
             Vdom.labelledCheckbox
@@ -58,11 +58,11 @@ module TestRender =
                 state.IsToggle1Checked
                 "Press Space to toggle"
 
-        let vdom = Vdom.panelSplitAbsolute Direction.Horizontal -3 topHalf bottomHalf
+        let vdom = Vdom.panelSplitAbsolute SplitDirection.Horizontal -3 topHalf bottomHalf
 
         if state.IsToggle1Checked then
             Vdom.panelSplitProportion
-                Direction.Vertical
+                SplitDirection.Vertical
                 0.5
                 (Vdom.textContent None "only displayed when checked")
                 (Vdom.labelledCheckbox
@@ -70,7 +70,7 @@ module TestRender =
                     state.FocusedElement.IsToggle2
                     state.IsToggle2Checked
                     "this one is focusable!")
-            |> Vdom.panelSplitProportion Direction.Horizontal 0.7 vdom
+            |> Vdom.panelSplitProportion SplitDirection.Horizontal 0.7 vdom
         else
             vdom
 

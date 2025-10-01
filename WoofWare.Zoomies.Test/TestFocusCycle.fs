@@ -19,7 +19,7 @@ module TestFocusCycle =
 
     let vdom (state : int ref) =
         List.init 4 (fun i -> Vdom.checkbox (fun () -> state.Value <- i) (state.Value = i) false)
-        |> List.reduce (Vdom.panelSplitAbsolute Direction.Vertical -3)
+        |> List.reduce (Vdom.panelSplitAbsolute SplitDirection.Vertical -3)
 
     [<Test>]
     let ``example 1`` () =

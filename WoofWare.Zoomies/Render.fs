@@ -94,13 +94,13 @@ module RenderState =
 [<RequireQualifiedAccess>]
 module Render =
     let private splitBounds
-        (direction : Direction)
+        (direction : SplitDirection)
         (split : Choice<float, int>)
         (bounds : Rectangle)
         : Rectangle * Rectangle
         =
         match direction with
-        | Direction.Vertical ->
+        | SplitDirection.Vertical ->
             let leftWidth =
                 match split with
                 | Choice1Of2 proportion -> max (float bounds.Width * proportion |> int) 1
@@ -123,7 +123,7 @@ module Render =
                 }
 
             left, right
-        | Direction.Horizontal ->
+        | SplitDirection.Horizontal ->
             let topHeight =
                 match split with
                 | Choice1Of2 proportion -> max (float bounds.Height * proportion |> int) 1
