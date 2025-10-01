@@ -95,7 +95,7 @@ module RenderState =
 module Render =
     let private splitBounds
         (direction : SplitDirection)
-        (split : Choice<float, int>)
+        (split : SplitBehaviour)
         (bounds : Rectangle)
         : Rectangle * Rectangle
         =
@@ -103,8 +103,8 @@ module Render =
         | SplitDirection.Vertical ->
             let leftWidth =
                 match split with
-                | Choice1Of2 proportion -> max (float bounds.Width * proportion |> int) 1
-                | Choice2Of2 absolute -> if absolute < 0 then bounds.Width + absolute else absolute
+                | SplitBehaviour.Proportion proportion -> max (float bounds.Width * proportion |> int) 1
+                | SplitBehaviour.Absolute absolute -> if absolute < 0 then bounds.Width + absolute else absolute
 
             let left =
                 {
@@ -126,8 +126,8 @@ module Render =
         | SplitDirection.Horizontal ->
             let topHeight =
                 match split with
-                | Choice1Of2 proportion -> max (float bounds.Height * proportion |> int) 1
-                | Choice2Of2 absolute -> if absolute < 0 then bounds.Height + absolute else absolute
+                | SplitBehaviour.Proportion proportion -> max (float bounds.Height * proportion |> int) 1
+                | SplitBehaviour.Absolute absolute -> if absolute < 0 then bounds.Height + absolute else absolute
 
             let top =
                 {
@@ -176,17 +176,24 @@ module Render =
             previousNode
         | _ ->
 
-        match vdom with
-        | Vdom.TextContent (s, focus, onReceiveFocus) ->
+        match vdom.Content with
+        | VdomContent.TextContent (s, focus, onReceiveFocus) ->
             match previousVdom with
-            | Some (Vdom.TextContent (prevText, prevFocus, _), prevNode) when
-                prevNode.Bounds = bounds && prevText = s && prevFocus = focus
+            | Some (prevVdom, prevNode) when
+                (match prevVdom.Content with
+                 | VdomContent.TextContent (prevText, prevFocus, _) ->
+                     prevNode.Bounds = bounds && prevText = s && prevFocus = focus
+                 | _ -> false)
                 ->
                 {
                     Bounds = bounds
                     OverlaidChildren = []
                     VDomSource = vdom
-                    Self = Vdom.TextContent (s, focus, onReceiveFocus)
+                    Self =
+                        {
+                            Constraints = vdom.Constraints
+                            Content = VdomContent.TextContent (s, focus, onReceiveFocus)
+                        }
                 }
             | _ ->
                 // TODO: can do better here if we can compute a more efficient diff
@@ -217,29 +224,58 @@ module Render =
                     Bounds = bounds
                     OverlaidChildren = []
                     VDomSource = vdom
-                    Self = Vdom.TextContent (s, focus, onReceiveFocus)
+                    Self =
+                        {
+                            Constraints = vdom.Constraints
+                            Content = VdomContent.TextContent (s, focus, onReceiveFocus)
+                        }
                 }
 
-        | Vdom.PanelSplit (dir, proportion, child1, child2) ->
+        | VdomContent.PanelSplit (dir, proportion, child1, child2) ->
             match previousVdom with
-            | Some (Vdom.PanelSplit (prevDir, prevProportion, prevChild1, prevChild2), prevNode) when
-                proportion = prevProportion && prevDir = dir && bounds = prevNode.Bounds
-                ->
-                let bounds1, bounds2 = splitBounds dir proportion bounds
+            | Some (prevVdom, prevNode) ->
+                match prevVdom.Content with
+                | VdomContent.PanelSplit (prevDir, prevProportion, prevChild1, prevChild2) when
+                    proportion = prevProportion && prevDir = dir && bounds = prevNode.Bounds
+                    ->
+                    let bounds1, bounds2 = splitBounds dir proportion bounds
 
-                let rendered1 =
-                    layout dirty (Some (prevChild1, prevNode.OverlaidChildren.[0])) bounds1 child1
+                    let rendered1 =
+                        layout dirty (Some (prevChild1, prevNode.OverlaidChildren.[0])) bounds1 child1
 
-                let rendered2 =
-                    layout dirty (Some (prevChild2, prevNode.OverlaidChildren.[1])) bounds2 child2
+                    let rendered2 =
+                        layout dirty (Some (prevChild2, prevNode.OverlaidChildren.[1])) bounds2 child2
 
-                {
-                    Bounds = bounds
-                    OverlaidChildren = [ rendered1 ; rendered2 ]
-                    VDomSource = vdom
-                    Self = Vdom.PanelSplit (dir, proportion, rendered1.Self, rendered2.Self)
-                }
-            | _ ->
+                    {
+                        Bounds = bounds
+                        OverlaidChildren = [ rendered1 ; rendered2 ]
+                        VDomSource = vdom
+                        Self =
+                            {
+                                Constraints = vdom.Constraints
+                                Content = VdomContent.PanelSplit (dir, proportion, rendered1.Self, rendered2.Self)
+                            }
+                    }
+                | _ ->
+                    for y = 0 to bounds.Height - 1 do
+                        for x = 0 to bounds.Width - 1 do
+                            setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
+
+                    let bounds1, bounds2 = splitBounds dir proportion bounds
+                    let rendered1 = layout dirty None bounds1 child1
+                    let rendered2 = layout dirty None bounds2 child2
+
+                    {
+                        Bounds = bounds
+                        OverlaidChildren = [ rendered1 ; rendered2 ]
+                        VDomSource = vdom
+                        Self =
+                            {
+                                Constraints = vdom.Constraints
+                                Content = VdomContent.PanelSplit (dir, proportion, rendered1.Self, rendered2.Self)
+                            }
+                    }
+            | None ->
                 for y = 0 to bounds.Height - 1 do
                     for x = 0 to bounds.Width - 1 do
                         setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
@@ -252,16 +288,64 @@ module Render =
                     Bounds = bounds
                     OverlaidChildren = [ rendered1 ; rendered2 ]
                     VDomSource = vdom
-                    Self = Vdom.PanelSplit (dir, proportion, rendered1.Self, rendered2.Self)
+                    Self =
+                        {
+                            Constraints = vdom.Constraints
+                            Content = VdomContent.PanelSplit (dir, proportion, rendered1.Self, rendered2.Self)
+                        }
                 }
 
-        | Vdom.Checkbox (isChecked, focus, onReceiveFocus) ->
+        | VdomContent.Checkbox (isChecked, focus, onReceiveFocus) ->
             match previousVdom with
-            | Some (Vdom.Checkbox (prevChecked, prevFocus, _), prevNode) when
-                prevNode.Bounds = bounds && focus = prevFocus
-                ->
-                if prevChecked <> isChecked then
+            | Some (prevVdom, prevNode) ->
+                match prevVdom.Content with
+                | VdomContent.Checkbox (prevChecked, prevFocus, _) when prevNode.Bounds = bounds && focus = prevFocus ->
+                    if prevChecked <> isChecked then
+                        let content = if isChecked then '☑' else '☐'
+
+                        setAtRelativeOffset
+                            dirty
+                            bounds
+                            (bounds.Width / 2)
+                            (bounds.Height / 2)
+                            (ValueSome (TerminalCell.OfChar content))
+
+                    {
+                        Bounds = bounds
+                        OverlaidChildren = []
+                        VDomSource = vdom
+                        Self =
+                            {
+                                Constraints = vdom.Constraints
+                                Content = VdomContent.Checkbox (isChecked, focus, onReceiveFocus)
+                            }
+                    }
+                | _ ->
+                    // TODO: can short circuit this if focus is the only thing that's changed, too
+
+                    if bounds.Width < 3 then
+                        failwith "TODO: not enough room"
+
+                    for y = 0 to bounds.Height - 1 do
+                        for x = 0 to bounds.Width - 1 do
+                            setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
+
                     let content = if isChecked then '☑' else '☐'
+
+                    if focus then
+                        setAtRelativeOffset
+                            dirty
+                            bounds
+                            (bounds.Width / 2 - 1)
+                            (bounds.Height / 2)
+                            (ValueSome (TerminalCell.OfChar '['))
+
+                        setAtRelativeOffset
+                            dirty
+                            bounds
+                            (bounds.Width / 2 + 1)
+                            (bounds.Height / 2)
+                            (ValueSome (TerminalCell.OfChar ']'))
 
                     setAtRelativeOffset
                         dirty
@@ -270,13 +354,17 @@ module Render =
                         (bounds.Height / 2)
                         (ValueSome (TerminalCell.OfChar content))
 
-                {
-                    Bounds = bounds
-                    OverlaidChildren = []
-                    VDomSource = vdom
-                    Self = Vdom.Checkbox (isChecked, focus, onReceiveFocus)
-                }
-            | _ ->
+                    {
+                        Bounds = bounds
+                        OverlaidChildren = []
+                        VDomSource = vdom
+                        Self =
+                            {
+                                Constraints = vdom.Constraints
+                                Content = VdomContent.Checkbox (isChecked, focus, onReceiveFocus)
+                            }
+                    }
+            | None ->
                 // TODO: can short circuit this if focus is the only thing that's changed, too
 
                 if bounds.Width < 3 then
@@ -314,24 +402,80 @@ module Render =
                     Bounds = bounds
                     OverlaidChildren = []
                     VDomSource = vdom
-                    Self = Vdom.Checkbox (isChecked, focus, onReceiveFocus)
+                    Self =
+                        {
+                            Constraints = vdom.Constraints
+                            Content = VdomContent.Checkbox (isChecked, focus, onReceiveFocus)
+                        }
                 }
 
-        | Vdom.Bordered child ->
+        | VdomContent.Bordered child ->
             match previousVdom with
-            | Some (Vdom.Bordered prevInner, prevNode) when prevNode.Bounds = bounds ->
-                let children =
-                    [
-                        layout dirty (Some (prevInner, prevNode.OverlaidChildren.[0])) (shrinkBounds bounds) child
-                    ]
+            | Some (prevVdom, prevNode) ->
+                match prevVdom.Content with
+                | VdomContent.Bordered prevInner when prevNode.Bounds = bounds ->
+                    let children =
+                        [
+                            layout dirty (Some (prevInner, prevNode.OverlaidChildren.[0])) (shrinkBounds bounds) child
+                        ]
 
-                {
-                    Bounds = bounds
-                    OverlaidChildren = children
-                    VDomSource = vdom
-                    Self = Vdom.Bordered children.[0].Self
-                }
-            | _ ->
+                    {
+                        Bounds = bounds
+                        OverlaidChildren = children
+                        VDomSource = vdom
+                        Self =
+                            {
+                                Constraints = vdom.Constraints
+                                Content = VdomContent.Bordered children.[0].Self
+                            }
+                    }
+                | _ ->
+                    if bounds.Height <= 2 then
+                        failwith $"TODO: too short: %O{bounds}"
+
+                    if bounds.Width <= 2 then
+                        failwith $"TODO: too thin: %O{bounds}"
+
+                    for y = 0 to bounds.Height - 1 do
+                        for x = 0 to bounds.Width - 1 do
+                            setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
+
+                    setAtRelativeOffset dirty bounds 0 0 (ValueSome (TerminalCell.OfChar '┌'))
+
+                    setAtRelativeOffset dirty bounds 0 (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '└'))
+
+                    setAtRelativeOffset dirty bounds (bounds.Width - 1) 0 (ValueSome (TerminalCell.OfChar '┐'))
+
+                    setAtRelativeOffset
+                        dirty
+                        bounds
+                        (bounds.Width - 1)
+                        (bounds.Height - 1)
+                        (ValueSome (TerminalCell.OfChar '┘'))
+
+                    for i = 1 to bounds.Width - 2 do
+                        setAtRelativeOffset dirty bounds i 0 (ValueSome (TerminalCell.OfChar '─'))
+
+                        setAtRelativeOffset dirty bounds i (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '─'))
+
+                    for i = 1 to bounds.Height - 2 do
+                        setAtRelativeOffset dirty bounds 0 i (ValueSome (TerminalCell.OfChar '│'))
+
+                        setAtRelativeOffset dirty bounds (bounds.Width - 1) i (ValueSome (TerminalCell.OfChar '│'))
+
+                    let children = [ layout dirty None (shrinkBounds bounds) child ]
+
+                    {
+                        Bounds = bounds
+                        OverlaidChildren = children
+                        VDomSource = vdom
+                        Self =
+                            {
+                                Constraints = vdom.Constraints
+                                Content = VdomContent.Bordered children.[0].Self
+                            }
+                    }
+            | None ->
                 if bounds.Height <= 2 then
                     failwith $"TODO: too short: %O{bounds}"
 
@@ -371,7 +515,11 @@ module Render =
                     Bounds = bounds
                     OverlaidChildren = children
                     VDomSource = vdom
-                    Self = Vdom.Bordered children.[0].Self
+                    Self =
+                        {
+                            Constraints = vdom.Constraints
+                            Content = VdomContent.Bordered children.[0].Self
+                        }
                 }
 
     let writeBuffer (dirty : TerminalCell voption[,]) : TerminalOp seq =
