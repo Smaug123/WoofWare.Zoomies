@@ -6,7 +6,7 @@ open System.Threading.Tasks
 
 type WorldProcessor<'appEvent, 'userState> =
     abstract ProcessWorld :
-        events : ReadOnlySpan<WorldStateChange<'appEvent>> * prevVdom : Vdom<Rectangle> * 'userState -> unit
+        events : ReadOnlySpan<WorldStateChange<'appEvent>> * prevVdom : Vdom<Rectangle, AnyKeyedness> * 'userState -> unit
 
 [<RequireQualifiedAccess>]
 module App =
@@ -17,7 +17,7 @@ module App =
         (haveFrameworkHandleFocus : 'state -> bool)
         (renderState : RenderState)
         (processWorld : WorldProcessor<'appEvent, 'state>)
-        (vdom : RenderState -> 'state -> Vdom<DesiredBounds>)
+        (vdom : RenderState -> 'state -> Vdom<DesiredBounds, 'keyed>)
         : unit
         =
         listener.RefreshExternal ()
@@ -73,7 +73,7 @@ module App =
     /// Cancel the CancellationToken to cause the render loop to quit and to unhook all these state listeners.
     ///
     /// The resulting Task faults if any user logic raises an exception.
-    let run'<'state, 'appEvent>
+    let run'<'state, 'appEvent, 'keyed>
         (terminate : CancellationToken)
         (console : IConsole)
         (ctrlC : CtrlCHandler)
@@ -81,7 +81,7 @@ module App =
         (mutableState : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
         (processWorld : ((CancellationToken -> Task<'appEvent>) -> unit) -> WorldProcessor<'appEvent, 'state>)
-        (vdom : RenderState -> 'state -> Vdom<DesiredBounds>)
+        (vdom : RenderState -> 'state -> Vdom<DesiredBounds, 'keyed>)
         : Task
         =
         // RunContinuationsAsynchronously so that we don't force continuation on the UI thread.
@@ -153,11 +153,11 @@ module App =
 
         complete.Task
 
-    let run<'state, 'appEvent>
+    let run<'state, 'appEvent, 'keyed>
         (state : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
         (processWorld : ((CancellationToken -> Task<'appEvent>) -> unit) -> WorldProcessor<'appEvent, 'state>)
-        (vdom : RenderState -> 'state -> Vdom<DesiredBounds>)
+        (vdom : RenderState -> 'state -> Vdom<DesiredBounds, 'keyed>)
         : Task
         =
         run'

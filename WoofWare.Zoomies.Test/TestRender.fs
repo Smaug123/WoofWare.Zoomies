@@ -36,7 +36,7 @@ module TestRender =
     let tearDown () =
         GlobalBuilderConfig.updateAllSnapshots ()
 
-    let vdom (state : State) : Vdom<DesiredBounds> =
+    let vdom (state : State) : Vdom<DesiredBounds, _> =
         let left =
             Vdom.textContent
                 None
