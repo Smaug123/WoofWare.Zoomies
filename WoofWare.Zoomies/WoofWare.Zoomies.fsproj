@@ -14,6 +14,7 @@
 
   <ItemGroup>
     <Compile Include="Object.fs" />
+    <Compile Include="FakeUnit.fs" />
     <Compile Include="Exception.fs" />
     <Compile Include="ConsoleModifiers.fs" />
     <Compile Include="Nursery.fs" />

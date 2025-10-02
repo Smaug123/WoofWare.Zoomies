@@ -15,12 +15,13 @@ type Rectangle =
 /// So that we can do early cutoff.
 /// The keyedness phantom type is erased to AnyKeyedness since we only need it for compile-time checking
 type RenderedNode =
-    {
-        Bounds : Rectangle
-        OverlaidChildren : RenderedNode list
-        VDomSource : Vdom<DesiredBounds, AnyKeyedness>
-        Self : Vdom<Rectangle, AnyKeyedness>
-    }
+    private
+        {
+            Bounds : Rectangle
+            OverlaidChildren : RenderedNode list
+            VDomSource : VdomKeyCrate<DesiredBounds>
+            Self : VdomKeyCrate<Rectangle>
+        }
 
 type RenderState =
     private
@@ -259,8 +260,8 @@ module Render =
             {
                 Bounds = bounds
                 OverlaidChildren = []
-                VDomSource = unbox vdom
-                Self = unbox vdomWithRect
+                VDomSource = VdomKeyCrate.make vdom
+                Self = VdomKeyCrate.make vdomWithRect
             }
 
         | Vdom.PanelSplit (dir, proportion, child1, child2) ->
@@ -282,13 +283,13 @@ module Render =
                 for x = 0 to bounds.Width - 1 do
                     setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
 
-            let vdomWithRect : Vdom<Rectangle, 'keyed> = Vdom.PanelSplit (dir, proportion, unbox rendered1.Self, unbox rendered2.Self)
+            let vdomWithRect : Vdom<Rectangle, 'keyed> = Vdom.PanelSplit (dir, proportion, rendered1.Self, rendered2.Self)
 
             {
                 Bounds = bounds
                 OverlaidChildren = [ rendered1 ; rendered2 ]
-                VDomSource = unbox vdom
-                Self = unbox vdomWithRect
+                VDomSource = VdomKeyCrate.make vdom
+                Self = VdomKeyCrate.make vdomWithRect
             }
 
         | Vdom.Checkbox (isChecked, focus) ->
@@ -328,8 +329,8 @@ module Render =
             {
                 Bounds = bounds
                 OverlaidChildren = []
-                VDomSource = unbox vdom
-                Self = unbox vdomWithRect
+                VDomSource = VdomKeyCrate.make vdom
+                Self = VdomKeyCrate.make vdomWithRect
             }
 
         | Vdom.Bordered child ->
@@ -362,13 +363,13 @@ module Render =
                 }
                 |> child.Apply
                 |> List.singleton
-            let vdomWithRect : Vdom<Rectangle, 'keyed> = Vdom.Bordered (unbox children.[0].Self)
+            let vdomWithRect : Vdom<Rectangle, 'keyed> = Vdom.Bordered children.[0].Self
 
             {
                 Bounds = bounds
                 OverlaidChildren = children
-                VDomSource = unbox vdom
-                Self = unbox vdomWithRect
+                VDomSource = VdomKeyCrate.make vdom
+                Self = VdomKeyCrate.make vdomWithRect
             }
 
     let writeBuffer (dirty : TerminalCell voption[,]) : TerminalOp seq =

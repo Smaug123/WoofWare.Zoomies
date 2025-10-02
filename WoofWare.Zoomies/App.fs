@@ -5,8 +5,8 @@ open System.Threading
 open System.Threading.Tasks
 
 type WorldProcessor<'appEvent, 'userState> =
-    abstract ProcessWorld :
-        events : ReadOnlySpan<WorldStateChange<'appEvent>> * prevVdom : Vdom<Rectangle, AnyKeyedness> * 'userState -> unit
+    abstract ProcessWorld<'keyed> :
+        events : ReadOnlySpan<WorldStateChange<'appEvent>> * prevVdom : Vdom<Rectangle, 'keyed> * 'userState -> unit
 
 [<RequireQualifiedAccess>]
 module App =
@@ -32,38 +32,43 @@ module App =
             | None -> failwith "expected not to receive input before the first render"
             | Some node ->
 
-            let prevVdom = node.Self
+            { new VdomKeyEval<_, _> with
+                member _.Eval prevVdom =
+                    if haveFrameworkHandleFocus mutableState then
 
-            if haveFrameworkHandleFocus mutableState then
+                        let mutable i = 0
+                        let mutable start = 0
 
-                let mutable i = 0
-                let mutable start = 0
+                        while i < changes.Length do
+                            match changes.[i] with
+                            | WorldStateChange.Keystroke t when t.Key = ConsoleKey.Tab && t.Modifiers = enum 0 ->
+                                if i > 0 then
+                                    processWorld.ProcessWorld (
+                                        changes.AsSpan().Slice (start, i - 1 - start),
+                                        prevVdom,
+                                        mutableState
+                                    )
 
-                while i < changes.Length do
-                    match changes.[i] with
-                    | WorldStateChange.Keystroke t when t.Key = ConsoleKey.Tab && t.Modifiers = enum 0 ->
-                        if i > 0 then
-                            processWorld.ProcessWorld (
-                                changes.AsSpan().Slice (start, i - 1 - start),
-                                prevVdom,
-                                mutableState
-                            )
+                                // Advance focus to the next focusable element
+                                RenderState.advanceFocus renderState
 
-                        // Advance focus to the next focusable element
-                        RenderState.advanceFocus renderState
+                                start <- i + 1
+                                // skip the tab input
+                                i <- i + 1
+                            // TODO: handle shift+tab too
+                            | _ -> ()
 
-                        start <- i + 1
-                        // skip the tab input
-                        i <- i + 1
-                    // TODO: handle shift+tab too
-                    | _ -> ()
+                            i <- i + 1
 
-                    i <- i + 1
+                        if start < changes.Length then
+                            processWorld.ProcessWorld (changes.AsSpan().Slice start, prevVdom, mutableState)
+                    else
+                        processWorld.ProcessWorld (changes.AsSpan (), prevVdom, mutableState)
 
-                if start < changes.Length then
-                    processWorld.ProcessWorld (changes.AsSpan().Slice start, prevVdom, mutableState)
-            else
-                processWorld.ProcessWorld (changes.AsSpan (), prevVdom, mutableState)
+                    FakeUnit.fake ()
+            }
+            |> node.Self.Apply
+            |> FakeUnit.unfake
 
         Render.oneStep renderState mutableState (vdom renderState)
 

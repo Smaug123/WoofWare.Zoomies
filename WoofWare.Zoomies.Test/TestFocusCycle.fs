@@ -18,8 +18,14 @@ module TestFocusCycle =
     let tearDown () =
         GlobalBuilderConfig.updateAllSnapshots ()
 
-    let vdom (state : int ref) =
-        List.init 4 (fun i -> Vdom.checkbox (fun () -> state.Value <- i) (state.Value = i) false)
+    let vdom (renderState : RenderState) (state : int ref) =
+        let currentFocus = RenderState.focusedKey renderState
+        List.init 4 (fun i ->
+            let key = NodeKey.make $"checkbox{i}"
+            Vdom.checkbox (currentFocus = Some key) false
+            |> Vdom.withKey key
+            |> Vdom.focusable
+        )
         |> List.reduce (Vdom.panelSplitAbsolute Direction.Vertical -3)
 
     [<Test>]

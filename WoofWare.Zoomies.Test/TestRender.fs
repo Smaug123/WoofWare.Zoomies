@@ -6,22 +6,16 @@ open NUnit.Framework
 open WoofWare.Expect
 open WoofWare.Zoomies
 
-type FocusedElement =
-    | Toggle1
-    | Toggle2
-
 type State =
     {
         mutable IsToggle1Checked : bool
         mutable IsToggle2Checked : bool
-        mutable FocusedElement : FocusedElement
     }
 
     static member Empty () : State =
         {
             IsToggle1Checked = false
             IsToggle2Checked = false
-            FocusedElement = FocusedElement.Toggle1
         }
 
 [<TestFixture>]
@@ -36,53 +30,70 @@ module TestRender =
     let tearDown () =
         GlobalBuilderConfig.updateAllSnapshots ()
 
-    let vdom (state : State) : Vdom<DesiredBounds, _> =
+    let vdom (renderState : RenderState) (state : State) : Vdom<DesiredBounds, _> =
         let left =
             Vdom.textContent
-                None
+                false
                 "not praising the praiseworthy keeps people uncompetitive; not prizing rare treasures keeps people from stealing; not looking at the desirable keeps the mind quiet"
             |> Vdom.bordered
 
         let right =
             Vdom.textContent
-                None
+                false
                 "errybody wants to be a bodybuilder, but don't nobody want to lift no heavy-ass weights"
             |> Vdom.bordered
 
         let topHalf = Vdom.panelSplitProportion Direction.Vertical 0.5 left right
 
+        let toggle1Key = NodeKey.make "toggle1"
+        let currentFocus = RenderState.focusedKey renderState
+
         let bottomHalf =
             Vdom.labelledCheckbox
-                (fun () -> state.FocusedElement <- FocusedElement.Toggle1)
-                state.FocusedElement.IsToggle1
+                (currentFocus = Some toggle1Key)
                 state.IsToggle1Checked
                 "Press Space to toggle"
+            |> Vdom.withKey toggle1Key
+            |> Vdom.focusable
 
         let vdom = Vdom.panelSplitAbsolute Direction.Horizontal -3 topHalf bottomHalf
 
         if state.IsToggle1Checked then
+            let toggle2Key = NodeKey.make "toggle2"
+
             Vdom.panelSplitProportion
                 Direction.Vertical
                 0.5
-                (Vdom.textContent None "only displayed when checked")
+                (Vdom.textContent false "only displayed when checked")
                 (Vdom.labelledCheckbox
-                    (fun () -> state.FocusedElement <- FocusedElement.Toggle2)
-                    state.FocusedElement.IsToggle2
+                    (currentFocus = Some toggle2Key)
                     state.IsToggle2Checked
-                    "this one is focusable!")
+                    "this one is focusable!"
+                |> Vdom.withKey toggle2Key
+                |> Vdom.focusable)
             |> Vdom.panelSplitProportion Direction.Horizontal 0.7 vdom
         else
             vdom
 
+    let mutableRenderState = ref None
+
     let processWorld =
         { new WorldProcessor<unit, State> with
             member _.ProcessWorld (worldChanges, _, state) =
+                let focusedKey =
+                    match !mutableRenderState with
+                    | Some rs -> RenderState.focusedKey rs
+                    | None -> None
+
                 for change in worldChanges do
                     match change with
                     | Keystroke c when c.KeyChar = ' ' ->
-                        match state.FocusedElement with
-                        | FocusedElement.Toggle1 -> state.IsToggle1Checked <- not state.IsToggle1Checked
-                        | FocusedElement.Toggle2 -> state.IsToggle2Checked <- not state.IsToggle2Checked
+                        match focusedKey with
+                        | Some key when key = NodeKey.make "toggle1" ->
+                            state.IsToggle1Checked <- not state.IsToggle1Checked
+                        | Some key when key = NodeKey.make "toggle2" ->
+                            state.IsToggle2Checked <- not state.IsToggle2Checked
+                        | _ -> ()
                     | Keystroke _ -> ()
                     | KeyboardEvent _ -> failwith "no keyboard events"
                     | MouseEvent _ -> failwith "no mouse events"
@@ -102,12 +113,13 @@ module TestRender =
         let state = State.Empty ()
 
         let renderState = RenderState.make' console
+        mutableRenderState := Some renderState
 
-        Render.oneStep renderState state vdom
+        Render.oneStep renderState state (vdom renderState)
 
         terminalOps.Clear ()
 
-        Render.oneStep renderState state vdom
+        Render.oneStep renderState state (vdom renderState)
 
         terminalOps |> shouldBeEmpty
 
@@ -128,6 +140,7 @@ module TestRender =
             let state = State.Empty ()
 
             let renderState = RenderState.make' console
+            mutableRenderState := Some renderState
 
             App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
