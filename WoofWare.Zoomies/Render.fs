@@ -36,7 +36,7 @@ type RenderState =
             KeyToNode : Dictionary<NodeKey, RenderedNode>
             mutable FocusedKey : NodeKey option
             /// List of focusable keys in tree order (for Tab navigation)
-            mutable FocusableKeys : NodeKey list
+            FocusableKeys : ResizeArray<NodeKey>
         }
 
 [<RequireQualifiedAccess>]
@@ -78,19 +78,24 @@ module RenderState =
 
     /// Advance focus to the next focusable node (Tab key)
     let advanceFocus (s : RenderState) : unit =
+        if s.FocusableKeys.Count = 0 then
+            // nothing to do, nothing can ever have focus
+            ()
+        else
+
         match s.FocusedKey with
         | None ->
             // No current focus, focus the first focusable element
-            s.FocusedKey <- s.FocusableKeys |> List.tryHead
+            s.FocusedKey <- Some s.FocusableKeys.[0]
         | Some currentKey ->
             // Find the current key in the list and move to the next one
-            match s.FocusableKeys |> List.tryFindIndex ((=) currentKey) with
+            match s.FocusableKeys |> Seq.tryFindIndex ((=) currentKey) with
             | Some index ->
-                let nextIndex = (index + 1) % s.FocusableKeys.Length
+                let nextIndex = (index + 1) % s.FocusableKeys.Count
                 s.FocusedKey <- Some s.FocusableKeys.[nextIndex]
             | None ->
                 // Current key is not in the focusable list, focus the first one
-                s.FocusedKey <- s.FocusableKeys |> List.tryHead
+                s.FocusedKey <- Some s.FocusableKeys.[0]
 
     let make' (c : IConsole) =
         let width = c.WindowWidth ()
@@ -119,7 +124,7 @@ module RenderState =
             ForegroundColor = fg
             KeyToNode = Dictionary<NodeKey, RenderedNode> ()
             FocusedKey = None
-            FocusableKeys = []
+            FocusableKeys = ResizeArray ()
         }
 
     let make () =
@@ -204,6 +209,9 @@ module Render =
         (focus : bool)
         =
         // TODO: can do better here if we can compute a more efficient diff
+        // TODO: work out how to display this differently when it has focus
+        // TODO: test that a focusable text box can in fact gain focus, by writing a test UI that lets you type into
+        // one of several text boxes
         for y = 0 to bounds.Height - 1 do
             for x = 0 to bounds.Width - 1 do
                 setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
@@ -358,7 +366,7 @@ module Render =
     and private layoutEither
         (dirty : TerminalCell voption[,])
         (keyToNode : Dictionary<NodeKey, RenderedNode>)
-        (focusableKeys : NodeKey list ref)
+        (focusableKeys : ResizeArray<NodeKey>)
         (previousRender : RenderedNode option)
         (bounds : Rectangle)
         (vdom : KeylessVdom<DesiredBounds>)
@@ -373,7 +381,7 @@ module Render =
     and layout<'key>
         (dirty : TerminalCell voption[,])
         (keyToNode : Dictionary<NodeKey, RenderedNode>)
-        (focusableKeys : NodeKey list ref)
+        (focusableKeys : ResizeArray<NodeKey>)
         (previousRender : RenderedNode option)
         (bounds : Rectangle)
         (vdom : Vdom<DesiredBounds, 'key>)
@@ -544,7 +552,7 @@ module Render =
 
                 // Extract the key from the keyed child and add to focusableKeys
                 match keyedVdom with
-                | WithKey (key, _) -> focusableKeys.Value <- focusableKeys.Value @ [ key ]
+                | WithKey (key, _) -> focusableKeys.Add key
 
                 rendered
 
@@ -565,20 +573,20 @@ module Render =
         =
         Array.Clear renderState.Buffer
         renderState.KeyToNode.Clear ()
-        let focusableKeys = ref []
+        renderState.FocusableKeys.Clear ()
+
         let vdom = compute userState
 
         let rendered =
             layout
                 renderState.Buffer
                 renderState.KeyToNode
-                focusableKeys
+                renderState.FocusableKeys
                 renderState.PreviousVdom
                 renderState.TerminalBounds
                 vdom
 
         renderState.PreviousVdom <- Some rendered
-        renderState.FocusableKeys <- focusableKeys.Value
 
         let cursorFlip = RenderState.isCursorVisible renderState
         let mutable haveManipulatedCursor = false

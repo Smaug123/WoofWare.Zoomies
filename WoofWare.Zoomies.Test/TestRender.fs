@@ -63,12 +63,12 @@ module TestRender =
                     Direction.Vertical,
                     0.5,
                     Vdom.textContent false "only displayed when checked",
-                    (Vdom.labelledCheckbox
+                    Vdom.labelledCheckbox
                         (currentFocus = Some toggle2Key)
                         state.IsToggle2Checked
                         "this one is focusable!"
-                     |> Vdom.withKey toggle2Key
-                     |> Vdom.focusable)
+                    |> Vdom.withKey toggle2Key
+                    |> Vdom.focusable
                 )
 
             Vdom.panelSplitProportion (Direction.Horizontal, 0.7, vdom, inner)
