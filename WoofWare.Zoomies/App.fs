@@ -3,10 +3,11 @@ namespace WoofWare.Zoomies
 open System
 open System.Threading
 open System.Threading.Tasks
+open TypeEquality
 
 type WorldProcessor<'appEvent, 'userState> =
-    abstract ProcessWorld<'keyed> :
-        events : ReadOnlySpan<WorldStateChange<'appEvent>> * prevVdom : Vdom<Rectangle, 'keyed> * 'userState -> unit
+    abstract ProcessWorld :
+        events : ReadOnlySpan<WorldStateChange<'appEvent>> * prevVdom : Vdom<Rectangle, Unkeyed> * 'userState -> unit
 
 [<RequireQualifiedAccess>]
 module App =
@@ -17,7 +18,7 @@ module App =
         (haveFrameworkHandleFocus : 'state -> bool)
         (renderState : RenderState)
         (processWorld : WorldProcessor<'appEvent, 'state>)
-        (vdom : RenderState -> 'state -> Vdom<DesiredBounds, 'keyed>)
+        (vdom : RenderState -> 'state -> Vdom<DesiredBounds, Unkeyed>)
         : unit
         =
         listener.RefreshExternal ()
@@ -32,43 +33,41 @@ module App =
             | None -> failwith "expected not to receive input before the first render"
             | Some node ->
 
-            { new VdomKeyEval<_, _> with
-                member _.Eval prevVdom =
-                    if haveFrameworkHandleFocus mutableState then
+            let prevVdom =
+                match node.Self with
+                | KeylessVdom.Keyed _ -> failwith "logic error: we never produced a keyed node at the top level"
+                | KeylessVdom.Unkeyed d -> Vdom.Unkeyed (d, Teq.refl)
 
-                        let mutable i = 0
-                        let mutable start = 0
+            if haveFrameworkHandleFocus mutableState then
 
-                        while i < changes.Length do
-                            match changes.[i] with
-                            | WorldStateChange.Keystroke t when t.Key = ConsoleKey.Tab && t.Modifiers = enum 0 ->
-                                if i > 0 then
-                                    processWorld.ProcessWorld (
-                                        changes.AsSpan().Slice (start, i - 1 - start),
-                                        prevVdom,
-                                        mutableState
-                                    )
+                let mutable i = 0
+                let mutable start = 0
 
-                                // Advance focus to the next focusable element
-                                RenderState.advanceFocus renderState
+                while i < changes.Length do
+                    match changes.[i] with
+                    | WorldStateChange.Keystroke t when t.Key = ConsoleKey.Tab && t.Modifiers = enum 0 ->
+                        if i > 0 then
+                            processWorld.ProcessWorld (
+                                changes.AsSpan().Slice (start, i - 1 - start),
+                                prevVdom,
+                                mutableState
+                            )
 
-                                start <- i + 1
-                                // skip the tab input
-                                i <- i + 1
-                            // TODO: handle shift+tab too
-                            | _ -> ()
+                        // Advance focus to the next focusable element
+                        RenderState.advanceFocus renderState
 
-                            i <- i + 1
+                        start <- i + 1
+                        // skip the tab input
+                        i <- i + 1
+                    // TODO: handle shift+tab too
+                    | _ -> ()
 
-                        if start < changes.Length then
-                            processWorld.ProcessWorld (changes.AsSpan().Slice start, prevVdom, mutableState)
-                    else
-                        processWorld.ProcessWorld (changes.AsSpan (), prevVdom, mutableState)
+                    i <- i + 1
 
-                    FakeUnit.fake ()
-            }
-            |> node.Self.Apply
-            |> FakeUnit.unfake
+                if start < changes.Length then
+                    processWorld.ProcessWorld (changes.AsSpan().Slice start, prevVdom, mutableState)
+            else
+                processWorld.ProcessWorld (changes.AsSpan (), prevVdom, mutableState)
 
         Render.oneStep renderState mutableState (vdom renderState)
 
@@ -78,7 +77,7 @@ module App =
     /// Cancel the CancellationToken to cause the render loop to quit and to unhook all these state listeners.
     ///
     /// The resulting Task faults if any user logic raises an exception.
-    let run'<'state, 'appEvent, 'keyed>
+    let run'<'state, 'appEvent>
         (terminate : CancellationToken)
         (console : IConsole)
         (ctrlC : CtrlCHandler)
@@ -86,7 +85,7 @@ module App =
         (mutableState : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
         (processWorld : ((CancellationToken -> Task<'appEvent>) -> unit) -> WorldProcessor<'appEvent, 'state>)
-        (vdom : RenderState -> 'state -> Vdom<DesiredBounds, 'keyed>)
+        (vdom : RenderState -> 'state -> Vdom<DesiredBounds, Unkeyed>)
         : Task
         =
         // RunContinuationsAsynchronously so that we don't force continuation on the UI thread.
@@ -158,11 +157,11 @@ module App =
 
         complete.Task
 
-    let run<'state, 'appEvent, 'keyed>
+    let run<'state, 'appEvent>
         (state : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
         (processWorld : ((CancellationToken -> Task<'appEvent>) -> unit) -> WorldProcessor<'appEvent, 'state>)
-        (vdom : RenderState -> 'state -> Vdom<DesiredBounds, 'keyed>)
+        (vdom : RenderState -> 'state -> Vdom<DesiredBounds, Unkeyed>)
         : Task
         =
         run'

@@ -26,7 +26,7 @@ module TestFocusCycle =
             |> Vdom.withKey key
             |> Vdom.focusable
         )
-        |> List.reduce (Vdom.panelSplitAbsolute Direction.Vertical -3)
+        |> List.reduce (fun x y -> Vdom.panelSplitAbsolute (Direction.Vertical, -3, x, y))
 
     [<Test>]
     let ``example 1`` () =

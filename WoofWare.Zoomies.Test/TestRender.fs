@@ -43,7 +43,7 @@ module TestRender =
                 "errybody wants to be a bodybuilder, but don't nobody want to lift no heavy-ass weights"
             |> Vdom.bordered
 
-        let topHalf = Vdom.panelSplitProportion Direction.Vertical 0.5 left right
+        let topHalf = Vdom.panelSplitProportion (Direction.Vertical, 0.5, left, right)
 
         let toggle1Key = NodeKey.make "toggle1"
         let currentFocus = RenderState.focusedKey renderState
@@ -56,22 +56,24 @@ module TestRender =
             |> Vdom.withKey toggle1Key
             |> Vdom.focusable
 
-        let vdom = Vdom.panelSplitAbsolute Direction.Horizontal -3 topHalf bottomHalf
+        let vdom = Vdom.panelSplitAbsolute (Direction.Horizontal, -3, topHalf, bottomHalf)
 
         if state.IsToggle1Checked then
             let toggle2Key = NodeKey.make "toggle2"
 
-            Vdom.panelSplitProportion
-                Direction.Vertical
-                0.5
-                (Vdom.textContent false "only displayed when checked")
-                (Vdom.labelledCheckbox
-                    (currentFocus = Some toggle2Key)
-                    state.IsToggle2Checked
-                    "this one is focusable!"
-                |> Vdom.withKey toggle2Key
-                |> Vdom.focusable)
-            |> Vdom.panelSplitProportion Direction.Horizontal 0.7 vdom
+            let inner =
+                Vdom.panelSplitProportion (
+                    Direction.Vertical,
+                    0.5,
+                    Vdom.textContent false "only displayed when checked",
+                    (Vdom.labelledCheckbox
+                        (currentFocus = Some toggle2Key)
+                        state.IsToggle2Checked
+                        "this one is focusable!"
+                    |> Vdom.withKey toggle2Key
+                    |> Vdom.focusable)
+                )
+            Vdom.panelSplitProportion (Direction.Horizontal, 0.7, vdom, inner)
         else
             vdom
 

@@ -2,6 +2,7 @@ namespace WoofWare.Zoomies
 
 open System
 open System.Collections.Generic
+open TypeEquality
 
 [<Struct>]
 type Rectangle =
@@ -18,8 +19,8 @@ type RenderedNode =
         {
             Bounds : Rectangle
             OverlaidChildren : RenderedNode list
-            VDomSource : VdomKeyCrate<DesiredBounds>
-            Self : VdomKeyCrate<Rectangle>
+            VDomSource : KeylessVdom<DesiredBounds>
+            Self : KeylessVdom<Rectangle>
         }
 
 type RenderState =
@@ -195,181 +196,308 @@ module Render =
     let private setAtRelativeOffset (arr : 'a[,]) (bounds : Rectangle) (relativeX : int) (relativeY : int) (v : 'a) =
         arr.[yIndex bounds relativeY, xIndex bounds relativeX] <- v
 
-    let rec layout<'keyed>
+    let private freshRenderTextContent
+        (dirty : TerminalCell voption[,])
+        (bounds : Rectangle)
+        (vdom : UnkeyedVdom<DesiredBounds>)
+        (content : string)
+        (focus : bool)
+        =
+                // TODO: can do better here if we can compute a more efficient diff
+                for y = 0 to bounds.Height - 1 do
+                    for x = 0 to bounds.Width - 1 do
+                        setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
+
+                // dumb implementation! could do much better
+                let mutable index = 0
+                let mutable currX = 0
+                let mutable currY = 0
+
+                while index < content.Length do
+                    setAtRelativeOffset dirty bounds currX currY (ValueSome (TerminalCell.OfChar (content.Chars index)))
+
+                    currX <- currX + 1
+
+                    if currX = bounds.Width then
+                        currX <- 0
+                        currY <- currY + 1
+
+                        if currY >= bounds.Height then
+                            index <- content.Length
+
+                    index <- index + 1
+
+                {
+                    Bounds = bounds
+                    OverlaidChildren = []
+                    VDomSource =
+                            vdom
+                            |> KeylessVdom.Unkeyed
+                    Self = UnkeyedVdom.TextContent (content, focus) |> KeylessVdom.Unkeyed
+                }
+
+    let private freshRenderCheckbox
+        (dirty : TerminalCell voption[,])
+        (bounds : Rectangle)
+        (vdom : UnkeyedVdom<DesiredBounds>)
+        (isChecked : bool)
+        (focus : bool)
+        =
+                // TODO: can short circuit this if focus is the only thing that's changed, too
+
+                if bounds.Width < 3 then
+                    failwith "TODO: not enough room"
+
+                for y = 0 to bounds.Height - 1 do
+                    for x = 0 to bounds.Width - 1 do
+                        setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
+
+                let content = if isChecked then '☑' else '☐'
+
+                if focus then
+                    setAtRelativeOffset
+                        dirty
+                        bounds
+                        (bounds.Width / 2 - 1)
+                        (bounds.Height / 2)
+                        (ValueSome (TerminalCell.OfChar '['))
+
+                    setAtRelativeOffset
+                        dirty
+                        bounds
+                        (bounds.Width / 2 + 1)
+                        (bounds.Height / 2)
+                        (ValueSome (TerminalCell.OfChar ']'))
+
+                setAtRelativeOffset
+                    dirty
+                    bounds
+                    (bounds.Width / 2)
+                    (bounds.Height / 2)
+                    (ValueSome (TerminalCell.OfChar content))
+
+                {
+                    Bounds = bounds
+                    OverlaidChildren = []
+                    VDomSource = KeylessVdom.Unkeyed vdom
+                    Self = UnkeyedVdom.Checkbox (isChecked, focus) |> KeylessVdom.Unkeyed
+                }
+
+    let rec private freshRenderPanelSplit
+        (keyToNode : _)
+        (focusableKeys : _)
+        (dirty : TerminalCell voption[,]) (bounds : Rectangle) (dir : Direction) (proportion : Choice<float, int>)
+        (child1 : KeylessVdom<_>)
+        (child2 : KeylessVdom<_>)
+        (vdom : UnkeyedVdom<DesiredBounds>)
+        =
+                for y = 0 to bounds.Height - 1 do
+                    for x = 0 to bounds.Width - 1 do
+                        setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
+
+                let bounds1, bounds2 = splitBounds dir proportion bounds
+                let rendered1 =
+                    layoutEither dirty keyToNode focusableKeys None bounds1 child1
+                let rendered2 =
+                    layoutEither dirty keyToNode focusableKeys None bounds2 child2
+
+                {
+                    Bounds = bounds
+                    OverlaidChildren = [ rendered1 ; rendered2 ]
+                    VDomSource = KeylessVdom.Unkeyed vdom
+                    Self = UnkeyedVdom.PanelSplit (dir, proportion, rendered1.Self, rendered2.Self) |> KeylessVdom.Unkeyed
+                }
+
+    and private freshRenderBordered
+        (keyToNode : _)
+        (focusableKeys : _)
+        (dirty : TerminalCell voption[,]) (bounds : Rectangle)
+        (child : KeylessVdom<_>)
+        (vdom : UnkeyedVdom<DesiredBounds>)
+        =
+                if bounds.Height <= 2 then
+                    failwith $"TODO: too short: %O{bounds}"
+
+                if bounds.Width <= 2 then
+                    failwith $"TODO: too thin: %O{bounds}"
+
+                for y = 0 to bounds.Height - 1 do
+                    for x = 0 to bounds.Width - 1 do
+                        setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
+
+                setAtRelativeOffset dirty bounds 0 0 (ValueSome (TerminalCell.OfChar '┌'))
+
+                setAtRelativeOffset dirty bounds 0 (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '└'))
+
+                setAtRelativeOffset dirty bounds (bounds.Width - 1) 0 (ValueSome (TerminalCell.OfChar '┐'))
+
+                setAtRelativeOffset
+                    dirty
+                    bounds
+                    (bounds.Width - 1)
+                    (bounds.Height - 1)
+                    (ValueSome (TerminalCell.OfChar '┘'))
+
+                for i = 1 to bounds.Width - 2 do
+                    setAtRelativeOffset dirty bounds i 0 (ValueSome (TerminalCell.OfChar '─'))
+
+                    setAtRelativeOffset dirty bounds i (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '─'))
+
+                for i = 1 to bounds.Height - 2 do
+                    setAtRelativeOffset dirty bounds 0 i (ValueSome (TerminalCell.OfChar '│'))
+
+                    setAtRelativeOffset dirty bounds (bounds.Width - 1) i (ValueSome (TerminalCell.OfChar '│'))
+
+                let children =
+                            [ layoutEither dirty keyToNode focusableKeys None (shrinkBounds bounds) child ]
+
+                {
+                    Bounds = bounds
+                    OverlaidChildren = children
+                    VDomSource =
+                        vdom |> KeylessVdom.Unkeyed
+                    Self = UnkeyedVdom.Bordered children.[0].Self |> KeylessVdom.Unkeyed
+                }
+
+    and private layoutEither
         (dirty : TerminalCell voption[,])
         (keyToNode : Dictionary<NodeKey, RenderedNode>)
         (focusableKeys : NodeKey list ref)
-        (previousVdom : RenderedNode option)
+        (previousRender : RenderedNode option)
         (bounds : Rectangle)
-        (vdom : Vdom<DesiredBounds, 'keyed>)
+        (vdom : KeylessVdom<DesiredBounds>)
         : RenderedNode
         =
-        match previousVdom with
-        | Some previousNode when
-            bounds = previousNode.Bounds
-            && previousNode.VDomSource.ReferenceEquals vdom
-            ->
-            previousNode
-        | _ ->
-
         match vdom with
-        | Vdom.WithKey (key, inner) ->
-            // Render the inner node and track it in the dictionary
-            let rendered = layout dirty keyToNode focusableKeys previousVdom bounds inner
-            keyToNode.[key] <- rendered
-            rendered
+        | KeylessVdom.Keyed vdom -> layout dirty keyToNode focusableKeys previousRender bounds (Vdom.Keyed (vdom, Teq.refl))
+        | KeylessVdom.Unkeyed vdom -> layout dirty keyToNode focusableKeys previousRender bounds (Vdom.Unkeyed (vdom, Teq.refl))
 
-        | Vdom.Focusable inner ->
-            // Extract the key from the inner WithKey node (Focusable only accepts keyed vdoms)
-            match inner with
-            | Vdom.WithKey (key, _) ->
-                focusableKeys.Value <- focusableKeys.Value @ [key]
-                let rendered = layout dirty keyToNode focusableKeys previousVdom bounds inner
-                rendered
+    and layout<'key>
+        (dirty : TerminalCell voption[,])
+        (keyToNode : Dictionary<NodeKey, RenderedNode>)
+        (focusableKeys : NodeKey list ref)
+        (previousRender : RenderedNode option)
+        (bounds : Rectangle)
+        (vdom : Vdom<DesiredBounds, 'key>)
+        : RenderedNode
+        =
+        match vdom with
+        | Keyed (keyedVdom, teq) ->
+            match previousRender with
+            | Some previousRender when
+                bounds = previousRender.Bounds
+                && KeylessVdom.referenceEquals (previousRender.VDomSource, keyedVdom)
+                ->
+                previousRender
             | _ ->
-                // Render the inner node directly
-                layout dirty keyToNode focusableKeys previousVdom bounds inner
 
-        | Vdom.TextContent (s, focus) ->
-            let vdomWithRect : Vdom<Rectangle, 'keyed> = Vdom.TextContent (s, focus)
-            // TODO: can do better here if we can compute a more efficient diff
-            for y = 0 to bounds.Height - 1 do
-                for x = 0 to bounds.Width - 1 do
-                    setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
+            match keyedVdom with
+            | WithKey (nodeKey, unkeyedVdom) ->
+                match previousRender with
+                | Some previousRender when previousRender.Bounds = bounds ->
+                    match previousRender.VDomSource with
+                    | KeylessVdom.Keyed (KeyedVdom.WithKey (prevKey, prevVdom)) -> failwith "todo"
+                    | _ -> layout dirty keyToNode focusableKeys None bounds (Vdom.Unkeyed (unkeyedVdom, Teq.refl))
+                | _ -> layout dirty keyToNode focusableKeys None bounds (Vdom.Unkeyed (unkeyedVdom, Teq.refl))
 
-            // dumb implementation! could do much better
-            let mutable index = 0
-            let mutable currX = 0
-            let mutable currY = 0
+        | Unkeyed (unkeyedVdom, teq) ->
+            match previousRender with
+            | Some previousRender when
+                bounds = previousRender.Bounds
+                && KeylessVdom.referenceEquals (previousRender.VDomSource, unkeyedVdom)
+                ->
+                previousRender
+            | _ ->
 
-            while index < s.Length do
-                setAtRelativeOffset dirty bounds currX currY (ValueSome (TerminalCell.OfChar (s.Chars index)))
+            match unkeyedVdom with
+            | UnkeyedVdom.TextContent (s, focus) ->
+                match previousRender with
+                | Some previousRender when previousRender.Bounds = bounds ->
+                    match previousRender.VDomSource with
+                    | KeylessVdom.Unkeyed (UnkeyedVdom.TextContent (prevText, prevFocus)) when prevText = s && prevFocus = focus ->
+                        {
+                            Bounds = bounds
+                            OverlaidChildren = []
+                            VDomSource = KeylessVdom.Unkeyed unkeyedVdom
+                            Self = KeylessVdom.Unkeyed (UnkeyedVdom.TextContent (s, focus))
+                        }
+                    | _ ->
+                        freshRenderTextContent dirty bounds unkeyedVdom s focus
+                | _ ->
+                    freshRenderTextContent dirty bounds unkeyedVdom s focus
 
-                currX <- currX + 1
+            | UnkeyedVdom.PanelSplit (dir, proportion, child1, child2) ->
+                match previousRender with
+                | Some previousRender when previousRender.Bounds = bounds ->
+                    match previousRender.VDomSource with
+                    | KeylessVdom.Unkeyed (UnkeyedVdom.PanelSplit (prevDir, prevProportion, prevChild1, prevChild2)) when proportion = prevProportion && prevDir = dir ->
+                        let bounds1, bounds2 = splitBounds dir proportion bounds
 
-                if currX = bounds.Width then
-                    currX <- 0
-                    currY <- currY + 1
+                        let rendered1 = layoutEither dirty keyToNode focusableKeys (Some (previousRender.OverlaidChildren.[0])) bounds1 child1
+                        let rendered2 = layoutEither dirty keyToNode focusableKeys (Some (previousRender.OverlaidChildren.[1])) bounds2 child2
 
-                    if currY >= bounds.Height then
-                        index <- s.Length
+                        {
+                            Bounds = bounds
+                            OverlaidChildren = [ rendered1 ; rendered2 ]
+                            VDomSource = KeylessVdom.Unkeyed unkeyedVdom
+                            Self = UnkeyedVdom.PanelSplit (dir, proportion, rendered1.Self, rendered2.Self) |> KeylessVdom.Unkeyed
+                        }
+                    | _ -> freshRenderPanelSplit keyToNode focusableKeys dirty bounds dir proportion  child1 child2 unkeyedVdom
+                | _ -> freshRenderPanelSplit keyToNode focusableKeys dirty bounds dir proportion child1 child2 unkeyedVdom
 
-                index <- index + 1
+            | UnkeyedVdom.Checkbox (isChecked, focus) ->
+                match previousRender with
+                | Some previousRender when previousRender.Bounds = bounds ->
+                    match previousRender.VDomSource with
+                    | KeylessVdom.Unkeyed (UnkeyedVdom.Checkbox (prevChecked, prevFocus)) when focus = prevFocus ->
+                        if prevChecked <> isChecked then
+                            let content = if isChecked then '☑' else '☐'
 
-            {
-                Bounds = bounds
-                OverlaidChildren = []
-                VDomSource = VdomKeyCrate.make vdom
-                Self = VdomKeyCrate.make vdomWithRect
-            }
+                            setAtRelativeOffset
+                                dirty
+                                bounds
+                                (bounds.Width / 2)
+                                (bounds.Height / 2)
+                                (ValueSome (TerminalCell.OfChar content))
 
-        | Vdom.PanelSplit (dir, proportion, child1, child2) ->
-            let bounds1, bounds2 = splitBounds dir proportion bounds
-            let rendered1 =
-                { new VdomKeyEval<_, _> with
-                    member _.Eval child1 =
-                       layout dirty keyToNode focusableKeys None bounds1 child1
-                }
-                |> child1.Apply
-            let rendered2 =
-                { new VdomKeyEval<_, _> with
-                    member _.Eval child1 =
-                       layout dirty keyToNode focusableKeys None bounds2 child1
-                }
-                |> child2.Apply
+                        {
+                            Bounds = bounds
+                            OverlaidChildren = []
+                            VDomSource = unkeyedVdom |> KeylessVdom.Unkeyed
+                            Self = UnkeyedVdom.Checkbox (isChecked, focus) |> KeylessVdom.Unkeyed
+                        }
+                    | _ ->
+                        freshRenderCheckbox dirty bounds unkeyedVdom isChecked focus
+                | _ ->
+                    freshRenderCheckbox dirty bounds unkeyedVdom isChecked focus
 
-            for y = 0 to bounds.Height - 1 do
-                for x = 0 to bounds.Width - 1 do
-                    setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
+            | UnkeyedVdom.Bordered child ->
+                match previousRender with
+                | Some previousRender when previousRender.Bounds = bounds ->
+                    match previousRender.VDomSource with
+                    | KeylessVdom.Unkeyed (UnkeyedVdom.Bordered prevInner) ->
+                        let children =
+                                            [
+                                                layoutEither dirty keyToNode focusableKeys (Some (previousRender.OverlaidChildren.[0])) (shrinkBounds bounds) child
+                                            ]
 
-            let vdomWithRect : Vdom<Rectangle, 'keyed> = Vdom.PanelSplit (dir, proportion, rendered1.Self, rendered2.Self)
+                        {
+                            Bounds = bounds
+                            OverlaidChildren = children
+                            VDomSource = unkeyedVdom |> KeylessVdom.Unkeyed
+                            Self = UnkeyedVdom.Bordered children.[0].Self |> KeylessVdom.Unkeyed
+                        }
 
-            {
-                Bounds = bounds
-                OverlaidChildren = [ rendered1 ; rendered2 ]
-                VDomSource = VdomKeyCrate.make vdom
-                Self = VdomKeyCrate.make vdomWithRect
-            }
-
-        | Vdom.Checkbox (isChecked, focus) ->
-            if bounds.Width < 3 then
-                failwith "TODO: not enough room"
-
-            for y = 0 to bounds.Height - 1 do
-                for x = 0 to bounds.Width - 1 do
-                    setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
-
-            let content = if isChecked then '☑' else '☐'
-
-            if focus then
-                setAtRelativeOffset
-                    dirty
-                    bounds
-                    (bounds.Width / 2 - 1)
-                    (bounds.Height / 2)
-                    (ValueSome (TerminalCell.OfChar '['))
-
-                setAtRelativeOffset
-                    dirty
-                    bounds
-                    (bounds.Width / 2 + 1)
-                    (bounds.Height / 2)
-                    (ValueSome (TerminalCell.OfChar ']'))
-
-            setAtRelativeOffset
-                dirty
-                bounds
-                (bounds.Width / 2)
-                (bounds.Height / 2)
-                (ValueSome (TerminalCell.OfChar content))
-
-            let vdomWithRect : Vdom<Rectangle, 'keyed> = Vdom.Checkbox (isChecked, focus)
-
-            {
-                Bounds = bounds
-                OverlaidChildren = []
-                VDomSource = VdomKeyCrate.make vdom
-                Self = VdomKeyCrate.make vdomWithRect
-            }
-
-        | Vdom.Bordered child ->
-            if bounds.Height <= 2 then
-                failwith $"TODO: too short: %O{bounds}"
-
-            if bounds.Width <= 2 then
-                failwith $"TODO: too thin: %O{bounds}"
-
-            for y = 0 to bounds.Height - 1 do
-                for x = 0 to bounds.Width - 1 do
-                    setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
-
-            setAtRelativeOffset dirty bounds 0 0 (ValueSome (TerminalCell.OfChar '┌'))
-            setAtRelativeOffset dirty bounds 0 (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '└'))
-            setAtRelativeOffset dirty bounds (bounds.Width - 1) 0 (ValueSome (TerminalCell.OfChar '┐'))
-            setAtRelativeOffset dirty bounds (bounds.Width - 1) (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '┘'))
-
-            for i = 1 to bounds.Width - 2 do
-                setAtRelativeOffset dirty bounds i 0 (ValueSome (TerminalCell.OfChar '─'))
-                setAtRelativeOffset dirty bounds i (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '─'))
-
-            for i = 1 to bounds.Height - 2 do
-                setAtRelativeOffset dirty bounds 0 i (ValueSome (TerminalCell.OfChar '│'))
-                setAtRelativeOffset dirty bounds (bounds.Width - 1) i (ValueSome (TerminalCell.OfChar '│'))
-
-            let children =
-                { new VdomKeyEval<_, _> with
-                    member _.Eval child = layout dirty keyToNode focusableKeys None (shrinkBounds bounds) child
-                }
-                |> child.Apply
-                |> List.singleton
-            let vdomWithRect : Vdom<Rectangle, 'keyed> = Vdom.Bordered children.[0].Self
-
-            {
-                Bounds = bounds
-                OverlaidChildren = children
-                VDomSource = VdomKeyCrate.make vdom
-                Self = VdomKeyCrate.make vdomWithRect
-            }
+                    | _ -> freshRenderBordered keyToNode focusableKeys dirty bounds child unkeyedVdom
+                | _ -> freshRenderBordered keyToNode focusableKeys dirty bounds child unkeyedVdom
+            | Focusable keyedVdom ->
+                match previousRender with
+                | Some previousRender when previousRender.Bounds = bounds ->
+                    match previousRender.VDomSource with
+                    | KeylessVdom.Unkeyed (UnkeyedVdom.Focusable prevInner) ->
+                        failwith "TODO"
+                    | _ -> layout dirty keyToNode focusableKeys None bounds (Vdom.Keyed (keyedVdom, Teq.refl))
+                | _ -> layout dirty keyToNode focusableKeys None bounds (Vdom.Keyed (keyedVdom, Teq.refl))
 
     let writeBuffer (dirty : TerminalCell voption[,]) : TerminalOp seq =
         // TODO this is super dumb
@@ -381,7 +509,7 @@ module Render =
                     | ValueSome cell -> yield! [ TerminalOp.MoveCursor (x, y) ; TerminalOp.WriteChar cell ]
         }
 
-    let oneStep<'state, 'keyed> (renderState : RenderState) (userState : 'state) (compute : 'state -> Vdom<DesiredBounds, 'keyed>) =
+    let oneStep<'state> (renderState : RenderState) (userState : 'state) (compute : 'state -> Vdom<DesiredBounds, Unkeyed>) =
         Array.Clear renderState.Buffer
         renderState.KeyToNode.Clear ()
         let focusableKeys = ref []

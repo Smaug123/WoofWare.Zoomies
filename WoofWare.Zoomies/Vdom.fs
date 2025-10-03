@@ -1,6 +1,7 @@
 namespace WoofWare.Zoomies
 
 open System
+open TypeEquality
 
 /// Opaque identifier for stable node identity across frames
 type NodeKey = private | NodeKey of string
@@ -23,75 +24,168 @@ type Border = | Yes
 
 type DesiredBounds = unit
 
-[<NoComparison>]
-[<ReferenceEquality>]
-type Vdom<'bounds, 'keyed> =
-    private
-    | Bordered of VdomKeyCrate<'bounds>
-    | PanelSplit of Direction * Choice<float, int> * child1 : VdomKeyCrate<'bounds> * child2 : VdomKeyCrate<'bounds>
+type private UnkeyedVdom<'bounds> =
+    | Bordered of KeylessVdom<'bounds>
+    | PanelSplit of Direction * Choice<float, int> * child1 : KeylessVdom<'bounds> * child2 : KeylessVdom<'bounds>
     | TextContent of string * focused : bool
     | Checkbox of isChecked : bool * isFocused : bool
-    | WithKey of NodeKey * Vdom<'bounds, Unkeyed>
-    | Focusable of Vdom<'bounds, Keyed>
+    | Focusable of KeyedVdom<'bounds>
 
-and private VdomKeyCrate<'bounds> =
-    abstract Apply<'ret> : VdomKeyEval<'bounds, 'ret> -> 'ret
-    abstract ReferenceEquals<'bounds2> : VdomKeyCrate<'bounds2> -> bool
-    abstract ReferenceEquals<'bounds2, 'keyed> : Vdom<'bounds2, 'keyed> -> bool
+and private KeyedVdom<'bounds> =
+    | WithKey of NodeKey * UnkeyedVdom<'bounds>
 
-and private VdomKeyEval<'bounds, 'ret> =
-    abstract Eval<'key> : Vdom<'bounds, 'key> -> 'ret
+and private KeylessVdom<'bounds> =
+    private
+    | Keyed of KeyedVdom<'bounds>
+    | Unkeyed of UnkeyedVdom<'bounds>
 
-[<RequireQualifiedAccess>]
-module private VdomKeyCrate =
-    let make v =
-        { new VdomKeyCrate<_> with
-            member _.Apply e = e.Eval v
-            member _.ReferenceEquals<'bounds2> (other : VdomKeyCrate<'bounds2>) =
-                { new VdomKeyEval<_, _> with
-                    member _.Eval other =
-                        Object.ReferenceEquals (v, other)
-                }
-                |> other.Apply
-            member _.ReferenceEquals<'bounds2, 'keyed> (other : Vdom<'bounds2, 'keyed>) =
-                Object.ReferenceEquals (v, other)
-        }
+[<NoEquality; NoComparison>]
+type Vdom<'bounds, 'keyed> =
+    private
+    | Keyed of KeyedVdom<'bounds> * Teq<'keyed, Keyed>
+    | Unkeyed of UnkeyedVdom<'bounds> * Teq<'keyed, Unkeyed>
 
 [<RequireQualifiedAccess>]
-module Vdom =
+module private VdomUtils =
+    let teqUnreachable (t : Teq<Keyed, Unkeyed>) : 'a = failwith "unreachable"
+    let teqUnreachable' (t : Teq<Unkeyed, Keyed>) : 'a = failwith "unreachable"
 
-    let textContent (isFocused : bool) (s : string) : Vdom<DesiredBounds, Unkeyed> =
-        Vdom.TextContent (s, isFocused)
+[<Sealed>]
+type Vdom =
 
-    let panelSplitProportion d p c1 c2 : Vdom<DesiredBounds, Unkeyed> =
+    static member textContent (isFocused : bool) (s : string) : Vdom<DesiredBounds, Unkeyed> =
+        Vdom.Unkeyed (UnkeyedVdom.TextContent (s, isFocused), Teq.refl)
+
+    static member panelSplitProportion (d, p, c1 : Vdom<DesiredBounds, Keyed>, c2 : Vdom<DesiredBounds, Keyed>) : Vdom<DesiredBounds, Unkeyed> =
         if not (p > 0.0 && p < 1.0) then
             invalidArg "p" "proportion must be between 0 and 1"
 
-        Vdom.PanelSplit (d, Choice1Of2 p, VdomKeyCrate.make c1, VdomKeyCrate.make c2)
+        match c1 with
+        | Unkeyed (_, teq) ->VdomUtils.teqUnreachable teq
+        | Keyed (c1, _) ->
+        match c2 with
+        | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
+        | Keyed (c2, _) ->
+        Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, Choice1Of2 p, KeylessVdom.Keyed c1, KeylessVdom.Keyed c2), Teq.refl)
 
-    let panelSplitAbsolute d p c1 c2 : Vdom<DesiredBounds, Unkeyed> =
-        Vdom.PanelSplit (d, Choice2Of2 p, VdomKeyCrate.make c1, VdomKeyCrate.make c2)
+    static member panelSplitProportion (d, p, c1 : Vdom<DesiredBounds, Keyed>, c2 : Vdom<DesiredBounds, Unkeyed>) : Vdom<DesiredBounds, Unkeyed> =
+        if not (p > 0.0 && p < 1.0) then
+            invalidArg "p" "proportion must be between 0 and 1"
 
-    let checkbox (isFocused : bool) (isChecked : bool) : Vdom<DesiredBounds, Unkeyed> =
-        Vdom.Checkbox (isChecked, isFocused)
+        match c1 with
+        | Unkeyed (_, teq) ->VdomUtils.teqUnreachable teq
+        | Keyed (c1, _) ->
+        match c2 with
+        | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
+        | Unkeyed (c2, _) ->
+        Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, Choice1Of2 p, KeylessVdom.Keyed c1, KeylessVdom.Unkeyed c2), Teq.refl)
 
-    let bordered (inner : Vdom<_, 'keyed>) : Vdom<DesiredBounds, Unkeyed> = Vdom.Bordered (VdomKeyCrate.make inner)
+    static member panelSplitProportion (d, p, c1 : Vdom<DesiredBounds, Unkeyed>, c2 : Vdom<DesiredBounds, Keyed>) : Vdom<DesiredBounds, Unkeyed> =
+        if not (p > 0.0 && p < 1.0) then
+            invalidArg "p" "proportion must be between 0 and 1"
 
-    let labelledCheckbox
+        match c1 with
+        | Keyed (_, teq) ->VdomUtils.teqUnreachable' teq
+        | Unkeyed (c1, _) ->
+        match c2 with
+        | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
+        | Keyed (c2, _) ->
+        Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, Choice1Of2 p, KeylessVdom.Unkeyed c1, KeylessVdom.Keyed c2), Teq.refl)
+
+    static member panelSplitProportion (d, p, c1 : Vdom<DesiredBounds, Unkeyed>, c2 : Vdom<DesiredBounds, Unkeyed>) : Vdom<DesiredBounds, Unkeyed> =
+        if not (p > 0.0 && p < 1.0) then
+            invalidArg "p" "proportion must be between 0 and 1"
+
+        match c1 with
+        | Keyed (_, teq) ->VdomUtils.teqUnreachable' teq
+        | Unkeyed (c1, _) ->
+        match c2 with
+        | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
+        | Unkeyed (c2, _) ->
+        Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, Choice1Of2 p, KeylessVdom.Unkeyed c1, KeylessVdom.Unkeyed c2), Teq.refl)
+
+    static member panelSplitAbsolute (d, p, c1 : Vdom<DesiredBounds, Keyed>, c2 : Vdom<DesiredBounds, Keyed>) : Vdom<DesiredBounds, Unkeyed> =
+        match c1 with
+        | Unkeyed (_, teq) ->VdomUtils.teqUnreachable teq
+        | Keyed (c1, _) ->
+        match c2 with
+        | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
+        | Keyed (c2, _) ->
+        Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, Choice2Of2 p, KeylessVdom.Keyed c1, KeylessVdom.Keyed c2), Teq.refl)
+
+    static member panelSplitAbsolute (d, p, c1 : Vdom<DesiredBounds, Unkeyed>, c2 : Vdom<DesiredBounds, Keyed>) : Vdom<DesiredBounds, Unkeyed> =
+        match c1 with
+        | Keyed (_, teq) ->VdomUtils.teqUnreachable' teq
+        | Unkeyed (c1, _) ->
+        match c2 with
+        | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
+        | Keyed (c2, _) ->
+        Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, Choice2Of2 p, KeylessVdom.Unkeyed c1, KeylessVdom.Keyed c2), Teq.refl)
+
+    static member panelSplitAbsolute (d, p, c1 : Vdom<DesiredBounds, Keyed>, c2 : Vdom<DesiredBounds, Unkeyed>) : Vdom<DesiredBounds, Unkeyed> =
+        match c1 with
+        | Unkeyed (_, teq) ->VdomUtils.teqUnreachable teq
+        | Keyed (c1, _) ->
+        match c2 with
+        | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
+        | Unkeyed (c2, _) ->
+        Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, Choice2Of2 p, KeylessVdom.Keyed c1, KeylessVdom.Unkeyed c2), Teq.refl)
+
+    static member panelSplitAbsolute (d, p, c1 : Vdom<DesiredBounds, Unkeyed>, c2 : Vdom<DesiredBounds, Unkeyed>) : Vdom<DesiredBounds, Unkeyed> =
+        match c1 with
+        | Keyed (_, teq) ->VdomUtils.teqUnreachable' teq
+        | Unkeyed (c1, _) ->
+        match c2 with
+        | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
+        | Unkeyed (c2, _) ->
+        Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, Choice2Of2 p, KeylessVdom.Unkeyed c1, KeylessVdom.Unkeyed c2), Teq.refl)
+
+    static member checkbox (isFocused : bool) (isChecked : bool) : Vdom<DesiredBounds, Unkeyed> =
+        Vdom.Unkeyed (UnkeyedVdom.Checkbox (isChecked, isFocused), Teq.refl)
+
+    static member bordered (inner : Vdom<_, Keyed>) : Vdom<DesiredBounds, Unkeyed> =
+        match inner with
+        | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
+        | Keyed (inner, _) ->
+        Vdom.Unkeyed (UnkeyedVdom.Bordered (KeylessVdom.Keyed inner), Teq.refl)
+    static member bordered (inner : Vdom<_, Unkeyed>) : Vdom<DesiredBounds, Unkeyed> =
+        match inner with
+        | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
+        | Unkeyed (inner, _) ->
+        Vdom.Unkeyed (UnkeyedVdom.Bordered (KeylessVdom.Unkeyed inner), Teq.refl)
+
+    static member labelledCheckbox
         (isFocused : bool)
         (isChecked : bool)
         (label : string)
         : Vdom<DesiredBounds, Unkeyed>
         =
         // TODO: centre this text horizontally so it's next to the checkbox
-        panelSplitAbsolute Direction.Vertical 3 (checkbox isFocused isChecked) (textContent false label)
+        Vdom.panelSplitAbsolute (Direction.Vertical, 3, Vdom.checkbox isFocused isChecked, Vdom.textContent false label)
 
     /// Attach a stable key to a VDOM node
-    let withKey (key : NodeKey) (vdom : Vdom<'bounds, Unkeyed>) : Vdom<'bounds, Keyed> =
-        Vdom.WithKey (key, vdom)
+    static member withKey (key : NodeKey) (vdom : Vdom<'bounds, Unkeyed>) : Vdom<'bounds, Keyed> =
+        match vdom with
+        | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
+        | Unkeyed (vdom, _) ->
+        Vdom.Keyed (KeyedVdom.WithKey (key, vdom), Teq.refl)
 
     /// Mark a keyed node as focusable
     /// The Focusable constructor itself has keyedness 'keyed, so it can be used polymorphically
-    let focusable (vdom : Vdom<'bounds, Keyed>) : Vdom<'bounds, Unkeyed> =
-        Vdom.Focusable vdom
+    static member focusable (vdom : Vdom<'bounds, Keyed>) : Vdom<'bounds, Unkeyed> =
+        match vdom with
+        | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
+        | Keyed (vdom, _) ->
+        Vdom.Unkeyed (UnkeyedVdom.Focusable vdom, Teq.refl)
 
+[<Sealed>]
+type private KeylessVdom =
+    static member referenceEquals (self : KeylessVdom<'bounds>, other: KeyedVdom<'bounds>) =
+        match self with
+        | KeylessVdom.Keyed vdom -> Object.referenceEquals vdom other
+        | KeylessVdom.Unkeyed _ -> false
+
+    static member referenceEquals (self : KeylessVdom<'bounds>, other: UnkeyedVdom<'bounds>) =
+        match self with
+        | KeylessVdom.Unkeyed vdom -> Object.referenceEquals vdom other
+        | KeylessVdom.Keyed _ -> false
