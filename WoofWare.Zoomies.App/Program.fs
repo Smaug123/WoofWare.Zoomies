@@ -85,9 +85,7 @@ module FileBrowser =
             let currentFocus = RenderState.focusedKey renderState
 
             let checkbox =
-                Vdom.checkbox
-                    (currentFocus = Some checkboxKey)
-                    (not state.ShowingFile1)
+                Vdom.checkbox (currentFocus = Some checkboxKey) (not state.ShowingFile1)
                 |> Vdom.withKey checkboxKey
                 |> Vdom.focusable
 

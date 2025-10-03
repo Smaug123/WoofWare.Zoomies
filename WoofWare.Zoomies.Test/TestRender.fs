@@ -49,10 +49,7 @@ module TestRender =
         let currentFocus = RenderState.focusedKey renderState
 
         let bottomHalf =
-            Vdom.labelledCheckbox
-                (currentFocus = Some toggle1Key)
-                state.IsToggle1Checked
-                "Press Space to toggle"
+            Vdom.labelledCheckbox (currentFocus = Some toggle1Key) state.IsToggle1Checked "Press Space to toggle"
             |> Vdom.withKey toggle1Key
             |> Vdom.focusable
 
@@ -70,9 +67,10 @@ module TestRender =
                         (currentFocus = Some toggle2Key)
                         state.IsToggle2Checked
                         "this one is focusable!"
-                    |> Vdom.withKey toggle2Key
-                    |> Vdom.focusable)
+                     |> Vdom.withKey toggle2Key
+                     |> Vdom.focusable)
                 )
+
             Vdom.panelSplitProportion (Direction.Horizontal, 0.7, vdom, inner)
         else
             vdom
@@ -144,6 +142,32 @@ module TestRender =
             let renderState = RenderState.make' console
             mutableRenderState.Value <- Some renderState
 
+            // TODO: semantics have changed and need to be fixed.
+            // Before the change, the initial state had toggle 1 focused.
+            // After the change, we don't have a way to specify that!
+            App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+┌──────────────────────────────────────┐┌──────────────────────────────────────┐|
+│not praising the praiseworthy keeps pe││errybody wants to be a bodybuilder, bu│|
+│ople uncompetitive; not prizing rare t││t don't nobody want to lift no heavy-a│|
+│reasures keeps people from stealing; n││ss weights                            │|
+│ot looking at the desirable keeps the ││                                      │|
+│mind quiet                            ││                                      │|
+└──────────────────────────────────────┘└──────────────────────────────────────┘|
+   Press Space to toggle                                                        |
+ ☐                                                                              |
+                                                                                |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
+            // Switching focus moves focus to the first focusable element
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+
             App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
             expect {
@@ -164,7 +188,7 @@ module TestRender =
                 return ConsoleHarness.toString terminal
             }
 
-            // Switching focus does nothing, because there's only one focus element
+            // Switching focus again does nothing because there are no more focusable elements
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom

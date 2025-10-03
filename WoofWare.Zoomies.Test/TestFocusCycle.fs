@@ -20,12 +20,16 @@ module TestFocusCycle =
 
     let vdom (renderState : RenderState) (state : int ref) =
         let currentFocus = RenderState.focusedKey renderState
-        List.init 4 (fun i ->
-            let key = NodeKey.make $"checkbox{i}"
-            Vdom.checkbox (currentFocus = Some key) false
-            |> Vdom.withKey key
-            |> Vdom.focusable
-        )
+
+        List.init
+            4
+            (fun i ->
+                let key = NodeKey.make $"checkbox{i}"
+
+                Vdom.checkbox (currentFocus = Some key) false
+                |> Vdom.withKey key
+                |> Vdom.focusable
+            )
         |> List.reduce (fun x y -> Vdom.panelSplitAbsolute (Direction.Vertical, -3, x, y))
 
     [<Test>]
@@ -64,6 +68,18 @@ module TestFocusCycle =
                         failwithf $"should not call: %O{sb}"
                 }
 
+            App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+   ☐    ☐  ☐  ☐ |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
             App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom
 
             expect {
