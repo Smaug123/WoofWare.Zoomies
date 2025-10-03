@@ -81,7 +81,7 @@ module TestRender =
         { new WorldProcessor<unit, State> with
             member _.ProcessWorld (worldChanges, _, state) =
                 let focusedKey =
-                    match !mutableRenderState with
+                    match mutableRenderState.Value with
                     | Some rs -> RenderState.focusedKey rs
                     | None -> None
 
@@ -107,13 +107,13 @@ module TestRender =
 
         let console =
             { IConsole.defaultForTests with
-                Execute = terminalOps.Add
+                Execute = fun x -> terminalOps.Add x
             }
 
         let state = State.Empty ()
 
         let renderState = RenderState.make' console
-        mutableRenderState := Some renderState
+        mutableRenderState.Value <- Some renderState
 
         Render.oneStep renderState state (vdom renderState)
 
@@ -140,7 +140,7 @@ module TestRender =
             let state = State.Empty ()
 
             let renderState = RenderState.make' console
-            mutableRenderState := Some renderState
+            mutableRenderState.Value <- Some renderState
 
             App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 

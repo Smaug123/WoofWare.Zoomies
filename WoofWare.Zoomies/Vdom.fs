@@ -1,5 +1,7 @@
 namespace WoofWare.Zoomies
 
+open System
+
 /// Opaque identifier for stable node identity across frames
 type NodeKey = private | NodeKey of string
 
@@ -12,9 +14,6 @@ type Keyed = private | Keyed
 
 /// Phantom type to track whether a node lacks a key
 type Unkeyed = private | Unkeyed
-
-/// Phantom type for when keyedness is irrelevant (e.g., after type-checking in the render tree)
-type AnyKeyedness = private | AnyKeyedness
 
 type Direction =
     | Vertical
@@ -37,6 +36,9 @@ type Vdom<'bounds, 'keyed> =
 
 and private VdomKeyCrate<'bounds> =
     abstract Apply<'ret> : VdomKeyEval<'bounds, 'ret> -> 'ret
+    abstract ReferenceEquals<'bounds2> : VdomKeyCrate<'bounds2> -> bool
+    abstract ReferenceEquals<'bounds2, 'keyed> : Vdom<'bounds2, 'keyed> -> bool
+
 and private VdomKeyEval<'bounds, 'ret> =
     abstract Eval<'key> : Vdom<'bounds, 'key> -> 'ret
 
@@ -45,6 +47,14 @@ module private VdomKeyCrate =
     let make v =
         { new VdomKeyCrate<_> with
             member _.Apply e = e.Eval v
+            member _.ReferenceEquals<'bounds2> (other : VdomKeyCrate<'bounds2>) =
+                { new VdomKeyEval<_, _> with
+                    member _.Eval other =
+                        Object.ReferenceEquals (v, other)
+                }
+                |> other.Apply
+            member _.ReferenceEquals<'bounds2, 'keyed> (other : Vdom<'bounds2, 'keyed>) =
+                Object.ReferenceEquals (v, other)
         }
 
 [<RequireQualifiedAccess>]

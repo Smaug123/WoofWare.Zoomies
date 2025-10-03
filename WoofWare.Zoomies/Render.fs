@@ -13,7 +13,6 @@ type Rectangle =
     }
 
 /// So that we can do early cutoff.
-/// The keyedness phantom type is erased to AnyKeyedness since we only need it for compile-time checking
 type RenderedNode =
     private
         {
@@ -208,7 +207,7 @@ module Render =
         match previousVdom with
         | Some previousNode when
             bounds = previousNode.Bounds
-            && Object.ReferenceEquals (previousNode.VDomSource, vdom)
+            && previousNode.VDomSource.ReferenceEquals vdom
             ->
             previousNode
         | _ ->
