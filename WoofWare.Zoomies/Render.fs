@@ -404,7 +404,7 @@ module Render =
                     | Some previousRender when previousRender.Bounds = bounds ->
                         match previousRender.VDomSource with
                         | KeylessVdom.Keyed (KeyedVdom.WithKey (prevKey, prevVdom)) when prevKey = nodeKey ->
-                            Some previousRender
+                            Some previousRender.OverlaidChildren.[0]
                         | _ -> None
                     | _ -> None
 
@@ -412,7 +412,16 @@ module Render =
                     layout dirty keyToNode focusableKeys previousRender bounds (Vdom.Unkeyed (unkeyedVdom, Teq.refl))
 
                 keyToNode.[nodeKey] <- rendered
-                rendered
+
+                {
+                    Bounds = bounds
+                    OverlaidChildren = [ rendered ]
+                    VDomSource = keyedVdom |> KeylessVdom.Keyed
+                    Self =
+                        match rendered.Self with
+                        | KeylessVdom.Keyed keyedVdom -> failwith "todo"
+                        | KeylessVdom.Unkeyed self -> KeyedVdom.WithKey (nodeKey, self) |> KeylessVdom.Keyed
+                }
 
         | Unkeyed (unkeyedVdom, teq) ->
             match previousRender with
@@ -539,22 +548,30 @@ module Render =
                     | _ -> freshRenderBordered keyToNode focusableKeys dirty bounds child unkeyedVdom
                 | _ -> freshRenderBordered keyToNode focusableKeys dirty bounds child unkeyedVdom
             | Focusable keyedVdom ->
-                let previousRender =
-                    match previousRender with
-                    | Some previousRender when previousRender.Bounds = bounds ->
-                        match previousRender.VDomSource with
-                        | KeylessVdom.Unkeyed (UnkeyedVdom.Focusable prevInner) -> Some previousRender
-                        | _ -> None
-                    | _ -> None
-
-                let rendered =
-                    layout dirty keyToNode focusableKeys previousRender bounds (Vdom.Keyed (keyedVdom, Teq.refl))
-
-                // Extract the key from the keyed child and add to focusableKeys
                 match keyedVdom with
                 | WithKey (key, _) -> focusableKeys.Add key
 
-                rendered
+                let childPreviousRender =
+                    match previousRender with
+                    | Some previousRender when previousRender.Bounds = bounds ->
+                        match previousRender.VDomSource with
+                        | KeylessVdom.Unkeyed (UnkeyedVdom.Focusable prevInner) ->
+                            Some previousRender.OverlaidChildren.[0]
+                        | _ -> None
+                    | _ -> None
+
+                let child =
+                    layout dirty keyToNode focusableKeys childPreviousRender bounds (Vdom.Keyed (keyedVdom, Teq.refl))
+
+                {
+                    Bounds = bounds
+                    OverlaidChildren = [ child ]
+                    VDomSource = unkeyedVdom |> KeylessVdom.Unkeyed
+                    Self =
+                        match child.Self with
+                        | KeylessVdom.Keyed child -> UnkeyedVdom.Focusable child |> KeylessVdom.Unkeyed
+                        | KeylessVdom.Unkeyed child -> failwith "TODO"
+                }
 
     let writeBuffer (dirty : TerminalCell voption[,]) : TerminalOp seq =
         // TODO this is super dumb
