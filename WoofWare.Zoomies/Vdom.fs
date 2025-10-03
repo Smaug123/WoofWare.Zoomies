@@ -8,6 +8,7 @@ type NodeKey = private | NodeKey of string
 [<RequireQualifiedAccess>]
 module NodeKey =
     let make (s : string) : NodeKey = NodeKey s
+    let toString (NodeKey s) = s
 
 /// Phantom type to track whether a node has a key
 type Keyed = private | Keyed

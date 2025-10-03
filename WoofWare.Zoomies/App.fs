@@ -7,7 +7,7 @@ open TypeEquality
 
 type WorldProcessor<'appEvent, 'userState> =
     abstract ProcessWorld :
-        events : ReadOnlySpan<WorldStateChange<'appEvent>> * prevVdom : Vdom<Rectangle, Unkeyed> * 'userState -> unit
+        events : ReadOnlySpan<WorldStateChange<'appEvent>> * renderState : RenderState * 'userState -> unit
 
 [<RequireQualifiedAccess>]
 module App =
@@ -49,7 +49,7 @@ module App =
                         if i > 0 then
                             processWorld.ProcessWorld (
                                 changes.AsSpan().Slice (start, i - 1 - start),
-                                prevVdom,
+                                renderState,
                                 mutableState
                             )
 
@@ -65,9 +65,9 @@ module App =
                     i <- i + 1
 
                 if start < changes.Length then
-                    processWorld.ProcessWorld (changes.AsSpan().Slice start, prevVdom, mutableState)
+                    processWorld.ProcessWorld (changes.AsSpan().Slice start, renderState, mutableState)
             else
-                processWorld.ProcessWorld (changes.AsSpan (), prevVdom, mutableState)
+                processWorld.ProcessWorld (changes.AsSpan (), renderState, mutableState)
 
         Render.oneStep renderState mutableState (vdom renderState)
 

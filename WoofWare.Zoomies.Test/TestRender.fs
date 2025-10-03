@@ -75,32 +75,6 @@ module TestRender =
         else
             vdom
 
-    let mutableRenderState = ref None
-
-    let processWorld =
-        { new WorldProcessor<unit, State> with
-            member _.ProcessWorld (worldChanges, _, state) =
-                let focusedKey =
-                    match mutableRenderState.Value with
-                    | Some rs -> RenderState.focusedKey rs
-                    | None -> None
-
-                for change in worldChanges do
-                    match change with
-                    | Keystroke c when c.KeyChar = ' ' ->
-                        match focusedKey with
-                        | Some key when key = NodeKey.make "toggle1" ->
-                            state.IsToggle1Checked <- not state.IsToggle1Checked
-                        | Some key when key = NodeKey.make "toggle2" ->
-                            state.IsToggle2Checked <- not state.IsToggle2Checked
-                        | _ -> ()
-                    | Keystroke _ -> ()
-                    | KeyboardEvent _ -> failwith "no keyboard events"
-                    | MouseEvent _ -> failwith "no mouse events"
-                    | ApplicationEvent () -> failwith "no app events"
-                    | ApplicationEventException _ -> failwith "no exceptions possible"
-        }
-
     [<Test>]
     let ``there is no rerender if nothing changes`` () =
         let terminalOps = ResizeArray ()
@@ -113,7 +87,6 @@ module TestRender =
         let state = State.Empty ()
 
         let renderState = RenderState.make' console
-        mutableRenderState.Value <- Some renderState
 
         Render.oneStep renderState state (vdom renderState)
 
@@ -125,6 +98,32 @@ module TestRender =
 
     [<Test>]
     let ``example 1`` () =
+        let mutableRenderState = ref None
+
+        let processWorld =
+            { new WorldProcessor<unit, State> with
+                member _.ProcessWorld (worldChanges, _, state) =
+                    let focusedKey =
+                        match mutableRenderState.Value with
+                        | Some rs -> RenderState.focusedKey rs
+                        | None -> None
+
+                    for change in worldChanges do
+                        match change with
+                        | Keystroke c when c.KeyChar = ' ' ->
+                            match focusedKey with
+                            | Some key when key = NodeKey.make "toggle1" ->
+                                state.IsToggle1Checked <- not state.IsToggle1Checked
+                            | Some key when key = NodeKey.make "toggle2" ->
+                                state.IsToggle2Checked <- not state.IsToggle2Checked
+                            | _ -> ()
+                        | Keystroke _ -> ()
+                        | KeyboardEvent _ -> failwith "no keyboard events"
+                        | MouseEvent _ -> failwith "no mouse events"
+                        | ApplicationEvent () -> failwith "no app events"
+                        | ApplicationEventException _ -> failwith "no exceptions possible"
+            }
+
         task {
             let console, terminal = ConsoleHarness.make ()
 
