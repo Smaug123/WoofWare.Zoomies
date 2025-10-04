@@ -235,6 +235,7 @@ type Vdom =
     /// This annotation does nothing if WoofWare.Zoomies is running with automatic focus tracking turned off.
     static member withFocusTracking (vdom : Vdom<'bounds, Keyed>, ?isInitialFocus : bool) : Vdom<'bounds, Unkeyed> =
         let isInitialFocus = defaultArg isInitialFocus false
+
         match vdom with
         | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
         | Keyed (vdom, _) -> Vdom.Unkeyed (UnkeyedVdom.Focusable (isInitialFocus, vdom), Teq.refl)
