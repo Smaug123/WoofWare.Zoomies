@@ -23,13 +23,24 @@ type SplitDirection =
     /// Split so that the divider runs horizontally: one component is on top and one is on the bottom.
     | Horizontal
 
+
+/// Determines how space is divided when a panel is split into two components.
+[<RequireQualifiedAccess>]
+type SplitBehaviour =
+    /// Split using a proportion: the first component (that is, the top or left component) gets this fraction of the
+    /// available space (must be between 0 and 1, exclusive).
+    /// For example, Proportion 0.3 on a vertical split gives the left component 30% of the space and the right component 70%.
+    | Proportion of float
+    /// Split using an absolute cell count: the first component gets exactly this many cells, and the second gets the remainder.
+    | Absolute of int
+
 type Border = | Yes
 
 type DesiredBounds = unit
 
 type private UnkeyedVdom<'bounds> =
     | Bordered of KeylessVdom<'bounds>
-    | PanelSplit of SplitDirection * Choice<float, int> * child1 : KeylessVdom<'bounds> * child2 : KeylessVdom<'bounds>
+    | PanelSplit of SplitDirection * SplitBehaviour * child1 : KeylessVdom<'bounds> * child2 : KeylessVdom<'bounds>
     | TextContent of string * focused : bool
     | Checkbox of isChecked : bool * isFocused : bool
     | Focusable of isInitialFocus : bool * KeyedVdom<'bounds>
@@ -73,7 +84,10 @@ type Vdom =
         | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
         | Keyed (c2, _) ->
 
-        Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, Choice1Of2 p, KeylessVdom.Keyed c1, KeylessVdom.Keyed c2), Teq.refl)
+        Vdom.Unkeyed (
+            UnkeyedVdom.PanelSplit (d, SplitBehaviour.Proportion p, KeylessVdom.Keyed c1, KeylessVdom.Keyed c2),
+            Teq.refl
+        )
 
     static member panelSplitProportion
         (d, p, c1 : Vdom<DesiredBounds, Keyed>, c2 : Vdom<DesiredBounds, Unkeyed>)
@@ -90,7 +104,10 @@ type Vdom =
         | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
         | Unkeyed (c2, _) ->
 
-        Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, Choice1Of2 p, KeylessVdom.Keyed c1, KeylessVdom.Unkeyed c2), Teq.refl)
+        Vdom.Unkeyed (
+            UnkeyedVdom.PanelSplit (d, SplitBehaviour.Proportion p, KeylessVdom.Keyed c1, KeylessVdom.Unkeyed c2),
+            Teq.refl
+        )
 
     static member panelSplitProportion
         (d, p, c1 : Vdom<DesiredBounds, Unkeyed>, c2 : Vdom<DesiredBounds, Keyed>)
@@ -107,7 +124,10 @@ type Vdom =
         | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
         | Keyed (c2, _) ->
 
-        Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, Choice1Of2 p, KeylessVdom.Unkeyed c1, KeylessVdom.Keyed c2), Teq.refl)
+        Vdom.Unkeyed (
+            UnkeyedVdom.PanelSplit (d, SplitBehaviour.Proportion p, KeylessVdom.Unkeyed c1, KeylessVdom.Keyed c2),
+            Teq.refl
+        )
 
     static member panelSplitProportion
         (d, p, c1 : Vdom<DesiredBounds, Unkeyed>, c2 : Vdom<DesiredBounds, Unkeyed>)
@@ -125,7 +145,7 @@ type Vdom =
         | Unkeyed (c2, _) ->
 
         Vdom.Unkeyed (
-            UnkeyedVdom.PanelSplit (d, Choice1Of2 p, KeylessVdom.Unkeyed c1, KeylessVdom.Unkeyed c2),
+            UnkeyedVdom.PanelSplit (d, SplitBehaviour.Proportion p, KeylessVdom.Unkeyed c1, KeylessVdom.Unkeyed c2),
             Teq.refl
         )
 
@@ -141,7 +161,10 @@ type Vdom =
         | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
         | Keyed (c2, _) ->
 
-        Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, Choice2Of2 p, KeylessVdom.Keyed c1, KeylessVdom.Keyed c2), Teq.refl)
+        Vdom.Unkeyed (
+            UnkeyedVdom.PanelSplit (d, SplitBehaviour.Absolute p, KeylessVdom.Keyed c1, KeylessVdom.Keyed c2),
+            Teq.refl
+        )
 
     static member panelSplitAbsolute
         (d, p, c1 : Vdom<DesiredBounds, Unkeyed>, c2 : Vdom<DesiredBounds, Keyed>)
@@ -155,7 +178,10 @@ type Vdom =
         | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
         | Keyed (c2, _) ->
 
-        Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, Choice2Of2 p, KeylessVdom.Unkeyed c1, KeylessVdom.Keyed c2), Teq.refl)
+        Vdom.Unkeyed (
+            UnkeyedVdom.PanelSplit (d, SplitBehaviour.Absolute p, KeylessVdom.Unkeyed c1, KeylessVdom.Keyed c2),
+            Teq.refl
+        )
 
     static member panelSplitAbsolute
         (d, p, c1 : Vdom<DesiredBounds, Keyed>, c2 : Vdom<DesiredBounds, Unkeyed>)
@@ -169,7 +195,10 @@ type Vdom =
         | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
         | Unkeyed (c2, _) ->
 
-        Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, Choice2Of2 p, KeylessVdom.Keyed c1, KeylessVdom.Unkeyed c2), Teq.refl)
+        Vdom.Unkeyed (
+            UnkeyedVdom.PanelSplit (d, SplitBehaviour.Absolute p, KeylessVdom.Keyed c1, KeylessVdom.Unkeyed c2),
+            Teq.refl
+        )
 
     static member panelSplitAbsolute
         (d, p, c1 : Vdom<DesiredBounds, Unkeyed>, c2 : Vdom<DesiredBounds, Unkeyed>)
@@ -184,7 +213,7 @@ type Vdom =
         | Unkeyed (c2, _) ->
 
         Vdom.Unkeyed (
-            UnkeyedVdom.PanelSplit (d, Choice2Of2 p, KeylessVdom.Unkeyed c1, KeylessVdom.Unkeyed c2),
+            UnkeyedVdom.PanelSplit (d, SplitBehaviour.Absolute p, KeylessVdom.Unkeyed c1, KeylessVdom.Unkeyed c2),
             Teq.refl
         )
 
