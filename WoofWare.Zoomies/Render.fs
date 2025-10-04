@@ -419,8 +419,10 @@ module Render =
                     VDomSource = keyedVdom |> KeylessVdom.Keyed
                     Self =
                         match rendered.Self with
-                        | KeylessVdom.Keyed keyedVdom -> failwith "todo"
+                        | KeylessVdom.Keyed keyedVdom -> failwith "logic error: we are keyed"
                         | KeylessVdom.Unkeyed self -> KeyedVdom.WithKey (nodeKey, self) |> KeylessVdom.Keyed
+                    // TODO: test what happens in a UI where a focused element has a key on one tick, then on the next
+                    // tick we reassign that key to a totally different element that can, or can't be focused (two different tests)
                 }
 
         | Unkeyed (unkeyedVdom, teq) ->
@@ -570,7 +572,7 @@ module Render =
                     Self =
                         match child.Self with
                         | KeylessVdom.Keyed child -> UnkeyedVdom.Focusable child |> KeylessVdom.Unkeyed
-                        | KeylessVdom.Unkeyed child -> failwith "TODO"
+                        | KeylessVdom.Unkeyed child -> failwith "logic error: child is keyed"
                 }
 
     let writeBuffer (dirty : TerminalCell voption[,]) : TerminalOp seq =
