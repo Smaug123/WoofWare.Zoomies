@@ -15,9 +15,9 @@ type State =
     {
         File1Path : string
         File2Path : string
-        mutable ShowingFile1 : bool
-        mutable FileContent : string option
-        mutable IsLoading : bool
+        ShowingFile1 : bool
+        FileContent : string option
+        IsLoading : bool
     }
 
     static member Create (file1 : string, file2 : string) =
@@ -42,12 +42,14 @@ module FileBrowser =
         |> worldBridge.PostEvent
         |> ignore<Task>
 
-    let processWorld (state : State) (worldBridge : IWorldBridge<AppEvent>) =
+    let processWorld (initialState : State) (worldBridge : IWorldBridge<AppEvent>) =
         // Trigger initial file load
-        loadFileAsync worldBridge state.CurrentFile
+        loadFileAsync worldBridge initialState.CurrentFile
 
         { new WorldProcessor<AppEvent, State> with
             member _.ProcessWorld (changes, prevVdom, state) =
+                let mutable newState = state
+
                 for change in changes do
                     match change with
                     | WorldStateChange.MouseEvent _ ->
@@ -58,27 +60,41 @@ module FileBrowser =
                         ()
                     | WorldStateChange.Keystroke key when key.KeyChar = ' ' ->
                         // Toggle which file we're showing
-                        state.ShowingFile1 <- not state.ShowingFile1
-                        state.IsLoading <- true
-                        state.FileContent <- None
+                        newState <-
+                            {
+                                newState with
+                                    ShowingFile1 = not newState.ShowingFile1
+                                    IsLoading = true
+                                    FileContent = None
+                            }
                         // Trigger async load of the new file
-                        loadFileAsync worldBridge state.CurrentFile
+                        loadFileAsync worldBridge newState.CurrentFile
                     | WorldStateChange.Keystroke _ -> ()
 
                     | WorldStateChange.ApplicationEvent (FileLoaded (filename, content)) ->
                         // Only update if this is still the file we're expecting
-                        if filename = state.CurrentFile then
-                            state.FileContent <- Some content
-                            state.IsLoading <- false
+                        if filename = newState.CurrentFile then
+                            newState <-
+                                {
+                                    newState with
+                                        FileContent = Some content
+                                        IsLoading = false
+                                }
 
                     | WorldStateChange.ApplicationEvent (FileLoadError (filename, error)) ->
-                        if filename = state.CurrentFile then
-                            state.FileContent <- Some $"Error loading file: {error}"
-                            state.IsLoading <- false
+                        if filename = newState.CurrentFile then
+                            newState <-
+                                {
+                                    newState with
+                                        FileContent = Some $"Error loading file: {error}"
+                                        IsLoading = false
+                                }
 
                     | WorldStateChange.ApplicationEventException e ->
                         ExceptionDispatchInfo.Throw e
                         failwith "unreachable"
+
+                newState
         }
 
     let view (renderState : RenderState) (state : State) : Vdom<DesiredBounds, Unkeyed> =
@@ -110,12 +126,12 @@ module FileBrowser =
     let run (file1 : string) (file2 : string) =
         let state = State.Create (file1, file2)
 
-        state.IsLoading <- true
+        let initialState = { state with IsLoading = true }
 
         App.run
-            state
+            initialState
             (fun _ -> true) // framework handles focus
-            (processWorld state)
+            (processWorld initialState)
             view
 
 // Usage:

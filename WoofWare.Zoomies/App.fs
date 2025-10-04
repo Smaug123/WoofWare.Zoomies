@@ -6,74 +6,82 @@ open System.Threading.Tasks
 
 type WorldProcessor<'appEvent, 'userState> =
     abstract ProcessWorld :
-        events : ReadOnlySpan<WorldStateChange<'appEvent>> * previousRenderState : RenderState * 'userState -> unit
+        events : ReadOnlySpan<WorldStateChange<'appEvent>> * previousRenderState : RenderState * 'userState -> 'userState
 
 [<RequireQualifiedAccess>]
 module App =
 
     let pumpOnce
         (listener : WorldFreezer<'appEvent>)
-        (mutableState : 'state)
+        (state : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
         (renderState : RenderState)
         (processWorld : WorldProcessor<'appEvent, 'state>)
         (vdom : RenderState -> 'state -> Vdom<DesiredBounds, Unkeyed>)
-        : unit
+        : 'state
         =
         listener.RefreshExternal ()
 
         let changes = listener.Changes ()
 
-        match changes with
-        | ValueNone -> ()
-        | ValueSome changes ->
-            if haveFrameworkHandleFocus mutableState then
+        let newState =
+            match changes with
+            | ValueNone -> state
+            | ValueSome changes ->
+                if haveFrameworkHandleFocus state then
 
-                let mutable i = 0
-                let mutable start = 0
+                    let mutable currentState = state
+                    let mutable i = 0
+                    let mutable start = 0
 
-                while i < changes.Length do
-                    match Array.get changes i with
-                    | WorldStateChange.Keystroke t when t.Key = ConsoleKey.Tab && t.Modifiers = enum 0 ->
-                        if i > 0 then
-                            processWorld.ProcessWorld (
-                                changes.AsSpan().Slice (start, i - 1 - start),
-                                renderState,
-                                mutableState
-                            )
+                    while i < changes.Length do
+                        match Array.get changes i with
+                        | WorldStateChange.Keystroke t when t.Key = ConsoleKey.Tab && t.Modifiers = enum 0 ->
+                            if i > 0 then
+                                currentState <-
+                                    processWorld.ProcessWorld (
+                                        changes.AsSpan().Slice (start, i - 1 - start),
+                                        renderState,
+                                        currentState
+                                    )
 
-                        // Advance focus to the next focusable element
-                        RenderState.advanceFocus renderState
+                            // Advance focus to the next focusable element
+                            RenderState.advanceFocus renderState
 
-                        start <- i + 1
-                        // skip the tab input
+                            start <- i + 1
+                            // skip the tab input
+                            i <- i + 1
+                        | WorldStateChange.Keystroke t when
+                            t.Key = ConsoleKey.Tab && t.Modifiers.HasFlag ConsoleModifiers.Shift
+                            ->
+                            if i > 0 then
+                                currentState <-
+                                    processWorld.ProcessWorld (
+                                        changes.AsSpan().Slice (start, i - 1 - start),
+                                        renderState,
+                                        currentState
+                                    )
+
+                            // Retreat focus to the previous focusable element
+                            RenderState.retreatFocus renderState
+
+                            start <- i + 1
+                            // skip the shift+tab input
+                            i <- i + 1
+                        | _ -> ()
+
                         i <- i + 1
-                    | WorldStateChange.Keystroke t when
-                        t.Key = ConsoleKey.Tab && t.Modifiers.HasFlag ConsoleModifiers.Shift
-                        ->
-                        if i > 0 then
-                            processWorld.ProcessWorld (
-                                changes.AsSpan().Slice (start, i - 1 - start),
-                                renderState,
-                                mutableState
-                            )
 
-                        // Retreat focus to the previous focusable element
-                        RenderState.retreatFocus renderState
+                    if start < changes.Length then
+                        processWorld.ProcessWorld (changes.AsSpan().Slice start, renderState, currentState)
+                    else
+                        currentState
+                else
+                    processWorld.ProcessWorld (changes.AsSpan (), renderState, state)
 
-                        start <- i + 1
-                        // skip the shift+tab input
-                        i <- i + 1
-                    | _ -> ()
+        Render.oneStep renderState newState (vdom renderState)
 
-                    i <- i + 1
-
-                if start < changes.Length then
-                    processWorld.ProcessWorld (changes.AsSpan().Slice start, renderState, mutableState)
-            else
-                processWorld.ProcessWorld (changes.AsSpan (), renderState, mutableState)
-
-        Render.oneStep renderState mutableState (vdom renderState)
+        newState
 
 
     /// We set up a ConsoleCancelEventHandler to suppress one Ctrl+C, and we also listen to stdin,
@@ -86,7 +94,7 @@ module App =
         (console : IConsole)
         (ctrlC : CtrlCHandler)
         (worldFreezer : unit -> WorldFreezer<'appEvent>)
-        (mutableState : 'state)
+        (initialState : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
         (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'state>)
         (vdom : RenderState -> 'state -> Vdom<DesiredBounds, Unkeyed>)
@@ -136,8 +144,11 @@ module App =
                     try
                         RenderState.setCursorInvisible renderState
 
+                        let mutable currentState = initialState
+
                         while cancels = 0 && not terminate.IsCancellationRequested do
-                            pumpOnce listener mutableState haveFrameworkHandleFocus renderState processWorld vdom
+                            currentState <-
+                                pumpOnce listener currentState haveFrameworkHandleFocus renderState processWorld vdom
 
                         None
                     with e ->

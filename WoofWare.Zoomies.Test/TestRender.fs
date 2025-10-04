@@ -6,10 +6,13 @@ open NUnit.Framework
 open WoofWare.Expect
 open WoofWare.Zoomies
 
+[<Struct>]
+type NoState = | NoState
+
 type State =
     {
-        mutable IsToggle1Checked : bool
-        mutable IsToggle2Checked : bool
+        IsToggle1Checked : bool
+        IsToggle2Checked : bool
     }
 
     static member Empty () : State =
@@ -103,21 +106,24 @@ module TestRender =
             { new WorldProcessor<unit, State> with
                 member _.ProcessWorld (worldChanges, renderState, state) =
                     let focusedKey = RenderState.focusedKey renderState
+                    let mutable newState = state
 
                     for change in worldChanges do
                         match change with
                         | Keystroke c when c.KeyChar = ' ' ->
                             match focusedKey with
                             | Some key when key = NodeKey.make "toggle1" ->
-                                state.IsToggle1Checked <- not state.IsToggle1Checked
+                                newState <- { newState with IsToggle1Checked = not newState.IsToggle1Checked }
                             | Some key when key = NodeKey.make "toggle2" ->
-                                state.IsToggle2Checked <- not state.IsToggle2Checked
+                                newState <- { newState with IsToggle2Checked = not newState.IsToggle2Checked }
                             | _ -> ()
                         | Keystroke _ -> ()
                         | KeyboardEvent _ -> failwith "no keyboard events"
                         | MouseEvent _ -> failwith "no mouse events"
                         | ApplicationEvent () -> failwith "no app events"
                         | ApplicationEventException _ -> failwith "no exceptions possible"
+
+                    newState
             }
 
         task {
@@ -132,11 +138,11 @@ module TestRender =
                     world.KeyAvailable
                     world.ReadKey
 
-            let state = State.Empty ()
+            let mutable state = State.Empty ()
 
             let renderState = RenderState.make' console
 
-            App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
             expect {
                 snapshot
@@ -159,7 +165,7 @@ module TestRender =
             // Switching focus moves focus to the first focusable element
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
             expect {
                 snapshot
@@ -182,7 +188,7 @@ module TestRender =
             // Switching focus again does nothing because there are no more focusable elements
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
             expect {
                 snapshot
@@ -204,7 +210,7 @@ module TestRender =
 
             // Turn on the toggle, revealing a new interface element!
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
-            App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
             expect {
                 snapshot
@@ -226,7 +232,7 @@ only displayed when checked                this one is focusable!               
 
             // Switch to the other checkbox
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
             expect {
                 snapshot
@@ -248,7 +254,7 @@ only displayed when checked                this one is focusable!               
 
             // Toggle the other one on
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
-            App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
             expect {
                 snapshot
@@ -270,7 +276,7 @@ only displayed when checked                this one is focusable!               
 
             // Switch back to the first one
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
             expect {
                 snapshot
@@ -292,7 +298,7 @@ only displayed when checked                this one is focusable!               
 
             // Disable it again
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
-            App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
             expect {
                 snapshot
@@ -314,7 +320,7 @@ only displayed when checked                this one is focusable!               
 
             // Re-enable; it remembered its state
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
-            App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
             expect {
                 snapshot
@@ -349,7 +355,7 @@ only displayed when checked                this one is focusable!               
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (previousTickRenderState : RenderState) () =
+            let vdom (previousTickRenderState : RenderState) NoState =
                 let currentFocus = RenderState.focusedKey previousTickRenderState
                 let textKey = NodeKey.make "focusable-text"
                 let checkboxKey = NodeKey.make "checkbox"
@@ -367,8 +373,8 @@ only displayed when checked                this one is focusable!               
                 Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 3, text, checkbox)
 
             let processWorld =
-                { new WorldProcessor<unit, unit> with
-                    member _.ProcessWorld (worldChanges, _, _) =
+                { new WorldProcessor<unit, NoState> with
+                    member _.ProcessWorld (worldChanges, _, state) =
                         for change in worldChanges do
                             match change with
                             | Keystroke _ -> ()
@@ -376,11 +382,13 @@ only displayed when checked                this one is focusable!               
                             | MouseEvent _ -> failwith "no mouse events"
                             | ApplicationEvent () -> failwith "no app events"
                             | ApplicationEventException _ -> failwith "no exceptions possible"
+
+                        state
                 }
 
             let renderState = RenderState.make' console
 
-            App.pumpOnce worldFreezer () (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer NoState (fun _ -> true) renderState processWorld vdom |> ignore<NoState>
 
             expect {
                 snapshot
@@ -402,7 +410,7 @@ This is focusable text                                                          
 
             // Tab to focus the text
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            App.pumpOnce worldFreezer () (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer NoState (fun _ -> true) renderState processWorld vdom |> ignore<NoState>
 
             expect {
                 snapshot
@@ -424,7 +432,7 @@ This is focusable text                                                          
 
             // Tab to focus the checkbox
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            App.pumpOnce worldFreezer () (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer NoState (fun _ -> true) renderState processWorld vdom |> ignore<NoState>
 
             expect {
                 snapshot
@@ -446,7 +454,7 @@ This is focusable text                                                          
 
             // Tab back to text
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            App.pumpOnce worldFreezer () (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer NoState (fun _ -> true) renderState processWorld vdom |> ignore<NoState>
 
             expect {
                 snapshot
@@ -481,7 +489,7 @@ This is focusable text                                                          
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (previousTickRenderState : RenderState) () =
+            let vdom (previousTickRenderState : RenderState) NoState =
                 let currentFocus = RenderState.focusedKey previousTickRenderState
                 let checkbox1Key = NodeKey.make "checkbox1"
                 let checkbox2Key = NodeKey.make "checkbox2"
@@ -510,8 +518,8 @@ This is focusable text                                                          
                 )
 
             let processWorld =
-                { new WorldProcessor<unit, unit> with
-                    member _.ProcessWorld (worldChanges, _, _) =
+                { new WorldProcessor<unit, NoState> with
+                    member _.ProcessWorld (worldChanges, _, state) =
                         for change in worldChanges do
                             match change with
                             | Keystroke _ -> ()
@@ -519,11 +527,13 @@ This is focusable text                                                          
                             | MouseEvent _ -> failwith "no mouse events"
                             | ApplicationEvent () -> failwith "no app events"
                             | ApplicationEventException _ -> failwith "no exceptions possible"
+
+                        state
                 }
 
             let renderState = RenderState.make' console
 
-            App.pumpOnce worldFreezer () (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer NoState (fun _ -> true) renderState processWorld vdom |> ignore<NoState>
 
             expect {
                 snapshot
@@ -538,7 +548,7 @@ This is focusable text                                                          
 
             // Tab should focus checkbox2 (marked with isInitialFocus=true), not checkbox1
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            App.pumpOnce worldFreezer () (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer NoState (fun _ -> true) renderState processWorld vdom |> ignore<NoState>
 
             expect {
                 snapshot
@@ -553,7 +563,7 @@ This is focusable text                                                          
 
             // Tab again should cycle to checkbox3
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            App.pumpOnce worldFreezer () (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer NoState (fun _ -> true) renderState processWorld vdom |> ignore<NoState>
 
             expect {
                 snapshot
@@ -568,7 +578,7 @@ This is focusable text                                                          
 
             // Tab again should cycle to checkbox1
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            App.pumpOnce worldFreezer () (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer NoState (fun _ -> true) renderState processWorld vdom |> ignore<NoState>
 
             expect {
                 snapshot
@@ -583,7 +593,7 @@ This is focusable text                                                          
 
             // Tab again should cycle back to checkbox2
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            App.pumpOnce worldFreezer () (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer NoState (fun _ -> true) renderState processWorld vdom |> ignore<NoState>
 
             expect {
                 snapshot
