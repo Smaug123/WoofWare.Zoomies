@@ -16,8 +16,8 @@ module TestExternalEventSubscription =
 
     type TimerState =
         {
-            mutable TimerSubscription : IDisposable option
-            mutable Counter : int
+            TimerSubscription : IDisposable option
+            Counter : int
         }
 
         static member Empty () =
@@ -55,6 +55,8 @@ module TestExternalEventSubscription =
             let processWorld (world : IWorldBridge<TimerAppEvent>) =
                 { new WorldProcessor<TimerAppEvent, TimerState> with
                     member _.ProcessWorld (changes, _, state) =
+                        let mutable newState = state
+
                         for change in changes do
                             match change with
                             | WorldStateChange.ApplicationEvent StartTimer ->
@@ -66,25 +68,39 @@ module TestExternalEventSubscription =
                                 | Some _ -> failwith "only should have got one StartTimer"
 
                                 let subscription = world.SubscribeEvent timer.Elapsed (fun _ -> TimerTick)
-                                state.TimerSubscription <- Some subscription
+
+                                newState <-
+                                    { newState with
+                                        TimerSubscription = Some subscription
+                                    }
 
                             | WorldStateChange.ApplicationEvent StopTimer ->
-                                state.TimerSubscription |> Option.iter (fun s -> s.Dispose ())
+                                newState.TimerSubscription |> Option.iter (fun s -> s.Dispose ())
                                 globalTimer |> Option.get :> IDisposable |> _.Dispose()
-                                state.TimerSubscription <- None
 
-                            | WorldStateChange.ApplicationEvent TimerTick -> state.Counter <- state.Counter + 1
+                                newState <-
+                                    { newState with
+                                        TimerSubscription = None
+                                    }
+
+                            | WorldStateChange.ApplicationEvent TimerTick ->
+                                newState <-
+                                    { newState with
+                                        Counter = newState.Counter + 1
+                                    }
 
                             | WorldStateChange.Keystroke c when c.KeyChar = ' ' ->
                                 // Toggle timer on space
-                                match state.TimerSubscription with
+                                match newState.TimerSubscription with
                                 | Some _ -> world.PostEvent (fun _ -> Task.FromResult StopTimer) |> ignore<Task<_>>
                                 | None -> world.PostEvent (fun _ -> Task.FromResult StartTimer) |> ignore<Task<_>>
 
                             | _ -> ()
+
+                        newState
                 }
 
-            let vdom (_ : RenderState) (state : TimerState) =
+            let vdom (_ : VdomContext) (state : TimerState) =
                 Vdom.textContent false $"%i{state.Counter}"
 
             let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 1)
@@ -101,8 +117,8 @@ module TestExternalEventSubscription =
 
             let processWorld = processWorld worldFreezer
 
-            let state = TimerState.Empty ()
-            App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            let mutable state = TimerState.Empty ()
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
             expect {
                 snapshot
@@ -115,7 +131,7 @@ module TestExternalEventSubscription =
 
             // Tell the app to start a timer
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
-            App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
             expect {
                 snapshot
@@ -130,14 +146,14 @@ module TestExternalEventSubscription =
             // that doesn't contain that enqueue.
             globalTimer.IsNone |> shouldEqual true
             // But after another pump, we'll process the timer-start.
-            App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
             match globalTimer with
             | Some timer -> timer.Trigger ()
             | None -> failwith "expected a timer to be running"
 
             // The timer has triggered an app event!
-            App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
             expect {
                 snapshot
@@ -152,7 +168,7 @@ module TestExternalEventSubscription =
             | Some timer -> timer.Trigger ()
             | None -> failwith "expected a timer to be running"
 
-            App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
             expect {
                 snapshot
@@ -165,7 +181,7 @@ module TestExternalEventSubscription =
 
             // Tell the app to stop the timer
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
-            App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
             expect {
                 snapshot
@@ -180,7 +196,7 @@ module TestExternalEventSubscription =
             match globalTimer with
             | Some timer ->
                 timer.IsDisposed |> shouldEqual false
-                App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+                state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
                 timer.IsDisposed |> shouldEqual true
             | None -> failwith "expected a timer to be running"
         }
