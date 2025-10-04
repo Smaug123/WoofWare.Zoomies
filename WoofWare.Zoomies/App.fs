@@ -23,6 +23,8 @@ module App =
         =
         let startState = state
 
+        RenderState.refreshTerminalSize renderState
+
         listener.RefreshExternal ()
 
         let changes = listener.Changes ()

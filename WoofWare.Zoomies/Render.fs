@@ -36,12 +36,14 @@ module VdomContext =
         }
 
     let internal setFocusedKey (key : NodeKey option) (v : VdomContext) =
-        v.IsDirty <- true
-        v._FocusedKey <- key
+        if v._FocusedKey <> key then
+            v.IsDirty <- true
+            v._FocusedKey <- key
 
     let internal setTerminalBounds (tb : Rectangle) (v : VdomContext) =
-        v.IsDirty <- true
-        v._TerminalBounds <- tb
+        if v._TerminalBounds <> tb then
+            v.IsDirty <- true
+            v._TerminalBounds <- tb
 
     let internal markClean (v : VdomContext) = v.IsDirty <- false
 
@@ -61,6 +63,7 @@ type RenderedNode =
 type RenderState =
     private
         {
+            Console : IConsole
             mutable PreviousVdom : RenderedNode option
             mutable Buffer : TerminalCell voption[,]
             mutable CursorVisible : bool
@@ -110,6 +113,20 @@ module RenderState =
         match s.KeyToNode.TryGetValue key with
         | true, node -> Some node.Bounds
         | false, _ -> None
+
+    let private getBounds (c : IConsole) : Rectangle =
+        let width = c.WindowWidth ()
+        let height = c.WindowHeight ()
+
+        {
+            TopLeftX = 0
+            TopLeftY = 0
+            Width = width
+            Height = height
+        }
+
+    let refreshTerminalSize (rs : RenderState) : unit =
+        VdomContext.setTerminalBounds (getBounds rs.Console) rs.VdomContext
 
     /// Advance focus to the next focusable node (Tab key)
     let advanceFocus (s : RenderState) : unit =
@@ -168,23 +185,15 @@ module RenderState =
     let internal vdomContext (rs : RenderState) = rs.VdomContext
 
     let make' (c : IConsole) =
-        let width = c.WindowWidth ()
-        let height = c.WindowHeight ()
+        let bounds = getBounds c
 
-        let bounds =
-            {
-                TopLeftX = 0
-                TopLeftY = 0
-                Width = width
-                Height = height
-            }
-
-        let changeBuffer = Array2D.zeroCreate height width
+        let changeBuffer = Array2D.zeroCreate bounds.Height bounds.Width
 
         let bg = c.BackgroundColor ()
         let fg = c.ForegroundColor ()
 
         {
+            Console = c
             Buffer = changeBuffer
             PreviousVdom = None
             Output = c.Execute
@@ -468,7 +477,7 @@ module Render =
         : RenderedNode
         =
         match vdom with
-        | Keyed (keyedVdom, teq) ->
+        | Keyed (keyedVdom, _) ->
             match previousRender with
             | Some previousRender when
                 bounds = previousRender.Bounds
@@ -701,7 +710,18 @@ module Render =
         (userState : 'state)
         (compute : 'state -> Vdom<DesiredBounds, Unkeyed>)
         =
-        Array.Clear renderState.Buffer
+        do
+            let terminalHeight = VdomContext.terminalBounds(renderState.VdomContext).Height
+            let terminalWidth = VdomContext.terminalBounds(renderState.VdomContext).Width
+
+            if
+                renderState.Buffer.GetLength 0 <> terminalHeight
+                || renderState.Buffer.GetLength 1 <> terminalWidth
+            then
+                renderState.Buffer <- Array2D.zeroCreate terminalHeight terminalWidth
+            else
+                Array.Clear renderState.Buffer
+
         renderState.KeyToNode.Clear ()
         renderState.FocusableKeys.Clear ()
         renderState.InitialFocusKey.Value <- None
