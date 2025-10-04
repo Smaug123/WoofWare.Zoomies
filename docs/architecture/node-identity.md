@@ -43,8 +43,8 @@ module Vdom =
     /// Attach a stable key to a VDOM node
     val withKey : NodeKey -> Vdom<'bounds, 'keyed> -> Vdom<'bounds, Keyed>
 
-    /// Mark a node as focusable
-    val focusable : Vdom<'bounds, Keyed> -> Vdom<'bounds, Keyed>
+    /// Mark a node as participating in automatic focus tracking
+    val withFocusTracking : Vdom<'bounds, Keyed> -> Vdom<'bounds, Keyed>
 
 module RenderState =
     /// Query which key had focus in the previous frame
@@ -58,16 +58,16 @@ module RenderState =
 
 1. **VDOM Construction**: Application queries `RenderState.focusedKey` to determine what was focused last frame, and uses this to construct the VDOM with appropriate styling/state.
 
-2. **Rendering**: The framework walks the VDOM tree, noting the tree position of all `focusable` nodes and any explicit `withKey` annotations.
+2. **Rendering**: The framework walks the VDOM tree, noting the tree position of all `withFocusTracking` nodes and any explicit `withKey` annotations.
 
-3. **Input Processing**: Tab key cycles through focusable nodes in tree order. The framework updates its internal "which key is focused" state.
+3. **Input Processing**: Tab key cycles through `withFocusTracking` nodes in tree order. The framework updates its internal "which key is focused" state.
 
 4. **Next Frame**: The cycle repeats with the updated focus state available for querying.
 
 ### Identity Resolution
 
 Focus can be tracked only by explicit keys.
-The API of `Vdom.focusable` requires (with the phantom `'keyed` parameter) that the node be keyed.
+The API of `Vdom.withFocusTracking` requires (with the phantom `'keyed` parameter) that the node be keyed.
 
 ## Usage Examples
 
@@ -109,7 +109,7 @@ let render (state: State) (renderState: RenderState) =
             (currentFocus = Some checkbox1Key)
             state.IsChecked1
         |> Vdom.withKey checkbox1Key
-        |> Vdom.focusable
+        |> Vdom.withFocusTracking
 
     let checkbox2Key = NodeKey.make "checkbox-2"
     let checkbox2 =
@@ -117,7 +117,7 @@ let render (state: State) (renderState: RenderState) =
             (currentFocus = Some checkbox2Key)
             state.IsChecked2
         |> Vdom.withKey checkbox2Key
-        |> Vdom.focusable
+        |> Vdom.withFocusTracking
 
     Vdom.panelSplit Direction.Vertical checkbox1 checkbox2
 ```
@@ -149,7 +149,7 @@ type FocusManager<'id when 'id : comparison> =
         let isFocused = this.IsFocused id
         Vdom.checkbox isFocused isChecked
         |> Vdom.withKey key
-        |> Vdom.focusable
+        |> Vdom.withFocusTracking
 
 // Usage
 let focusManager = FocusManager.create ["checkbox1"; "checkbox2"]
@@ -232,5 +232,5 @@ During input processing, update `FocusedKey` when Tab is pressed or appropriatel
 
 ### Tab Navigation
 
-Tab cycles through focusable nodes in tree order (depth-first traversal).
-The framework doesn't need to understand semantic meaning; it just walks to "the next focusable thing in the tree."
+Tab cycles through `withFocusTracking` nodes in tree order (depth-first traversal).
+The framework doesn't need to understand semantic meaning; it just walks to "the next `withFocusTracking` thing in the tree."
