@@ -141,17 +141,17 @@ module RenderState =
 [<RequireQualifiedAccess>]
 module Render =
     let private splitBounds
-        (direction : Direction)
-        (split : Choice<float, int>)
+        (direction : SplitDirection)
+        (split : SplitBehaviour)
         (bounds : Rectangle)
         : Rectangle * Rectangle
         =
         match direction with
-        | Direction.Vertical ->
+        | SplitDirection.Vertical ->
             let leftWidth =
                 match split with
-                | Choice1Of2 proportion -> max (float bounds.Width * proportion |> int) 1
-                | Choice2Of2 absolute -> if absolute < 0 then bounds.Width + absolute else absolute
+                | SplitBehaviour.Proportion proportion -> max (float bounds.Width * proportion |> int) 1
+                | SplitBehaviour.Absolute absolute -> if absolute < 0 then bounds.Width + absolute else absolute
 
             let left =
                 {
@@ -170,11 +170,11 @@ module Render =
                 }
 
             left, right
-        | Direction.Horizontal ->
+        | SplitDirection.Horizontal ->
             let topHeight =
                 match split with
-                | Choice1Of2 proportion -> max (float bounds.Height * proportion |> int) 1
-                | Choice2Of2 absolute -> if absolute < 0 then bounds.Height + absolute else absolute
+                | SplitBehaviour.Proportion proportion -> max (float bounds.Height * proportion |> int) 1
+                | SplitBehaviour.Absolute absolute -> if absolute < 0 then bounds.Height + absolute else absolute
 
             let top =
                 {
@@ -302,8 +302,8 @@ module Render =
         (initialFocusKey : NodeKey option ref)
         (dirty : TerminalCell voption[,])
         (bounds : Rectangle)
-        (dir : Direction)
-        (proportion : Choice<float, int>)
+        (dir : SplitDirection)
+        (proportion : SplitBehaviour)
         (child1 : KeylessVdom<_>)
         (child2 : KeylessVdom<_>)
         (vdom : UnkeyedVdom<DesiredBounds>)

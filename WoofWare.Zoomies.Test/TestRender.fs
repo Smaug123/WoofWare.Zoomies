@@ -43,7 +43,7 @@ module TestRender =
                 "errybody wants to be a bodybuilder, but don't nobody want to lift no heavy-ass weights"
             |> Vdom.bordered
 
-        let topHalf = Vdom.panelSplitProportion (Direction.Vertical, 0.5, left, right)
+        let topHalf = Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, left, right)
 
         let toggle1Key = NodeKey.make "toggle1"
         let currentFocus = RenderState.focusedKey previousTickRenderState
@@ -53,14 +53,15 @@ module TestRender =
             |> Vdom.withKey toggle1Key
             |> Vdom.withFocusTracking
 
-        let vdom = Vdom.panelSplitAbsolute (Direction.Horizontal, -3, topHalf, bottomHalf)
+        let vdom =
+            Vdom.panelSplitAbsolute (SplitDirection.Horizontal, -3, topHalf, bottomHalf)
 
         if state.IsToggle1Checked then
             let toggle2Key = NodeKey.make "toggle2"
 
             let inner =
                 Vdom.panelSplitProportion (
-                    Direction.Vertical,
+                    SplitDirection.Vertical,
                     0.5,
                     Vdom.textContent false "only displayed when checked",
                     Vdom.labelledCheckbox
@@ -71,7 +72,7 @@ module TestRender =
                     |> Vdom.withFocusTracking
                 )
 
-            Vdom.panelSplitProportion (Direction.Horizontal, 0.7, vdom, inner)
+            Vdom.panelSplitProportion (SplitDirection.Horizontal, 0.7, vdom, inner)
         else
             vdom
 
@@ -363,7 +364,7 @@ only displayed when checked                this one is focusable!               
                     |> Vdom.withKey checkboxKey
                     |> Vdom.withFocusTracking
 
-                Vdom.panelSplitAbsolute (Direction.Horizontal, 3, text, checkbox)
+                Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 3, text, checkbox)
 
             let processWorld =
                 { new WorldProcessor<unit, unit> with
@@ -502,10 +503,10 @@ This is focusable text                                                          
                     |> Vdom.withFocusTracking
 
                 Vdom.panelSplitProportion (
-                    Direction.Vertical,
+                    SplitDirection.Vertical,
                     0.33,
                     checkbox1,
-                    Vdom.panelSplitProportion (Direction.Vertical, 0.5, checkbox2, checkbox3)
+                    Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, checkbox2, checkbox3)
                 )
 
             let processWorld =

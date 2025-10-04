@@ -89,7 +89,7 @@ module FileBrowser =
                 |> Vdom.withKey checkboxKey
                 |> Vdom.withFocusTracking
 
-            Vdom.panelSplitAbsolute (Direction.Vertical, 3, checkbox, Vdom.textContent false label)
+            Vdom.panelSplitAbsolute (SplitDirection.Vertical, 3, checkbox, Vdom.textContent false label)
             |> Vdom.bordered
 
         let bottomPane =
@@ -101,7 +101,7 @@ module FileBrowser =
 
             Vdom.textContent false content |> Vdom.bordered
 
-        Vdom.panelSplitAbsolute (Direction.Horizontal, 3, topPane, bottomPane)
+        Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 3, topPane, bottomPane)
 
     let run (file1 : string) (file2 : string) =
         let state = State.Create (file1, file2)

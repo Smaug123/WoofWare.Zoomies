@@ -30,7 +30,7 @@ module TestFocusCycle =
                 |> Vdom.withKey key
                 |> Vdom.withFocusTracking
             )
-        |> List.reduce (fun x y -> Vdom.panelSplitAbsolute (Direction.Vertical, -3, x, y))
+        |> List.reduce (fun x y -> Vdom.panelSplitAbsolute (SplitDirection.Vertical, -3, x, y))
 
     [<Test>]
     let ``example 1`` () =
@@ -242,7 +242,7 @@ module TestFocusCycle =
 
                     let checkbox2 = Vdom.checkbox false false
 
-                    Vdom.panelSplitProportion (Direction.Vertical, 0.5, checkbox1, checkbox2)
+                    Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, checkbox1, checkbox2)
                 else
                     // Second frame: different checkbox at shared-key
                     let checkbox1 = Vdom.checkbox false false
@@ -252,7 +252,7 @@ module TestFocusCycle =
                         |> Vdom.withKey sharedKey
                         |> Vdom.withFocusTracking
 
-                    Vdom.panelSplitProportion (Direction.Vertical, 0.5, checkbox1, checkbox2)
+                    Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, checkbox1, checkbox2)
 
             let processWorld =
                 { new WorldProcessor<_, bool ref> with
@@ -331,7 +331,12 @@ module TestFocusCycle =
                     let nonFocusable =
                         Vdom.checkbox (currentFocus = Some sharedKey) false |> Vdom.withKey sharedKey
 
-                    Vdom.panelSplitProportion (Direction.Vertical, 0.5, Vdom.textContent false "more", nonFocusable)
+                    Vdom.panelSplitProportion (
+                        SplitDirection.Vertical,
+                        0.5,
+                        Vdom.textContent false "more",
+                        nonFocusable
+                    )
                 | 2 ->
                     // Third frame: nothing should now be focused, because the previous frame had no focusable elements.
                     RenderState.focusedKey previousTickRenderState |> shouldEqual None
