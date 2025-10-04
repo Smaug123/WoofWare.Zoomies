@@ -213,6 +213,140 @@ module TestFocusCycle =
         }
 
     [<Test>]
+    let ``shift+tab cycles backward`` () =
+        task {
+            let console, terminal = ConsoleHarness.make' (fun () -> 16) (fun () -> 1)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let state = [| false ; false ; false ; false |]
+            let haveFrameworkHandleFocus _ = true
+
+            let processWorld =
+                { new WorldProcessor<_, bool[]> with
+                    member _.ProcessWorld (inputs, renderState, checkboxes) =
+                        for s in inputs do
+                            match s with
+                            | WorldStateChange.Keystroke c ->
+                                if c.KeyChar = ' ' then
+                                    match RenderState.focusedKey renderState with
+                                    | None -> ()
+                                    | Some focused ->
+                                        let key = NodeKey.toString focused
+                                        let prefix = "checkbox"
+
+                                        if key.StartsWith (prefix, StringComparison.Ordinal) then
+                                            let key = key.Substring prefix.Length |> Int32.Parse
+                                            Array.set checkboxes key (Array.get checkboxes key |> not)
+                                        else
+                                            failwith "unexpected key"
+                                else
+                                    failwith "unexpected key char"
+                            | WorldStateChange.MouseEvent _ -> failwith "no mouse events"
+                            | WorldStateChange.ApplicationEvent () -> failwith "no app events"
+                            | WorldStateChange.KeyboardEvent _ -> failwith "no keyboard events"
+                            | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
+                }
+
+            let renderState = RenderState.make' console
+            App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+   ☐    ☐  ☐  ☐ |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
+            // Tab to focus first checkbox
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+            App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+  [☐]   ☐  ☐  ☐ |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
+            // Tab to focus second checkbox
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+            App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+   ☐   [☐] ☐  ☐ |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
+            // Shift+Tab to go back to first checkbox
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, true, false, false))
+            App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+  [☐]   ☐  ☐  ☐ |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
+            // Shift+Tab from first should wrap to last
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, true, false, false))
+            App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+   ☐    ☐  ☐ [☐]|
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
+            // Check the last checkbox
+            world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
+            App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+   ☐    ☐  ☐ [☑]|
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
+            // Shift+Tab to third checkbox
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, true, false, false))
+            App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+   ☐    ☐ [☐] ☑ |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
     let ``focus tracks the key when node keys are reassigned, not the element`` () =
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 16) (fun () -> 1)
