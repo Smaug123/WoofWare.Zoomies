@@ -30,7 +30,7 @@ module TestRender =
     let tearDown () =
         GlobalBuilderConfig.updateAllSnapshots ()
 
-    let vdom (previousTickRenderState : RenderState) (state : State) : Vdom<DesiredBounds, _> =
+    let vdom (vdomContext : VdomContext) (state : State) : Vdom<DesiredBounds, _> =
         let left =
             Vdom.textContent
                 false
@@ -46,7 +46,7 @@ module TestRender =
         let topHalf = Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, left, right)
 
         let toggle1Key = NodeKey.make "toggle1"
-        let currentFocus = RenderState.focusedKey previousTickRenderState
+        let currentFocus = vdomContext.FocusedKey
 
         let bottomHalf =
             Vdom.labelledCheckbox (currentFocus = Some toggle1Key) state.IsToggle1Checked "Press Space to toggle"
@@ -89,11 +89,11 @@ module TestRender =
 
         let renderState = RenderState.make' console
 
-        Render.oneStep renderState state (vdom renderState)
+        Render.oneStep renderState state (vdom (RenderState.vdomContext renderState))
 
         terminalOps.Clear ()
 
-        Render.oneStep renderState state (vdom renderState)
+        Render.oneStep renderState state (vdom (RenderState.vdomContext renderState))
 
         terminalOps |> shouldBeEmpty
 
@@ -102,7 +102,7 @@ module TestRender =
         let processWorld =
             { new WorldProcessor<unit, State> with
                 member _.ProcessWorld (worldChanges, renderState, state) =
-                    let focusedKey = RenderState.focusedKey renderState
+                    let focusedKey = renderState.FocusedKey
                     let mutable newState = state
 
                     for change in worldChanges do
@@ -358,8 +358,8 @@ only displayed when checked                this one is focusable!               
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (previousTickRenderState : RenderState) (_ : FakeUnit) =
-                let currentFocus = RenderState.focusedKey previousTickRenderState
+            let vdom (vdomContext : VdomContext) (_ : FakeUnit) =
+                let currentFocus = vdomContext.FocusedKey
                 let textKey = NodeKey.make "focusable-text"
                 let checkboxKey = NodeKey.make "checkbox"
 
@@ -499,8 +499,8 @@ This is focusable text                                                          
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (previousTickRenderState : RenderState) (_ : FakeUnit) =
-                let currentFocus = RenderState.focusedKey previousTickRenderState
+            let vdom (vdomContext : VdomContext) (_ : FakeUnit) =
+                let currentFocus = vdomContext.FocusedKey
                 let checkbox1Key = NodeKey.make "checkbox1"
                 let checkbox2Key = NodeKey.make "checkbox2"
                 let checkbox3Key = NodeKey.make "checkbox3"

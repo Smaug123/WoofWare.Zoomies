@@ -6,7 +6,7 @@ open System.Threading.Tasks
 
 type WorldProcessor<'appEvent, 'userState> =
     abstract ProcessWorld :
-        events : ReadOnlySpan<WorldStateChange<'appEvent>> * previousRenderState : RenderState * 'userState ->
+        events : ReadOnlySpan<WorldStateChange<'appEvent>> * previousRenderState : VdomContext * 'userState ->
             'userState
 
 [<RequireQualifiedAccess>]
@@ -18,7 +18,7 @@ module App =
         (haveFrameworkHandleFocus : 'state -> bool)
         (renderState : RenderState)
         (processWorld : WorldProcessor<'appEvent, 'state>)
-        (vdom : RenderState -> 'state -> Vdom<DesiredBounds, Unkeyed>)
+        (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
         : 'state
         =
         listener.RefreshExternal ()
@@ -36,13 +36,16 @@ module App =
                     let mutable start = 0
 
                     while i < changes.Length do
+                        // TODO: make this less grossly inefficient
+                        let vdomContext = RenderState.vdomContext renderState
+
                         match Array.get changes i with
                         | WorldStateChange.Keystroke t when t.Key = ConsoleKey.Tab && t.Modifiers = enum 0 ->
                             if i > 0 then
                                 currentState <-
                                     processWorld.ProcessWorld (
                                         changes.AsSpan().Slice (start, i - 1 - start),
-                                        renderState,
+                                        vdomContext,
                                         currentState
                                     )
 
@@ -59,7 +62,7 @@ module App =
                                 currentState <-
                                     processWorld.ProcessWorld (
                                         changes.AsSpan().Slice (start, i - 1 - start),
-                                        renderState,
+                                        vdomContext,
                                         currentState
                                     )
 
@@ -74,13 +77,16 @@ module App =
                         i <- i + 1
 
                     if start < changes.Length then
-                        processWorld.ProcessWorld (changes.AsSpan().Slice start, renderState, currentState)
+                        let vdomContext = RenderState.vdomContext renderState
+                        processWorld.ProcessWorld (changes.AsSpan().Slice start, vdomContext, currentState)
                     else
                         currentState
                 else
-                    processWorld.ProcessWorld (changes.AsSpan (), renderState, state)
+                    let vdomContext = RenderState.vdomContext renderState
+                    processWorld.ProcessWorld (changes.AsSpan (), vdomContext, state)
 
-        Render.oneStep renderState newState (vdom renderState)
+        let vdomContext = RenderState.vdomContext renderState
+        Render.oneStep renderState newState (vdom vdomContext)
 
         newState
 
@@ -98,7 +104,7 @@ module App =
         (initialState : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
         (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'state>)
-        (vdom : RenderState -> 'state -> Vdom<DesiredBounds, Unkeyed>)
+        (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
         : Task
         =
         // RunContinuationsAsynchronously so that we don't force continuation on the UI thread.
@@ -172,7 +178,7 @@ module App =
         (state : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
         (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'state>)
-        (vdom : RenderState -> 'state -> Vdom<DesiredBounds, Unkeyed>)
+        (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
         : Task
         =
         run'

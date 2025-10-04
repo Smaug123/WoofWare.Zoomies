@@ -100,7 +100,7 @@ module TestExternalEventSubscription =
                         newState
                 }
 
-            let vdom (_ : RenderState) (state : TimerState) =
+            let vdom (_ : VdomContext) (state : TimerState) =
                 Vdom.textContent false $"%i{state.Counter}"
 
             let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 1)

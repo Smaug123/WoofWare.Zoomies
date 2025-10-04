@@ -13,6 +13,17 @@ type Rectangle =
         Height : int
     }
 
+/// Context provided to vdom construction, containing information about the layout of the previous render cycle.
+/// This is immutable and supports structural equality, enabling early cutoff optimizations.
+type VdomContext =
+    {
+        /// The currently focused element's key, if any.
+        /// If you're not using the automatic focus handling mechanism, this is always None.
+        FocusedKey : NodeKey option
+        /// The bounds of the terminal
+        TerminalBounds : Rectangle
+    }
+
 /// So that we can do early cutoff.
 type RenderedNode =
     private
@@ -71,6 +82,13 @@ module RenderState =
 
     /// Query which key had focus in the previous frame, if you're using the automatic focus tracking mechanism.
     let focusedKey (s : RenderState) : NodeKey option = s.FocusedKey
+
+    /// Extract the VdomContext from RenderState for vdom construction.
+    let vdomContext (s : RenderState) : VdomContext =
+        {
+            FocusedKey = s.FocusedKey
+            TerminalBounds = s.TerminalBounds
+        }
 
     /// Query the rendered bounds of a keyed node
     let layoutOf (key : NodeKey) (s : RenderState) : Rectangle option =

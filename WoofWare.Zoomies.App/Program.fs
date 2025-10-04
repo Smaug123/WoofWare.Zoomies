@@ -96,12 +96,12 @@ module FileBrowser =
                 newState
         }
 
-    let view (renderState : RenderState) (state : State) : Vdom<DesiredBounds, Unkeyed> =
+    let view (vdomContext : VdomContext) (state : State) : Vdom<DesiredBounds, Unkeyed> =
         let topPane =
             let label = $"[{state.File1Path}] / [{state.File2Path}]"
 
             let checkboxKey = NodeKey.make "checkbox"
-            let currentFocus = RenderState.focusedKey renderState
+            let currentFocus = vdomContext.FocusedKey
 
             let checkbox =
                 Vdom.checkbox (currentFocus = Some checkboxKey) (not state.ShowingFile1)

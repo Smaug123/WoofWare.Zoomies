@@ -20,8 +20,8 @@ module TestFocusCycle =
     let tearDown () =
         GlobalBuilderConfig.updateAllSnapshots ()
 
-    let vdom (previousTickRenderState : RenderState) (checkboxes : bool ImmutableArray) =
-        let currentFocus = RenderState.focusedKey previousTickRenderState
+    let vdom (vdomContext : VdomContext) (checkboxes : bool ImmutableArray) =
+        let currentFocus = vdomContext.FocusedKey
 
         List.init
             4
@@ -60,7 +60,7 @@ module TestFocusCycle =
                             match s with
                             | WorldStateChange.Keystroke c ->
                                 if c.KeyChar = ' ' then
-                                    match RenderState.focusedKey renderState with
+                                    match renderState.FocusedKey with
                                     | None ->
                                         // pressed space while nothing focused
                                         ()
@@ -267,7 +267,7 @@ module TestFocusCycle =
                             match s with
                             | WorldStateChange.Keystroke c ->
                                 if c.KeyChar = ' ' then
-                                    match RenderState.focusedKey renderState with
+                                    match renderState.FocusedKey with
                                     | None -> ()
                                     | Some focused ->
                                         let key = NodeKey.toString focused
@@ -411,8 +411,8 @@ module TestFocusCycle =
             // State tracks which element to render at a given key
             let haveFrameworkHandleFocus _ = true
 
-            let vdom (previousTickRenderState : RenderState) (renderCheckbox1 : bool) =
-                let currentFocus = RenderState.focusedKey previousTickRenderState
+            let vdom (vdomContext : VdomContext) (renderCheckbox1 : bool) =
+                let currentFocus = vdomContext.FocusedKey
                 let sharedKey = NodeKey.make "shared-key"
 
                 if renderCheckbox1 then
@@ -504,8 +504,8 @@ module TestFocusCycle =
 
             let world = MockWorld.make ()
 
-            let vdom (previousTickRenderState : RenderState) (tick : int) =
-                let currentFocus = RenderState.focusedKey previousTickRenderState
+            let vdom (vdomContext : VdomContext) (tick : int) =
+                let currentFocus = vdomContext.FocusedKey
                 let sharedKey = NodeKey.make "shared-key"
 
                 match tick with
@@ -528,7 +528,7 @@ module TestFocusCycle =
                     )
                 | 2 ->
                     // Third frame: nothing should now be focused, because the previous frame had no focusable elements.
-                    RenderState.focusedKey previousTickRenderState |> shouldEqual None
+                    currentFocus |> shouldEqual None
                     Vdom.textContent false ""
                 | _ -> failwith "unexpected"
 
