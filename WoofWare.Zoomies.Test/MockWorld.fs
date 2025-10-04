@@ -1,7 +1,6 @@
 namespace WoofWare.Zoomies.Test
 
 open System.Collections.Concurrent
-open System.Threading.Tasks
 
 type MockWorld =
     {
