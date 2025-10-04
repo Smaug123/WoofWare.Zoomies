@@ -30,7 +30,9 @@ It stores state internally for efficiency, but as far as the end-user programmer
 
 ## Code Quality
 - `dotnet fantomas .` - Format F# code using Fantomas
-- `dotnet fsharp-analyzers` - Run F# analyzers
+- `./analyzers/run.sh` - Run F# analyzers. These generally don't fail with an exit code; they'll print their output, though.
+
+Always format with Fantomas before committing.
 
 # Architecture
 
@@ -121,3 +123,9 @@ Unlike C# with its two-pass compiler, F# is a single-pass compiler where types m
 ## Mutable lists
 
 It's almost always correct to use `ResizeArray` rather than a mutable F# `list`; it's simply almost always much more efficient.
+
+# NUnit bugs
+
+NUnit's filtering is pretty borked.
+You can't apply filters that contain special characters in the test name (like a space character).
+You have to do e.g. `FullyQualifiedName~singleword` rather than `FullyQualifiedName~single word test`.
