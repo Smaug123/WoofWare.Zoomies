@@ -42,7 +42,10 @@ module FileBrowser =
         |> worldBridge.PostEvent
         |> ignore<Task>
 
-    let processWorld (worldBridge : IWorldBridge<AppEvent>) =
+    let processWorld (state : State) (worldBridge : IWorldBridge<AppEvent>) =
+        // Trigger initial file load
+        loadFileAsync worldBridge state.CurrentFile
+
         { new WorldProcessor<AppEvent, State> with
             member _.ProcessWorld (changes, prevVdom, state) =
                 for change in changes do
@@ -112,7 +115,7 @@ module FileBrowser =
         App.run
             state
             (fun _ -> true) // framework handles focus
-            processWorld
+            (processWorld state)
             view
 
 // Usage:
