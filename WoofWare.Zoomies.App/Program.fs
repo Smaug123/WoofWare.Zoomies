@@ -59,7 +59,9 @@ module FileBrowser =
                         // ignore keyboard events
                         ()
                     | WorldStateChange.Keystroke key when key.KeyChar = ' ' ->
-                        // Toggle which file we're showing
+                        // Toggle which file we're showing.
+                        // Just to keep the code smaller, we do this in a pretty dumb way; you might want to
+                        // go for MORE EFFICIENCY by having some efficient mutable intermediate representation.
                         newState <-
                             { newState with
                                 ShowingFile1 = not newState.ShowingFile1

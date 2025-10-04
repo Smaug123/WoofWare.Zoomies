@@ -1,6 +1,8 @@
 namespace WoofWare.Zoomies.Test
 
 open System
+open System.Collections.Immutable
+open System.Linq
 open FsUnitTyped
 open NUnit.Framework
 open WoofWare.Expect
@@ -18,7 +20,7 @@ module TestFocusCycle =
     let tearDown () =
         GlobalBuilderConfig.updateAllSnapshots ()
 
-    let vdom (previousTickRenderState : RenderState) (checkboxes : bool[]) =
+    let vdom (previousTickRenderState : RenderState) (checkboxes : bool ImmutableArray) =
         let currentFocus = RenderState.focusedKey previousTickRenderState
 
         List.init
@@ -26,7 +28,7 @@ module TestFocusCycle =
             (fun i ->
                 let key = NodeKey.make $"checkbox%i{i}"
 
-                Vdom.checkbox (currentFocus = Some key) (Array.get checkboxes i)
+                Vdom.checkbox (currentFocus = Some key) checkboxes.[i]
                 |> Vdom.withKey key
                 |> Vdom.withFocusTracking
             )
@@ -46,11 +48,11 @@ module TestFocusCycle =
                     world.KeyAvailable
                     world.ReadKey
 
-            let state = [| false ; false ; false ; false |]
+            let state = ImmutableArray.Create<bool> [| false ; false ; false ; false |]
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<_, bool[]> with
+                { new WorldProcessor<_, bool ImmutableArray> with
                     member _.ProcessWorld (inputs, renderState, checkboxes) =
                         let mutable newCheckboxes = checkboxes
 
@@ -68,8 +70,7 @@ module TestFocusCycle =
 
                                         if key.StartsWith (prefix, StringComparison.Ordinal) then
                                             let key = key.Substring prefix.Length |> Int32.Parse
-                                            newCheckboxes <- Array.copy newCheckboxes
-                                            Array.set newCheckboxes key (Array.get newCheckboxes key |> not)
+                                            newCheckboxes <- newCheckboxes.SetItem (key, not newCheckboxes.[key])
                                         else
                                             failwith "unexpected key"
                                 else
@@ -254,11 +255,11 @@ module TestFocusCycle =
                     world.KeyAvailable
                     world.ReadKey
 
-            let state = [| false ; false ; false ; false |]
+            let state = ImmutableArray.Create<bool> [| false ; false ; false ; false |]
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<_, bool[]> with
+                { new WorldProcessor<_, bool ImmutableArray> with
                     member _.ProcessWorld (inputs, renderState, checkboxes) =
                         let mutable newCheckboxes = checkboxes
 
@@ -274,8 +275,7 @@ module TestFocusCycle =
 
                                         if key.StartsWith (prefix, StringComparison.Ordinal) then
                                             let key = key.Substring prefix.Length |> Int32.Parse
-                                            newCheckboxes <- Array.copy newCheckboxes
-                                            Array.set newCheckboxes key (Array.get newCheckboxes key |> not)
+                                            newCheckboxes <- newCheckboxes.SetItem (key, not newCheckboxes.[key])
                                         else
                                             failwith "unexpected key"
                                 else
@@ -504,11 +504,11 @@ module TestFocusCycle =
 
             let world = MockWorld.make ()
 
-            let vdom (previousTickRenderState : RenderState) (tick : int ref) =
+            let vdom (previousTickRenderState : RenderState) (tick : int) =
                 let currentFocus = RenderState.focusedKey previousTickRenderState
                 let sharedKey = NodeKey.make "shared-key"
 
-                match tick.Value with
+                match tick with
                 | 0 ->
                     // First frame: focusable checkbox at shared-key
                     Vdom.checkbox (currentFocus = Some sharedKey) false
@@ -542,13 +542,13 @@ module TestFocusCycle =
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<_, int ref> with
+                { new WorldProcessor<_, int> with
                     member _.ProcessWorld (inputs, _, state) =
                         let mutable newState = state
 
                         for s in inputs do
                             match s with
-                            | WorldStateChange.Keystroke _ -> newState <- ref (newState.Value + 1)
+                            | WorldStateChange.Keystroke _ -> newState <- newState + 1
                             | WorldStateChange.MouseEvent _ -> failwith "no mouse events"
                             | WorldStateChange.ApplicationEvent () -> failwith "no app events"
                             | WorldStateChange.KeyboardEvent _ -> failwith "no keyboard events"
@@ -557,7 +557,7 @@ module TestFocusCycle =
                         newState
                 }
 
-            let mutable renderFocusable = ref 0
+            let mutable renderFocusable = 0
             let renderState = RenderState.make' console
 
             renderFocusable <-
