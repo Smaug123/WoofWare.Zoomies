@@ -103,6 +103,31 @@ module RenderState =
                 | Some initialKey when s.FocusableKeys.Contains initialKey -> s.FocusedKey <- Some initialKey
                 | _ -> s.FocusedKey <- Some s.FocusableKeys.[0]
 
+    /// Retreat focus to the previous focusable node (Shift+Tab key)
+    let retreatFocus (s : RenderState) : unit =
+        if s.FocusableKeys.Count = 0 then
+            // nothing to do, nothing can ever have focus
+            s.FocusedKey <- None
+        else
+
+        match s.FocusedKey with
+        | None ->
+            // No current focus, use initial focus key if available, otherwise last focusable element
+            match s.InitialFocusKey.Value with
+            | Some initialKey when s.FocusableKeys.Contains initialKey -> s.FocusedKey <- Some initialKey
+            | _ -> s.FocusedKey <- Some s.FocusableKeys.[s.FocusableKeys.Count - 1]
+        | Some currentKey ->
+            // Find the current key in the list and move to the previous one
+            match s.FocusableKeys |> Seq.tryFindIndex ((=) currentKey) with
+            | Some index ->
+                let prevIndex = (index - 1 + s.FocusableKeys.Count) % s.FocusableKeys.Count
+                s.FocusedKey <- Some s.FocusableKeys.[prevIndex]
+            | None ->
+                // Current key is not in the focusable list, use initial focus key if available
+                match s.InitialFocusKey.Value with
+                | Some initialKey when s.FocusableKeys.Contains initialKey -> s.FocusedKey <- Some initialKey
+                | _ -> s.FocusedKey <- Some s.FocusableKeys.[s.FocusableKeys.Count - 1]
+
     let make' (c : IConsole) =
         let width = c.WindowWidth ()
         let height = c.WindowHeight ()
