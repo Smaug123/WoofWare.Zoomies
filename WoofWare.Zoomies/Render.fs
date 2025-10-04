@@ -14,15 +14,39 @@ type Rectangle =
     }
 
 /// Context provided to vdom construction, containing information about the layout of the previous render cycle.
-/// This is immutable and supports structural equality, enabling early cutoff optimizations.
+/// This is mutable (although you aren't given the tools to mutate it), so don't persist it.
 type VdomContext =
-    {
-        /// The currently focused element's key, if any.
-        /// If you're not using the automatic focus handling mechanism, this is always None.
-        FocusedKey : NodeKey option
-        /// The bounds of the terminal
-        TerminalBounds : Rectangle
-    }
+    private
+        {
+            /// The currently focused element's key, if any.
+            /// If you're not using the automatic focus handling mechanism, this is always None.
+            mutable _FocusedKey : NodeKey option
+            /// The bounds of the terminal
+            mutable _TerminalBounds : Rectangle
+            mutable IsDirty : bool
+        }
+
+[<RequireQualifiedAccess>]
+module VdomContext =
+    let internal empty (terminalBounds : Rectangle) =
+        {
+            _TerminalBounds = terminalBounds
+            _FocusedKey = None
+            IsDirty = true
+        }
+
+    let internal setFocusedKey (key : NodeKey option) (v : VdomContext) =
+        v.IsDirty <- true
+        v._FocusedKey <- key
+
+    let internal setTerminalBounds (tb : Rectangle) (v : VdomContext) =
+        v.IsDirty <- true
+        v._TerminalBounds <- tb
+
+    let internal markClean (v : VdomContext) = v.IsDirty <- false
+
+    let terminalBounds (v : VdomContext) = v._TerminalBounds
+    let focusedKey (v : VdomContext) = v._FocusedKey
 
 /// So that we can do early cutoff.
 type RenderedNode =
@@ -39,17 +63,18 @@ type RenderState =
         {
             mutable PreviousVdom : RenderedNode option
             mutable Buffer : TerminalCell voption[,]
-            mutable TerminalBounds : Rectangle
             mutable CursorVisible : bool
             Output : TerminalOp -> unit
             mutable BackgroundColor : ConsoleColor
             mutable ForegroundColor : ConsoleColor
             KeyToNode : Dictionary<NodeKey, RenderedNode>
-            mutable FocusedKey : NodeKey option
             /// List of focusable keys in tree order (for Tab navigation)
             FocusableKeys : OrderedSet<NodeKey>
             /// The key marked with isInitialFocus=true, if any
             InitialFocusKey : NodeKey option ref
+            /// This gets handed out to users every so often: it's the fragment of state that they will want to
+            /// construct the vdom with.
+            VdomContext : VdomContext
         }
 
 [<RequireQualifiedAccess>]
@@ -80,16 +105,6 @@ module RenderState =
     let unregisterBracketedPaste (s : RenderState) =
         s.Output TerminalOp.UnregisterBracketedPaste
 
-    /// Query which key had focus in the previous frame, if you're using the automatic focus tracking mechanism.
-    let focusedKey (s : RenderState) : NodeKey option = s.FocusedKey
-
-    /// Extract the VdomContext from RenderState for vdom construction.
-    let vdomContext (s : RenderState) : VdomContext =
-        {
-            FocusedKey = s.FocusedKey
-            TerminalBounds = s.TerminalBounds
-        }
-
     /// Query the rendered bounds of a keyed node
     let layoutOf (key : NodeKey) (s : RenderState) : Rectangle option =
         match s.KeyToNode.TryGetValue key with
@@ -100,51 +115,57 @@ module RenderState =
     let advanceFocus (s : RenderState) : unit =
         if s.FocusableKeys.Count = 0 then
             // nothing to do, nothing can ever have focus
-            s.FocusedKey <- None
+            VdomContext.setFocusedKey None s.VdomContext
         else
 
-        match s.FocusedKey with
+        match VdomContext.focusedKey s.VdomContext with
         | None ->
             // No current focus, use initial focus key if available, otherwise first focusable element
             match s.InitialFocusKey.Value with
-            | Some initialKey when s.FocusableKeys.Contains initialKey -> s.FocusedKey <- Some initialKey
-            | _ -> s.FocusedKey <- Some s.FocusableKeys.[0]
+            | Some initialKey when s.FocusableKeys.Contains initialKey ->
+                VdomContext.setFocusedKey (Some initialKey) s.VdomContext
+            | _ -> VdomContext.setFocusedKey (Some s.FocusableKeys.[0]) s.VdomContext
         | Some currentKey ->
             // Find the current key in the list and move to the next one
             match s.FocusableKeys |> Seq.tryFindIndex ((=) currentKey) with
             | Some index ->
                 let nextIndex = (index + 1) % s.FocusableKeys.Count
-                s.FocusedKey <- Some s.FocusableKeys.[nextIndex]
+                VdomContext.setFocusedKey (Some s.FocusableKeys.[nextIndex]) s.VdomContext
             | None ->
                 // Current key is not in the focusable list, use initial focus key if available
                 match s.InitialFocusKey.Value with
-                | Some initialKey when s.FocusableKeys.Contains initialKey -> s.FocusedKey <- Some initialKey
-                | _ -> s.FocusedKey <- Some s.FocusableKeys.[0]
+                | Some initialKey when s.FocusableKeys.Contains initialKey ->
+                    VdomContext.setFocusedKey (Some initialKey) s.VdomContext
+                | _ -> VdomContext.setFocusedKey (Some s.FocusableKeys.[0]) s.VdomContext
 
     /// Retreat focus to the previous focusable node (Shift+Tab key)
     let retreatFocus (s : RenderState) : unit =
         if s.FocusableKeys.Count = 0 then
             // nothing to do, nothing can ever have focus
-            s.FocusedKey <- None
+            VdomContext.setFocusedKey None s.VdomContext
         else
 
-        match s.FocusedKey with
+        match VdomContext.focusedKey s.VdomContext with
         | None ->
             // No current focus, use initial focus key if available, otherwise last focusable element
             match s.InitialFocusKey.Value with
-            | Some initialKey when s.FocusableKeys.Contains initialKey -> s.FocusedKey <- Some initialKey
-            | _ -> s.FocusedKey <- Some s.FocusableKeys.[s.FocusableKeys.Count - 1]
+            | Some initialKey when s.FocusableKeys.Contains initialKey ->
+                VdomContext.setFocusedKey (Some initialKey) s.VdomContext
+            | _ -> VdomContext.setFocusedKey (Some s.FocusableKeys.[s.FocusableKeys.Count - 1]) s.VdomContext
         | Some currentKey ->
             // Find the current key in the list and move to the previous one
             match s.FocusableKeys |> Seq.tryFindIndex ((=) currentKey) with
             | Some index ->
                 let prevIndex = (index - 1 + s.FocusableKeys.Count) % s.FocusableKeys.Count
-                s.FocusedKey <- Some s.FocusableKeys.[prevIndex]
+                VdomContext.setFocusedKey (Some s.FocusableKeys.[prevIndex]) s.VdomContext
             | None ->
                 // Current key is not in the focusable list, use initial focus key if available
                 match s.InitialFocusKey.Value with
-                | Some initialKey when s.FocusableKeys.Contains initialKey -> s.FocusedKey <- Some initialKey
-                | _ -> s.FocusedKey <- Some s.FocusableKeys.[s.FocusableKeys.Count - 1]
+                | Some initialKey when s.FocusableKeys.Contains initialKey ->
+                    VdomContext.setFocusedKey (Some initialKey) s.VdomContext
+                | _ -> VdomContext.setFocusedKey (Some s.FocusableKeys.[s.FocusableKeys.Count - 1]) s.VdomContext
+
+    let internal vdomContext (rs : RenderState) = rs.VdomContext
 
     let make' (c : IConsole) =
         let width = c.WindowWidth ()
@@ -164,7 +185,6 @@ module RenderState =
         let fg = c.ForegroundColor ()
 
         {
-            TerminalBounds = bounds
             Buffer = changeBuffer
             PreviousVdom = None
             Output = c.Execute
@@ -172,9 +192,9 @@ module RenderState =
             BackgroundColor = bg
             ForegroundColor = fg
             KeyToNode = Dictionary<NodeKey, RenderedNode> ()
-            FocusedKey = None
             FocusableKeys = OrderedSet ()
             InitialFocusKey = ref None
+            VdomContext = VdomContext.empty bounds
         }
 
     let make () =
@@ -695,15 +715,15 @@ module Render =
                 renderState.FocusableKeys
                 renderState.InitialFocusKey
                 renderState.PreviousVdom
-                renderState.TerminalBounds
+                (VdomContext.terminalBounds renderState.VdomContext)
                 vdom
 
         // If the focused element from the previous tick no longer exists, clear focused state
-        match renderState.FocusedKey with
+        match VdomContext.focusedKey renderState.VdomContext with
         | None -> ()
         | Some key ->
             if not (renderState.FocusableKeys.Contains key) then
-                renderState.FocusedKey <- None
+                VdomContext.setFocusedKey None renderState.VdomContext
 
         renderState.PreviousVdom <- Some rendered
 

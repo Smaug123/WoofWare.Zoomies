@@ -46,7 +46,7 @@ module TestRender =
         let topHalf = Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, left, right)
 
         let toggle1Key = NodeKey.make "toggle1"
-        let currentFocus = vdomContext.FocusedKey
+        let currentFocus = VdomContext.focusedKey vdomContext
 
         let bottomHalf =
             Vdom.labelledCheckbox (currentFocus = Some toggle1Key) state.IsToggle1Checked "Press Space to toggle"
@@ -102,7 +102,7 @@ module TestRender =
         let processWorld =
             { new WorldProcessor<unit, State> with
                 member _.ProcessWorld (worldChanges, renderState, state) =
-                    let focusedKey = renderState.FocusedKey
+                    let focusedKey = VdomContext.focusedKey renderState
                     let mutable newState = state
 
                     for change in worldChanges do
@@ -359,7 +359,7 @@ only displayed when checked                this one is focusable!               
                     world.ReadKey
 
             let vdom (vdomContext : VdomContext) (_ : FakeUnit) =
-                let currentFocus = vdomContext.FocusedKey
+                let currentFocus = VdomContext.focusedKey vdomContext
                 let textKey = NodeKey.make "focusable-text"
                 let checkboxKey = NodeKey.make "checkbox"
 
@@ -500,7 +500,7 @@ This is focusable text                                                          
                     world.ReadKey
 
             let vdom (vdomContext : VdomContext) (_ : FakeUnit) =
-                let currentFocus = vdomContext.FocusedKey
+                let currentFocus = VdomContext.focusedKey vdomContext
                 let checkbox1Key = NodeKey.make "checkbox1"
                 let checkbox2Key = NodeKey.make "checkbox2"
                 let checkbox3Key = NodeKey.make "checkbox3"

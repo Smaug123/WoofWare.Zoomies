@@ -2,7 +2,6 @@ namespace WoofWare.Zoomies.Test
 
 open System
 open System.Collections.Immutable
-open System.Linq
 open FsUnitTyped
 open NUnit.Framework
 open WoofWare.Expect
@@ -21,7 +20,7 @@ module TestFocusCycle =
         GlobalBuilderConfig.updateAllSnapshots ()
 
     let vdom (vdomContext : VdomContext) (checkboxes : bool ImmutableArray) =
-        let currentFocus = vdomContext.FocusedKey
+        let currentFocus = VdomContext.focusedKey vdomContext
 
         List.init
             4
@@ -60,7 +59,7 @@ module TestFocusCycle =
                             match s with
                             | WorldStateChange.Keystroke c ->
                                 if c.KeyChar = ' ' then
-                                    match renderState.FocusedKey with
+                                    match VdomContext.focusedKey renderState with
                                     | None ->
                                         // pressed space while nothing focused
                                         ()
@@ -267,7 +266,7 @@ module TestFocusCycle =
                             match s with
                             | WorldStateChange.Keystroke c ->
                                 if c.KeyChar = ' ' then
-                                    match renderState.FocusedKey with
+                                    match VdomContext.focusedKey renderState with
                                     | None -> ()
                                     | Some focused ->
                                         let key = NodeKey.toString focused
@@ -412,7 +411,7 @@ module TestFocusCycle =
             let haveFrameworkHandleFocus _ = true
 
             let vdom (vdomContext : VdomContext) (renderCheckbox1 : bool) =
-                let currentFocus = vdomContext.FocusedKey
+                let currentFocus = VdomContext.focusedKey vdomContext
                 let sharedKey = NodeKey.make "shared-key"
 
                 if renderCheckbox1 then
@@ -505,7 +504,7 @@ module TestFocusCycle =
             let world = MockWorld.make ()
 
             let vdom (vdomContext : VdomContext) (tick : int) =
-                let currentFocus = vdomContext.FocusedKey
+                let currentFocus = VdomContext.focusedKey vdomContext
                 let sharedKey = NodeKey.make "shared-key"
 
                 match tick with

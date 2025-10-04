@@ -36,16 +36,13 @@ module App =
                     let mutable start = 0
 
                     while i < changes.Length do
-                        // TODO: make this less grossly inefficient
-                        let vdomContext = RenderState.vdomContext renderState
-
                         match Array.get changes i with
                         | WorldStateChange.Keystroke t when t.Key = ConsoleKey.Tab && t.Modifiers = enum 0 ->
                             if i > 0 then
                                 currentState <-
                                     processWorld.ProcessWorld (
                                         changes.AsSpan().Slice (start, i - 1 - start),
-                                        vdomContext,
+                                        renderState.VdomContext,
                                         currentState
                                     )
 
@@ -62,7 +59,7 @@ module App =
                                 currentState <-
                                     processWorld.ProcessWorld (
                                         changes.AsSpan().Slice (start, i - 1 - start),
-                                        vdomContext,
+                                        renderState.VdomContext,
                                         currentState
                                     )
 
@@ -77,16 +74,13 @@ module App =
                         i <- i + 1
 
                     if start < changes.Length then
-                        let vdomContext = RenderState.vdomContext renderState
-                        processWorld.ProcessWorld (changes.AsSpan().Slice start, vdomContext, currentState)
+                        processWorld.ProcessWorld (changes.AsSpan().Slice start, renderState.VdomContext, currentState)
                     else
                         currentState
                 else
-                    let vdomContext = RenderState.vdomContext renderState
-                    processWorld.ProcessWorld (changes.AsSpan (), vdomContext, state)
+                    processWorld.ProcessWorld (changes.AsSpan (), renderState.VdomContext, state)
 
-        let vdomContext = RenderState.vdomContext renderState
-        Render.oneStep renderState newState (vdom vdomContext)
+        Render.oneStep renderState newState (vdom renderState.VdomContext)
 
         newState
 
