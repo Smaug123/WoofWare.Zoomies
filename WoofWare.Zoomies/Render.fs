@@ -37,6 +37,8 @@ type RenderState =
             mutable FocusedKey : NodeKey option
             /// List of focusable keys in tree order (for Tab navigation)
             FocusableKeys : OrderedSet<NodeKey>
+            /// The key marked with isInitialFocus=true, if any
+            InitialFocusKey : NodeKey option ref
         }
 
 [<RequireQualifiedAccess>]
@@ -85,8 +87,10 @@ module RenderState =
 
         match s.FocusedKey with
         | None ->
-            // No current focus, focus the first focusable element
-            s.FocusedKey <- Some s.FocusableKeys.[0]
+            // No current focus, use initial focus key if available, otherwise first focusable element
+            match s.InitialFocusKey.Value with
+            | Some initialKey when s.FocusableKeys.Contains initialKey -> s.FocusedKey <- Some initialKey
+            | _ -> s.FocusedKey <- Some s.FocusableKeys.[0]
         | Some currentKey ->
             // Find the current key in the list and move to the next one
             match s.FocusableKeys |> Seq.tryFindIndex ((=) currentKey) with
@@ -94,8 +98,10 @@ module RenderState =
                 let nextIndex = (index + 1) % s.FocusableKeys.Count
                 s.FocusedKey <- Some s.FocusableKeys.[nextIndex]
             | None ->
-                // Current key is not in the focusable list, focus the first one
-                s.FocusedKey <- Some s.FocusableKeys.[0]
+                // Current key is not in the focusable list, use initial focus key if available
+                match s.InitialFocusKey.Value with
+                | Some initialKey when s.FocusableKeys.Contains initialKey -> s.FocusedKey <- Some initialKey
+                | _ -> s.FocusedKey <- Some s.FocusableKeys.[0]
 
     let make' (c : IConsole) =
         let width = c.WindowWidth ()
@@ -125,6 +131,7 @@ module RenderState =
             KeyToNode = Dictionary<NodeKey, RenderedNode> ()
             FocusedKey = None
             FocusableKeys = OrderedSet ()
+            InitialFocusKey = ref None
         }
 
     let make () =
@@ -292,6 +299,7 @@ module Render =
     let rec private freshRenderPanelSplit
         (keyToNode : _)
         (focusableKeys : _)
+        (initialFocusKey : NodeKey option ref)
         (dirty : TerminalCell voption[,])
         (bounds : Rectangle)
         (dir : Direction)
@@ -305,8 +313,12 @@ module Render =
                 setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
 
         let bounds1, bounds2 = splitBounds dir proportion bounds
-        let rendered1 = layoutEither dirty keyToNode focusableKeys None bounds1 child1
-        let rendered2 = layoutEither dirty keyToNode focusableKeys None bounds2 child2
+
+        let rendered1 =
+            layoutEither dirty keyToNode focusableKeys initialFocusKey None bounds1 child1
+
+        let rendered2 =
+            layoutEither dirty keyToNode focusableKeys initialFocusKey None bounds2 child2
 
         {
             Bounds = bounds
@@ -320,6 +332,7 @@ module Render =
     and private freshRenderBordered
         (keyToNode : _)
         (focusableKeys : _)
+        (initialFocusKey : NodeKey option ref)
         (dirty : TerminalCell voption[,])
         (bounds : Rectangle)
         (child : KeylessVdom<_>)
@@ -354,7 +367,9 @@ module Render =
             setAtRelativeOffset dirty bounds (bounds.Width - 1) i (ValueSome (TerminalCell.OfChar '│'))
 
         let children =
-            [ layoutEither dirty keyToNode focusableKeys None (shrinkBounds bounds) child ]
+            [
+                layoutEither dirty keyToNode focusableKeys initialFocusKey None (shrinkBounds bounds) child
+            ]
 
         {
             Bounds = bounds
@@ -367,6 +382,7 @@ module Render =
         (dirty : TerminalCell voption[,])
         (keyToNode : Dictionary<NodeKey, RenderedNode>)
         (focusableKeys : OrderedSet<NodeKey>)
+        (initialFocusKey : NodeKey option ref)
         (previousRender : RenderedNode option)
         (bounds : Rectangle)
         (vdom : KeylessVdom<DesiredBounds>)
@@ -374,14 +390,15 @@ module Render =
         =
         match vdom with
         | KeylessVdom.Keyed vdom ->
-            layout dirty keyToNode focusableKeys previousRender bounds (Vdom.Keyed (vdom, Teq.refl))
+            layout dirty keyToNode focusableKeys initialFocusKey previousRender bounds (Vdom.Keyed (vdom, Teq.refl))
         | KeylessVdom.Unkeyed vdom ->
-            layout dirty keyToNode focusableKeys previousRender bounds (Vdom.Unkeyed (vdom, Teq.refl))
+            layout dirty keyToNode focusableKeys initialFocusKey previousRender bounds (Vdom.Unkeyed (vdom, Teq.refl))
 
     and internal layout<'key>
         (dirty : TerminalCell voption[,])
         (keyToNode : Dictionary<NodeKey, RenderedNode>)
         (focusableKeys : OrderedSet<NodeKey>)
+        (initialFocusKey : NodeKey option ref)
         (previousRender : RenderedNode option)
         (bounds : Rectangle)
         (vdom : Vdom<DesiredBounds, 'key>)
@@ -409,7 +426,14 @@ module Render =
                     | _ -> None
 
                 let rendered =
-                    layout dirty keyToNode focusableKeys previousRender bounds (Vdom.Unkeyed (unkeyedVdom, Teq.refl))
+                    layout
+                        dirty
+                        keyToNode
+                        focusableKeys
+                        initialFocusKey
+                        previousRender
+                        bounds
+                        (Vdom.Unkeyed (unkeyedVdom, Teq.refl))
 
                 keyToNode.[nodeKey] <- rendered
 
@@ -463,6 +487,7 @@ module Render =
                                 dirty
                                 keyToNode
                                 focusableKeys
+                                initialFocusKey
                                 (Some previousRender.OverlaidChildren.[0])
                                 bounds1
                                 child1
@@ -472,6 +497,7 @@ module Render =
                                 dirty
                                 keyToNode
                                 focusableKeys
+                                initialFocusKey
                                 (Some previousRender.OverlaidChildren.[1])
                                 bounds2
                                 child2
@@ -488,6 +514,7 @@ module Render =
                         freshRenderPanelSplit
                             keyToNode
                             focusableKeys
+                            initialFocusKey
                             dirty
                             bounds
                             dir
@@ -496,7 +523,17 @@ module Render =
                             child2
                             unkeyedVdom
                 | _ ->
-                    freshRenderPanelSplit keyToNode focusableKeys dirty bounds dir proportion child1 child2 unkeyedVdom
+                    freshRenderPanelSplit
+                        keyToNode
+                        focusableKeys
+                        initialFocusKey
+                        dirty
+                        bounds
+                        dir
+                        proportion
+                        child1
+                        child2
+                        unkeyedVdom
 
             | UnkeyedVdom.Checkbox (isChecked, focus) ->
                 match previousRender with
@@ -533,6 +570,7 @@ module Render =
                                     dirty
                                     keyToNode
                                     focusableKeys
+                                    initialFocusKey
                                     (Some previousRender.OverlaidChildren.[0])
                                     (shrinkBounds bounds)
                                     child
@@ -545,13 +583,16 @@ module Render =
                             Self = UnkeyedVdom.Bordered children.[0].Self |> KeylessVdom.Unkeyed
                         }
 
-                    | _ -> freshRenderBordered keyToNode focusableKeys dirty bounds child unkeyedVdom
-                | _ -> freshRenderBordered keyToNode focusableKeys dirty bounds child unkeyedVdom
-            | Focusable keyedVdom ->
+                    | _ -> freshRenderBordered keyToNode focusableKeys initialFocusKey dirty bounds child unkeyedVdom
+                | _ -> freshRenderBordered keyToNode focusableKeys initialFocusKey dirty bounds child unkeyedVdom
+            | Focusable (isInitialFocus, keyedVdom) ->
                 match keyedVdom with
                 | WithKey (key, _) ->
                     if not (focusableKeys.Add key) then
                         failwith "TODO: handle this gracefully depending on a global framework flag"
+
+                    if isInitialFocus then
+                        initialFocusKey.Value <- Some key
 
                 let childPreviousRender =
                     match previousRender with
@@ -562,7 +603,14 @@ module Render =
                     | _ -> None
 
                 let child =
-                    layout dirty keyToNode focusableKeys childPreviousRender bounds (Vdom.Keyed (keyedVdom, Teq.refl))
+                    layout
+                        dirty
+                        keyToNode
+                        focusableKeys
+                        initialFocusKey
+                        childPreviousRender
+                        bounds
+                        (Vdom.Keyed (keyedVdom, Teq.refl))
 
                 {
                     Bounds = bounds
@@ -570,7 +618,8 @@ module Render =
                     VDomSource = unkeyedVdom |> KeylessVdom.Unkeyed
                     Self =
                         match child.Self with
-                        | KeylessVdom.Keyed child -> UnkeyedVdom.Focusable child |> KeylessVdom.Unkeyed
+                        | KeylessVdom.Keyed child ->
+                            UnkeyedVdom.Focusable (isInitialFocus, child) |> KeylessVdom.Unkeyed
                         | KeylessVdom.Unkeyed _ -> failwith "logic error: child is keyed"
                 }
 
@@ -592,6 +641,7 @@ module Render =
         Array.Clear renderState.Buffer
         renderState.KeyToNode.Clear ()
         renderState.FocusableKeys.Clear ()
+        renderState.InitialFocusKey.Value <- None
 
         let vdom = compute userState
 
@@ -600,6 +650,7 @@ module Render =
                 renderState.Buffer
                 renderState.KeyToNode
                 renderState.FocusableKeys
+                renderState.InitialFocusKey
                 renderState.PreviousVdom
                 renderState.TerminalBounds
                 vdom

@@ -29,7 +29,7 @@ type private UnkeyedVdom<'bounds> =
     | PanelSplit of Direction * Choice<float, int> * child1 : KeylessVdom<'bounds> * child2 : KeylessVdom<'bounds>
     | TextContent of string * focused : bool
     | Checkbox of isChecked : bool * isFocused : bool
-    | Focusable of KeyedVdom<'bounds>
+    | Focusable of isInitialFocus : bool * KeyedVdom<'bounds>
 
 and private KeyedVdom<'bounds> = | WithKey of NodeKey * UnkeyedVdom<'bounds>
 
@@ -228,11 +228,17 @@ type Vdom =
     /// When the user hits TAB while automatic focus tracking is enabled, the WoofWare.Zoomies framework will
     /// cycle through tree nodes which are `focusable`.
     ///
+    /// If `isInitialFocus` is true, this node will receive focus first when the system needs to select an initial
+    /// focus target (e.g., on first render or when no focusable node currently has focus).
+    /// At most one node should have `isInitialFocus = true` in a given VDOM tree.
+    ///
     /// This annotation does nothing if WoofWare.Zoomies is running with automatic focus tracking turned off.
-    static member withFocusTracking (vdom : Vdom<'bounds, Keyed>) : Vdom<'bounds, Unkeyed> =
+    static member withFocusTracking (vdom : Vdom<'bounds, Keyed>, ?isInitialFocus : bool) : Vdom<'bounds, Unkeyed> =
+        let isInitialFocus = defaultArg isInitialFocus false
+
         match vdom with
         | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
-        | Keyed (vdom, _) -> Vdom.Unkeyed (UnkeyedVdom.Focusable vdom, Teq.refl)
+        | Keyed (vdom, _) -> Vdom.Unkeyed (UnkeyedVdom.Focusable (isInitialFocus, vdom), Teq.refl)
 
 [<Sealed>]
 type private KeylessVdom =
