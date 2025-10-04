@@ -16,8 +16,11 @@ type Keyed = private | Keyed
 /// Phantom type to track whether a node lacks a key
 type Unkeyed = private | Unkeyed
 
-type Direction =
+/// Specify the direction to split, when splitting a panel.
+type SplitDirection =
+    /// Split so that the divider runs vertically: one component is to the left and one is to the right.
     | Vertical
+    /// Split so that the divider runs horizontally: one component is on top and one is on the bottom.
     | Horizontal
 
 type Border = | Yes
@@ -26,7 +29,7 @@ type DesiredBounds = unit
 
 type private UnkeyedVdom<'bounds> =
     | Bordered of KeylessVdom<'bounds>
-    | PanelSplit of Direction * Choice<float, int> * child1 : KeylessVdom<'bounds> * child2 : KeylessVdom<'bounds>
+    | PanelSplit of SplitDirection * Choice<float, int> * child1 : KeylessVdom<'bounds> * child2 : KeylessVdom<'bounds>
     | TextContent of string * focused : bool
     | Checkbox of isChecked : bool * isFocused : bool
     | Focusable of isInitialFocus : bool * KeyedVdom<'bounds>
@@ -205,7 +208,12 @@ type Vdom =
         : Vdom<DesiredBounds, Unkeyed>
         =
         // TODO: centre this text horizontally so it's next to the checkbox
-        Vdom.panelSplitAbsolute (Direction.Vertical, 3, Vdom.checkbox isFocused isChecked, Vdom.textContent false label)
+        Vdom.panelSplitAbsolute (
+            SplitDirection.Vertical,
+            3,
+            Vdom.checkbox isFocused isChecked,
+            Vdom.textContent false label
+        )
 
     /// Attach a key to a VDOM node, effectively giving that node a name.
     ///
