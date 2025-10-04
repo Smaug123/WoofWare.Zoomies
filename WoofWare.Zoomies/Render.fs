@@ -36,7 +36,7 @@ type RenderState =
             KeyToNode : Dictionary<NodeKey, RenderedNode>
             mutable FocusedKey : NodeKey option
             /// List of focusable keys in tree order (for Tab navigation)
-            FocusableKeys : ResizeArray<NodeKey>
+            FocusableKeys : OrderedSet<NodeKey>
         }
 
 [<RequireQualifiedAccess>]
@@ -67,7 +67,7 @@ module RenderState =
     let unregisterBracketedPaste (s : RenderState) =
         s.Output TerminalOp.UnregisterBracketedPaste
 
-    /// Query which key had focus in the previous frame
+    /// Query which key had focus in the previous frame, if you're using the automatic focus tracking mechanism.
     let focusedKey (s : RenderState) : NodeKey option = s.FocusedKey
 
     /// Query the rendered bounds of a keyed node
@@ -124,7 +124,7 @@ module RenderState =
             ForegroundColor = fg
             KeyToNode = Dictionary<NodeKey, RenderedNode> ()
             FocusedKey = None
-            FocusableKeys = ResizeArray ()
+            FocusableKeys = OrderedSet ()
         }
 
     let make () =
@@ -366,7 +366,7 @@ module Render =
     and private layoutEither
         (dirty : TerminalCell voption[,])
         (keyToNode : Dictionary<NodeKey, RenderedNode>)
-        (focusableKeys : ResizeArray<NodeKey>)
+        (focusableKeys : OrderedSet<NodeKey>)
         (previousRender : RenderedNode option)
         (bounds : Rectangle)
         (vdom : KeylessVdom<DesiredBounds>)
@@ -378,10 +378,10 @@ module Render =
         | KeylessVdom.Unkeyed vdom ->
             layout dirty keyToNode focusableKeys previousRender bounds (Vdom.Unkeyed (vdom, Teq.refl))
 
-    and layout<'key>
+    and internal layout<'key>
         (dirty : TerminalCell voption[,])
         (keyToNode : Dictionary<NodeKey, RenderedNode>)
-        (focusableKeys : ResizeArray<NodeKey>)
+        (focusableKeys : OrderedSet<NodeKey>)
         (previousRender : RenderedNode option)
         (bounds : Rectangle)
         (vdom : Vdom<DesiredBounds, 'key>)
@@ -549,14 +549,15 @@ module Render =
                 | _ -> freshRenderBordered keyToNode focusableKeys dirty bounds child unkeyedVdom
             | Focusable keyedVdom ->
                 match keyedVdom with
-                | WithKey (key, _) -> focusableKeys.Add key
+                | WithKey (key, _) ->
+                    if not (focusableKeys.Add key) then
+                        failwith "TODO: handle this gracefully depending on a global framework flag"
 
                 let childPreviousRender =
                     match previousRender with
                     | Some previousRender when previousRender.Bounds = bounds ->
                         match previousRender.VDomSource with
-                        | KeylessVdom.Unkeyed (UnkeyedVdom.Focusable prevInner) ->
-                            Some previousRender.OverlaidChildren.[0]
+                        | KeylessVdom.Unkeyed (UnkeyedVdom.Focusable _) -> Some previousRender.OverlaidChildren.[0]
                         | _ -> None
                     | _ -> None
 
@@ -602,6 +603,13 @@ module Render =
                 renderState.PreviousVdom
                 renderState.TerminalBounds
                 vdom
+
+        // If the focused element from the previous tick no longer exists, clear focused state
+        match renderState.FocusedKey with
+        | None -> ()
+        | Some key ->
+            if not (renderState.FocusableKeys.Contains key) then
+                renderState.FocusedKey <- None
 
         renderState.PreviousVdom <- Some rendered
 
