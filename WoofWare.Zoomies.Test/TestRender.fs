@@ -6,22 +6,16 @@ open NUnit.Framework
 open WoofWare.Expect
 open WoofWare.Zoomies
 
-type FocusedElement =
-    | Toggle1
-    | Toggle2
-
 type State =
     {
         mutable IsToggle1Checked : bool
         mutable IsToggle2Checked : bool
-        mutable FocusedElement : FocusedElement
     }
 
     static member Empty () : State =
         {
             IsToggle1Checked = false
             IsToggle2Checked = false
-            FocusedElement = FocusedElement.Toggle1
         }
 
 [<TestFixture>]
@@ -36,59 +30,50 @@ module TestRender =
     let tearDown () =
         GlobalBuilderConfig.updateAllSnapshots ()
 
-    let vdom (state : State) : Vdom<DesiredBounds> =
+    let vdom (previousTickRenderState : RenderState) (state : State) : Vdom<DesiredBounds, _> =
         let left =
             Vdom.textContent
-                None
+                false
                 "not praising the praiseworthy keeps people uncompetitive; not prizing rare treasures keeps people from stealing; not looking at the desirable keeps the mind quiet"
             |> Vdom.bordered
 
         let right =
             Vdom.textContent
-                None
+                false
                 "errybody wants to be a bodybuilder, but don't nobody want to lift no heavy-ass weights"
             |> Vdom.bordered
 
-        let topHalf = Vdom.panelSplitProportion Direction.Vertical 0.5 left right
+        let topHalf = Vdom.panelSplitProportion (Direction.Vertical, 0.5, left, right)
+
+        let toggle1Key = NodeKey.make "toggle1"
+        let currentFocus = RenderState.focusedKey previousTickRenderState
 
         let bottomHalf =
-            Vdom.labelledCheckbox
-                (fun () -> state.FocusedElement <- FocusedElement.Toggle1)
-                state.FocusedElement.IsToggle1
-                state.IsToggle1Checked
-                "Press Space to toggle"
+            Vdom.labelledCheckbox (currentFocus = Some toggle1Key) state.IsToggle1Checked "Press Space to toggle"
+            |> Vdom.withKey toggle1Key
+            |> Vdom.withFocusTracking
 
-        let vdom = Vdom.panelSplitAbsolute Direction.Horizontal -3 topHalf bottomHalf
+        let vdom = Vdom.panelSplitAbsolute (Direction.Horizontal, -3, topHalf, bottomHalf)
 
         if state.IsToggle1Checked then
-            Vdom.panelSplitProportion
-                Direction.Vertical
-                0.5
-                (Vdom.textContent None "only displayed when checked")
-                (Vdom.labelledCheckbox
-                    (fun () -> state.FocusedElement <- FocusedElement.Toggle2)
-                    state.FocusedElement.IsToggle2
-                    state.IsToggle2Checked
-                    "this one is focusable!")
-            |> Vdom.panelSplitProportion Direction.Horizontal 0.7 vdom
+            let toggle2Key = NodeKey.make "toggle2"
+
+            let inner =
+                Vdom.panelSplitProportion (
+                    Direction.Vertical,
+                    0.5,
+                    Vdom.textContent false "only displayed when checked",
+                    Vdom.labelledCheckbox
+                        (currentFocus = Some toggle2Key)
+                        state.IsToggle2Checked
+                        "this one is focusable!"
+                    |> Vdom.withKey toggle2Key
+                    |> Vdom.withFocusTracking
+                )
+
+            Vdom.panelSplitProportion (Direction.Horizontal, 0.7, vdom, inner)
         else
             vdom
-
-    let processWorld =
-        { new WorldProcessor<unit, State> with
-            member _.ProcessWorld (worldChanges, _, state) =
-                for change in worldChanges do
-                    match change with
-                    | Keystroke c when c.KeyChar = ' ' ->
-                        match state.FocusedElement with
-                        | FocusedElement.Toggle1 -> state.IsToggle1Checked <- not state.IsToggle1Checked
-                        | FocusedElement.Toggle2 -> state.IsToggle2Checked <- not state.IsToggle2Checked
-                    | Keystroke _ -> ()
-                    | KeyboardEvent _ -> failwith "no keyboard events"
-                    | MouseEvent _ -> failwith "no mouse events"
-                    | ApplicationEvent () -> failwith "no app events"
-                    | ApplicationEventException _ -> failwith "no exceptions possible"
-        }
 
     [<Test>]
     let ``there is no rerender if nothing changes`` () =
@@ -96,23 +81,44 @@ module TestRender =
 
         let console =
             { IConsole.defaultForTests with
-                Execute = terminalOps.Add
+                Execute = fun x -> terminalOps.Add x
             }
 
         let state = State.Empty ()
 
         let renderState = RenderState.make' console
 
-        Render.oneStep renderState state vdom
+        Render.oneStep renderState state (vdom renderState)
 
         terminalOps.Clear ()
 
-        Render.oneStep renderState state vdom
+        Render.oneStep renderState state (vdom renderState)
 
         terminalOps |> shouldBeEmpty
 
     [<Test>]
     let ``example 1`` () =
+        let processWorld =
+            { new WorldProcessor<unit, State> with
+                member _.ProcessWorld (worldChanges, renderState, state) =
+                    let focusedKey = RenderState.focusedKey renderState
+
+                    for change in worldChanges do
+                        match change with
+                        | Keystroke c when c.KeyChar = ' ' ->
+                            match focusedKey with
+                            | Some key when key = NodeKey.make "toggle1" ->
+                                state.IsToggle1Checked <- not state.IsToggle1Checked
+                            | Some key when key = NodeKey.make "toggle2" ->
+                                state.IsToggle2Checked <- not state.IsToggle2Checked
+                            | _ -> ()
+                        | Keystroke _ -> ()
+                        | KeyboardEvent _ -> failwith "no keyboard events"
+                        | MouseEvent _ -> failwith "no mouse events"
+                        | ApplicationEvent () -> failwith "no app events"
+                        | ApplicationEventException _ -> failwith "no exceptions possible"
+            }
+
         task {
             let console, terminal = ConsoleHarness.make ()
 
@@ -142,6 +148,29 @@ module TestRender =
 │mind quiet                            ││                                      │|
 └──────────────────────────────────────┘└──────────────────────────────────────┘|
    Press Space to toggle                                                        |
+ ☐                                                                              |
+                                                                                |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
+            // Switching focus moves focus to the first focusable element
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+
+            App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+┌──────────────────────────────────────┐┌──────────────────────────────────────┐|
+│not praising the praiseworthy keeps pe││errybody wants to be a bodybuilder, bu│|
+│ople uncompetitive; not prizing rare t││t don't nobody want to lift no heavy-a│|
+│reasures keeps people from stealing; n││ss weights                            │|
+│ot looking at the desirable keeps the ││                                      │|
+│mind quiet                            ││                                      │|
+└──────────────────────────────────────┘└──────────────────────────────────────┘|
+   Press Space to toggle                                                        |
 [☐]                                                                             |
                                                                                 |
 "
@@ -149,7 +178,7 @@ module TestRender =
                 return ConsoleHarness.toString terminal
             }
 
-            // Switching focus does nothing, because there's only one focus element
+            // Switching focus again does nothing because there are no more focusable elements
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
@@ -298,6 +327,138 @@ only displayed when checked                this one is focusable!               
                                                                                 |
 only displayed when checked                this one is focusable!               |
                                          ☑                                      |
+                                                                                |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``focusable text content can gain focus`` () =
+        task {
+            let console, terminal = ConsoleHarness.make ()
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (previousTickRenderState : RenderState) () =
+                let currentFocus = RenderState.focusedKey previousTickRenderState
+                let textKey = NodeKey.make "focusable-text"
+                let checkboxKey = NodeKey.make "checkbox"
+
+                let text =
+                    Vdom.textContent (currentFocus = Some textKey) "This is focusable text"
+                    |> Vdom.withKey textKey
+                    |> Vdom.withFocusTracking
+
+                let checkbox =
+                    Vdom.checkbox (currentFocus = Some checkboxKey) false
+                    |> Vdom.withKey checkboxKey
+                    |> Vdom.withFocusTracking
+
+                Vdom.panelSplitAbsolute (Direction.Horizontal, 3, text, checkbox)
+
+            let processWorld =
+                { new WorldProcessor<unit, unit> with
+                    member _.ProcessWorld (worldChanges, _, _) =
+                        for change in worldChanges do
+                            match change with
+                            | Keystroke _ -> ()
+                            | KeyboardEvent _ -> failwith "no keyboard events"
+                            | MouseEvent _ -> failwith "no mouse events"
+                            | ApplicationEvent () -> failwith "no app events"
+                            | ApplicationEventException _ -> failwith "no exceptions possible"
+                }
+
+            let renderState = RenderState.make' console
+
+            App.pumpOnce worldFreezer () (fun _ -> true) renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+This is focusable text                                                          |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                        ☐                                       |
+                                                                                |
+                                                                                |
+                                                                                |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
+            // Tab to focus the text
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+            App.pumpOnce worldFreezer () (fun _ -> true) renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+This is focusable text                                                          |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                        ☐                                       |
+                                                                                |
+                                                                                |
+                                                                                |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
+            // Tab to focus the checkbox
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+            App.pumpOnce worldFreezer () (fun _ -> true) renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+This is focusable text                                                          |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                       [☐]                                      |
+                                                                                |
+                                                                                |
+                                                                                |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
+            // Tab back to text
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+            App.pumpOnce worldFreezer () (fun _ -> true) renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+This is focusable text                                                          |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                        ☐                                       |
+                                                                                |
+                                                                                |
                                                                                 |
 "
 

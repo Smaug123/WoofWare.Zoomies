@@ -6,7 +6,7 @@ open System.Threading.Tasks
 
 type WorldProcessor<'appEvent, 'userState> =
     abstract ProcessWorld :
-        events : ReadOnlySpan<WorldStateChange<'appEvent>> * prevVdom : Vdom<Rectangle> * 'userState -> unit
+        events : ReadOnlySpan<WorldStateChange<'appEvent>> * previousRenderState : RenderState * 'userState -> unit
 
 [<RequireQualifiedAccess>]
 module App =
@@ -17,7 +17,7 @@ module App =
         (haveFrameworkHandleFocus : 'state -> bool)
         (renderState : RenderState)
         (processWorld : WorldProcessor<'appEvent, 'state>)
-        (vdom : 'state -> Vdom<DesiredBounds>)
+        (vdom : RenderState -> 'state -> Vdom<DesiredBounds, Unkeyed>)
         : unit
         =
         listener.RefreshExternal ()
@@ -27,40 +27,23 @@ module App =
         match changes with
         | ValueNone -> ()
         | ValueSome changes ->
-
-            match renderState.PreviousVdom with
-            | None -> failwith "expected not to receive input before the first render"
-            | Some node ->
-
-            let prevVdom = node.Self
-
             if haveFrameworkHandleFocus mutableState then
 
                 let mutable i = 0
                 let mutable start = 0
 
                 while i < changes.Length do
-                    match changes.[i] with
+                    match Array.get changes i with
                     | WorldStateChange.Keystroke t when t.Key = ConsoleKey.Tab && t.Modifiers = enum 0 ->
                         if i > 0 then
                             processWorld.ProcessWorld (
                                 changes.AsSpan().Slice (start, i - 1 - start),
-                                prevVdom,
+                                renderState,
                                 mutableState
                             )
 
-                        // TODO: this is grossly inefficient!
-                        let focusChange = Vdom.cata Vdom.advanceFocusCata prevVdom
-
-                        match focusChange.FirstUnfocusedAfter with
-                        | Some changeFocus -> changeFocus ()
-                        | None ->
-                            // Try wrapping round to the first focusable element
-                            match focusChange.FirstUnfocusedAbsolute with
-                            | Some changeFocus -> changeFocus ()
-                            | None ->
-                                // couldn't find anything to change focus to
-                                ()
+                        // Advance focus to the next focusable element
+                        RenderState.advanceFocus renderState
 
                         start <- i + 1
                         // skip the tab input
@@ -71,11 +54,11 @@ module App =
                     i <- i + 1
 
                 if start < changes.Length then
-                    processWorld.ProcessWorld (changes.AsSpan().Slice start, prevVdom, mutableState)
+                    processWorld.ProcessWorld (changes.AsSpan().Slice start, renderState, mutableState)
             else
-                processWorld.ProcessWorld (changes.AsSpan (), prevVdom, mutableState)
+                processWorld.ProcessWorld (changes.AsSpan (), renderState, mutableState)
 
-        Render.oneStep renderState mutableState vdom
+        Render.oneStep renderState mutableState (vdom renderState)
 
 
     /// We set up a ConsoleCancelEventHandler to suppress one Ctrl+C, and we also listen to stdin,
@@ -91,7 +74,7 @@ module App =
         (mutableState : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
         (processWorld : ((CancellationToken -> Task<'appEvent>) -> unit) -> WorldProcessor<'appEvent, 'state>)
-        (vdom : 'state -> Vdom<DesiredBounds>)
+        (vdom : RenderState -> 'state -> Vdom<DesiredBounds, Unkeyed>)
         : Task
         =
         // RunContinuationsAsynchronously so that we don't force continuation on the UI thread.
@@ -167,7 +150,7 @@ module App =
         (state : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
         (processWorld : ((CancellationToken -> Task<'appEvent>) -> unit) -> WorldProcessor<'appEvent, 'state>)
-        (vdom : 'state -> Vdom<DesiredBounds>)
+        (vdom : RenderState -> 'state -> Vdom<DesiredBounds, Unkeyed>)
         : Task
         =
         run'

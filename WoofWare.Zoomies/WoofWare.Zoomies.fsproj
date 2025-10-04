@@ -15,6 +15,7 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Object.fs" />
+    <Compile Include="FakeUnit.fs" />
     <Compile Include="Exception.fs" />
     <Compile Include="OrderedSet.fs" />
     <Compile Include="ConsoleModifiers.fs" />

@@ -77,17 +77,19 @@ module FileBrowser =
                         failwith "unreachable"
         }
 
-    let view (state : State) : Vdom<DesiredBounds> =
+    let view (renderState : RenderState) (state : State) : Vdom<DesiredBounds, Unkeyed> =
         let topPane =
             let label = $"[{state.File1Path}] / [{state.File2Path}]"
 
-            let checkbox =
-                Vdom.checkbox
-                    (fun () -> ())
-                    true // always focused for this simple example
-                    (not state.ShowingFile1)
+            let checkboxKey = NodeKey.make "checkbox"
+            let currentFocus = RenderState.focusedKey renderState
 
-            Vdom.panelSplitAbsolute Direction.Vertical 3 checkbox (Vdom.textContent None label)
+            let checkbox =
+                Vdom.checkbox (currentFocus = Some checkboxKey) (not state.ShowingFile1)
+                |> Vdom.withKey checkboxKey
+                |> Vdom.withFocusTracking
+
+            Vdom.panelSplitAbsolute (Direction.Vertical, 3, checkbox, Vdom.textContent false label)
             |> Vdom.bordered
 
         let bottomPane =
@@ -97,9 +99,9 @@ module FileBrowser =
                 | false, Some content -> content
                 | false, None -> "Press space to load a file"
 
-            Vdom.textContent None content |> Vdom.bordered
+            Vdom.textContent false content |> Vdom.bordered
 
-        Vdom.panelSplitAbsolute Direction.Horizontal 3 topPane bottomPane
+        Vdom.panelSplitAbsolute (Direction.Horizontal, 3, topPane, bottomPane)
 
     let run (file1 : string) (file2 : string) =
         let state = State.Create (file1, file2)
