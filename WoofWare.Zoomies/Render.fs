@@ -38,7 +38,7 @@ type RenderState =
             /// List of focusable keys in tree order (for Tab navigation)
             FocusableKeys : OrderedSet<NodeKey>
             /// The key marked with isInitialFocus=true, if any
-            mutable InitialFocusKey : NodeKey option
+            InitialFocusKey : NodeKey option ref
         }
 
 [<RequireQualifiedAccess>]
@@ -88,7 +88,7 @@ module RenderState =
         match s.FocusedKey with
         | None ->
             // No current focus, use initial focus key if available, otherwise first focusable element
-            match s.InitialFocusKey with
+            match s.InitialFocusKey.Value with
             | Some initialKey when s.FocusableKeys.Contains initialKey -> s.FocusedKey <- Some initialKey
             | _ -> s.FocusedKey <- Some s.FocusableKeys.[0]
         | Some currentKey ->
@@ -99,7 +99,7 @@ module RenderState =
                 s.FocusedKey <- Some s.FocusableKeys.[nextIndex]
             | None ->
                 // Current key is not in the focusable list, use initial focus key if available
-                match s.InitialFocusKey with
+                match s.InitialFocusKey.Value with
                 | Some initialKey when s.FocusableKeys.Contains initialKey -> s.FocusedKey <- Some initialKey
                 | _ -> s.FocusedKey <- Some s.FocusableKeys.[0]
 
@@ -131,7 +131,7 @@ module RenderState =
             KeyToNode = Dictionary<NodeKey, RenderedNode> ()
             FocusedKey = None
             FocusableKeys = OrderedSet ()
-            InitialFocusKey = None
+            InitialFocusKey = ref None
         }
 
     let make () =
@@ -641,22 +641,19 @@ module Render =
         Array.Clear renderState.Buffer
         renderState.KeyToNode.Clear ()
         renderState.FocusableKeys.Clear ()
+        renderState.InitialFocusKey.Value <- None
 
         let vdom = compute userState
-        let initialFocusKey = ref None
 
         let rendered =
             layout
                 renderState.Buffer
                 renderState.KeyToNode
                 renderState.FocusableKeys
-                initialFocusKey
+                renderState.InitialFocusKey
                 renderState.PreviousVdom
                 renderState.TerminalBounds
                 vdom
-
-        // Capture the initial focus key if one was marked
-        renderState.InitialFocusKey <- initialFocusKey.Value
 
         // If the focused element from the previous tick no longer exists, clear focused state
         match renderState.FocusedKey with
