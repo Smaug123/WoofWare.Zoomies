@@ -53,6 +53,8 @@ module App =
         (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
         : 'state
         =
+        RenderState.refreshTerminalSize renderState
+
         listener.RefreshExternal ()
 
         let changes = listener.Changes ()

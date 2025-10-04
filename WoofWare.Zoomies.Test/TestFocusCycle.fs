@@ -19,7 +19,27 @@ module TestFocusCycle =
     let tearDown () =
         GlobalBuilderConfig.updateAllSnapshots ()
 
-    let vdom (vdomContext : VdomContext) (checkboxes : bool ImmutableArray) =
+    // ImmutableArray has sad equality semantics so we do this longhand.
+    // I could have done this with lists instead, I guess.
+    [<NoComparison>]
+    [<CustomEquality>]
+    type State =
+        {
+            Checkboxes : bool ImmutableArray
+        }
+
+        override this.GetHashCode () = this.Checkboxes.GetHashCode ()
+
+        override this.Equals (other : obj) =
+            match other with
+            | :? State as other ->
+                if this.Checkboxes.Length <> other.Checkboxes.Length then
+                    false
+                else
+                    Seq.zip this.Checkboxes other.Checkboxes |> Seq.forall (fun (x, y) -> x = y)
+            | _ -> failwith "bad"
+
+    let vdom (vdomContext : VdomContext) (state : State) =
         let currentFocus = VdomContext.focusedKey vdomContext
 
         List.init
@@ -27,7 +47,7 @@ module TestFocusCycle =
             (fun i ->
                 let key = NodeKey.make $"checkbox%i{i}"
 
-                Vdom.checkbox (currentFocus = Some key) checkboxes.[i]
+                Vdom.checkbox (currentFocus = Some key) state.Checkboxes.[i]
                 |> Vdom.withKey key
                 |> Vdom.withFocusTracking
             )
@@ -47,13 +67,17 @@ module TestFocusCycle =
                     world.KeyAvailable
                     world.ReadKey
 
-            let state = ImmutableArray.Create<bool> [| false ; false ; false ; false |]
+            let state =
+                {
+                    Checkboxes = ImmutableArray.Create<bool> [| false ; false ; false ; false |]
+                }
+
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<_, bool ImmutableArray> with
-                    member _.ProcessWorld (inputs, renderState, checkboxes) =
-                        let mutable newCheckboxes = checkboxes
+                { new WorldProcessor<_, State> with
+                    member _.ProcessWorld (inputs, renderState, state) =
+                        let mutable newCheckboxes = state.Checkboxes
 
                         for s in inputs do
                             match s with
@@ -79,7 +103,7 @@ module TestFocusCycle =
                             | WorldStateChange.KeyboardEvent _ -> failwith "no keyboard events"
                             | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
 
-                        ProcessWorldResult.make newCheckboxes
+                        ProcessWorldResult.make { Checkboxes = newCheckboxes }
                 }
 
             let renderState = RenderState.make' console
@@ -254,13 +278,17 @@ module TestFocusCycle =
                     world.KeyAvailable
                     world.ReadKey
 
-            let state = ImmutableArray.Create<bool> [| false ; false ; false ; false |]
+            let state =
+                {
+                    Checkboxes = ImmutableArray.Create<bool> [| false ; false ; false ; false |]
+                }
+
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<_, bool ImmutableArray> with
+                { new WorldProcessor<_, State> with
                     member _.ProcessWorld (inputs, renderState, checkboxes) =
-                        let mutable newCheckboxes = checkboxes
+                        let mutable newCheckboxes = checkboxes.Checkboxes
 
                         for s in inputs do
                             match s with
@@ -284,7 +312,7 @@ module TestFocusCycle =
                             | WorldStateChange.KeyboardEvent _ -> failwith "no keyboard events"
                             | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
 
-                        ProcessWorldResult.make newCheckboxes
+                        ProcessWorldResult.make { Checkboxes = newCheckboxes }
                 }
 
             let renderState = RenderState.make' console
