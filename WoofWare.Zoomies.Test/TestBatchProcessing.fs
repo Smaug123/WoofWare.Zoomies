@@ -188,3 +188,187 @@ module TestBatchProcessing =
             }
 
         Check.One (propConfig, property)
+
+    [<NoComparison>]
+    type ModeSwitchingState =
+        {
+            ProcessedChars : char list
+            UseFrameworkFocus : bool
+            LastFocusedKey : NodeKey option
+        }
+
+    [<Test>]
+    let ``switching between manual and framework tab handling works correctly`` () =
+        task {
+            let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let initialState =
+                {
+                    ProcessedChars = []
+                    UseFrameworkFocus = false
+                    LastFocusedKey = None
+                }
+
+            let mutable switchModeAfterNextEvent = false
+
+            let processWorld =
+                { new WorldProcessor<obj, ModeSwitchingState> with
+                    member _.ProcessWorld (inputs, vdomContext, state) =
+                        let mutable newState =
+                            { state with
+                                LastFocusedKey = VdomContext.focusedKey vdomContext
+                            }
+
+                        let mutable shouldRerender = false
+
+                        for i = 0 to inputs.Length - 1 do
+                            match inputs.[i] with
+                            | WorldStateChange.Keystroke c ->
+                                // Record all non-tab characters, and tabs when in manual mode
+                                if c.Key <> ConsoleKey.Tab || not state.UseFrameworkFocus then
+                                    newState <-
+                                        { newState with
+                                            ProcessedChars = newState.ProcessedChars @ [ c.KeyChar ]
+                                        }
+
+                                // Check if we should switch modes
+                                if switchModeAfterNextEvent then
+                                    switchModeAfterNextEvent <- false
+
+                                    newState <-
+                                        { newState with
+                                            UseFrameworkFocus = not newState.UseFrameworkFocus
+                                        }
+
+                                    shouldRerender <- true
+                            | WorldStateChange.MouseEvent _ -> ()
+                            | WorldStateChange.ApplicationEvent _ -> ()
+                            | WorldStateChange.KeyboardEvent _ -> ()
+                            | WorldStateChange.ApplicationEventException _ -> ()
+
+                        if shouldRerender then
+                            {
+                                NewState = newState
+                                RequestRerender = RerenderRequest.Rerender (inputs.Length - 1)
+                            }
+                        else
+                            ProcessWorldResult.make newState
+                }
+
+            let mutable vdomRenderCount = 0
+
+            let vdom (vdomContext : VdomContext) (_state : ModeSwitchingState) =
+                vdomRenderCount <- vdomRenderCount + 1
+                let currentFocus = VdomContext.focusedKey vdomContext
+
+                let checkbox0 =
+                    Vdom.checkbox (currentFocus = Some (NodeKey.make "checkbox0")) false
+                    |> Vdom.withKey (NodeKey.make "checkbox0")
+                    |> Vdom.withFocusTracking
+
+                let checkbox1 =
+                    Vdom.checkbox (currentFocus = Some (NodeKey.make "checkbox1")) false
+                    |> Vdom.withKey (NodeKey.make "checkbox1")
+                    |> Vdom.withFocusTracking
+
+                Vdom.panelSplitAbsolute (SplitDirection.Vertical, -3, checkbox0, checkbox1)
+
+            let renderState = RenderState.make' console
+            let mutable currentState = initialState
+
+            // Initial render
+            currentState <-
+                App.pumpOnce worldFreezer currentState (fun s -> s.UseFrameworkFocus) renderState processWorld vdom
+
+            vdomRenderCount |> shouldEqual 1
+
+            // Phase 1: Manual mode - tabs should pass through
+            world.SendKey (ConsoleKeyInfo ('a', ConsoleKey.NoName, false, false, false))
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+            world.SendKey (ConsoleKeyInfo ('b', ConsoleKey.NoName, false, false, false))
+
+            currentState <-
+                App.pumpOnce worldFreezer currentState (fun s -> s.UseFrameworkFocus) renderState processWorld vdom
+
+            vdomRenderCount |> shouldEqual 2
+
+            currentState.ProcessedChars |> shouldEqual [ 'a' ; '\t' ; 'b' ]
+            currentState.UseFrameworkFocus |> shouldEqual false
+            currentState.LastFocusedKey |> shouldEqual None
+
+            // Switch to framework mode
+            switchModeAfterNextEvent <- true
+            world.SendKey (ConsoleKeyInfo ('X', ConsoleKey.NoName, false, false, false))
+
+            currentState <-
+                App.pumpOnce worldFreezer currentState (fun s -> s.UseFrameworkFocus) renderState processWorld vdom
+
+            vdomRenderCount |> shouldEqual 3
+
+            currentState.ProcessedChars |> shouldEqual [ 'a' ; '\t' ; 'b' ; 'X' ]
+            currentState.UseFrameworkFocus |> shouldEqual true
+
+            // Phase 2: Framework mode - first tab should advance focus to checkbox0
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+            world.SendKey (ConsoleKeyInfo ('Z', ConsoleKey.NoName, false, false, false))
+
+            currentState <-
+                App.pumpOnce worldFreezer currentState (fun s -> s.UseFrameworkFocus) renderState processWorld vdom
+
+            vdomRenderCount |> shouldEqual 4
+
+            // Tab was intercepted by framework, so shouldn't appear in processed chars
+            currentState.ProcessedChars |> shouldEqual [ 'a' ; '\t' ; 'b' ; 'X' ; 'Z' ]
+            // Focus should now be on checkbox0 (captured when processing 'Z')
+            currentState.LastFocusedKey |> shouldEqual (Some (NodeKey.make "checkbox0"))
+
+            // Phase 3: Framework mode - second tab should advance focus to checkbox1
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+            world.SendKey (ConsoleKeyInfo ('c', ConsoleKey.NoName, false, false, false))
+
+            currentState <-
+                App.pumpOnce worldFreezer currentState (fun s -> s.UseFrameworkFocus) renderState processWorld vdom
+
+            vdomRenderCount |> shouldEqual 5
+
+            currentState.ProcessedChars
+            |> shouldEqual [ 'a' ; '\t' ; 'b' ; 'X' ; 'Z' ; 'c' ]
+
+            currentState.LastFocusedKey |> shouldEqual (Some (NodeKey.make "checkbox1"))
+
+            // Switch back to manual mode
+            switchModeAfterNextEvent <- true
+            world.SendKey (ConsoleKeyInfo ('Y', ConsoleKey.NoName, false, false, false))
+
+            currentState <-
+                App.pumpOnce worldFreezer currentState (fun s -> s.UseFrameworkFocus) renderState processWorld vdom
+
+            vdomRenderCount |> shouldEqual 6
+
+            currentState.ProcessedChars
+            |> shouldEqual [ 'a' ; '\t' ; 'b' ; 'X' ; 'Z' ; 'c' ; 'Y' ]
+
+            currentState.UseFrameworkFocus |> shouldEqual false
+
+            // Phase 4: Back in manual mode - tabs should pass through again
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+            world.SendKey (ConsoleKeyInfo ('d', ConsoleKey.NoName, false, false, false))
+
+            currentState <-
+                App.pumpOnce worldFreezer currentState (fun s -> s.UseFrameworkFocus) renderState processWorld vdom
+
+            vdomRenderCount |> shouldEqual 7
+
+            currentState.ProcessedChars
+            |> shouldEqual [ 'a' ; '\t' ; 'b' ; 'X' ; 'Z' ; 'c' ; 'Y' ; '\t' ; 'd' ]
+            // Focus should stay at checkbox1 (framework no longer managing it)
+            currentState.LastFocusedKey |> shouldEqual (Some (NodeKey.make "checkbox1"))
+        }
