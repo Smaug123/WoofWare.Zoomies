@@ -33,15 +33,16 @@ type State =
 
 module FileBrowser =
 
-    let loadFileAsync (postEvent : (CancellationToken -> Task<AppEvent>) -> unit) (filepath : string) : unit =
+    let loadFileAsync (worldBridge : IWorldBridge<_>) (filepath : string) : unit =
         fun ct ->
             task {
                 let! content = File.ReadAllTextAsync (filepath, ct)
                 return FileLoaded (filepath, content)
             }
-        |> postEvent
+        |> worldBridge.PostEvent
+        |> ignore<Task>
 
-    let processWorld (postEvent : (CancellationToken -> Task<AppEvent>) -> unit) =
+    let processWorld (worldBridge : IWorldBridge<AppEvent>) =
         { new WorldProcessor<AppEvent, State> with
             member _.ProcessWorld (changes, prevVdom, state) =
                 for change in changes do
@@ -58,7 +59,7 @@ module FileBrowser =
                         state.IsLoading <- true
                         state.FileContent <- None
                         // Trigger async load of the new file
-                        loadFileAsync postEvent state.CurrentFile
+                        loadFileAsync worldBridge state.CurrentFile
                     | WorldStateChange.Keystroke _ -> ()
 
                     | WorldStateChange.ApplicationEvent (FileLoaded (filename, content)) ->

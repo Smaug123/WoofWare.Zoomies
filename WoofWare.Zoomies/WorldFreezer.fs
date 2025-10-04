@@ -6,14 +6,37 @@ open System.Runtime.InteropServices
 open System.Threading
 open System.Threading.Tasks
 
+/// The mouse is modelled as a device with one of five buttons, like "left" or "right".
 type MouseButton =
+    /// Left mouse button; usually the main one people use to interact with stuff.
     | Left
+    /// The middle mouse button, usually a clicking motion of a scroll wheel. There's not really a universal convention
+    /// for what this does.
     | Middle
+    /// Right mouse button; usually used to summon some kind of contextual options.
     | Right
+    /// For example, using macOS's "natural scrolling", the "flick your fingers downward" motion on a trackpad to
+    /// move the content down the page (or, in old-school language, move the view portal up) results in a sequence
+    /// of ScrollUp clicks.
     | ScrollUp
+    /// For example, using macOS's "natural scrolling", the "flick your fingers upwards" motion on a trackpad to
+    /// move the content up the page (or, in old-school language, move the view portal down) results in a sequence
+    /// of ScrollDown clicks.
     | ScrollDown
 
+    /// Human-readable string representation.
+    override this.ToString () =
+        match this with
+        | MouseButton.Left -> "Left"
+        | MouseButton.Middle -> "Middle"
+        | MouseButton.Right -> "Right"
+        | MouseButton.ScrollUp -> "ScrollUp"
+        | MouseButton.ScrollDown -> "ScrollDown"
+
+/// Represents the variety of modifier keyboard keys that may have been pressed, simultaneously or distinctly,
+/// during a mouse event.
 type MouseModifiers =
+    /// No modifier keys were pressed; it was just the mouse click.
     | None = 0
     | Shift = 4
     | Alt = 8
@@ -28,24 +51,47 @@ type MouseCoordinates =
         Y : int
     }
 
+    /// Human-readable string representation of these coordinates: "(x, y)".
+    override this.ToString () = $"(%i{this.X}, %i{this.Y})"
+
 type MouseEvent =
     | Press of MouseButton * MouseModifiers * MouseCoordinates
     | Release of MouseButton * MouseModifiers * MouseCoordinates
+
+    /// Human-readable string representation of this event. Unrelated e.g. to ANSI codes.
+    override this.ToString () =
+        match this with
+        | MouseEvent.Press (button, modifiers, coords) -> $"Press %O{button} (%O{modifiers}) at %O{coords}"
+        | MouseEvent.Release (button, modifiers, coords) -> $"Release %O{button} (%O{modifiers}) at %O{coords}"
 
 type KeyboardEvent =
     | BeginBracketedPaste
     | EndBracketedPaste
 
-type RawWorldStateChange<'appEvent> =
+type internal RawWorldStateChange<'appEvent> =
     | Keystroke of ConsoleKeyInfo
     | ApplicationEvent of 'appEvent
     | ApplicationEventException of exn
 
+/// WoofWare.Zoomies presents to you a very narrow view of the world: a stream of WorldStateChange events, presented
+/// in a linear order, buffered with each batch processed on-demand.
+/// See `WorldFreezer` for the type that funnels the real world into a stream of these events.
 type WorldStateChange<'appEvent> =
+    /// Most interaction with a Zoomies TUI app is in the form of keystrokes. We pass you a nearly-unfiltered stream
+    /// of the keystrokes the user supplies. Certain sequences of keystroke are ANSI escape codes, which we surface
+    /// as e.g. the WorldStateChange.MouseEvent case instead.
     | Keystroke of ConsoleKeyInfo
+    /// WoofWare.Zoomies automatically interprets certain ANSI escape codes as indicating keyboard events like
+    /// "begin bracketed paste".
     | KeyboardEvent of KeyboardEvent
+    /// WoofWare.Zoomies automatically interprets certain ANSI escape codes as indicating mouse events like "mouse
+    /// down".
     | MouseEvent of MouseEvent
+    /// When you use an IWorldBridge to insert events into the WoofWare.Zoomies-supplied event stream, they flow through
+    /// as instances of ApplicationEvent.
     | ApplicationEvent of 'appEvent
+    /// When you use an IWorldBridge to insert an event into the WoofWare.Zoomies-supplied event stream, but the
+    /// event you supplied throws, the failure manifests in the event stream as an ApplicationEventException.
     | ApplicationEventException of exn
 
 type private SgrDecode =
@@ -116,6 +162,26 @@ type UnrecognisedEscapeCodeBehaviour =
     | Throw
     | PassThrough
 
+/// An IWorldBridge allows you to funnel arbitrary events into the WoofWare.Zoomies world model.
+/// WoofWare.Zoomies supplies you with a long-lived one of these for each WorldFreezer.
+type IWorldBridge<'appEvent> =
+    /// Post an asynchronous application event. When the returned `Task` has completed, the event has made it into
+    /// the associated WorldFreezer's `Changes` queue; it's either already appeared in the output of a `Changes` call,
+    /// or will appear in a subsequent one if you keep pumping `Changes` until it stops returning values.
+    abstract PostEvent : (CancellationToken -> Task<'appEvent>) -> Task<unit>
+
+    /// Subscribe to a synchronous event source. When the event fires, the converter
+    /// function transforms the event data into an application event visible to the WorldFreezer's `Changes` queue.
+    /// Returns an IDisposable to unsubscribe (though all subscriptions are also auto-cleaned
+    /// when the associated WorldFreezer is disposed).
+    abstract SubscribeEvent<'a> : IEvent<'a> -> toAppEvent : ('a -> 'appEvent) -> IDisposable
+
+/// WoofWare.Zoomies presents to you a very narrow view of the world: a stream of WorldStateChange events, presented
+/// in a linear order, buffered with each batch processed on-demand.
+/// The `WorldFreezer` is what translates the real world into that buffered stream of linear events.
+/// `WorldFreezer` is also an `IWorldBridge`, allowing the application programmer to insert events into the linear
+/// stream for batched processing just like a keystroke would be; such events manifest as
+/// `WorldStateChange.ApplicationEvent`s.
 type WorldFreezer<'appEvent> =
     private
         {
@@ -128,7 +194,13 @@ type WorldFreezer<'appEvent> =
             _Stopwatch : IStopwatch
             _RefreshExternal : unit -> unit
             _Behaviour : UnrecognisedEscapeCodeBehaviour
-            _Post : (CancellationToken -> Task<'appEvent>) -> unit
+            /// When the returned Task completes, it's guaranteed that the 'appEvent has been made available to
+            /// `Changes` (that is, it will appear in the next `Changes` call, or perhaps has already appeared).
+            _Post : (CancellationToken -> Task<'appEvent>) -> Task<unit>
+            _Subscriptions : ConcurrentBag<IDisposable>
+            _IsDisposing : int ref
+            _HasDisposed : TaskCompletionSource<unit>
+            _ActiveSubscriptionRequests : int ref
         }
 
     /// Load pending changes from the external world, like keystrokes, into the change list.
@@ -367,11 +439,59 @@ type WorldFreezer<'appEvent> =
             else
                 result.ToArray () |> ValueSome
 
-    member this.PostAppEvent a = this._Post a
+    interface IWorldBridge<'appEvent> with
+        member this.PostEvent a = this._Post a
+
+        member this.SubscribeEvent evt toAppEvent =
+            if this._IsDisposing.Value > 0 then
+                raise (ObjectDisposedException "WorldFreezer")
+            else
+                Interlocked.Increment this._ActiveSubscriptionRequests |> ignore<int>
+
+                let handler =
+                    Handler<'a> (fun _ args ->
+                        let appEvent = toAppEvent args
+                        this._Changes.Enqueue (RawWorldStateChange.ApplicationEvent appEvent)
+                    )
+
+                evt.AddHandler handler
+
+                let mutable disposed = 0
+
+                let subscription =
+                    { new IDisposable with
+                        member _.Dispose () =
+                            if Interlocked.CompareExchange (&disposed, 1, 0) = 0 then
+                                evt.RemoveHandler handler
+                    }
+
+                this._Subscriptions.Add subscription
+
+                Interlocked.Decrement this._ActiveSubscriptionRequests |> ignore<int>
+                subscription
 
     interface IAsyncDisposable with
         member this.DisposeAsync () =
-            (this._Nursery :> IAsyncDisposable).DisposeAsync ()
+            if Interlocked.Increment this._IsDisposing = 1 then
+                task {
+                    // Wait for ActiveSubscriptionRequests to hit 0; then we know no more subscriptions are incoming
+                    while this._ActiveSubscriptionRequests.Value > 0 do
+                        // TODO: do this without sleeping
+                        // #TimeIsNotASynchronizationPrimitive
+                        do! Task.Delay (TimeSpan.FromMilliseconds 10.0)
+
+                    for sub in this._Subscriptions do
+                        try
+                            sub.Dispose ()
+                        with _ ->
+                            ()
+
+                    do! (this._Nursery :> IAsyncDisposable).DisposeAsync ()
+                    this._HasDisposed.SetResult ()
+                }
+                |> ValueTask
+            else
+                this._HasDisposed.Task |> ValueTask
 
 [<RequireQualifiedAccess>]
 module WorldFreezer =
@@ -393,7 +513,7 @@ module WorldFreezer =
                 let key = readKey ()
                 RawWorldStateChange.Keystroke key |> worldChanges.Enqueue
 
-        let postAppEvent (evt : CancellationToken -> Task<'appEvent>) : unit =
+        let postAppEvent (evt : CancellationToken -> Task<'appEvent>) : Task<unit> =
             task {
                 // The only exception `runningTasks.Submit` can throw is OperationDisposedException.
                 // If we get that, the listener is already being shut down, so we're no longer rerendering
@@ -409,7 +529,6 @@ module WorldFreezer =
                 with e ->
                     worldChanges.Enqueue (RawWorldStateChange.ApplicationEventException e)
             }
-            |> ignore<Task>
 
         {
             _Changes = worldChanges
@@ -419,6 +538,10 @@ module WorldFreezer =
             _Stopwatch = stopwatch
             _DequeueState = DequeueState.Empty ()
             _Behaviour = behaviour
+            _Subscriptions = ConcurrentBag ()
+            _IsDisposing = ref 0
+            _ActiveSubscriptionRequests = ref 0
+            _HasDisposed = TaskCompletionSource<_> ()
         }
 
     let listen<'appEvent> () : WorldFreezer<'appEvent> =
