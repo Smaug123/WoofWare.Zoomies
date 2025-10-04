@@ -73,7 +73,7 @@ module App =
         (worldFreezer : unit -> WorldFreezer<'appEvent>)
         (mutableState : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
-        (processWorld : ((CancellationToken -> Task<'appEvent>) -> unit) -> WorldProcessor<'appEvent, 'state>)
+        (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'state>)
         (vdom : RenderState -> 'state -> Vdom<DesiredBounds, Unkeyed>)
         : Task
         =
@@ -104,6 +104,7 @@ module App =
                 ctrlC.Register ctrlCHandler
 
                 let listener = worldFreezer ()
+                let processWorld = processWorld listener
 
                 let cleanUp () =
                     ctrlC.Unregister ctrlCHandler
@@ -121,13 +122,7 @@ module App =
                         RenderState.setCursorInvisible renderState
 
                         while cancels = 0 && not terminate.IsCancellationRequested do
-                            pumpOnce
-                                listener
-                                mutableState
-                                haveFrameworkHandleFocus
-                                renderState
-                                (processWorld listener.PostAppEvent)
-                                vdom
+                            pumpOnce listener mutableState haveFrameworkHandleFocus renderState processWorld vdom
 
                         None
                     with e ->
@@ -149,7 +144,7 @@ module App =
     let run<'state, 'appEvent>
         (state : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
-        (processWorld : ((CancellationToken -> Task<'appEvent>) -> unit) -> WorldProcessor<'appEvent, 'state>)
+        (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'state>)
         (vdom : RenderState -> 'state -> Vdom<DesiredBounds, Unkeyed>)
         : Task
         =
