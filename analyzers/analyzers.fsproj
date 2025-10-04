@@ -11,7 +11,7 @@
 
   <ItemGroup>
     <PackageDownload Include="G-Research.FSharp.Analyzers" Version="[0.18.0]" />
-    <PackageDownload Include="WoofWare.FSharpAnalyzers" Version="[0.1.1]" />
+    <PackageDownload Include="WoofWare.FSharpAnalyzers" Version="[0.1.3]" />
   </ItemGroup>
 
 </Project>

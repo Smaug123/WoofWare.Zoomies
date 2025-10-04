@@ -108,7 +108,7 @@ module App =
                 let cleanUp () =
                     ctrlC.Unregister ctrlCHandler
 
-                    // We're on a dedicated thread, so this can't deadlock.
+                    // ANALYZER: synchronous blocking call allowed: we're on a dedicated thread, so can't deadlock.
                     (listener :> IAsyncDisposable).DisposeAsync().GetAwaiter().GetResult ()
 
                     RenderState.unregisterBracketedPaste renderState
