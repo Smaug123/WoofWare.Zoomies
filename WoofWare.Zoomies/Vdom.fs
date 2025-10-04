@@ -7,8 +7,12 @@ type NodeKey = private | NodeKey of string
 
 [<RequireQualifiedAccess>]
 module NodeKey =
+    /// Wraps an arbitrary user-chosen string node identifier into a key that WoofWare.Zoomies can use to identify
+    /// nodes.
     let make (s : string) : NodeKey = NodeKey s
-    let toString (NodeKey s) = s
+
+    /// Gets the original string that was used to construct this key.
+    let toString (NodeKey s) : string = s
 
 /// Phantom type to track whether a node has a key
 type Keyed = private | Keyed
@@ -22,7 +26,6 @@ type SplitDirection =
     | Vertical
     /// Split so that the divider runs horizontally: one component is on top and one is on the bottom.
     | Horizontal
-
 
 /// Determines how space is divided when a panel is split into two components.
 [<RequireQualifiedAccess>]
@@ -66,9 +69,29 @@ module private VdomUtils =
 [<Sealed>]
 type Vdom =
 
+    /// <summary>Creates a text content component displaying the given string.</summary>
+    /// <param name="isFocused">
+    /// Specifies that this text area should render as if it has keyboard focus.
+    /// This has nothing to do with the WoofWare.Zoomies automatic focus tracking system; it's purely a display concern.
+    /// See <c>Vdom.withFocusTracking</c> for details.
+    /// </param>
+    /// <param name="s">The text to display within the text area. Text will be truncated if it doesn't fit.</param>
+    /// <remarks>
+    /// </remarks>
     static member textContent (isFocused : bool) (s : string) : Vdom<DesiredBounds, Unkeyed> =
+        // TODO: create text areas which do smart truncation etc for you
         Vdom.Unkeyed (UnkeyedVdom.TextContent (s, isFocused), Teq.refl)
 
+    /// <summary>Creates a split panel where two components share space according to a proportion.</summary>
+    /// <remarks>
+    /// The first component <c>c1</c> receives proportion <c>p</c> of the space, and the second component <c>c2</c> receives <c>1 - p</c>.
+    /// </remarks>
+    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
+    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
+    /// <param name="p">Proportion of the space to allocate to the first component (that is, the top or left one). Must be between 0 and 1, exclusive.</param>
+    /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
+    /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
+    /// <exception cref="ArgumentException">The proportion <c>p</c> was not between 0 and 1, exclusive.</exception>
     static member panelSplitProportion
         (d, p, c1 : Vdom<DesiredBounds, Keyed>, c2 : Vdom<DesiredBounds, Keyed>)
         : Vdom<DesiredBounds, Unkeyed>
@@ -89,6 +112,16 @@ type Vdom =
             Teq.refl
         )
 
+    /// <summary>Creates a split panel where two components share space according to a proportion.</summary>
+    /// <remarks>
+    /// The first component <c>c1</c> receives proportion <c>p</c> of the space, and the second component <c>c2</c> receives <c>1 - p</c>.
+    /// </remarks>
+    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
+    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
+    /// <param name="p">Proportion of the space to allocate to the first component (that is, the top or left one). Must be between 0 and 1, exclusive.</param>
+    /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
+    /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
+    /// <exception cref="ArgumentException">The proportion <c>p</c> was not between 0 and 1, exclusive.</exception>
     static member panelSplitProportion
         (d, p, c1 : Vdom<DesiredBounds, Keyed>, c2 : Vdom<DesiredBounds, Unkeyed>)
         : Vdom<DesiredBounds, Unkeyed>
@@ -109,6 +142,16 @@ type Vdom =
             Teq.refl
         )
 
+    /// <summary>Creates a split panel where two components share space according to a proportion.</summary>
+    /// <remarks>
+    /// The first component <c>c1</c> receives proportion <c>p</c> of the space, and the second component <c>c2</c> receives <c>1 - p</c>.
+    /// </remarks>
+    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
+    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
+    /// <param name="p">Proportion of the space to allocate to the first component (that is, the top or left one). Must be between 0 and 1, exclusive.</param>
+    /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
+    /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
+    /// <exception cref="ArgumentException">The proportion <c>p</c> was not between 0 and 1, exclusive.</exception>
     static member panelSplitProportion
         (d, p, c1 : Vdom<DesiredBounds, Unkeyed>, c2 : Vdom<DesiredBounds, Keyed>)
         : Vdom<DesiredBounds, Unkeyed>
@@ -129,6 +172,16 @@ type Vdom =
             Teq.refl
         )
 
+    /// <summary>Creates a split panel where two components share space according to a proportion.</summary>
+    /// <remarks>
+    /// The first component <c>c1</c> receives proportion <c>p</c> of the space, and the second component <c>c2</c> receives <c>1 - p</c>.
+    /// </remarks>
+    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
+    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
+    /// <param name="p">Proportion of the space to allocate to the first component (that is, the top or left one). Must be between 0 and 1, exclusive.</param>
+    /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
+    /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
+    /// <exception cref="ArgumentException">The proportion <c>p</c> was not between 0 and 1, exclusive.</exception>
     static member panelSplitProportion
         (d, p, c1 : Vdom<DesiredBounds, Unkeyed>, c2 : Vdom<DesiredBounds, Unkeyed>)
         : Vdom<DesiredBounds, Unkeyed>
@@ -149,6 +202,15 @@ type Vdom =
             Teq.refl
         )
 
+    /// <summary>Creates a split panel where the first component receives a fixed number of cells.</summary>
+    /// <remarks>
+    /// The first component <c>c1</c> receives exactly <c>p</c> cells, and the second component <c>c2</c> receives all remaining space.
+    /// </remarks>
+    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
+    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
+    /// <param name="p">The number of cells to allocate to the first component (that is, the top or left one).</param>
+    /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
+    /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
     static member panelSplitAbsolute
         (d, p, c1 : Vdom<DesiredBounds, Keyed>, c2 : Vdom<DesiredBounds, Keyed>)
         : Vdom<DesiredBounds, Unkeyed>
@@ -166,6 +228,15 @@ type Vdom =
             Teq.refl
         )
 
+    /// <summary>Creates a split panel where the first component receives a fixed number of cells.</summary>
+    /// <remarks>
+    /// The first component <c>c1</c> receives exactly <c>p</c> cells, and the second component <c>c2</c> receives all remaining space.
+    /// </remarks>
+    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
+    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
+    /// <param name="p">The number of cells to allocate to the first component (that is, the top or left one).</param>
+    /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
+    /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
     static member panelSplitAbsolute
         (d, p, c1 : Vdom<DesiredBounds, Unkeyed>, c2 : Vdom<DesiredBounds, Keyed>)
         : Vdom<DesiredBounds, Unkeyed>
@@ -183,6 +254,15 @@ type Vdom =
             Teq.refl
         )
 
+    /// <summary>Creates a split panel where the first component receives a fixed number of cells.</summary>
+    /// <remarks>
+    /// The first component <c>c1</c> receives exactly <c>p</c> cells, and the second component <c>c2</c> receives all remaining space.
+    /// </remarks>
+    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
+    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
+    /// <param name="p">The number of cells to allocate to the first component (that is, the top or left one).</param>
+    /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
+    /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
     static member panelSplitAbsolute
         (d, p, c1 : Vdom<DesiredBounds, Keyed>, c2 : Vdom<DesiredBounds, Unkeyed>)
         : Vdom<DesiredBounds, Unkeyed>
@@ -200,6 +280,15 @@ type Vdom =
             Teq.refl
         )
 
+    /// <summary>Creates a split panel where the first component receives a fixed number of cells.</summary>
+    /// <remarks>
+    /// The first component <c>c1</c> receives exactly <c>p</c> cells, and the second component <c>c2</c> receives all remaining space.
+    /// </remarks>
+    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
+    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
+    /// <param name="p">The number of cells to allocate to the first component (that is, the top or left one).</param>
+    /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
+    /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
     static member panelSplitAbsolute
         (d, p, c1 : Vdom<DesiredBounds, Unkeyed>, c2 : Vdom<DesiredBounds, Unkeyed>)
         : Vdom<DesiredBounds, Unkeyed>
@@ -217,19 +306,30 @@ type Vdom =
             Teq.refl
         )
 
+    /// <summary>Creates a checkbox component with the specified state.</summary>
+    /// <param name="isFocused">
+    /// Specifies that this checkbox should render as if it has keyboard focus.
+    /// This has nothing to do with the WoofWare.Zoomies automatic focus tracking system; it's purely a display concern.
+    /// See <c>Vdom.withFocusTracking</c> for details.
+    /// </param>
+    /// <param name="isChecked">Specifies that this checkbox is currently checked. Derive the value of this parameter
+    /// from your application state.</param>
     static member checkbox (isFocused : bool) (isChecked : bool) : Vdom<DesiredBounds, Unkeyed> =
         Vdom.Unkeyed (UnkeyedVdom.Checkbox (isChecked, isFocused), Teq.refl)
 
+    /// Creates a bordered wrapper around a component, drawing a border around its content.
     static member bordered (inner : Vdom<_, Keyed>) : Vdom<DesiredBounds, Unkeyed> =
         match inner with
         | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
         | Keyed (inner, _) -> Vdom.Unkeyed (UnkeyedVdom.Bordered (KeylessVdom.Keyed inner), Teq.refl)
 
+    /// Creates a bordered wrapper around a component, drawing a border around its content.
     static member bordered (inner : Vdom<_, Unkeyed>) : Vdom<DesiredBounds, Unkeyed> =
         match inner with
         | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
         | Unkeyed (inner, _) -> Vdom.Unkeyed (UnkeyedVdom.Bordered (KeylessVdom.Unkeyed inner), Teq.refl)
 
+    /// Creates a checkbox with a text label positioned to its right.
     static member labelledCheckbox
         (isFocused : bool)
         (isChecked : bool)
