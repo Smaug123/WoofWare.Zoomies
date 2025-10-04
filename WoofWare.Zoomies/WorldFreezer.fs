@@ -98,8 +98,8 @@ type private DequeueState =
         | ValueSome (ts, esc) ->
             if (sw.GetTimestamp () - ts |> float) / float sw.Frequency > 0.01 then
                 let result = Array.zeroCreate (this.Processed.Count + 1)
-                result.[0] <- esc
-                CollectionsMarshal.AsSpan(this.Processed).CopyTo (result.AsSpan (1))
+                Array.set result 0 esc
+                CollectionsMarshal.AsSpan(this.Processed).CopyTo (result.AsSpan 1)
                 Some result
             else
                 None

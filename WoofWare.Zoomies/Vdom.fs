@@ -46,8 +46,8 @@ type Vdom<'bounds, 'keyed> =
 
 [<RequireQualifiedAccess>]
 module private VdomUtils =
-    let teqUnreachable (t : Teq<Keyed, Unkeyed>) : 'a = failwith "unreachable"
-    let teqUnreachable' (t : Teq<Unkeyed, Keyed>) : 'a = failwith "unreachable"
+    let teqUnreachable (_ : Teq<Keyed, Unkeyed>) : 'a = failwith "unreachable"
+    let teqUnreachable' (_ : Teq<Unkeyed, Keyed>) : 'a = failwith "unreachable"
 
 [<Sealed>]
 type Vdom =

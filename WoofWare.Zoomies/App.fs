@@ -3,11 +3,10 @@ namespace WoofWare.Zoomies
 open System
 open System.Threading
 open System.Threading.Tasks
-open TypeEquality
 
 type WorldProcessor<'appEvent, 'userState> =
     abstract ProcessWorld :
-        events : ReadOnlySpan<WorldStateChange<'appEvent>> * renderState : RenderState * 'userState -> unit
+        events : ReadOnlySpan<WorldStateChange<'appEvent>> * previousRenderState : RenderState * 'userState -> unit
 
 [<RequireQualifiedAccess>]
 module App =
@@ -28,23 +27,13 @@ module App =
         match changes with
         | ValueNone -> ()
         | ValueSome changes ->
-
-            match renderState.PreviousVdom with
-            | None -> failwith "expected not to receive input before the first render"
-            | Some node ->
-
-            let prevVdom =
-                match node.Self with
-                | KeylessVdom.Keyed _ -> failwith "logic error: we never produced a keyed node at the top level"
-                | KeylessVdom.Unkeyed d -> Vdom.Unkeyed (d, Teq.refl)
-
             if haveFrameworkHandleFocus mutableState then
 
                 let mutable i = 0
                 let mutable start = 0
 
                 while i < changes.Length do
-                    match changes.[i] with
+                    match Array.get changes i with
                     | WorldStateChange.Keystroke t when t.Key = ConsoleKey.Tab && t.Modifiers = enum 0 ->
                         if i > 0 then
                             processWorld.ProcessWorld (
