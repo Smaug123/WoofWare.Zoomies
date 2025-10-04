@@ -124,6 +124,22 @@ Unlike C# with its two-pass compiler, F# is a single-pass compiler where types m
 
 It's almost always correct to use `ResizeArray` rather than a mutable F# `list`; it's simply almost always much more efficient.
 
+## IAsyncDisposable
+
+You can `use foo = someIAsyncDisposable` from within the `task { ... }` computation expression.
+NUnit is happy to have tests be `Task`s, and FsCheck is happy to have properties be functions producing `Task`s; don't block inside tests, but use the appropriate `task` computation expression.
+
+## FsCheck properties
+
+Use unit-returning `actual |> shouldEqual expected` (with an `FsUnitTyped` assertion) rather than `actual = expected` as the conclusion of an FsCheck property.
+When that property fails, the version which throws gives you much better output than the one with an equality check.
+
+## Constructing FsCheck properties
+
+Generally try and avoid filtering unless it's really hard to avoid.
+You can often construct what you need instead of filtering.
+For example, instead of filtering to a nonempty list, you can pass an `'a` and an `'a list`, and as the first line of the function, prepend the element to the list. Now it's nonempty!
+
 # NUnit bugs
 
 NUnit's filtering is pretty borked.
