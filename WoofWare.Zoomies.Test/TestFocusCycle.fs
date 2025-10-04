@@ -79,7 +79,7 @@ module TestFocusCycle =
                             | WorldStateChange.KeyboardEvent _ -> failwith "no keyboard events"
                             | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
 
-                        newCheckboxes
+                        ProcessWorldResult.make newCheckboxes
                 }
 
             let renderState = RenderState.make' console
@@ -284,7 +284,7 @@ module TestFocusCycle =
                             | WorldStateChange.KeyboardEvent _ -> failwith "no keyboard events"
                             | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
 
-                        newCheckboxes
+                        ProcessWorldResult.make newCheckboxes
                 }
 
             let renderState = RenderState.make' console
@@ -448,7 +448,7 @@ module TestFocusCycle =
                             | WorldStateChange.KeyboardEvent _ -> failwith "no keyboard events"
                             | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
 
-                        renderCheckbox1
+                        ProcessWorldResult.make renderCheckbox1
                 }
 
             let renderState = RenderState.make' console
@@ -555,7 +555,7 @@ module TestFocusCycle =
                             | WorldStateChange.KeyboardEvent _ -> failwith "no keyboard events"
                             | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
 
-                        newState
+                        ProcessWorldResult.make newState
                 }
 
             let mutable renderFocusable = 0

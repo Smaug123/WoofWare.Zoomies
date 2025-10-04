@@ -4,15 +4,47 @@ open System
 open System.Threading
 open System.Threading.Tasks
 
+type RerenderRequest =
+    /// Don't request a rerender; just let me continue processing the current batch of events.
+    | Continue
+    /// Request a rerender: effectively truncate the current batch of events and split the rest of the batch into a
+    /// new iteration of the render loop.
+    /// The index is the last element you processed.
+    /// For example, to say you've processed only one element of the batch, you'd return 0 here.
+    | NewBatch of truncationIndex : int
+    /// Like NewBatch ("truncate the current batch of requests"), but additionally requests that your vdom be
+    /// unconditionally reevaluated too. This may be useful to work around bugs in the cutoff logic, if you find any.
+    /// The index is the last element you processed.
+    /// For example, to say you've processed only one element of the batch, you'd return 0 here.
+    | Rerender of truncationIndex : int
+
+type ProcessWorldResult<'userState> =
+    {
+        NewState : 'userState
+        /// Set this to `true` to request a rerender *now*, rather than continuing to process the rest of the batch
+        /// of incoming events.
+        /// You might want to do this, for example, if you want WoofWare.Zoomies to ask you again whether you're opted
+        /// into automatic focus tracking (which it only does before starting a render).
+        RequestRerender : RerenderRequest
+    }
+
+[<RequireQualifiedAccess>]
+module ProcessWorldResult =
+    let make<'userState> (s : 'userState) =
+        {
+            NewState = s
+            RequestRerender = RerenderRequest.Continue
+        }
+
 type WorldProcessor<'appEvent, 'userState> =
     abstract ProcessWorld :
         events : ReadOnlySpan<WorldStateChange<'appEvent>> * previousRenderState : VdomContext * 'userState ->
-            'userState
+            ProcessWorldResult<'userState>
 
 [<RequireQualifiedAccess>]
 module App =
 
-    let pumpOnce
+    let pumpOnce<'state, 'appEvent when 'state : equality>
         (listener : WorldFreezer<'appEvent>)
         (state : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
@@ -21,73 +53,140 @@ module App =
         (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
         : 'state
         =
-        let startState = state
-
         listener.RefreshExternal ()
 
         let changes = listener.Changes ()
 
-        let newState =
-            match changes with
-            | ValueNone -> state
-            | ValueSome changes ->
-                if haveFrameworkHandleFocus state then
+        match changes with
+        | ValueNone ->
+            if renderState.VdomContext.IsDirty then
+                Render.oneStep renderState state (vdom renderState.VdomContext)
+                VdomContext.markClean renderState.VdomContext
 
-                    let mutable currentState = state
-                    let mutable i = 0
-                    let mutable start = 0
+            state
+        | ValueSome changes ->
 
-                    while i < changes.Length do
-                        match Array.get changes i with
-                        | WorldStateChange.Keystroke t when t.Key = ConsoleKey.Tab && t.Modifiers = enum 0 ->
-                            if i > 0 then
-                                currentState <-
-                                    processWorld.ProcessWorld (
-                                        changes.AsSpan().Slice (start, i - 1 - start),
-                                        renderState.VdomContext,
-                                        currentState
-                                    )
+        let mutable startState = state
+        let mutable currentState = state
+        let mutable startOfBatch = 0
 
-                            // Advance focus to the next focusable element
-                            RenderState.advanceFocus renderState
+        while startOfBatch < changes.Length do
+            let mutable forceRerender = false
 
-                            start <- i + 1
-                            // skip the tab input
-                            i <- i + 1
-                        | WorldStateChange.Keystroke t when
-                            t.Key = ConsoleKey.Tab && t.Modifiers.HasFlag ConsoleModifiers.Shift
-                            ->
-                            if i > 0 then
-                                currentState <-
-                                    processWorld.ProcessWorld (
-                                        changes.AsSpan().Slice (start, i - 1 - start),
-                                        renderState.VdomContext,
-                                        currentState
-                                    )
+            if haveFrameworkHandleFocus currentState then
+                // The point is to pass as large a batch as possible to ProcessWorld.
+                // Any character that isn't a tab will go into the batch.
 
-                            // Retreat focus to the previous focusable element
-                            RenderState.retreatFocus renderState
+                let mutable nextToProcess = startOfBatch
 
-                            start <- i + 1
-                            // skip the shift+tab input
-                            i <- i + 1
-                        | _ -> ()
+                let processBatch () =
+                    let processResult =
+                        processWorld.ProcessWorld (
+                            changes.AsSpan().Slice (startOfBatch, nextToProcess - startOfBatch),
+                            renderState.VdomContext,
+                            currentState
+                        )
 
-                        i <- i + 1
+                    currentState <- processResult.NewState
 
-                    if start < changes.Length then
-                        processWorld.ProcessWorld (changes.AsSpan().Slice start, renderState.VdomContext, currentState)
-                    else
+                    match processResult.RequestRerender with
+                    | RerenderRequest.Continue ->
+                        // Successfully processed everything up but not including the tab.
+                        // Just proceed.
+                        startOfBatch <- nextToProcess
+                        nextToProcess <- Int32.MaxValue
+                    | RerenderRequest.NewBatch lastProcessed ->
+                        if lastProcessed >= nextToProcess - 1 then
+                            // Successfully processed everything up to but not including the tab.
+                            // Just proceed.
+                            startOfBatch <- nextToProcess
+                            nextToProcess <- Int32.MaxValue
+                        elif lastProcessed < 0 then
+                            failwith "bad index from processing result: was negative"
+                        else
+                            startOfBatch <- lastProcessed + 1
+                            nextToProcess <- Int32.MaxValue
+                    | RerenderRequest.Rerender lastProcessed ->
+                        forceRerender <- true
+
+                        if lastProcessed >= nextToProcess - 1 then
+                            // Successfully processed everything up to but not including the tab.
+                            // Just proceed.
+                            startOfBatch <- nextToProcess
+                            nextToProcess <- Int32.MaxValue
+                        elif lastProcessed < 0 then
+                            failwith "bad index from processing result: was negative"
+                        else
+                            startOfBatch <- lastProcessed + 1
+                            nextToProcess <- Int32.MaxValue
+
+                while nextToProcess < changes.Length do
+                    match Array.get changes nextToProcess with
+                    | WorldStateChange.Keystroke t when
+                        t.Key = ConsoleKey.Tab
+                        && (t.Modifiers = ConsoleModifiers.None || t.Modifiers = ConsoleModifiers.Shift)
+                        ->
+                        if nextToProcess = startOfBatch then
+                            // The tab is at the start of the batch, so we can process it on its own.
+
+                            // Advance focus to the next/prev focusable element
+                            if t.Modifiers = ConsoleModifiers.None then
+                                RenderState.advanceFocus renderState
+                            else
+                                assert (t.Modifiers = ConsoleModifiers.Shift)
+                                RenderState.retreatFocus renderState
+
+                            // successfully consumed everything up to here; the tab is next to process
+                            nextToProcess <- nextToProcess + 1
+                            startOfBatch <- nextToProcess
+
+                        else
+                            assert (nextToProcess > startOfBatch)
+
+                            // Split artificially at this boundary so that we have a completely fresh vdom just before
+                            // the tab.
+                            processBatch ()
+                    | _ -> nextToProcess <- nextToProcess + 1
+
+                // And finally, process any sequences which *don't* end in a tab
+                processBatch ()
+
+            else
+                // Framework is not handling focus; just pass all keystrokes through.
+                let processResult =
+                    processWorld.ProcessWorld (
+                        changes.AsSpan().Slice startOfBatch,
+                        renderState.VdomContext,
                         currentState
-                else
-                    processWorld.ProcessWorld (changes.AsSpan (), renderState.VdomContext, state)
+                    )
 
-        if renderState.VdomContext.IsDirty || newState <> startState then
-            Render.oneStep renderState newState (vdom renderState.VdomContext)
-            VdomContext.markClean renderState.VdomContext
+                currentState <- processResult.NewState
 
-        newState
+                match processResult.RequestRerender with
+                | RerenderRequest.Continue -> startOfBatch <- changes.Length
+                | RerenderRequest.NewBatch truncatedAt ->
+                    if truncatedAt < 0 then
+                        failwith "bad index from processing result: was negative"
+                    elif truncatedAt >= changes.Length - 1 then
+                        startOfBatch <- changes.Length
+                    else
+                        startOfBatch <- truncatedAt + 1
+                | RerenderRequest.Rerender truncatedAt ->
+                    forceRerender <- true
 
+                    if truncatedAt < 0 then
+                        failwith "bad index from processing result: was negative"
+                    elif truncatedAt >= changes.Length - 1 then
+                        startOfBatch <- changes.Length
+                    else
+                        startOfBatch <- truncatedAt + 1
+
+            if forceRerender || renderState.VdomContext.IsDirty || currentState <> startState then
+                Render.oneStep renderState currentState (vdom renderState.VdomContext)
+                VdomContext.markClean renderState.VdomContext
+                startState <- currentState
+
+        currentState
 
     /// We set up a ConsoleCancelEventHandler to suppress one Ctrl+C, and we also listen to stdin,
     /// for as long as this task is running.

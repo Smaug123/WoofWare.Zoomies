@@ -93,7 +93,7 @@ module FileBrowser =
                         ExceptionDispatchInfo.Throw e
                         failwith "unreachable"
 
-                newState
+                ProcessWorldResult.make newState
         }
 
     let view (vdomContext : VdomContext) (state : State) : Vdom<DesiredBounds, Unkeyed> =

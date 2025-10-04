@@ -126,7 +126,7 @@ module TestRender =
                         | ApplicationEvent () -> failwith "no app events"
                         | ApplicationEventException _ -> failwith "no exceptions possible"
 
-                    newState
+                    ProcessWorldResult.make newState
             }
 
         task {
@@ -386,7 +386,7 @@ only displayed when checked                this one is focusable!               
                             | ApplicationEvent () -> failwith "no app events"
                             | ApplicationEventException _ -> failwith "no exceptions possible"
 
-                        state
+                        ProcessWorldResult.make state
                 }
 
             let renderState = RenderState.make' console
@@ -538,7 +538,7 @@ This is focusable text                                                          
                             | ApplicationEvent () -> failwith "no app events"
                             | ApplicationEventException _ -> failwith "no exceptions possible"
 
-                        state
+                        ProcessWorldResult.make state
                 }
 
             let renderState = RenderState.make' console
