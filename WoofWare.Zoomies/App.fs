@@ -48,7 +48,22 @@ module App =
                         start <- i + 1
                         // skip the tab input
                         i <- i + 1
-                    // TODO: handle shift+tab too
+                    | WorldStateChange.Keystroke t when
+                        t.Key = ConsoleKey.Tab && t.Modifiers.HasFlag ConsoleModifiers.Shift
+                        ->
+                        if i > 0 then
+                            processWorld.ProcessWorld (
+                                changes.AsSpan().Slice (start, i - 1 - start),
+                                renderState,
+                                mutableState
+                            )
+
+                        // Retreat focus to the previous focusable element
+                        RenderState.retreatFocus renderState
+
+                        start <- i + 1
+                        // skip the shift+tab input
+                        i <- i + 1
                     | _ -> ()
 
                     i <- i + 1
