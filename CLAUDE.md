@@ -39,6 +39,10 @@ It stores state internally for efficiency, but as far as the end-user programmer
 - **WoofWare.Zoomies.App/** - Demonstration/example application
 - **WoofWare.Zoomies.Test/** - Unit tests and test infrastructure
 
+## Documentation
+
+Architecture documentation lives in `docs/architecture/`.
+
 ## Core Concepts
 
 ### Virtual DOM (Vdom)
@@ -59,6 +63,10 @@ Task management using a nursery pattern (`Nursery.fs`) for structured concurrenc
 - `RenderState` - Tracks rendering state including previous VDOM for diffing
 - Console abstraction layer for terminal operations
 - ANSI control sequence and mouse mode support
+
+## Writing tests
+
+* When writing tests that exercise the UI, use the system as a user would. For example, don't use spooky external mutable state to control vdom creation; just let the WoofWare.Zoomies framework give you an appropriate user state, and send keystrokes to manipulate the state.
 
 ## File Compilation Order
 F# files must be compiled in dependency order. Core files follow a sequence something like this:
@@ -83,7 +91,7 @@ The usual workflow for updating snapshots using the WoofWare.Expect snapshot tes
 * Undo bulk-update mode by commenting out the `enterBulkUpdateMode ()`.
 * Rerun the tests, if you like, to observe that the snapshots are now working.
 
-# F# Language Gotchas
+# F# Language Gotchas and Hints
 
 ## Recursive functions in modules require `let rec ... and` syntax
 
@@ -109,3 +117,7 @@ module Foo =
 ## Type ordering in F# projects matters for cross-file references
 
 Unlike C# with its two-pass compiler, F# is a single-pass compiler where types must be defined before they're used. This affects file ordering in `.fsproj` files.
+
+## Mutable lists
+
+It's almost always correct to use `ResizeArray` rather than a mutable F# `list`; it's simply almost always much more efficient.
