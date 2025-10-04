@@ -85,7 +85,8 @@ module TestFocusCycle =
             let renderState = RenderState.make' console
             let mutable currentState = state
 
-            currentState <- App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+            currentState <-
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
 
             expect {
                 snapshot
@@ -98,7 +99,9 @@ module TestFocusCycle =
 
             // Nothing focused, so space does nothing
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
-            currentState <- App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+
+            currentState <-
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
 
             expect {
                 snapshot
@@ -111,7 +114,9 @@ module TestFocusCycle =
 
             // Move focus to the first focusable element
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            currentState <- App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+
+            currentState <-
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
 
             expect {
                 snapshot
@@ -123,7 +128,9 @@ module TestFocusCycle =
             }
 
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
-            currentState <- App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+
+            currentState <-
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
 
             expect {
                 snapshot
@@ -135,7 +142,9 @@ module TestFocusCycle =
             }
 
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            currentState <- App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+
+            currentState <-
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
 
             expect {
                 snapshot
@@ -147,7 +156,9 @@ module TestFocusCycle =
             }
 
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
-            currentState <- App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+
+            currentState <-
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
 
             expect {
                 snapshot
@@ -159,7 +170,9 @@ module TestFocusCycle =
             }
 
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            currentState <- App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+
+            currentState <-
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
 
             expect {
                 snapshot
@@ -171,7 +184,9 @@ module TestFocusCycle =
             }
 
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
-            currentState <- App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+
+            currentState <-
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
 
             expect {
                 snapshot
@@ -183,7 +198,9 @@ module TestFocusCycle =
             }
 
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            currentState <- App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+
+            currentState <-
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
 
             expect {
                 snapshot
@@ -195,7 +212,9 @@ module TestFocusCycle =
             }
 
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
-            currentState <- App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+
+            currentState <-
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
 
             expect {
                 snapshot
@@ -207,7 +226,9 @@ module TestFocusCycle =
             }
 
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            currentState <- App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+
+            currentState <-
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
 
             expect {
                 snapshot
@@ -270,7 +291,8 @@ module TestFocusCycle =
             let renderState = RenderState.make' console
             let mutable currentState = state
 
-            currentState <- App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+            currentState <-
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
 
             expect {
                 snapshot
@@ -283,7 +305,9 @@ module TestFocusCycle =
 
             // Tab to focus first checkbox
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            currentState <- App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+
+            currentState <-
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
 
             expect {
                 snapshot
@@ -296,7 +320,9 @@ module TestFocusCycle =
 
             // Tab to focus second checkbox
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            currentState <- App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+
+            currentState <-
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
 
             expect {
                 snapshot
@@ -309,7 +335,9 @@ module TestFocusCycle =
 
             // Shift+Tab to go back to first checkbox
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, true, false, false))
-            currentState <- App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+
+            currentState <-
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
 
             expect {
                 snapshot
@@ -322,7 +350,9 @@ module TestFocusCycle =
 
             // Shift+Tab from first should wrap to last
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, true, false, false))
-            currentState <- App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+
+            currentState <-
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
 
             expect {
                 snapshot
@@ -335,7 +365,9 @@ module TestFocusCycle =
 
             // Check the last checkbox
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
-            currentState <- App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+
+            currentState <-
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
 
             expect {
                 snapshot
@@ -348,7 +380,9 @@ module TestFocusCycle =
 
             // Shift+Tab to third checkbox
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, true, false, false))
-            currentState <- App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+
+            currentState <-
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
 
             expect {
                 snapshot
@@ -419,7 +453,8 @@ module TestFocusCycle =
             let renderState = RenderState.make' console
             let mutable renderCheckbox1 = true
 
-            renderCheckbox1 <- App.pumpOnce worldFreezer renderCheckbox1 haveFrameworkHandleFocus renderState processWorld vdom
+            renderCheckbox1 <-
+                App.pumpOnce worldFreezer renderCheckbox1 haveFrameworkHandleFocus renderState processWorld vdom
 
             expect {
                 snapshot
@@ -432,7 +467,9 @@ module TestFocusCycle =
 
             // Tab to focus the checkbox
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            renderCheckbox1 <- App.pumpOnce worldFreezer renderCheckbox1 haveFrameworkHandleFocus renderState processWorld vdom
+
+            renderCheckbox1 <-
+                App.pumpOnce worldFreezer renderCheckbox1 haveFrameworkHandleFocus renderState processWorld vdom
 
             expect {
                 snapshot
@@ -445,7 +482,9 @@ module TestFocusCycle =
 
             // Now reassign the key to a different element
             renderCheckbox1 <- false
-            renderCheckbox1 <- App.pumpOnce worldFreezer renderCheckbox1 haveFrameworkHandleFocus renderState processWorld vdom
+
+            renderCheckbox1 <-
+                App.pumpOnce worldFreezer renderCheckbox1 haveFrameworkHandleFocus renderState processWorld vdom
 
             // Focus should remain on the element with shared-key, even though it's a different element
             expect {
@@ -521,7 +560,8 @@ module TestFocusCycle =
             let mutable renderFocusable = ref 0
             let renderState = RenderState.make' console
 
-            renderFocusable <- App.pumpOnce worldFreezer renderFocusable haveFrameworkHandleFocus renderState processWorld vdom
+            renderFocusable <-
+                App.pumpOnce worldFreezer renderFocusable haveFrameworkHandleFocus renderState processWorld vdom
 
             expect {
                 snapshot
@@ -534,7 +574,9 @@ module TestFocusCycle =
 
             // Tab to focus the checkbox
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            renderFocusable <- App.pumpOnce worldFreezer renderFocusable haveFrameworkHandleFocus renderState processWorld vdom
+
+            renderFocusable <-
+                App.pumpOnce worldFreezer renderFocusable haveFrameworkHandleFocus renderState processWorld vdom
 
             expect {
                 snapshot
@@ -547,7 +589,9 @@ module TestFocusCycle =
 
             // Now reassign the key to a non-focusable element
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
-            renderFocusable <- App.pumpOnce worldFreezer renderFocusable haveFrameworkHandleFocus renderState processWorld vdom
+
+            renderFocusable <-
+                App.pumpOnce worldFreezer renderFocusable haveFrameworkHandleFocus renderState processWorld vdom
 
             // The element is no longer in the focusable list.
             // Vdom construction sees that on the previous tick, that element was focused, so it displays as focused.
@@ -562,7 +606,9 @@ more       [☐]  |
 
             // Give us a rerender and observe that on the previous tick, nothing was focused according to the framework
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
-            renderFocusable <- App.pumpOnce worldFreezer renderFocusable haveFrameworkHandleFocus renderState processWorld vdom
+
+            renderFocusable <-
+                App.pumpOnce worldFreezer renderFocusable haveFrameworkHandleFocus renderState processWorld vdom
 
             expect {
                 snapshot

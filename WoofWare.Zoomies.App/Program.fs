@@ -61,11 +61,10 @@ module FileBrowser =
                     | WorldStateChange.Keystroke key when key.KeyChar = ' ' ->
                         // Toggle which file we're showing
                         newState <-
-                            {
-                                newState with
-                                    ShowingFile1 = not newState.ShowingFile1
-                                    IsLoading = true
-                                    FileContent = None
+                            { newState with
+                                ShowingFile1 = not newState.ShowingFile1
+                                IsLoading = true
+                                FileContent = None
                             }
                         // Trigger async load of the new file
                         loadFileAsync worldBridge newState.CurrentFile
@@ -75,19 +74,17 @@ module FileBrowser =
                         // Only update if this is still the file we're expecting
                         if filename = newState.CurrentFile then
                             newState <-
-                                {
-                                    newState with
-                                        FileContent = Some content
-                                        IsLoading = false
+                                { newState with
+                                    FileContent = Some content
+                                    IsLoading = false
                                 }
 
                     | WorldStateChange.ApplicationEvent (FileLoadError (filename, error)) ->
                         if filename = newState.CurrentFile then
                             newState <-
-                                {
-                                    newState with
-                                        FileContent = Some $"Error loading file: {error}"
-                                        IsLoading = false
+                                { newState with
+                                    FileContent = Some $"Error loading file: {error}"
+                                    IsLoading = false
                                 }
 
                     | WorldStateChange.ApplicationEventException e ->
@@ -126,7 +123,10 @@ module FileBrowser =
     let run (file1 : string) (file2 : string) =
         let state = State.Create (file1, file2)
 
-        let initialState = { state with IsLoading = true }
+        let initialState =
+            { state with
+                IsLoading = true
+            }
 
         App.run
             initialState

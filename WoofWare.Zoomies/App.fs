@@ -6,7 +6,8 @@ open System.Threading.Tasks
 
 type WorldProcessor<'appEvent, 'userState> =
     abstract ProcessWorld :
-        events : ReadOnlySpan<WorldStateChange<'appEvent>> * previousRenderState : RenderState * 'userState -> 'userState
+        events : ReadOnlySpan<WorldStateChange<'appEvent>> * previousRenderState : RenderState * 'userState ->
+            'userState
 
 [<RequireQualifiedAccess>]
 module App =

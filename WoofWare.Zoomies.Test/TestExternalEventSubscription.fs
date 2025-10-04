@@ -68,15 +68,26 @@ module TestExternalEventSubscription =
                                 | Some _ -> failwith "only should have got one StartTimer"
 
                                 let subscription = world.SubscribeEvent timer.Elapsed (fun _ -> TimerTick)
-                                newState <- { newState with TimerSubscription = Some subscription }
+
+                                newState <-
+                                    { newState with
+                                        TimerSubscription = Some subscription
+                                    }
 
                             | WorldStateChange.ApplicationEvent StopTimer ->
                                 newState.TimerSubscription |> Option.iter (fun s -> s.Dispose ())
                                 globalTimer |> Option.get :> IDisposable |> _.Dispose()
-                                newState <- { newState with TimerSubscription = None }
+
+                                newState <-
+                                    { newState with
+                                        TimerSubscription = None
+                                    }
 
                             | WorldStateChange.ApplicationEvent TimerTick ->
-                                newState <- { newState with Counter = newState.Counter + 1 }
+                                newState <-
+                                    { newState with
+                                        Counter = newState.Counter + 1
+                                    }
 
                             | WorldStateChange.Keystroke c when c.KeyChar = ' ' ->
                                 // Toggle timer on space
