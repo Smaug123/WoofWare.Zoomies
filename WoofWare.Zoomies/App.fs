@@ -104,7 +104,7 @@ module App =
                         elif lastProcessed < 0 then
                             failwith "bad index from processing result: was negative"
                         else
-                            startOfBatch <- lastProcessed + 1
+                            startOfBatch <- startOfBatch + lastProcessed + 1
                             nextToProcess <- Int32.MaxValue
                     | RerenderRequest.Rerender lastProcessed ->
                         forceRerender <- true
@@ -117,7 +117,7 @@ module App =
                         elif lastProcessed < 0 then
                             failwith "bad index from processing result: was negative"
                         else
-                            startOfBatch <- lastProcessed + 1
+                            startOfBatch <- startOfBatch + lastProcessed + 1
                             nextToProcess <- Int32.MaxValue
 
                 while nextToProcess < changes.Length do
@@ -148,8 +148,12 @@ module App =
                             processBatch ()
                     | _ -> nextToProcess <- nextToProcess + 1
 
-                // And finally, process any sequences which *don't* end in a tab
-                processBatch ()
+                // And finally, process any sequences which *don't* end in a tab.
+                // We check nextToProcess <> Int32.MaxValue because processBatch() sets it to Int32.MaxValue
+                // as a sentinel to indicate "we've already finished processing everything via early bailout".
+                // Without this check, we'd try to slice with Int32.MaxValue and get an out-of-bounds error.
+                if startOfBatch < changes.Length && nextToProcess <> Int32.MaxValue then
+                    processBatch ()
 
             else
                 // Framework is not handling focus; just pass all keystrokes through.
@@ -167,19 +171,19 @@ module App =
                 | RerenderRequest.NewBatch truncatedAt ->
                     if truncatedAt < 0 then
                         failwith "bad index from processing result: was negative"
-                    elif truncatedAt >= changes.Length - 1 then
+                    elif truncatedAt >= changes.Length - startOfBatch - 1 then
                         startOfBatch <- changes.Length
                     else
-                        startOfBatch <- truncatedAt + 1
+                        startOfBatch <- startOfBatch + truncatedAt + 1
                 | RerenderRequest.Rerender truncatedAt ->
                     forceRerender <- true
 
                     if truncatedAt < 0 then
                         failwith "bad index from processing result: was negative"
-                    elif truncatedAt >= changes.Length - 1 then
+                    elif truncatedAt >= changes.Length - startOfBatch - 1 then
                         startOfBatch <- changes.Length
                     else
-                        startOfBatch <- truncatedAt + 1
+                        startOfBatch <- startOfBatch + truncatedAt + 1
 
             if forceRerender || renderState.VdomContext.IsDirty || currentState <> startState then
                 Render.oneStep renderState currentState (vdom renderState.VdomContext)
