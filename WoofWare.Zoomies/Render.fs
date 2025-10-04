@@ -80,7 +80,7 @@ module RenderState =
     let advanceFocus (s : RenderState) : unit =
         if s.FocusableKeys.Count = 0 then
             // nothing to do, nothing can ever have focus
-            ()
+            s.FocusedKey <- None
         else
 
         match s.FocusedKey with
@@ -403,7 +403,7 @@ module Render =
                     match previousRender with
                     | Some previousRender when previousRender.Bounds = bounds ->
                         match previousRender.VDomSource with
-                        | KeylessVdom.Keyed (KeyedVdom.WithKey (prevKey, prevVdom)) when prevKey = nodeKey ->
+                        | KeylessVdom.Keyed (KeyedVdom.WithKey (prevKey, _)) when prevKey = nodeKey ->
                             Some previousRender.OverlaidChildren.[0]
                         | _ -> None
                     | _ -> None
@@ -419,10 +419,8 @@ module Render =
                     VDomSource = keyedVdom |> KeylessVdom.Keyed
                     Self =
                         match rendered.Self with
-                        | KeylessVdom.Keyed keyedVdom -> failwith "logic error: we are keyed"
+                        | KeylessVdom.Keyed _ -> failwith "logic error: we are keyed"
                         | KeylessVdom.Unkeyed self -> KeyedVdom.WithKey (nodeKey, self) |> KeylessVdom.Keyed
-                    // TODO: test what happens in a UI where a focused element has a key on one tick, then on the next
-                    // tick we reassign that key to a totally different element that can, or can't be focused (two different tests)
                 }
 
         | Unkeyed (unkeyedVdom, teq) ->
@@ -455,7 +453,7 @@ module Render =
                 match previousRender with
                 | Some previousRender when previousRender.Bounds = bounds ->
                     match previousRender.VDomSource with
-                    | KeylessVdom.Unkeyed (UnkeyedVdom.PanelSplit (prevDir, prevProportion, prevChild1, prevChild2)) when
+                    | KeylessVdom.Unkeyed (UnkeyedVdom.PanelSplit (prevDir, prevProportion, _, _)) when
                         proportion = prevProportion && prevDir = dir
                         ->
                         let bounds1, bounds2 = splitBounds dir proportion bounds
@@ -465,7 +463,7 @@ module Render =
                                 dirty
                                 keyToNode
                                 focusableKeys
-                                (Some (previousRender.OverlaidChildren.[0]))
+                                (Some previousRender.OverlaidChildren.[0])
                                 bounds1
                                 child1
 
@@ -474,7 +472,7 @@ module Render =
                                 dirty
                                 keyToNode
                                 focusableKeys
-                                (Some (previousRender.OverlaidChildren.[1]))
+                                (Some previousRender.OverlaidChildren.[1])
                                 bounds2
                                 child2
 
@@ -528,14 +526,14 @@ module Render =
                 match previousRender with
                 | Some previousRender when previousRender.Bounds = bounds ->
                     match previousRender.VDomSource with
-                    | KeylessVdom.Unkeyed (UnkeyedVdom.Bordered prevInner) ->
+                    | KeylessVdom.Unkeyed (UnkeyedVdom.Bordered _) ->
                         let children =
                             [
                                 layoutEither
                                     dirty
                                     keyToNode
                                     focusableKeys
-                                    (Some (previousRender.OverlaidChildren.[0]))
+                                    (Some previousRender.OverlaidChildren.[0])
                                     (shrinkBounds bounds)
                                     child
                             ]
@@ -572,7 +570,7 @@ module Render =
                     Self =
                         match child.Self with
                         | KeylessVdom.Keyed child -> UnkeyedVdom.Focusable child |> KeylessVdom.Unkeyed
-                        | KeylessVdom.Unkeyed child -> failwith "logic error: child is keyed"
+                        | KeylessVdom.Unkeyed _ -> failwith "logic error: child is keyed"
                 }
 
     let writeBuffer (dirty : TerminalCell voption[,]) : TerminalOp seq =

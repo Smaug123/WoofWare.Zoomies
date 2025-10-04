@@ -207,15 +207,29 @@ type Vdom =
         // TODO: centre this text horizontally so it's next to the checkbox
         Vdom.panelSplitAbsolute (Direction.Vertical, 3, Vdom.checkbox isFocused isChecked, Vdom.textContent false label)
 
-    /// Attach a stable key to a VDOM node
+    /// Attach a key to a VDOM node, effectively giving that node a name.
+    ///
+    /// You're free to arbitrarily reshuffle keys, reassign them to new nodes, etc., between renders.
+    /// Doing so will invalidate the layout cache, but will not incur any repainting unless you also changed how
+    /// something displays.
+    ///
+    /// The WoofWare.Zoomies framework will treat this key as being stable across frames for the purpose of e.g.
+    /// automatic focus tracking. For example, if a node with key "foo" has focus on one frame, and on the next frame
+    /// a different node has key "foo", focus will be on that different node.
+    ///
+    /// It's up to you to ensure that at most one component has a given key within a single Vdom.
     static member withKey (key : NodeKey) (vdom : Vdom<'bounds, Unkeyed>) : Vdom<'bounds, Keyed> =
         match vdom with
         | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
         | Unkeyed (vdom, _) -> Vdom.Keyed (KeyedVdom.WithKey (key, vdom), Teq.refl)
 
-    /// Mark a keyed node as focusable
-    /// The Focusable constructor itself has keyedness 'keyed, so it can be used polymorphically
-    static member focusable (vdom : Vdom<'bounds, Keyed>) : Vdom<'bounds, Unkeyed> =
+    /// Mark a keyed node as focusable, for the purposes of the automatic focus tracking system.
+    ///
+    /// When the user hits TAB while automatic focus tracking is enabled, the WoofWare.Zoomies framework will
+    /// cycle through tree nodes which are `focusable`.
+    ///
+    /// This annotation does nothing if WoofWare.Zoomies is running with automatic focus tracking turned off.
+    static member withFocusTracking (vdom : Vdom<'bounds, Keyed>) : Vdom<'bounds, Unkeyed> =
         match vdom with
         | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
         | Keyed (vdom, _) -> Vdom.Unkeyed (UnkeyedVdom.Focusable vdom, Teq.refl)

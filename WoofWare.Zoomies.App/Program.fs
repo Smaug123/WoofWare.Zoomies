@@ -87,7 +87,7 @@ module FileBrowser =
             let checkbox =
                 Vdom.checkbox (currentFocus = Some checkboxKey) (not state.ShowingFile1)
                 |> Vdom.withKey checkboxKey
-                |> Vdom.focusable
+                |> Vdom.withFocusTracking
 
             Vdom.panelSplitAbsolute (Direction.Vertical, 3, checkbox, Vdom.textContent false label)
             |> Vdom.bordered
