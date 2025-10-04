@@ -43,7 +43,7 @@ module FileBrowser =
 
     let processWorld (postEvent : (CancellationToken -> Task<AppEvent>) -> unit) =
         { new WorldProcessor<AppEvent, State> with
-            member _.ProcessWorld changes prevVdom state =
+            member _.ProcessWorld (changes, prevVdom, state) =
                 for change in changes do
                     match change with
                     | WorldStateChange.MouseEvent _ ->

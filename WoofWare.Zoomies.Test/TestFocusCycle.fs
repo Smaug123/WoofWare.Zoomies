@@ -1,6 +1,7 @@
 namespace WoofWare.Zoomies.Test
 
 open System
+open System.Text
 open NUnit.Framework
 open WoofWare.Expect
 open WoofWare.Zoomies
@@ -41,18 +42,20 @@ module TestFocusCycle =
 
             let processWorld =
                 { new WorldProcessor<_, _> with
-                    member _.ProcessWorld inputs _ _ =
-                        inputs
-                        |> Seq.map (fun s ->
+                    member _.ProcessWorld (inputs, _, _) =
+                        let sb = StringBuilder ()
+
+                        for s in inputs do
                             match s with
                             | WorldStateChange.Keystroke c -> string c.Key
                             | WorldStateChange.MouseEvent _ -> failwith "no mouse events"
                             | WorldStateChange.ApplicationEvent () -> failwith "no app events"
                             | WorldStateChange.KeyboardEvent _ -> failwith "no keyboard events"
                             | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
-                        )
-                        |> String.concat "\n"
-                        |> failwithf "should not call: %s"
+                            |> sb.AppendLine
+                            |> ignore<StringBuilder>
+
+                        failwithf $"should not call: %O{sb}"
                 }
 
             App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom
