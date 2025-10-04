@@ -102,51 +102,20 @@ module TestBatchProcessing =
             return currentState |> Seq.toList
         }
 
-    [<Test>]
-    let ``batch processing with framework focus handles all events in order`` () =
-        let property (keyChars : char list) =
+    [<TestCase true>]
+    [<TestCase false>]
+    let ``batch processing handles all events in order`` (frameworkHandleFocus : bool) =
+        let property (batchSize1 : int) (batchSizes : int list) (keyChars : char list) =
             task {
-                // Filter out tab characters to avoid focus cycling interference
-                let keyChars = keyChars |> List.filter (fun c -> c <> '\t')
+                let batchSizes = (batchSize1 :: batchSizes) |> List.map (fun i -> abs i + 1)
 
-                if List.isEmpty keyChars then
-                    return ()
-                else
-                    let keystrokes =
+                let keyChars =
+                    if frameworkHandleFocus then
+                        // Filter out tab characters to avoid focus cycling interference
+                        keyChars |> List.filter (fun c -> c <> '\t')
+                    else
                         keyChars
-                        |> List.map (fun c -> ConsoleKeyInfo (c, ConsoleKey.NoName, false, false, false))
 
-                    let! result = processWithBatchStrategy true keystrokes [ 1 ; 2 ; 3 ]
-                    let expected = keyChars
-
-                    return result |> shouldEqual expected
-            }
-
-        Check.One (propConfig, property)
-
-    [<Test>]
-    let ``batch processing without framework focus handles all events in order`` () =
-        let property (keyChars : char list) =
-            task {
-                if List.isEmpty keyChars then
-                    return ()
-                else
-                    let keystrokes =
-                        keyChars
-                        |> List.map (fun c -> ConsoleKeyInfo (c, ConsoleKey.NoName, false, false, false))
-
-                    let! result = processWithBatchStrategy false keystrokes [ 1 ; 2 ; 3 ]
-                    let expected = keyChars
-
-                    return result |> shouldEqual expected
-            }
-
-        Check.One (propConfig, property)
-
-    [<Test>]
-    let ``batch processing with tabs and framework focus handles all events correctly`` () =
-        let property (keyChars : char list) =
-            task {
                 if List.isEmpty keyChars then
                     return ()
                 else
@@ -154,24 +123,29 @@ module TestBatchProcessing =
                         keyChars
                         |> List.map (fun c ->
                             if c = '\t' then
-                                ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false)
+                                ConsoleKeyInfo (c, ConsoleKey.Tab, false, false, false)
                             else
                                 ConsoleKeyInfo (c, ConsoleKey.NoName, false, false, false)
                         )
 
-                    let! result = processWithBatchStrategy true keystrokes [ 1 ; 2 ; 3 ]
+                    let! result = processWithBatchStrategy frameworkHandleFocus keystrokes batchSizes
 
-                    // Tabs are handled by the framework when haveFrameworkHandleFocus is true,
-                    // so they won't appear in the processed list
-                    let expected = keyChars |> List.filter (fun c -> c <> '\t')
+                    let expected =
+                        if frameworkHandleFocus then
+                            // Tabs are handled by the framework when haveFrameworkHandleFocus is true,
+                            // so they won't appear in the processed list
+                            keyChars |> List.filter (fun c -> c <> '\t')
+                        else
+                            keyChars
 
                     return result |> shouldEqual expected
             }
 
         Check.One (propConfig, property)
 
-    [<Test>]
-    let ``single event processing eventually processes everything`` () =
+    [<TestCase true>]
+    [<TestCase false>]
+    let ``single event processing eventually processes everything`` (frameworkHandlesFocus : bool) =
         // Edge case: always process exactly one event per batch
         let property (keyChars : char list) =
             task {
@@ -184,7 +158,7 @@ module TestBatchProcessing =
                         keyChars
                         |> List.map (fun c -> ConsoleKeyInfo (c, ConsoleKey.NoName, false, false, false))
 
-                    let! result = processWithBatchStrategy true keystrokes [ 1 ]
+                    let! result = processWithBatchStrategy frameworkHandlesFocus keystrokes [ 1 ]
                     let expected = keyChars
 
                     return result |> shouldEqual expected
@@ -192,8 +166,9 @@ module TestBatchProcessing =
 
         Check.One (propConfig, property)
 
-    [<Test>]
-    let ``large batch processing eventually processes everything`` () =
+    [<TestCase true>]
+    [<TestCase false>]
+    let ``large batch processing eventually processes everything`` (frameworkHandlesFocus : bool) =
         // Edge case: try to process all events in one go (but framework may split)
         let property (keyChars : char list) =
             task {
@@ -206,7 +181,7 @@ module TestBatchProcessing =
                         keyChars
                         |> List.map (fun c -> ConsoleKeyInfo (c, ConsoleKey.NoName, false, false, false))
 
-                    let! result = processWithBatchStrategy true keystrokes [ 1000 ]
+                    let! result = processWithBatchStrategy frameworkHandlesFocus keystrokes [ 1000 ]
                     let expected = keyChars
 
                     return result |> shouldEqual expected
