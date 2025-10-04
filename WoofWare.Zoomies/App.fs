@@ -21,6 +21,8 @@ module App =
         (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
         : 'state
         =
+        let startState = state
+
         listener.RefreshExternal ()
 
         let changes = listener.Changes ()
@@ -80,7 +82,9 @@ module App =
                 else
                     processWorld.ProcessWorld (changes.AsSpan (), renderState.VdomContext, state)
 
-        Render.oneStep renderState newState (vdom renderState.VdomContext)
+        if renderState.VdomContext.IsDirty || newState <> startState then
+            Render.oneStep renderState newState (vdom renderState.VdomContext)
+            VdomContext.markClean renderState.VdomContext
 
         newState
 
@@ -90,7 +94,7 @@ module App =
     /// Cancel the CancellationToken to cause the render loop to quit and to unhook all these state listeners.
     ///
     /// The resulting Task faults if any user logic raises an exception.
-    let run'<'state, 'appEvent>
+    let run'<'state, 'appEvent when 'state : equality>
         (terminate : CancellationToken)
         (console : IConsole)
         (ctrlC : CtrlCHandler)
@@ -168,7 +172,7 @@ module App =
 
         complete.Task
 
-    let run<'state, 'appEvent>
+    let run<'state, 'appEvent when 'state : equality>
         (state : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
         (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'state>)

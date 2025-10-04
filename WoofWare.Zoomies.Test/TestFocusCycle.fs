@@ -437,16 +437,18 @@ module TestFocusCycle =
 
             let processWorld =
                 { new WorldProcessor<_, bool> with
-                    member _.ProcessWorld (inputs, _, state) =
+                    member _.ProcessWorld (inputs, _, renderCheckbox1) =
+                        let mutable renderCheckbox1 = renderCheckbox1
+
                         for s in inputs do
                             match s with
-                            | WorldStateChange.Keystroke _ -> ()
+                            | WorldStateChange.Keystroke _ -> renderCheckbox1 <- not renderCheckbox1
                             | WorldStateChange.MouseEvent _ -> failwith "no mouse events"
                             | WorldStateChange.ApplicationEvent () -> failwith "no app events"
                             | WorldStateChange.KeyboardEvent _ -> failwith "no keyboard events"
                             | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
 
-                        state
+                        renderCheckbox1
                 }
 
             let renderState = RenderState.make' console
@@ -479,8 +481,8 @@ module TestFocusCycle =
                 return ConsoleHarness.toString terminal
             }
 
-            // Now reassign the key to a different element
-            renderCheckbox1 <- false
+            // Now reassign the key to a different element. Trigger a rerender:
+            world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
             renderCheckbox1 <-
                 App.pumpOnce worldFreezer renderCheckbox1 haveFrameworkHandleFocus renderState processWorld vdom
