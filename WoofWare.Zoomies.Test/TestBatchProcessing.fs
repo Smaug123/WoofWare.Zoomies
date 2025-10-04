@@ -372,3 +372,101 @@ module TestBatchProcessing =
             // Focus should stay at checkbox1 (framework no longer managing it)
             currentState.LastFocusedKey |> shouldEqual (Some (NodeKey.make "checkbox1"))
         }
+
+    [<Test>]
+    let ``Rerender forces vdom evaluation and reprocesses remaining batch`` () =
+        let property (batchSize1 : int) (batchSizes : int list) =
+            task {
+                // Generate batch sizes - how many events we process before requesting rerender
+                let batchSizes =
+                    (batchSize1 :: batchSizes)
+                    |> List.map (fun i -> (abs i % 5) + 1) // Between 1 and 5 events per batch
+                    |> List.truncate 10
+
+                let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
+                let world = MockWorld.make ()
+
+                use worldFreezer =
+                    WorldFreezer.listen'
+                        UnrecognisedEscapeCodeBehaviour.Throw
+                        StopwatchMock.Empty
+                        world.KeyAvailable
+                        world.ReadKey
+
+                let mutable vdomRenderCount = 0
+                let mutable batchIndex = 0
+
+                let processWorld =
+                    { new WorldProcessor<obj, char list> with
+                        member _.ProcessWorld (inputs, _vdomContext, state) =
+                            // Process only batchSize events from this batch, then request Rerender
+                            let batchSize =
+                                if batchIndex < batchSizes.Length then
+                                    batchSizes.[batchIndex]
+                                else
+                                    inputs.Length // Process everything
+
+                            batchIndex <- batchIndex + 1
+
+                            let toProcess = min batchSize inputs.Length
+                            let mutable newState = state
+
+                            // Process the events
+                            for i = 0 to toProcess - 1 do
+                                match inputs.[i] with
+                                | WorldStateChange.Keystroke c -> newState <- newState @ [ c.KeyChar ]
+                                | _ -> ()
+
+                            if toProcess < inputs.Length then
+                                // We didn't process everything, request Rerender to split the batch
+                                {
+                                    NewState = newState
+                                    RequestRerender = RerenderRequest.Rerender (toProcess - 1)
+                                }
+                            else
+                                ProcessWorldResult.make newState
+                    }
+
+                let vdom (_vdomContext : VdomContext) (_state : char list) =
+                    vdomRenderCount <- vdomRenderCount + 1
+                    Vdom.textContent false ""
+
+                let renderState = RenderState.make' console
+                let mutable currentState = []
+
+                // Initial render
+                currentState <- App.pumpOnce worldFreezer currentState (fun _ -> false) renderState processWorld vdom
+
+                let initialRenderCount = vdomRenderCount
+
+                // Send a batch of keystrokes
+                let totalKeystrokes = 10
+
+                for i in 0 .. totalKeystrokes - 1 do
+                    world.SendKey (ConsoleKeyInfo (char (int 'a' + i), ConsoleKey.NoName, false, false, false))
+
+                currentState <- App.pumpOnce worldFreezer currentState (fun _ -> false) renderState processWorld vdom
+
+                // Verify all events were processed in order
+                let expectedChars = [ 'a' .. char (int 'a' + totalKeystrokes - 1) ]
+                currentState |> shouldEqual expectedChars
+
+                // Verify that vdom was rendered for each Rerender request
+                // Count how many times we split the batch (didn't process everything)
+                let mutable expectedSplits = 0
+                let mutable remaining = totalKeystrokes
+
+                for size in batchSizes do
+                    if remaining > size then
+                        expectedSplits <- expectedSplits + 1
+                        remaining <- remaining - size
+                    else
+                        remaining <- 0
+
+                // Expected renders = initial + state changes (1 for the pump) + rerender requests (splits)
+                let expectedRenderCount = initialRenderCount + 1 + expectedSplits
+
+                return vdomRenderCount |> shouldEqual expectedRenderCount
+            }
+
+        Check.One (propConfig, property)
