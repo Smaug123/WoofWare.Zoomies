@@ -625,3 +625,98 @@ This is focusable text                                                          
                 return ConsoleHarness.toString terminal
             }
         }
+
+    [<Test>]
+    let ``PanelSplit does not repaint background when only child changes`` () =
+        let terminalOps = ResizeArray<TerminalOp> ()
+
+        let console =
+            { IConsole.defaultForTests with
+                Execute = fun x -> terminalOps.Add x
+            }
+
+        let renderState = RenderState.make' console
+
+        // Create vdom with a PanelSplit where a bordered child changes
+        // Bordered doesn't repaint its entire area, so we can detect if PanelSplit is adding extra repaints
+        let vdom (text : string) =
+            let left = Vdom.textContent false text |> Vdom.bordered
+            let right = Vdom.textContent false "static" |> Vdom.bordered
+            Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, left, right)
+
+        // First render
+        Render.oneStep renderState () (fun _ -> vdom "initial")
+
+        // Clear ops from first render
+        terminalOps.Clear ()
+
+        // Change only the left child's text content
+        Render.oneStep renderState () (fun _ -> vdom "changed")
+
+        // Collect all the cells that were written to
+        let writtenCells = ResizeArray<int * int> ()
+
+        for i = 0 to terminalOps.Count - 1 do
+            match terminalOps.[i] with
+            | TerminalOp.MoveCursor (x, y) ->
+                if i + 1 < terminalOps.Count then
+                    match terminalOps.[i + 1] with
+                    | TerminalOp.WriteChar _ -> writtenCells.Add (x, y)
+                    | _ -> ()
+            | _ -> ()
+
+        // The left bordered text changed
+        // Without the fix: PanelSplit would repaint 800 cells (entire screen background)
+        //                  PLUS the left bordered panel would repaint (~400 cells for text + border)
+        //                  Total: ~1200 cells
+        // With the fix: Only the left bordered panel repaints (~400 cells for text area + no border repaint from earlier fix)
+        // So we should see much less than 800 cells (half screen)
+        writtenCells.Count |> shouldBeSmallerThan 500
+
+    [<Test>]
+    let ``Bordered does not repaint border when only child changes`` () =
+        let terminalOps = ResizeArray<TerminalOp> ()
+
+        let console =
+            { IConsole.defaultForTests with
+                Execute = fun x -> terminalOps.Add x
+            }
+
+        let renderState = RenderState.make' console
+
+        // Create vdom with bordered text that can change
+        let vdom (content : string) =
+            Vdom.textContent false content |> Vdom.bordered
+
+        // First render
+        Render.oneStep renderState () (fun _ -> vdom "initial text")
+
+        // Clear ops from first render
+        terminalOps.Clear ()
+
+        // Change only the text content inside the border
+        Render.oneStep renderState () (fun _ -> vdom "changed text")
+
+        // Collect all the cells that were written to
+        let writtenCells = ResizeArray<int * int> ()
+
+        for i = 0 to terminalOps.Count - 1 do
+            match terminalOps.[i] with
+            | TerminalOp.MoveCursor (x, y) ->
+                if i + 1 < terminalOps.Count then
+                    match terminalOps.[i + 1] with
+                    | TerminalOp.WriteChar _ -> writtenCells.Add (x, y)
+                    | _ -> ()
+            | _ -> ()
+
+        // The text content changed, so we should write to text cells
+        // But we should NOT repaint the border (which would be the perimeter cells)
+        // Border cells are at: x=0, x=79, y=0, y=9 for an 80x10 terminal
+
+        let borderCells =
+            writtenCells
+            |> Seq.filter (fun (x, y) -> x = 0 || x = 79 || y = 0 || y = 9)
+            |> Seq.length
+
+        // We should not have written to any border cells
+        borderCells |> shouldEqual 0
