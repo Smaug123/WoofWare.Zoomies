@@ -470,3 +470,188 @@ module TestBatchProcessing =
             }
 
         Check.One (propConfig, property)
+
+    [<Test>]
+    let ``index comparison bug - NewBatch with Tab-induced split`` () =
+        task {
+            // This test targets the bug where lastProcessed (relative to slice) was compared
+            // against nextToProcess - 1 (absolute) instead of (nextToProcess - startOfBatch) - 1 (relative)
+
+            let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let mutable processCallCount = 0
+
+            let processWorld =
+                { new WorldProcessor<obj, char list> with
+                    member _.ProcessWorld (inputs, _vdomContext, state) =
+                        processCallCount <- processCallCount + 1
+
+                        // On first call: process 2 events, then request NewBatch
+                        // This sets up the scenario where we have a Tab after some processed events
+                        if processCallCount = 1 then
+                            Assert.That (inputs.Length, Is.EqualTo (2), "First batch should have 2 events (before Tab)")
+
+                            let mutable newState = state
+
+                            for i = 0 to inputs.Length - 1 do
+                                match inputs.[i] with
+                                | WorldStateChange.Keystroke c -> newState <- newState @ [ c.KeyChar ]
+                                | _ -> ()
+
+                            // Return NewBatch saying we processed index 0 (first element only)
+                            // With the bug: compares 0 >= 2 - 1, which is false
+                            // Without bug: compares 0 >= (2 - 0) - 1 = 1, which is false
+                            // So both would split at startOfBatch + 0 + 1 = 1
+                            // Let's process everything to see the Tab handling
+                            {
+                                NewState = newState
+                                RequestRerender = RerenderRequest.NewBatch (inputs.Length - 1)
+                            }
+                        else
+                            // Process remaining events normally
+                            let mutable newState = state
+
+                            for i = 0 to inputs.Length - 1 do
+                                match inputs.[i] with
+                                | WorldStateChange.Keystroke c -> newState <- newState @ [ c.KeyChar ]
+                                | _ -> ()
+
+                            ProcessWorldResult.make newState
+                }
+
+            let vdom (vdomContext : VdomContext) (_state : char list) =
+                let checkbox =
+                    Vdom.checkbox (VdomContext.focusedKey vdomContext = Some (NodeKey.make "cb")) false
+                    |> Vdom.withKey (NodeKey.make "cb")
+                    |> Vdom.withFocusTracking
+
+                checkbox
+
+            let renderState = RenderState.make' console
+            let mutable currentState = []
+
+            // Initial render
+            currentState <- App.pumpOnce worldFreezer currentState (fun _ -> true) renderState processWorld vdom
+
+            // Send: 'a', 'b', Tab, 'c'
+            // The Tab should cause a split after 'b'
+            world.SendKey (ConsoleKeyInfo ('a', ConsoleKey.NoName, false, false, false))
+            world.SendKey (ConsoleKeyInfo ('b', ConsoleKey.NoName, false, false, false))
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+            world.SendKey (ConsoleKeyInfo ('c', ConsoleKey.NoName, false, false, false))
+
+            currentState <- App.pumpOnce worldFreezer currentState (fun _ -> true) renderState processWorld vdom
+
+            // We should have processed 'a', 'b', and 'c' (Tab is consumed by framework)
+            currentState |> shouldEqual [ 'a' ; 'b' ; 'c' ]
+        }
+
+    [<Test>]
+    let ``index comparison bug - Rerender after Tab split creates non-zero startOfBatch`` () =
+        task {
+            // More targeted test: the bug manifests when startOfBatch > 0 and we use NewBatch/Rerender
+            // Scenario:
+            // 1. Events: 'a' 'b' Tab 'c' 'd'
+            // 2. Framework splits at Tab, so first batch is ['a', 'b']
+            // 3. User processes ['a', 'b'] and returns Rerender(0) - "I processed just the first item"
+            // 4. Bug: compares 0 >= 2-1, decides we processed everything (WRONG!)
+            // 5. Correct: compares 0 >= (2-0)-1=1, sees we didn't process everything
+
+            let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let mutable processCallCount = 0
+            let mutable eventsSeenInCalls : int list = []
+
+            let processWorld =
+                { new WorldProcessor<obj, char list> with
+                    member _.ProcessWorld (inputs, _vdomContext, state) =
+                        processCallCount <- processCallCount + 1
+                        eventsSeenInCalls <- eventsSeenInCalls @ [ inputs.Length ]
+
+                        if processCallCount = 1 then
+                            // First call before Tab: should see 'a' and 'b'
+                            Assert.That (inputs.Length, Is.EqualTo (2), "Should see 2 events before Tab")
+
+                            // Process only first event, request Rerender
+                            let mutable newState = state
+
+                            match inputs.[0] with
+                            | WorldStateChange.Keystroke c -> newState <- newState @ [ c.KeyChar ]
+                            | _ -> ()
+
+                            {
+                                NewState = newState
+                                RequestRerender = RerenderRequest.Rerender 0 // Only processed index 0
+                            }
+                        elif processCallCount = 2 then
+                            // After rerender, we should get remaining 'b' from the batch
+                            Assert.That (inputs.Length, Is.EqualTo (1), "Should see 1 remaining event ('b')")
+
+                            let mutable newState = state
+
+                            match inputs.[0] with
+                            | WorldStateChange.Keystroke c -> newState <- newState @ [ c.KeyChar ]
+                            | _ -> ()
+
+                            ProcessWorldResult.make newState
+                        elif processCallCount = 3 then
+                            // After Tab is handled by framework, we get 'c' and 'd'
+                            Assert.That (inputs.Length, Is.EqualTo (2), "Should see 2 events after Tab")
+
+                            let mutable newState = state
+
+                            for i = 0 to inputs.Length - 1 do
+                                match inputs.[i] with
+                                | WorldStateChange.Keystroke c -> newState <- newState @ [ c.KeyChar ]
+                                | _ -> ()
+
+                            ProcessWorldResult.make newState
+                        else
+                            failwith $"Unexpected call count: {processCallCount}"
+                }
+
+            let vdom (vdomContext : VdomContext) (_state : char list) =
+                let checkbox =
+                    Vdom.checkbox (VdomContext.focusedKey vdomContext = Some (NodeKey.make "cb")) false
+                    |> Vdom.withKey (NodeKey.make "cb")
+                    |> Vdom.withFocusTracking
+
+                checkbox
+
+            let renderState = RenderState.make' console
+            let mutable currentState = []
+
+            // Initial render
+            currentState <- App.pumpOnce worldFreezer currentState (fun _ -> true) renderState processWorld vdom
+
+            // Send: 'a', 'b', Tab, 'c', 'd'
+            world.SendKey (ConsoleKeyInfo ('a', ConsoleKey.NoName, false, false, false))
+            world.SendKey (ConsoleKeyInfo ('b', ConsoleKey.NoName, false, false, false))
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+            world.SendKey (ConsoleKeyInfo ('c', ConsoleKey.NoName, false, false, false))
+            world.SendKey (ConsoleKeyInfo ('d', ConsoleKey.NoName, false, false, false))
+
+            currentState <- App.pumpOnce worldFreezer currentState (fun _ -> true) renderState processWorld vdom
+
+            // Verify we saw the expected sequence of batch sizes
+            eventsSeenInCalls |> shouldEqual [ 2 ; 1 ; 2 ] // [a,b], [b], [c,d]
+
+            // We should have processed all characters (Tab consumed by framework)
+            currentState |> shouldEqual [ 'a' ; 'b' ; 'c' ; 'd' ]
+        }
