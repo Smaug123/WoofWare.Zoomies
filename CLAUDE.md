@@ -30,9 +30,9 @@ It stores state internally for efficiency, but as far as the end-user programmer
 
 ## Code Quality
 - `dotnet fantomas .` - Format F# code using Fantomas
-- `./analyzers/run.sh` - Run F# analyzers. These generally don't fail with an exit code; they'll print their output, though.
+- `./analyzers/run.sh` - Run F# analyzers. These generally don't fail with an exit code; they'll print their output, though. Treat warnings as errors (this is not actually easy to do with the current analyzer tool, otherwise I'd have made the analyzer script fail on warnings).
 
-Always format with Fantomas before committing.
+Always format with Fantomas before committing, and run the analyzers with `./analyzers/run.sh`.
 
 # Architecture
 
@@ -128,6 +128,11 @@ It's almost always correct to use `ResizeArray` rather than a mutable F# `list`;
 
 You can `use foo = someIAsyncDisposable` from within the `task { ... }` computation expression.
 NUnit is happy to have tests be `Task`s, and FsCheck is happy to have properties be functions producing `Task`s; don't block inside tests, but use the appropriate `task` computation expression.
+
+## Object.ReferenceEquals
+
+There's an analyzer banning `Object.ReferenceEquals` because it's type-unsafe and does the wrong thing silently on structs.
+We've defined `Object.referenceEquals`, a type-safe version that will fail to compile if used with structs; use this function instead.
 
 ## FsCheck properties
 
