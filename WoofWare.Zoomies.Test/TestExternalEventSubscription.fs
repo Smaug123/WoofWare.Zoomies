@@ -100,7 +100,7 @@ module TestExternalEventSubscription =
 
                             | _ -> ()
 
-                        newState
+                        ProcessWorldResult.make newState
                 }
 
             let vdom (_ : VdomContext) (state : TimerState) =
