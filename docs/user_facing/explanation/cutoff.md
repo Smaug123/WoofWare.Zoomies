@@ -18,7 +18,7 @@ One upshot of this is that, for example, if you simply discard all the keystroke
 
 ## What it means for "automatic state tracking to have changed"
 
-If you've opted into WoofWare.Zoomies's [automatic focus management](./automatic-focus.md), for example, then the user pressing the Tab key may cause a different element to become focused.
+If you've opted into WoofWare.Zoomies's [automatic focus management](../how_to/automatic-focus.md), for example, then the user pressing the Tab key may cause a different element to become focused.
 If that happens, you'll be asked to recompute the Vdom.
 
 ## What it means for "the terminal to have changed"
