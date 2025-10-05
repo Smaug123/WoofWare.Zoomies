@@ -30,9 +30,9 @@ It stores state internally for efficiency, but as far as the end-user programmer
 
 ## Code Quality
 - `dotnet fantomas .` - Format F# code using Fantomas
-- `./analyzers/run.sh` - Run F# analyzers. These generally don't fail with an exit code; they'll print their output, though.
+- `./analyzers/run.sh` - Run F# analyzers. These generally don't fail with an exit code; they'll print their output, though. Treat warnings as errors (this is not actually easy to do with the current analyzer tool, otherwise I'd have made the analyzer script fail on warnings).
 
-Always format with Fantomas before committing.
+Always format with Fantomas before committing, and run the analyzers with `./analyzers/run.sh`.
 
 # Architecture
 
