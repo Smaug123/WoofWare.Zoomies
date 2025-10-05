@@ -380,10 +380,6 @@ module Render =
         (child2 : KeylessVdom<_>)
         (vdom : UnkeyedVdom<DesiredBounds>)
         =
-        for y = 0 to bounds.Height - 1 do
-            for x = 0 to bounds.Width - 1 do
-                setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
-
         let bounds1, bounds2 = splitBounds dir proportion bounds
 
         let rendered1 =
