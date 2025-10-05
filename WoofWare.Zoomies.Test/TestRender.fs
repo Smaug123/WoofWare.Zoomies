@@ -630,9 +630,13 @@ This is focusable text                                                          
     let ``PanelSplit does not repaint background when only child changes`` () =
         let terminalOps = ResizeArray<TerminalOp> ()
 
+        let panelWidth = 15
+
         let console =
             { IConsole.defaultForTests with
                 Execute = fun x -> terminalOps.Add x
+                WindowWidth = fun _ -> 2 * panelWidth
+                WindowHeight = fun _ -> 3
             }
 
         let renderState = RenderState.make' console
@@ -654,32 +658,39 @@ This is focusable text                                                          
         Render.oneStep renderState () (fun _ -> vdom "changed")
 
         // Collect all the cells that were written to
-        let writtenCells = ResizeArray<int * int> ()
+        let writtenCells =
+            let result = ResizeArray<int * int> ()
 
-        for i = 0 to terminalOps.Count - 1 do
-            match terminalOps.[i] with
-            | TerminalOp.MoveCursor (x, y) ->
-                if i + 1 < terminalOps.Count then
-                    match terminalOps.[i + 1] with
-                    | TerminalOp.WriteChar _ -> writtenCells.Add (x, y)
-                    | _ -> ()
-            | _ -> ()
+            for i = 0 to terminalOps.Count - 1 do
+                match terminalOps.[i] with
+                | TerminalOp.MoveCursor (x, y) ->
+                    if i + 1 < terminalOps.Count then
+                        match terminalOps.[i + 1] with
+                        | TerminalOp.WriteChar _ -> result.Add (x, y)
+                        | _ -> ()
+                | _ -> ()
 
-        // The left bordered text changed
-        // Without the fix: PanelSplit would repaint 800 cells (entire screen background)
-        //                  PLUS the left bordered panel would repaint (~400 cells for text + border)
-        //                  Total: ~1200 cells
-        // With the fix: Only the left bordered panel repaints (~400 cells for text area + no border repaint from earlier fix)
-        // So we should see much less than 800 cells (half screen)
-        writtenCells.Count |> shouldBeSmallerThan 500
+            result
+
+        // The left bordered text changed, but not the right.
+        // (The border cells don't repaint, which means the entire first and last row don't repaint, nor do the leftmost
+        // and rightmost single cells of the middle row.)
+
+        // We could do better here by diffing the text so we don't repaint the unchanged characters;
+        // there's a TODO for that in the code.
+        writtenCells.Count |> shouldEqual (panelWidth - 2)
 
     [<Test>]
     let ``Bordered does not repaint border when only child changes`` () =
         let terminalOps = ResizeArray<TerminalOp> ()
 
+        let panelWidth = 20
+
         let console =
             { IConsole.defaultForTests with
                 Execute = fun x -> terminalOps.Add x
+                WindowWidth = fun _ -> panelWidth
+                WindowHeight = fun _ -> 3
             }
 
         let renderState = RenderState.make' console
@@ -711,12 +722,16 @@ This is focusable text                                                          
 
         // The text content changed, so we should write to text cells
         // But we should NOT repaint the border (which would be the perimeter cells)
-        // Border cells are at: x=0, x=79, y=0, y=9 for an 80x10 terminal
 
         let borderCells =
             writtenCells
-            |> Seq.filter (fun (x, y) -> x = 0 || x = 79 || y = 0 || y = 9)
+            |> Seq.filter (fun (x, y) -> x = 0 || x = panelWidth - 1 || y = 0 || y = 2)
             |> Seq.length
 
         // We should not have written to any border cells
         borderCells |> shouldEqual 0
+
+        // And we changed the right number of cells: just the middle row, because that's the one that doesn't contain
+        // the border.
+        // Again, this will get smaller when we've implemented a more efficient text render with diffing.
+        writtenCells.Count |> shouldEqual (panelWidth - 2)
