@@ -4,19 +4,18 @@ open System
 open System.Threading
 open System.Threading.Tasks
 
+[<Struct>]
 type RerenderRequest =
     /// Don't request a rerender; just let me continue processing the current batch of events.
     | Continue
-    /// Request a rerender: effectively truncate the current batch of events and split the rest of the batch into a
-    /// new iteration of the render loop.
+    /// Truncate the current batch of requests, rerender, and split the rest of the batch into a new iteration of the
+    /// render loop.
     /// The index is the last element you processed.
     /// For example, to say you've processed only one element of the batch, you'd return 0 here.
-    | NewBatch of truncationIndex : int
-    /// Like NewBatch ("truncate the current batch of requests"), but additionally requests that your vdom be
-    /// unconditionally reevaluated too. This may be useful to work around bugs in the cutoff logic, if you find any.
-    /// The index is the last element you processed.
-    /// For example, to say you've processed only one element of the batch, you'd return 0 here.
-    | Rerender of truncationIndex : int
+    ///
+    /// This feature is here in case you hit a bug in the early cutoff mechanism and need to tell the system to
+    /// rerender, but I can't think of any legitimate reason to use this otherwise.
+    | Rerender of indexOfLastProcessedEvent : int
 
 type ProcessWorldResult<'userState> =
     {
@@ -97,17 +96,6 @@ module App =
                         // Just proceed.
                         startOfBatch <- nextToProcess
                         nextToProcess <- Int32.MaxValue
-                    | RerenderRequest.NewBatch lastProcessed ->
-                        if lastProcessed >= nextToProcess - 1 then
-                            // Successfully processed everything up to but not including the tab.
-                            // Just proceed.
-                            startOfBatch <- nextToProcess
-                            nextToProcess <- Int32.MaxValue
-                        elif lastProcessed < 0 then
-                            failwith "bad index from processing result: was negative"
-                        else
-                            startOfBatch <- startOfBatch + lastProcessed + 1
-                            nextToProcess <- Int32.MaxValue
                     | RerenderRequest.Rerender lastProcessed ->
                         forceRerender <- true
 
@@ -170,13 +158,6 @@ module App =
 
                 match processResult.RequestRerender with
                 | RerenderRequest.Continue -> startOfBatch <- changes.Length
-                | RerenderRequest.NewBatch truncatedAt ->
-                    if truncatedAt < 0 then
-                        failwith "bad index from processing result: was negative"
-                    elif truncatedAt >= changes.Length - startOfBatch - 1 then
-                        startOfBatch <- changes.Length
-                    else
-                        startOfBatch <- startOfBatch + truncatedAt + 1
                 | RerenderRequest.Rerender truncatedAt ->
                     forceRerender <- true
 

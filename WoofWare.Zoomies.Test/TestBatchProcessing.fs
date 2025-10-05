@@ -73,7 +73,7 @@ module TestBatchProcessing =
                             // Request a new batch after processing 'toProcess' items
                             {
                                 NewState = newState
-                                RequestRerender = RerenderRequest.NewBatch (toProcess - 1)
+                                RequestRerender = RerenderRequest.Rerender (toProcess - 1)
                             }
                 }
 
