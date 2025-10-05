@@ -423,7 +423,7 @@ module Render =
 
                 // If child is unchanged (same reference), return the parent's previous render
                 match parentPreviousRender, childPreviousRender with
-                | Some parentPrev, Some childPrev when Object.ReferenceEquals (rendered, childPrev) -> parentPrev
+                | Some parentPrev, Some childPrev when Object.referenceEquals rendered childPrev -> parentPrev
                 | _ ->
                     {
                         Bounds = bounds
@@ -485,8 +485,8 @@ module Render =
 
                         // If both children are unchanged (same reference), return the previous render
                         if
-                            Object.ReferenceEquals (rendered1, previousRender.OverlaidChildren.[0])
-                            && Object.ReferenceEquals (rendered2, previousRender.OverlaidChildren.[1])
+                            Object.referenceEquals rendered1 previousRender.OverlaidChildren.[0]
+                            && Object.referenceEquals rendered2 previousRender.OverlaidChildren.[1]
                         then
                             previousRender
                         else
@@ -547,7 +547,7 @@ module Render =
                                 child
 
                         // If child is unchanged (same reference), return the previous render
-                        if Object.ReferenceEquals (renderedChild, previousRender.OverlaidChildren.[0]) then
+                        if Object.referenceEquals renderedChild previousRender.OverlaidChildren.[0] then
                             previousRender
                         else
                             {
@@ -589,7 +589,7 @@ module Render =
                 match previousRender with
                 | Some previousRender when
                     previousRender.OverlaidChildren.Length > 0
-                    && Object.ReferenceEquals (child, previousRender.OverlaidChildren.[0])
+                    && Object.referenceEquals child previousRender.OverlaidChildren.[0]
                     ->
                     previousRender
                 | _ ->
@@ -612,7 +612,7 @@ module Render =
         =
         // Early cutoff: if this node is the same reference as the previous one, nothing changed
         match previousNode with
-        | Some prev when Object.ReferenceEquals (prev, node) -> ()
+        | Some prev when Object.referenceEquals prev node -> ()
         | _ ->
 
         let bounds = node.Bounds
@@ -837,7 +837,7 @@ module Render =
 
         // Phase 2: Render to buffer (only if something changed)
         match renderState.PreviousVdom with
-        | Some prev when Object.ReferenceEquals (prev, layoutResult) ->
+        | Some prev when Object.referenceEquals prev layoutResult ->
             // Nothing changed, skip rendering
             ()
         | _ ->
