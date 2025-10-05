@@ -129,6 +129,11 @@ It's almost always correct to use `ResizeArray` rather than a mutable F# `list`;
 You can `use foo = someIAsyncDisposable` from within the `task { ... }` computation expression.
 NUnit is happy to have tests be `Task`s, and FsCheck is happy to have properties be functions producing `Task`s; don't block inside tests, but use the appropriate `task` computation expression.
 
+## Object.ReferenceEquals
+
+There's an analyzer banning `Object.ReferenceEquals` because it's type-unsafe and does the wrong thing silently on structs.
+We've defined `Object.referenceEquals`, a type-safe version that will fail to compile if used with structs; use this function instead.
+
 ## FsCheck properties
 
 Use unit-returning `actual |> shouldEqual expected` (with an `FsUnitTyped` assertion) rather than `actual = expected` as the conclusion of an FsCheck property.
