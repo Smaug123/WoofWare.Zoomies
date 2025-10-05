@@ -71,10 +71,8 @@ module TestBatchProcessing =
                             ProcessWorldResult.make newState
                         else
                             // Request a new batch after processing 'toProcess' items
-                            {
-                                NewState = newState
-                                RequestRerender = RerenderRequest.Rerender (toProcess - 1)
-                            }
+                            ProcessWorldResult.make newState
+                            |> ProcessWorldResult.withRerender (toProcess - 1)
                 }
 
             let vdom (_vdomContext : VdomContext) (_state : ImmutableArray<char>) = Vdom.textContent false ""
@@ -255,10 +253,8 @@ module TestBatchProcessing =
                             | WorldStateChange.ApplicationEventException _ -> ()
 
                         if shouldRerender then
-                            {
-                                NewState = newState
-                                RequestRerender = RerenderRequest.Rerender (inputs.Length - 1)
-                            }
+                            ProcessWorldResult.make newState
+                            |> ProcessWorldResult.withRerender (inputs.Length - 1)
                         else
                             ProcessWorldResult.make newState
                 }
@@ -419,10 +415,8 @@ module TestBatchProcessing =
 
                             if toProcess < inputs.Length then
                                 // We didn't process everything, request Rerender to split the batch
-                                {
-                                    NewState = newState
-                                    RequestRerender = RerenderRequest.Rerender (toProcess - 1)
-                                }
+                                ProcessWorldResult.make newState
+                                |> ProcessWorldResult.withRerender (toProcess - 1)
                             else
                                 ProcessWorldResult.make newState
                     }

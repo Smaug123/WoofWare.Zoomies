@@ -17,15 +17,18 @@ type RerenderRequest =
     /// rerender, but I can't think of any legitimate reason to use this otherwise.
     | Rerender of indexOfLastProcessedEvent : int
 
+/// Make one of these with `ProcessWorldResult.make`.
+[<Struct>]
 type ProcessWorldResult<'userState> =
-    {
-        NewState : 'userState
-        /// Set this to `true` to request a rerender *now*, rather than continuing to process the rest of the batch
-        /// of incoming events.
-        /// You might want to do this, for example, if you want WoofWare.Zoomies to ask you again whether you're opted
-        /// into automatic focus tracking (which it only does before starting a render).
-        RequestRerender : RerenderRequest
-    }
+    private
+        {
+            NewState : 'userState
+            /// Set this to `Rerender` to request a rerender *now*, rather than continuing to process the rest of the batch
+            /// of incoming events.
+            /// You might want to do this, for example, if you want WoofWare.Zoomies to ask you again whether you're opted
+            /// into automatic focus tracking (which it only does before starting a render).
+            RequestRerender : RerenderRequest
+        }
 
 [<RequireQualifiedAccess>]
 module ProcessWorldResult =
@@ -33,6 +36,17 @@ module ProcessWorldResult =
         {
             NewState = s
             RequestRerender = RerenderRequest.Continue
+        }
+
+    /// Specify that you have only partially consumed the stream of `WorldStateChange`s (specifically, you have
+    /// processed the one at `lastProcessedIndex` but you have not processed any after that).
+    ///
+    /// If `lastProcessedIndex` is greater than or equal to the length of the input events span, we will correctly
+    /// understand that you have processed all entries, but will force a rerender (requesting your vdom again) even if
+    /// the cutoff system didn't want to rerender.
+    let withRerender (lastProcessedIndex : int) (s : ProcessWorldResult<'userState>) =
+        { s with
+            RequestRerender = RerenderRequest.Rerender lastProcessedIndex
         }
 
 type WorldProcessor<'appEvent, 'userState> =
@@ -99,7 +113,9 @@ module App =
                     | RerenderRequest.Rerender lastProcessed ->
                         forceRerender <- true
 
-                        if lastProcessed >= nextToProcess - 1 then
+                        let len = nextToProcess - startOfBatch
+
+                        if lastProcessed >= len - 1 then
                             // Successfully processed everything up to but not including the tab.
                             // Just proceed.
                             startOfBatch <- nextToProcess
