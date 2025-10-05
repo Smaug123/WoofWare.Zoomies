@@ -29,7 +29,7 @@ module TestExternalEventSubscription =
     type MockTimer (_ms : float) =
         let evt = Event<unit> ()
 
-        let mutable disposed =
+        let disposed =
             TaskCompletionSource<unit> TaskCreationOptions.RunContinuationsAsynchronously
 
         [<CLIEvent>]
