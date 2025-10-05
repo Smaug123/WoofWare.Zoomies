@@ -113,7 +113,9 @@ module App =
                     | RerenderRequest.Rerender lastProcessed ->
                         forceRerender <- true
 
-                        if lastProcessed >= nextToProcess - 1 then
+                        let len = nextToProcess - startOfBatch
+
+                        if lastProcessed >= len - 1 then
                             // Successfully processed everything up to but not including the tab.
                             // Just proceed.
                             startOfBatch <- nextToProcess
