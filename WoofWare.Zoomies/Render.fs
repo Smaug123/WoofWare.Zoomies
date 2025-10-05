@@ -604,13 +604,28 @@ module Render =
                             | KeylessVdom.Unkeyed _ -> failwith "logic error: child is keyed"
                     }
 
-    let rec private renderToBuffer (dirty : TerminalCell voption[,]) (node : RenderedNode) : unit =
+    let rec private renderToBuffer
+        (dirty : TerminalCell voption[,])
+        (previousNode : RenderedNode option)
+        (node : RenderedNode)
+        : unit
+        =
+        // Early cutoff: if this node is the same reference as the previous one, nothing changed
+        match previousNode with
+        | Some prev when Object.ReferenceEquals (prev, node) -> ()
+        | _ ->
+
         let bounds = node.Bounds
 
         match node.VDomSource with
         | KeylessVdom.Keyed vdom ->
             // Keyed nodes just wrap their child, render the child
-            renderToBuffer dirty node.OverlaidChildren.[0]
+            let prevChild =
+                match previousNode with
+                | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
+                | _ -> None
+
+            renderToBuffer dirty prevChild node.OverlaidChildren.[0]
         | KeylessVdom.Unkeyed vdom ->
             match vdom with
             | UnkeyedVdom.TextContent (content, focus) ->
@@ -669,46 +684,106 @@ module Render =
                     (ValueSome (TerminalCell.OfChar content))
 
             | UnkeyedVdom.PanelSplit _ ->
-                // Paint background spaces
-                for y = 0 to bounds.Height - 1 do
-                    for x = 0 to bounds.Width - 1 do
-                        setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
+                // Only paint background if this is a new node or bounds changed
+                match previousNode with
+                | Some prev when
+                    prev.Bounds = bounds
+                    && match prev.VDomSource with
+                       | KeylessVdom.Unkeyed (UnkeyedVdom.PanelSplit _) -> true
+                       | _ -> false
+                    ->
+                    // Container unchanged, skip background paint
+                    ()
+                | _ ->
+                    // New container or bounds changed, paint background
+                    for y = 0 to bounds.Height - 1 do
+                        for x = 0 to bounds.Width - 1 do
+                            setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
 
-                // Render children
-                for child in node.OverlaidChildren do
-                    renderToBuffer dirty child
+                // Render children with their previous versions
+                let prevChild1 =
+                    match previousNode with
+                    | Some prev when
+                        prev.OverlaidChildren.Length >= 2
+                        && match prev.VDomSource with
+                           | KeylessVdom.Unkeyed (UnkeyedVdom.PanelSplit _) -> true
+                           | _ -> false
+                        ->
+                        Some prev.OverlaidChildren.[0]
+                    | _ -> None
+
+                let prevChild2 =
+                    match previousNode with
+                    | Some prev when
+                        prev.OverlaidChildren.Length >= 2
+                        && match prev.VDomSource with
+                           | KeylessVdom.Unkeyed (UnkeyedVdom.PanelSplit _) -> true
+                           | _ -> false
+                        ->
+                        Some prev.OverlaidChildren.[1]
+                    | _ -> None
+
+                renderToBuffer dirty prevChild1 node.OverlaidChildren.[0]
+                renderToBuffer dirty prevChild2 node.OverlaidChildren.[1]
 
             | UnkeyedVdom.Bordered _ ->
-                // Paint background and border
-                for y = 0 to bounds.Height - 1 do
-                    for x = 0 to bounds.Width - 1 do
-                        setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
+                // Only paint background and border if this is a new node or bounds changed
+                match previousNode with
+                | Some prev when
+                    prev.Bounds = bounds
+                    && match prev.VDomSource with
+                       | KeylessVdom.Unkeyed (UnkeyedVdom.Bordered _) -> true
+                       | _ -> false
+                    ->
+                    // Container unchanged, skip background/border paint
+                    ()
+                | _ ->
+                    // New container or bounds changed, paint background and border
+                    for y = 0 to bounds.Height - 1 do
+                        for x = 0 to bounds.Width - 1 do
+                            setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
 
-                setAtRelativeOffset dirty bounds 0 0 (ValueSome (TerminalCell.OfChar '┌'))
-                setAtRelativeOffset dirty bounds 0 (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '└'))
-                setAtRelativeOffset dirty bounds (bounds.Width - 1) 0 (ValueSome (TerminalCell.OfChar '┐'))
+                    setAtRelativeOffset dirty bounds 0 0 (ValueSome (TerminalCell.OfChar '┌'))
+                    setAtRelativeOffset dirty bounds 0 (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '└'))
+                    setAtRelativeOffset dirty bounds (bounds.Width - 1) 0 (ValueSome (TerminalCell.OfChar '┐'))
 
-                setAtRelativeOffset
-                    dirty
-                    bounds
-                    (bounds.Width - 1)
-                    (bounds.Height - 1)
-                    (ValueSome (TerminalCell.OfChar '┘'))
+                    setAtRelativeOffset
+                        dirty
+                        bounds
+                        (bounds.Width - 1)
+                        (bounds.Height - 1)
+                        (ValueSome (TerminalCell.OfChar '┘'))
 
-                for i = 1 to bounds.Width - 2 do
-                    setAtRelativeOffset dirty bounds i 0 (ValueSome (TerminalCell.OfChar '─'))
-                    setAtRelativeOffset dirty bounds i (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '─'))
+                    for i = 1 to bounds.Width - 2 do
+                        setAtRelativeOffset dirty bounds i 0 (ValueSome (TerminalCell.OfChar '─'))
+                        setAtRelativeOffset dirty bounds i (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '─'))
 
-                for i = 1 to bounds.Height - 2 do
-                    setAtRelativeOffset dirty bounds 0 i (ValueSome (TerminalCell.OfChar '│'))
-                    setAtRelativeOffset dirty bounds (bounds.Width - 1) i (ValueSome (TerminalCell.OfChar '│'))
+                    for i = 1 to bounds.Height - 2 do
+                        setAtRelativeOffset dirty bounds 0 i (ValueSome (TerminalCell.OfChar '│'))
+                        setAtRelativeOffset dirty bounds (bounds.Width - 1) i (ValueSome (TerminalCell.OfChar '│'))
 
-                // Render child
-                renderToBuffer dirty node.OverlaidChildren.[0]
+                // Render child with its previous version
+                let prevChild =
+                    match previousNode with
+                    | Some prev when
+                        prev.OverlaidChildren.Length > 0
+                        && match prev.VDomSource with
+                           | KeylessVdom.Unkeyed (UnkeyedVdom.Bordered _) -> true
+                           | _ -> false
+                        ->
+                        Some prev.OverlaidChildren.[0]
+                    | _ -> None
+
+                renderToBuffer dirty prevChild node.OverlaidChildren.[0]
 
             | UnkeyedVdom.Focusable _ ->
                 // Focusable just wraps its child, render the child
-                renderToBuffer dirty node.OverlaidChildren.[0]
+                let prevChild =
+                    match previousNode with
+                    | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
+                    | _ -> None
+
+                renderToBuffer dirty prevChild node.OverlaidChildren.[0]
 
     let writeBuffer (dirty : TerminalCell voption[,]) : TerminalOp seq =
         // TODO this is super dumb
@@ -767,7 +842,7 @@ module Render =
             ()
         | _ ->
             // Something changed, render to buffer
-            renderToBuffer renderState.Buffer layoutResult
+            renderToBuffer renderState.Buffer renderState.PreviousVdom layoutResult
 
         renderState.PreviousVdom <- Some layoutResult
 
