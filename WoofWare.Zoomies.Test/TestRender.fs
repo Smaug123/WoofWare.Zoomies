@@ -676,7 +676,8 @@ This is focusable text                                                          
         // (The border cells don't repaint, which means the entire first and last row don't repaint, nor do the leftmost
         // and rightmost single cells of the middle row.)
 
-        // TODO: this seems unexpected! Why are we repainting even the unchanged empty spaces?
+        // We could do better here by diffing the text so we don't repaint the unchanged characters;
+        // there's a TODO for that in the code.
         writtenCells.Count |> shouldEqual (panelWidth - 2)
 
     [<Test>]
@@ -721,14 +722,16 @@ This is focusable text                                                          
 
         // The text content changed, so we should write to text cells
         // But we should NOT repaint the border (which would be the perimeter cells)
-        // Border cells are at: x=0, x=79, y=0, y=9 for an 80x10 terminal
 
         let borderCells =
             writtenCells
-            |> Seq.filter (fun (x, y) -> x = 0 || x = 79 || y = 0 || y = 9)
+            |> Seq.filter (fun (x, y) -> x = 0 || x = panelWidth - 1 || y = 0 || y = 2)
             |> Seq.length
 
         // We should not have written to any border cells
         borderCells |> shouldEqual 0
 
-// And we changed the right number of cells: "initial" -> "changed"
+        // And we changed the right number of cells: just the middle row, because that's the one that doesn't contain
+        // the border.
+        // Again, this will get smaller when we've implemented a more efficient text render with diffing.
+        writtenCells.Count |> shouldEqual (panelWidth - 2)
