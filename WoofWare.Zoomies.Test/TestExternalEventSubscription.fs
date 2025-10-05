@@ -28,21 +28,24 @@ module TestExternalEventSubscription =
 
     type MockTimer (_ms : float) =
         let evt = Event<unit> ()
-        let mutable disposed = false
+
+        let mutable disposed =
+            TaskCompletionSource<unit> TaskCreationOptions.RunContinuationsAsynchronously
 
         [<CLIEvent>]
         member _.Elapsed = evt.Publish
 
         member _.Trigger () =
-            if disposed then
+            if disposed.Task.IsCompleted then
                 raise (ObjectDisposedException "MockTimer")
             else
                 evt.Trigger ()
 
-        member _.IsDisposed = disposed
+        member _.Disposal = disposed.Task
 
         interface IDisposable with
-            member _.Dispose () = disposed <- true
+            member _.Dispose () =
+                disposed.TrySetResult () |> ignore<bool>
 
 
     [<Test>]
@@ -195,8 +198,9 @@ module TestExternalEventSubscription =
             // Again we need to pump again to actually process the "timer stop" request.
             match globalTimer with
             | Some timer ->
-                timer.IsDisposed |> shouldEqual false
+                timer.Disposal.IsCompleted |> shouldEqual false
                 state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
-                timer.IsDisposed |> shouldEqual true
+                do! timer.Disposal
+                ()
             | None -> failwith "expected a timer to be running"
         }
