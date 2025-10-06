@@ -95,8 +95,8 @@ module TestExternalEventSubscription =
                             | WorldStateChange.Keystroke c when c.KeyChar = ' ' ->
                                 // Toggle timer on space
                                 match newState.TimerSubscription with
-                                | Some _ -> world.PostEvent (fun _ -> Task.FromResult StopTimer) |> ignore<Task<_>>
-                                | None -> world.PostEvent (fun _ -> Task.FromResult StartTimer) |> ignore<Task<_>>
+                                | Some _ -> world.PostEvent StopTimer
+                                | None -> world.PostEvent StartTimer
 
                             | _ -> ()
 
