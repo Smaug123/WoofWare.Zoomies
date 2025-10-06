@@ -27,6 +27,7 @@
     <Compile Include="Console.fs" />
     <Compile Include="IStopwatch.fs" />
     <Compile Include="WorldFreezer.fs" />
+    <Compile Include="VdomContext.fs" />
     <Compile Include="Render.fs" />
     <Compile Include="App.fs" />
   </ItemGroup>
