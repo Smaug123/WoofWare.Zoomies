@@ -753,6 +753,7 @@ module Render =
                 | ValueSome cell ->
                     if not haveManipulatedCursor && cursorFlip then
                         RenderState.setCursorInvisible renderState
+                        haveManipulatedCursor <- true
 
                     renderState.Output (TerminalOp.MoveCursor (x, y))
                     renderState.Output (TerminalOp.WriteChar cell)
