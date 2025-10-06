@@ -760,9 +760,11 @@ This is focusable text                                                          
         // Count how many SetCursorVisibility false operations were emitted
         let setCursorInvisibleCount =
             terminalOps
-            |> Seq.filter (function
+            |> Seq.filter (
+                function
                 | TerminalOp.SetCursorVisibility false -> true
-                | _ -> false)
+                | _ -> false
+            )
             |> Seq.length
 
         // Should only be called once
