@@ -165,10 +165,14 @@ type UnrecognisedEscapeCodeBehaviour =
 /// An IWorldBridge allows you to funnel arbitrary events into the WoofWare.Zoomies world model.
 /// WoofWare.Zoomies supplies you with a long-lived one of these for each WorldFreezer.
 type IWorldBridge<'appEvent> =
-    /// Post an asynchronous application event. When the returned `Task` has completed, the event has made it into
-    /// the associated WorldFreezer's `Changes` queue; it's either already appeared in the output of a `Changes` call,
-    /// or will appear in a subsequent one if you keep pumping `Changes` until it stops returning values.
-    abstract PostEvent : (CancellationToken -> Task<'appEvent>) -> Task<unit>
+    /// Post an application event to the queue of events that forms the world.
+    ///
+    /// After this method returns, it's guaranteed that `WorldProcessor.ProcessWorld` will see the event "soon" (or has
+    /// already seen it, if the render loop won the race with the `ret` instruction in `PostEvent`): the
+    /// framework is allowed to break up batches of events, so you might not see it on the *next* render loop if there
+    // are other events ahead of this one in the queue, but the event is guaranteed to have been inserted into a
+    // defined place in the queue.
+    abstract PostEvent : 'appEvent -> unit
 
     /// Subscribe to a synchronous event source. When the event fires, the converter
     /// function transforms the event data into an application event visible to the WorldFreezer's `Changes` queue.
@@ -185,7 +189,6 @@ type IWorldBridge<'appEvent> =
 type WorldFreezer<'appEvent> =
     private
         {
-            _Nursery : Nursery
             /// This is populated character-by-character of input keystroke.
             /// Note, for example, that this may contain partially-read sequences of ANSI control characters!
             _Changes : ConcurrentQueue<RawWorldStateChange<'appEvent>>
@@ -194,9 +197,6 @@ type WorldFreezer<'appEvent> =
             _Stopwatch : IStopwatch
             _RefreshExternal : unit -> unit
             _Behaviour : UnrecognisedEscapeCodeBehaviour
-            /// When the returned Task completes, it's guaranteed that the 'appEvent has been made available to
-            /// `Changes` (that is, it will appear in the next `Changes` call, or perhaps has already appeared).
-            _Post : (CancellationToken -> Task<'appEvent>) -> Task<unit>
             _Subscriptions : ConcurrentBag<IDisposable>
             _IsDisposing : int ref
             _HasDisposed : TaskCompletionSource<unit>
@@ -440,7 +440,8 @@ type WorldFreezer<'appEvent> =
                 result.ToArray () |> ValueSome
 
     interface IWorldBridge<'appEvent> with
-        member this.PostEvent a = this._Post a
+        member this.PostEvent evt =
+            this._Changes.Enqueue (RawWorldStateChange.ApplicationEvent evt)
 
         member this.SubscribeEvent evt toAppEvent =
             if this._IsDisposing.Value > 0 then
@@ -486,7 +487,6 @@ type WorldFreezer<'appEvent> =
                         with _ ->
                             ()
 
-                    do! (this._Nursery :> IAsyncDisposable).DisposeAsync ()
                     this._HasDisposed.SetResult ()
                 }
                 |> ValueTask
@@ -514,15 +514,15 @@ module WorldFreezer =
                 RawWorldStateChange.Keystroke key |> worldChanges.Enqueue
 
         let postAppEvent (evt : CancellationToken -> Task<'appEvent>) : Task<unit> =
-            task {
-                // The only exception `runningTasks.Submit` can throw is OperationDisposedException.
-                // If we get that, the listener is already being shut down, so we're no longer rerendering
-                // over on the render thread.
-                // That means there's no point sending a message to the render thread about any errors
-                // (because the render thread will never do anything with that message),
-                // so it's fine to simply ignore any exceptions that are thrown during the `Submit` call itself.
-                let running = runningTasks.Submit evt
+            // The only exception `runningTasks.Submit` can throw is OperationDisposedException.
+            // If we get that, the listener is already being shut down, so we're no longer rerendering
+            // over on the render thread.
+            // That means there's no point sending a message to the render thread about any errors
+            // (because the render thread will never do anything with that message),
+            // so it's fine to simply ignore any exceptions that are thrown during the `Submit` call itself.
+            let running = runningTasks.Submit evt
 
+            task {
                 try
                     let! result = running
                     worldChanges.Enqueue (RawWorldStateChange.ApplicationEvent result)
@@ -533,8 +533,6 @@ module WorldFreezer =
         {
             _Changes = worldChanges
             _RefreshExternal = refreshExternal
-            _Post = postAppEvent
-            _Nursery = runningTasks
             _Stopwatch = stopwatch
             _DequeueState = DequeueState.Empty ()
             _Behaviour = behaviour
