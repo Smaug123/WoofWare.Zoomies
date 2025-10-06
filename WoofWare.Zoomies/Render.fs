@@ -4,52 +4,6 @@ open System
 open System.Collections.Generic
 open TypeEquality
 
-[<Struct>]
-type Rectangle =
-    {
-        TopLeftX : int
-        TopLeftY : int
-        Width : int
-        Height : int
-    }
-
-/// Context provided to vdom construction, containing information about the layout of the previous render cycle.
-/// This is mutable (although you aren't given the tools to mutate it), so don't persist it.
-type VdomContext =
-    private
-        {
-            /// The currently focused element's key, if any.
-            /// If you're not using the automatic focus handling mechanism, this is always None.
-            mutable _FocusedKey : NodeKey option
-            /// The bounds of the terminal
-            mutable _TerminalBounds : Rectangle
-            mutable IsDirty : bool
-        }
-
-[<RequireQualifiedAccess>]
-module VdomContext =
-    let internal empty (terminalBounds : Rectangle) =
-        {
-            _TerminalBounds = terminalBounds
-            _FocusedKey = None
-            IsDirty = true
-        }
-
-    let internal setFocusedKey (key : NodeKey option) (v : VdomContext) =
-        if v._FocusedKey <> key then
-            v.IsDirty <- true
-            v._FocusedKey <- key
-
-    let internal setTerminalBounds (tb : Rectangle) (v : VdomContext) =
-        if v._TerminalBounds <> tb then
-            v.IsDirty <- true
-            v._TerminalBounds <- tb
-
-    let internal markClean (v : VdomContext) = v.IsDirty <- false
-
-    let terminalBounds (v : VdomContext) = v._TerminalBounds
-    let focusedKey (v : VdomContext) = v._FocusedKey
-
 /// So that we can do early cutoff.
 type RenderedNode =
     private
