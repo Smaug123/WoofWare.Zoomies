@@ -90,8 +90,9 @@ type WorldStateChange<'appEvent> =
     /// When you use an IWorldBridge to insert events into the WoofWare.Zoomies-supplied event stream, they flow through
     /// as instances of ApplicationEvent.
     | ApplicationEvent of 'appEvent
-    /// When you use an IWorldBridge to insert an event into the WoofWare.Zoomies-supplied event stream, but the
-    /// event you supplied throws, the failure manifests in the event stream as an ApplicationEventException.
+    /// When you use an IWorldBridge's SubscribeEvent to insert a response to an external event into the
+    /// WoofWare.Zoomies-supplied event stream, but the conversion function you supplied throws, the failure manifests
+    /// in the event stream as an ApplicationEventException.
     | ApplicationEventException of exn
 
 type private SgrDecode =
@@ -178,6 +179,8 @@ type IWorldBridge<'appEvent> =
     /// function transforms the event data into an application event visible to the WorldFreezer's `Changes` queue.
     /// Returns an IDisposable to unsubscribe (though all subscriptions are also auto-cleaned
     /// when the associated WorldFreezer is disposed).
+    ///
+    /// If `toAppEvent` throws, you will receive an ApplicationEventException in the WoofWare.Zoomies event stream.
     abstract SubscribeEvent<'a> : IEvent<'a> -> toAppEvent : ('a -> 'appEvent) -> IDisposable
 
 /// WoofWare.Zoomies presents to you a very narrow view of the world: a stream of WorldStateChange events, presented
@@ -451,8 +454,15 @@ type WorldFreezer<'appEvent> =
 
                 let handler =
                     Handler<'a> (fun _ args ->
-                        let appEvent = toAppEvent args
-                        this._Changes.Enqueue (RawWorldStateChange.ApplicationEvent appEvent)
+                        let appEvent =
+                            try
+                                toAppEvent args |> Ok
+                            with e ->
+                                Error e
+
+                        match appEvent with
+                        | Ok appEvent -> this._Changes.Enqueue (RawWorldStateChange.ApplicationEvent appEvent)
+                        | Error exc -> this._Changes.Enqueue (RawWorldStateChange.ApplicationEventException exc)
                     )
 
                 evt.AddHandler handler
