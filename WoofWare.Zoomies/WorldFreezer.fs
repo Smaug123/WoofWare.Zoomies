@@ -170,8 +170,8 @@ type IWorldBridge<'appEvent> =
     /// After this method returns, it's guaranteed that `WorldProcessor.ProcessWorld` will see the event "soon" (or has
     /// already seen it, if the render loop won the race with the `ret` instruction in `PostEvent`): the
     /// framework is allowed to break up batches of events, so you might not see it on the *next* render loop if there
-    // are other events ahead of this one in the queue, but the event is guaranteed to have been inserted into a
-    // defined place in the queue.
+    /// are other events ahead of this one in the queue, but the event is guaranteed to have been inserted into a
+    /// defined place in the queue.
     abstract PostEvent : 'appEvent -> unit
 
     /// Subscribe to a synchronous event source. When the event fires, the converter
@@ -506,29 +506,10 @@ module WorldFreezer =
         =
         let worldChanges = ConcurrentQueue<RawWorldStateChange<_>> ()
 
-        let runningTasks = Nursery ()
-
         let refreshExternal () =
             while keyAvailable () do
                 let key = readKey ()
                 RawWorldStateChange.Keystroke key |> worldChanges.Enqueue
-
-        let postAppEvent (evt : CancellationToken -> Task<'appEvent>) : Task<unit> =
-            // The only exception `runningTasks.Submit` can throw is OperationDisposedException.
-            // If we get that, the listener is already being shut down, so we're no longer rerendering
-            // over on the render thread.
-            // That means there's no point sending a message to the render thread about any errors
-            // (because the render thread will never do anything with that message),
-            // so it's fine to simply ignore any exceptions that are thrown during the `Submit` call itself.
-            let running = runningTasks.Submit evt
-
-            task {
-                try
-                    let! result = running
-                    worldChanges.Enqueue (RawWorldStateChange.ApplicationEvent result)
-                with e ->
-                    worldChanges.Enqueue (RawWorldStateChange.ApplicationEventException e)
-            }
 
         {
             _Changes = worldChanges
