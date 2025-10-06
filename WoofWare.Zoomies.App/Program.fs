@@ -3,13 +3,12 @@
 open System
 open System.IO
 open System.Runtime.ExceptionServices
-open System.Threading
 open System.Threading.Tasks
 open WoofWare.Zoomies
 
 type AppEvent =
-    | FileLoaded of filename : string * content : string
-    | FileLoadError of filename : string * error : string
+    | FileLoaded of filename : string * content : string * generation : int
+    | FileLoadError of filename : string * error : string * generation : int
 
 type State =
     {
@@ -18,6 +17,7 @@ type State =
         ShowingFile1 : bool
         FileContent : string option
         IsLoading : bool
+        Generation : int
     }
 
     static member Create (file1 : string, file2 : string) =
@@ -27,28 +27,62 @@ type State =
             ShowingFile1 = true
             FileContent = None
             IsLoading = false
+            Generation = 1
+        }
+
+    member this.CurrentFile = if this.ShowingFile1 then this.File1Path else this.File2Path
+
+type StateBuilder =
+    {
+        mutable File1Path : string
+        mutable File2Path : string
+        mutable ShowingFile1 : bool
+        mutable FileContent : string option
+        mutable IsLoading : bool
+        mutable Generation : int
+    }
+
+    member state.ToImmutable () : State =
+        {
+            File1Path = state.File1Path
+            File2Path = state.File2Path
+            ShowingFile1 = state.ShowingFile1
+            FileContent = state.FileContent
+            IsLoading = state.IsLoading
+            Generation = state.Generation
+        }
+
+    static member Create (state : State) : StateBuilder =
+        {
+            File1Path = state.File1Path
+            File2Path = state.File2Path
+            ShowingFile1 = state.ShowingFile1
+            FileContent = state.FileContent
+            IsLoading = state.IsLoading
+            Generation = state.Generation
         }
 
     member this.CurrentFile = if this.ShowingFile1 then this.File1Path else this.File2Path
 
 module FileBrowser =
 
-    let loadFileAsync (worldBridge : IWorldBridge<_>) (filepath : string) : unit =
-        fun ct ->
-            task {
-                let! content = File.ReadAllTextAsync (filepath, ct)
-                return FileLoaded (filepath, content)
-            }
-        |> worldBridge.PostEvent
-        |> ignore<Task>
+    /// For simplicity I'm not making these cancellable.
+    let loadFileAsync (generation : int) (worldBridge : IWorldBridge<_>) (filepath : string) : unit Task =
+        task {
+            try
+                let! content = File.ReadAllTextAsync filepath
+                return FileLoaded (filepath, content, generation) |> worldBridge.PostEvent
+            with e ->
+                FileLoadError (filepath, e.Message, generation) |> worldBridge.PostEvent
+        }
 
     let processWorld (initialState : State) (worldBridge : IWorldBridge<AppEvent>) =
         // Trigger initial file load
-        loadFileAsync worldBridge initialState.CurrentFile
+        let _ = loadFileAsync initialState.Generation worldBridge initialState.CurrentFile
 
         { new WorldProcessor<AppEvent, State> with
             member _.ProcessWorld (changes, prevVdom, state) =
-                let mutable newState = state
+                let state = StateBuilder.Create state
 
                 for change in changes do
                     match change with
@@ -60,40 +94,33 @@ module FileBrowser =
                         ()
                     | WorldStateChange.Keystroke key when key.KeyChar = ' ' ->
                         // Toggle which file we're showing.
-                        // Just to keep the code smaller, we do this in a pretty dumb way; you might want to
-                        // go for MORE EFFICIENCY by having some efficient mutable intermediate representation.
-                        newState <-
-                            { newState with
-                                ShowingFile1 = not newState.ShowingFile1
-                                IsLoading = true
-                                FileContent = None
-                            }
+                        state.ShowingFile1 <- not state.ShowingFile1
+                        state.IsLoading <- true
+                        state.FileContent <- None
+
                         // Trigger async load of the new file
-                        loadFileAsync worldBridge newState.CurrentFile
+                        state.Generation <- state.Generation + 1
+
+                        loadFileAsync state.Generation worldBridge state.CurrentFile
+                        |> ignore<Task<unit>>
                     | WorldStateChange.Keystroke _ -> ()
 
-                    | WorldStateChange.ApplicationEvent (FileLoaded (filename, content)) ->
+                    | WorldStateChange.ApplicationEvent (FileLoaded (filename, content, generation)) ->
                         // Only update if this is still the file we're expecting
-                        if filename = newState.CurrentFile then
-                            newState <-
-                                { newState with
-                                    FileContent = Some content
-                                    IsLoading = false
-                                }
+                        if state.Generation = generation then
+                            state.FileContent <- Some content
+                            state.IsLoading <- false
 
-                    | WorldStateChange.ApplicationEvent (FileLoadError (filename, error)) ->
-                        if filename = newState.CurrentFile then
-                            newState <-
-                                { newState with
-                                    FileContent = Some $"Error loading file: {error}"
-                                    IsLoading = false
-                                }
+                    | WorldStateChange.ApplicationEvent (FileLoadError (filename, error, generation)) ->
+                        if state.Generation = generation then
+                            state.FileContent <- Some $"Error loading file: {error}"
+                            state.IsLoading <- false
 
                     | WorldStateChange.ApplicationEventException e ->
                         ExceptionDispatchInfo.Throw e
                         failwith "unreachable"
 
-                ProcessWorldResult.make newState
+                ProcessWorldResult.make (state.ToImmutable ())
         }
 
     let view (vdomContext : VdomContext) (state : State) : Vdom<DesiredBounds, Unkeyed> =
