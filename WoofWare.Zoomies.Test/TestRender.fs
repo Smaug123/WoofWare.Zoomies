@@ -735,3 +735,37 @@ This is focusable text                                                          
         // the border.
         // Again, this will get smaller when we've implemented a more efficient text render with diffing.
         writtenCells.Count |> shouldEqual (panelWidth - 2)
+
+    [<Test>]
+    let ``SetCursorInvisible is only called once per render`` () =
+        let terminalOps = ResizeArray<TerminalOp> ()
+
+        let console =
+            { IConsole.defaultForTests with
+                Execute = fun x -> terminalOps.Add x
+                WindowWidth = fun _ -> 20
+                WindowHeight = fun _ -> 5
+            }
+
+        let renderState = RenderState.make' console
+
+        // Create vdom with some content that will result in multiple cells being written
+        let vdom =
+            Vdom.textContent false "This is some text that spans multiple cells"
+            |> Vdom.bordered
+
+        // Do a render
+        Render.oneStep renderState () (fun _ -> vdom)
+
+        // Count how many SetCursorVisibility false operations were emitted
+        let setCursorInvisibleCount =
+            terminalOps
+            |> Seq.filter (
+                function
+                | TerminalOp.SetCursorVisibility false -> true
+                | _ -> false
+            )
+            |> Seq.length
+
+        // Should only be called once
+        setCursorInvisibleCount |> shouldEqual 1
