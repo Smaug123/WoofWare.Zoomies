@@ -235,39 +235,11 @@ module Render =
         arr.[yIndex bounds relativeY, xIndex bounds relativeX] <- v
 
     let private freshRenderTextContent
-        (dirty : TerminalCell voption[,])
         (bounds : Rectangle)
         (vdom : UnkeyedVdom<DesiredBounds>)
         (content : string)
         (focus : bool)
         =
-        // TODO: can do better here if we can compute a more efficient diff
-        // TODO: work out how to display this differently when it has focus
-        // TODO: test that a focusable text box can in fact gain focus, by writing a test UI that lets you type into
-        // one of several text boxes
-        for y = 0 to bounds.Height - 1 do
-            for x = 0 to bounds.Width - 1 do
-                setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
-
-        // dumb implementation! could do much better
-        let mutable index = 0
-        let mutable currX = 0
-        let mutable currY = 0
-
-        while index < content.Length do
-            setAtRelativeOffset dirty bounds currX currY (ValueSome (TerminalCell.OfChar (content.Chars index)))
-
-            currX <- currX + 1
-
-            if currX = bounds.Width then
-                currX <- 0
-                currY <- currY + 1
-
-                if currY >= bounds.Height then
-                    index <- content.Length
-
-            index <- index + 1
-
         {
             Bounds = bounds
             OverlaidChildren = []
@@ -276,44 +248,13 @@ module Render =
         }
 
     let private freshRenderCheckbox
-        (dirty : TerminalCell voption[,])
         (bounds : Rectangle)
         (vdom : UnkeyedVdom<DesiredBounds>)
         (isChecked : bool)
         (focus : bool)
         =
-        // TODO: can short circuit this if focus is the only thing that's changed, too
-
         if bounds.Width < 3 then
             failwith "TODO: not enough room"
-
-        for y = 0 to bounds.Height - 1 do
-            for x = 0 to bounds.Width - 1 do
-                setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
-
-        let content = if isChecked then '☑' else '☐'
-
-        if focus then
-            setAtRelativeOffset
-                dirty
-                bounds
-                (bounds.Width / 2 - 1)
-                (bounds.Height / 2)
-                (ValueSome (TerminalCell.OfChar '['))
-
-            setAtRelativeOffset
-                dirty
-                bounds
-                (bounds.Width / 2 + 1)
-                (bounds.Height / 2)
-                (ValueSome (TerminalCell.OfChar ']'))
-
-        setAtRelativeOffset
-            dirty
-            bounds
-            (bounds.Width / 2)
-            (bounds.Height / 2)
-            (ValueSome (TerminalCell.OfChar content))
 
         {
             Bounds = bounds
@@ -326,7 +267,6 @@ module Render =
         (keyToNode : _)
         (focusableKeys : _)
         (initialFocusKey : NodeKey option ref)
-        (dirty : TerminalCell voption[,])
         (bounds : Rectangle)
         (dir : SplitDirection)
         (proportion : SplitBehaviour)
@@ -337,10 +277,10 @@ module Render =
         let bounds1, bounds2 = splitBounds dir proportion bounds
 
         let rendered1 =
-            layoutEither dirty keyToNode focusableKeys initialFocusKey None bounds1 child1
+            layoutEither keyToNode focusableKeys initialFocusKey None bounds1 child1
 
         let rendered2 =
-            layoutEither dirty keyToNode focusableKeys initialFocusKey None bounds2 child2
+            layoutEither keyToNode focusableKeys initialFocusKey None bounds2 child2
 
         {
             Bounds = bounds
@@ -355,7 +295,6 @@ module Render =
         (keyToNode : _)
         (focusableKeys : _)
         (initialFocusKey : NodeKey option ref)
-        (dirty : TerminalCell voption[,])
         (bounds : Rectangle)
         (child : KeylessVdom<_>)
         (vdom : UnkeyedVdom<DesiredBounds>)
@@ -366,31 +305,9 @@ module Render =
         if bounds.Width <= 2 then
             failwith $"TODO: too thin: %O{bounds}"
 
-        for y = 0 to bounds.Height - 1 do
-            for x = 0 to bounds.Width - 1 do
-                setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
-
-        setAtRelativeOffset dirty bounds 0 0 (ValueSome (TerminalCell.OfChar '┌'))
-
-        setAtRelativeOffset dirty bounds 0 (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '└'))
-
-        setAtRelativeOffset dirty bounds (bounds.Width - 1) 0 (ValueSome (TerminalCell.OfChar '┐'))
-
-        setAtRelativeOffset dirty bounds (bounds.Width - 1) (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '┘'))
-
-        for i = 1 to bounds.Width - 2 do
-            setAtRelativeOffset dirty bounds i 0 (ValueSome (TerminalCell.OfChar '─'))
-
-            setAtRelativeOffset dirty bounds i (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '─'))
-
-        for i = 1 to bounds.Height - 2 do
-            setAtRelativeOffset dirty bounds 0 i (ValueSome (TerminalCell.OfChar '│'))
-
-            setAtRelativeOffset dirty bounds (bounds.Width - 1) i (ValueSome (TerminalCell.OfChar '│'))
-
         let children =
             [
-                layoutEither dirty keyToNode focusableKeys initialFocusKey None (shrinkBounds bounds) child
+                layoutEither keyToNode focusableKeys initialFocusKey None (shrinkBounds bounds) child
             ]
 
         {
@@ -401,7 +318,6 @@ module Render =
         }
 
     and private layoutEither
-        (dirty : TerminalCell voption[,])
         (keyToNode : Dictionary<NodeKey, RenderedNode>)
         (focusableKeys : OrderedSet<NodeKey>)
         (initialFocusKey : NodeKey option ref)
@@ -412,12 +328,11 @@ module Render =
         =
         match vdom with
         | KeylessVdom.Keyed vdom ->
-            layout dirty keyToNode focusableKeys initialFocusKey previousRender bounds (Vdom.Keyed (vdom, Teq.refl))
+            layout keyToNode focusableKeys initialFocusKey previousRender bounds (Vdom.Keyed (vdom, Teq.refl))
         | KeylessVdom.Unkeyed vdom ->
-            layout dirty keyToNode focusableKeys initialFocusKey previousRender bounds (Vdom.Unkeyed (vdom, Teq.refl))
+            layout keyToNode focusableKeys initialFocusKey previousRender bounds (Vdom.Unkeyed (vdom, Teq.refl))
 
     and internal layout<'key>
-        (dirty : TerminalCell voption[,])
         (keyToNode : Dictionary<NodeKey, RenderedNode>)
         (focusableKeys : OrderedSet<NodeKey>)
         (initialFocusKey : NodeKey option ref)
@@ -438,7 +353,9 @@ module Render =
 
             match keyedVdom with
             | WithKey (nodeKey, unkeyedVdom) ->
-                let previousRender =
+                let parentPreviousRender = previousRender
+
+                let childPreviousRender =
                     match previousRender with
                     | Some previousRender when previousRender.Bounds = bounds ->
                         match previousRender.VDomSource with
@@ -449,25 +366,28 @@ module Render =
 
                 let rendered =
                     layout
-                        dirty
                         keyToNode
                         focusableKeys
                         initialFocusKey
-                        previousRender
+                        childPreviousRender
                         bounds
                         (Vdom.Unkeyed (unkeyedVdom, Teq.refl))
 
                 keyToNode.[nodeKey] <- rendered
 
-                {
-                    Bounds = bounds
-                    OverlaidChildren = [ rendered ]
-                    VDomSource = keyedVdom |> KeylessVdom.Keyed
-                    Self =
-                        match rendered.Self with
-                        | KeylessVdom.Keyed _ -> failwith "logic error: we are keyed"
-                        | KeylessVdom.Unkeyed self -> KeyedVdom.WithKey (nodeKey, self) |> KeylessVdom.Keyed
-                }
+                // If child is unchanged (same reference), return the parent's previous render
+                match parentPreviousRender, childPreviousRender with
+                | Some parentPrev, Some childPrev when Object.referenceEquals rendered childPrev -> parentPrev
+                | _ ->
+                    {
+                        Bounds = bounds
+                        OverlaidChildren = [ rendered ]
+                        VDomSource = keyedVdom |> KeylessVdom.Keyed
+                        Self =
+                            match rendered.Self with
+                            | KeylessVdom.Keyed _ -> failwith "logic error: we are keyed"
+                            | KeylessVdom.Unkeyed self -> KeyedVdom.WithKey (nodeKey, self) |> KeylessVdom.Keyed
+                    }
 
         | Unkeyed (unkeyedVdom, teq) ->
             match previousRender with
@@ -486,14 +406,9 @@ module Render =
                     | KeylessVdom.Unkeyed (UnkeyedVdom.TextContent (prevText, prevFocus)) when
                         prevText = s && prevFocus = focus
                         ->
-                        {
-                            Bounds = bounds
-                            OverlaidChildren = []
-                            VDomSource = KeylessVdom.Unkeyed unkeyedVdom
-                            Self = KeylessVdom.Unkeyed (UnkeyedVdom.TextContent (s, focus))
-                        }
-                    | _ -> freshRenderTextContent dirty bounds unkeyedVdom s focus
-                | _ -> freshRenderTextContent dirty bounds unkeyedVdom s focus
+                        previousRender
+                    | _ -> freshRenderTextContent bounds unkeyedVdom s focus
+                | _ -> freshRenderTextContent bounds unkeyedVdom s focus
 
             | UnkeyedVdom.PanelSplit (dir, proportion, child1, child2) ->
                 match previousRender with
@@ -506,7 +421,6 @@ module Render =
 
                         let rendered1 =
                             layoutEither
-                                dirty
                                 keyToNode
                                 focusableKeys
                                 initialFocusKey
@@ -516,7 +430,6 @@ module Render =
 
                         let rendered2 =
                             layoutEither
-                                dirty
                                 keyToNode
                                 focusableKeys
                                 initialFocusKey
@@ -524,20 +437,26 @@ module Render =
                                 bounds2
                                 child2
 
-                        {
-                            Bounds = bounds
-                            OverlaidChildren = [ rendered1 ; rendered2 ]
-                            VDomSource = KeylessVdom.Unkeyed unkeyedVdom
-                            Self =
-                                UnkeyedVdom.PanelSplit (dir, proportion, rendered1.Self, rendered2.Self)
-                                |> KeylessVdom.Unkeyed
-                        }
+                        // If both children are unchanged (same reference), return the previous render
+                        if
+                            Object.referenceEquals rendered1 previousRender.OverlaidChildren.[0]
+                            && Object.referenceEquals rendered2 previousRender.OverlaidChildren.[1]
+                        then
+                            previousRender
+                        else
+                            {
+                                Bounds = bounds
+                                OverlaidChildren = [ rendered1 ; rendered2 ]
+                                VDomSource = KeylessVdom.Unkeyed unkeyedVdom
+                                Self =
+                                    UnkeyedVdom.PanelSplit (dir, proportion, rendered1.Self, rendered2.Self)
+                                    |> KeylessVdom.Unkeyed
+                            }
                     | _ ->
                         freshRenderPanelSplit
                             keyToNode
                             focusableKeys
                             initialFocusKey
-                            dirty
                             bounds
                             dir
                             proportion
@@ -549,7 +468,6 @@ module Render =
                         keyToNode
                         focusableKeys
                         initialFocusKey
-                        dirty
                         bounds
                         dir
                         proportion
@@ -561,52 +479,40 @@ module Render =
                 match previousRender with
                 | Some previousRender when previousRender.Bounds = bounds ->
                     match previousRender.VDomSource with
-                    | KeylessVdom.Unkeyed (UnkeyedVdom.Checkbox (prevChecked, prevFocus)) when focus = prevFocus ->
-                        if prevChecked <> isChecked then
-                            let content = if isChecked then '☑' else '☐'
-
-                            setAtRelativeOffset
-                                dirty
-                                bounds
-                                (bounds.Width / 2)
-                                (bounds.Height / 2)
-                                (ValueSome (TerminalCell.OfChar content))
-
-                        {
-                            Bounds = bounds
-                            OverlaidChildren = []
-                            VDomSource = unkeyedVdom |> KeylessVdom.Unkeyed
-                            Self = UnkeyedVdom.Checkbox (isChecked, focus) |> KeylessVdom.Unkeyed
-                        }
-                    | _ -> freshRenderCheckbox dirty bounds unkeyedVdom isChecked focus
-                | _ -> freshRenderCheckbox dirty bounds unkeyedVdom isChecked focus
+                    | KeylessVdom.Unkeyed (UnkeyedVdom.Checkbox (prevChecked, prevFocus)) when
+                        prevChecked = isChecked && focus = prevFocus
+                        ->
+                        previousRender
+                    | _ -> freshRenderCheckbox bounds unkeyedVdom isChecked focus
+                | _ -> freshRenderCheckbox bounds unkeyedVdom isChecked focus
 
             | UnkeyedVdom.Bordered child ->
                 match previousRender with
                 | Some previousRender when previousRender.Bounds = bounds ->
                     match previousRender.VDomSource with
                     | KeylessVdom.Unkeyed (UnkeyedVdom.Bordered _) ->
-                        let children =
-                            [
-                                layoutEither
-                                    dirty
-                                    keyToNode
-                                    focusableKeys
-                                    initialFocusKey
-                                    (Some previousRender.OverlaidChildren.[0])
-                                    (shrinkBounds bounds)
-                                    child
-                            ]
+                        let renderedChild =
+                            layoutEither
+                                keyToNode
+                                focusableKeys
+                                initialFocusKey
+                                (Some previousRender.OverlaidChildren.[0])
+                                (shrinkBounds bounds)
+                                child
 
-                        {
-                            Bounds = bounds
-                            OverlaidChildren = children
-                            VDomSource = unkeyedVdom |> KeylessVdom.Unkeyed
-                            Self = UnkeyedVdom.Bordered children.[0].Self |> KeylessVdom.Unkeyed
-                        }
+                        // If child is unchanged (same reference), return the previous render
+                        if Object.referenceEquals renderedChild previousRender.OverlaidChildren.[0] then
+                            previousRender
+                        else
+                            {
+                                Bounds = bounds
+                                OverlaidChildren = [ renderedChild ]
+                                VDomSource = unkeyedVdom |> KeylessVdom.Unkeyed
+                                Self = UnkeyedVdom.Bordered renderedChild.Self |> KeylessVdom.Unkeyed
+                            }
 
-                    | _ -> freshRenderBordered keyToNode focusableKeys initialFocusKey dirty bounds child unkeyedVdom
-                | _ -> freshRenderBordered keyToNode focusableKeys initialFocusKey dirty bounds child unkeyedVdom
+                    | _ -> freshRenderBordered keyToNode focusableKeys initialFocusKey bounds child unkeyedVdom
+                | _ -> freshRenderBordered keyToNode focusableKeys initialFocusKey bounds child unkeyedVdom
             | Focusable (isInitialFocus, keyedVdom) ->
                 match keyedVdom with
                 | WithKey (key, _) ->
@@ -626,7 +532,6 @@ module Render =
 
                 let child =
                     layout
-                        dirty
                         keyToNode
                         focusableKeys
                         initialFocusKey
@@ -634,16 +539,205 @@ module Render =
                         bounds
                         (Vdom.Keyed (keyedVdom, Teq.refl))
 
-                {
-                    Bounds = bounds
-                    OverlaidChildren = [ child ]
-                    VDomSource = unkeyedVdom |> KeylessVdom.Unkeyed
-                    Self =
-                        match child.Self with
-                        | KeylessVdom.Keyed child ->
-                            UnkeyedVdom.Focusable (isInitialFocus, child) |> KeylessVdom.Unkeyed
-                        | KeylessVdom.Unkeyed _ -> failwith "logic error: child is keyed"
-                }
+                // If child is unchanged (same reference), return the previous render
+                match previousRender with
+                | Some previousRender when
+                    previousRender.OverlaidChildren.Length > 0
+                    && Object.referenceEquals child previousRender.OverlaidChildren.[0]
+                    ->
+                    previousRender
+                | _ ->
+                    {
+                        Bounds = bounds
+                        OverlaidChildren = [ child ]
+                        VDomSource = unkeyedVdom |> KeylessVdom.Unkeyed
+                        Self =
+                            match child.Self with
+                            | KeylessVdom.Keyed child ->
+                                UnkeyedVdom.Focusable (isInitialFocus, child) |> KeylessVdom.Unkeyed
+                            | KeylessVdom.Unkeyed _ -> failwith "logic error: child is keyed"
+                    }
+
+    let rec private renderToBuffer
+        (dirty : TerminalCell voption[,])
+        (previousNode : RenderedNode option)
+        (node : RenderedNode)
+        : unit
+        =
+        // Early cutoff: if this node is the same reference as the previous one, nothing changed
+        match previousNode with
+        | Some prev when Object.referenceEquals prev node -> ()
+        | _ ->
+
+        let bounds = node.Bounds
+
+        match node.VDomSource with
+        | KeylessVdom.Keyed vdom ->
+            // Keyed nodes just wrap their child, render the child
+            let prevChild =
+                match previousNode with
+                | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
+                | _ -> None
+
+            renderToBuffer dirty prevChild node.OverlaidChildren.[0]
+        | KeylessVdom.Unkeyed vdom ->
+            match vdom with
+            | UnkeyedVdom.TextContent (content, focus) ->
+                // TODO: can do better here if we can compute a more efficient diff
+                // TODO: work out how to display this differently when it has focus
+                for y = 0 to bounds.Height - 1 do
+                    for x = 0 to bounds.Width - 1 do
+                        setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
+
+                // dumb implementation! could do much better
+                let mutable index = 0
+                let mutable currX = 0
+                let mutable currY = 0
+
+                while index < content.Length do
+                    setAtRelativeOffset dirty bounds currX currY (ValueSome (TerminalCell.OfChar (content.Chars index)))
+
+                    currX <- currX + 1
+
+                    if currX = bounds.Width then
+                        currX <- 0
+                        currY <- currY + 1
+
+                        if currY >= bounds.Height then
+                            index <- content.Length
+
+                    index <- index + 1
+
+            | UnkeyedVdom.Checkbox (isChecked, focus) ->
+                for y = 0 to bounds.Height - 1 do
+                    for x = 0 to bounds.Width - 1 do
+                        setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
+
+                let content = if isChecked then '☑' else '☐'
+
+                if focus then
+                    setAtRelativeOffset
+                        dirty
+                        bounds
+                        (bounds.Width / 2 - 1)
+                        (bounds.Height / 2)
+                        (ValueSome (TerminalCell.OfChar '['))
+
+                    setAtRelativeOffset
+                        dirty
+                        bounds
+                        (bounds.Width / 2 + 1)
+                        (bounds.Height / 2)
+                        (ValueSome (TerminalCell.OfChar ']'))
+
+                setAtRelativeOffset
+                    dirty
+                    bounds
+                    (bounds.Width / 2)
+                    (bounds.Height / 2)
+                    (ValueSome (TerminalCell.OfChar content))
+
+            | UnkeyedVdom.PanelSplit _ ->
+                // Only paint background if this is a new node or bounds changed
+                match previousNode with
+                | Some prev when
+                    prev.Bounds = bounds
+                    && match prev.VDomSource with
+                       | KeylessVdom.Unkeyed (UnkeyedVdom.PanelSplit _) -> true
+                       | _ -> false
+                    ->
+                    // Container unchanged, skip background paint
+                    ()
+                | _ ->
+                    // New container or bounds changed, paint background
+                    for y = 0 to bounds.Height - 1 do
+                        for x = 0 to bounds.Width - 1 do
+                            setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
+
+                // Render children with their previous versions
+                let prevChild1 =
+                    match previousNode with
+                    | Some prev when
+                        prev.OverlaidChildren.Length >= 2
+                        && match prev.VDomSource with
+                           | KeylessVdom.Unkeyed (UnkeyedVdom.PanelSplit _) -> true
+                           | _ -> false
+                        ->
+                        Some prev.OverlaidChildren.[0]
+                    | _ -> None
+
+                let prevChild2 =
+                    match previousNode with
+                    | Some prev when
+                        prev.OverlaidChildren.Length >= 2
+                        && match prev.VDomSource with
+                           | KeylessVdom.Unkeyed (UnkeyedVdom.PanelSplit _) -> true
+                           | _ -> false
+                        ->
+                        Some prev.OverlaidChildren.[1]
+                    | _ -> None
+
+                renderToBuffer dirty prevChild1 node.OverlaidChildren.[0]
+                renderToBuffer dirty prevChild2 node.OverlaidChildren.[1]
+
+            | UnkeyedVdom.Bordered _ ->
+                // Only paint background and border if this is a new node or bounds changed
+                match previousNode with
+                | Some prev when
+                    prev.Bounds = bounds
+                    && match prev.VDomSource with
+                       | KeylessVdom.Unkeyed (UnkeyedVdom.Bordered _) -> true
+                       | _ -> false
+                    ->
+                    // Container unchanged, skip background/border paint
+                    ()
+                | _ ->
+                    // New container or bounds changed, paint background and border
+                    for y = 0 to bounds.Height - 1 do
+                        for x = 0 to bounds.Width - 1 do
+                            setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
+
+                    setAtRelativeOffset dirty bounds 0 0 (ValueSome (TerminalCell.OfChar '┌'))
+                    setAtRelativeOffset dirty bounds 0 (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '└'))
+                    setAtRelativeOffset dirty bounds (bounds.Width - 1) 0 (ValueSome (TerminalCell.OfChar '┐'))
+
+                    setAtRelativeOffset
+                        dirty
+                        bounds
+                        (bounds.Width - 1)
+                        (bounds.Height - 1)
+                        (ValueSome (TerminalCell.OfChar '┘'))
+
+                    for i = 1 to bounds.Width - 2 do
+                        setAtRelativeOffset dirty bounds i 0 (ValueSome (TerminalCell.OfChar '─'))
+                        setAtRelativeOffset dirty bounds i (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '─'))
+
+                    for i = 1 to bounds.Height - 2 do
+                        setAtRelativeOffset dirty bounds 0 i (ValueSome (TerminalCell.OfChar '│'))
+                        setAtRelativeOffset dirty bounds (bounds.Width - 1) i (ValueSome (TerminalCell.OfChar '│'))
+
+                // Render child with its previous version
+                let prevChild =
+                    match previousNode with
+                    | Some prev when
+                        prev.OverlaidChildren.Length > 0
+                        && match prev.VDomSource with
+                           | KeylessVdom.Unkeyed (UnkeyedVdom.Bordered _) -> true
+                           | _ -> false
+                        ->
+                        Some prev.OverlaidChildren.[0]
+                    | _ -> None
+
+                renderToBuffer dirty prevChild node.OverlaidChildren.[0]
+
+            | UnkeyedVdom.Focusable _ ->
+                // Focusable just wraps its child, render the child
+                let prevChild =
+                    match previousNode with
+                    | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
+                    | _ -> None
+
+                renderToBuffer dirty prevChild node.OverlaidChildren.[0]
 
     let writeBuffer (dirty : TerminalCell voption[,]) : TerminalOp seq =
         // TODO this is super dumb
@@ -678,9 +772,9 @@ module Render =
 
         let vdom = compute userState
 
-        let rendered =
+        // Phase 1: Compute layout (bounds only)
+        let layoutResult =
             layout
-                renderState.Buffer
                 renderState.KeyToNode
                 renderState.FocusableKeys
                 renderState.InitialFocusKey
@@ -695,7 +789,16 @@ module Render =
             if not (renderState.FocusableKeys.Contains key) then
                 VdomContext.setFocusedKey None renderState.VdomContext
 
-        renderState.PreviousVdom <- Some rendered
+        // Phase 2: Render to buffer (only if something changed)
+        match renderState.PreviousVdom with
+        | Some prev when Object.referenceEquals prev layoutResult ->
+            // Nothing changed, skip rendering
+            ()
+        | _ ->
+            // Something changed, render to buffer
+            renderToBuffer renderState.Buffer renderState.PreviousVdom layoutResult
+
+        renderState.PreviousVdom <- Some layoutResult
 
         let cursorFlip = RenderState.isCursorVisible renderState
         let mutable haveManipulatedCursor = false
