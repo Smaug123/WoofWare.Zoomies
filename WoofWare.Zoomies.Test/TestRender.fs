@@ -769,3 +769,38 @@ This is focusable text                                                          
 
         // Should only be called once
         setCursorInvisibleCount |> shouldEqual 1
+
+    [<Test>]
+    let ``layoutOf works for unchanged keyed nodes across multiple renders`` () =
+        let terminalOps = ResizeArray ()
+
+        let console =
+            { IConsole.defaultForTests with
+                Execute = fun x -> terminalOps.Add x
+            }
+
+        let renderState = RenderState.make' console
+
+        let key = NodeKey.make "test-key"
+
+        // Create a vdom with a keyed node - memoize it so we get the same reference each time
+        // Use a wrapper (Bordered) to ensure we have an Unkeyed vdom as required by oneStep
+        let cachedKeyedContent = Vdom.textContent false "test content" |> Vdom.withKey key
+
+        let vdom (_ : FakeUnit) : Vdom<DesiredBounds, _> =
+            // Wrap the keyed content in a bordered panel (which is Unkeyed)
+            Vdom.bordered cachedKeyedContent
+
+        // First render
+        Render.oneStep renderState (FakeUnit.fake ()) vdom
+
+        // layoutOf should work after first render
+        let layout1 = RenderState.layoutOf key renderState
+        layout1.IsSome |> shouldEqual true
+
+        // Second render with the same vdom (should trigger early cutoff on the keyed node)
+        Render.oneStep renderState (FakeUnit.fake ()) vdom
+
+        // layoutOf should still work after second render, even though early cutoff was taken
+        let layout2 = RenderState.layoutOf key renderState
+        layout2.IsSome |> shouldEqual true
