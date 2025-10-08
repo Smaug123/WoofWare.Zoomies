@@ -348,6 +348,10 @@ module Render =
                 bounds = previousRender.Bounds
                 && KeylessVdom.referenceEquals (previousRender.VDomSource, keyedVdom)
                 ->
+                // Early cutoff, but we must still populate KeyToNode since oneStep clears it each frame
+                match keyedVdom with
+                | WithKey (nodeKey, _) -> keyToNode.[nodeKey] <- previousRender.OverlaidChildren.[0]
+
                 previousRender
             | _ ->
 
