@@ -219,58 +219,281 @@ module Render =
         (keyToNode : Dictionary<NodeKey, RenderedNode>)
         (focusableKeys : OrderedSet<NodeKey>)
         (initialFocusKey : NodeKey option ref)
+        (previousRender : RenderedNode option)
         (arranged : Layout.ArrangedNode)
         (originalVdom : KeylessVdom<DesiredBounds>)
         : RenderedNode
         =
+        // Early cutoff: check if we can reuse previousRender based on structural equality
+        let earlyCutoffResult =
+            match previousRender with
+            | Some prev when prev.Bounds = arranged.Bounds ->
+                match originalVdom, prev.VDomSource with
+                // Keyed nodes with same reference - reuse previous
+                | KeylessVdom.Keyed (KeyedVdom.WithKey (key1, vdom1)),
+                  KeylessVdom.Keyed (KeyedVdom.WithKey (key2, vdom2)) when key1 = key2 ->
+                    match vdom1, vdom2 with
+                    | UnkeyedVdom.TextContent (text1, focus1), UnkeyedVdom.TextContent (text2, focus2) when
+                        text1 = text2 && focus1 = focus2
+                        ->
+                        // Repopulate keyToNode for reused keyed node
+                        keyToNode.[key1] <- prev
+                        Some prev
+                    | UnkeyedVdom.Checkbox (checked1, focus1), UnkeyedVdom.Checkbox (checked2, focus2) when
+                        checked1 = checked2 && focus1 = focus2
+                        ->
+                        // Repopulate keyToNode for reused keyed node
+                        keyToNode.[key1] <- prev
+                        Some prev
+                    | UnkeyedVdom.Bordered child1, UnkeyedVdom.Bordered _ when prev.OverlaidChildren.Length > 0 ->
+                        // Recursively check child
+                        let prevChild = prev.OverlaidChildren.[0]
+
+                        let newChild =
+                            arrangedToRendered
+                                keyToNode
+                                focusableKeys
+                                initialFocusKey
+                                (Some prevChild)
+                                arranged.Children.[0]
+                                child1
+
+                        if Object.referenceEquals newChild prevChild then
+                            // Child unchanged, repopulate keyToNode and reuse parent
+                            keyToNode.[key1] <- prev
+                            Some prev
+                        else
+                            // Child changed, will create new parent below
+                            None
+                    | UnkeyedVdom.PanelSplit (dir1, behav1, child1a, child1b),
+                      UnkeyedVdom.PanelSplit (dir2, behav2, _, _) when
+                        dir1 = dir2 && behav1 = behav2 && prev.OverlaidChildren.Length >= 2
+                        ->
+                        // Recursively check both children
+                        let prevChild1 = prev.OverlaidChildren.[0]
+                        let prevChild2 = prev.OverlaidChildren.[1]
+
+                        let newChild1 =
+                            arrangedToRendered
+                                keyToNode
+                                focusableKeys
+                                initialFocusKey
+                                (Some prevChild1)
+                                arranged.Children.[0]
+                                child1a
+
+                        let newChild2 =
+                            arrangedToRendered
+                                keyToNode
+                                focusableKeys
+                                initialFocusKey
+                                (Some prevChild2)
+                                arranged.Children.[1]
+                                child1b
+
+                        if
+                            Object.referenceEquals newChild1 prevChild1
+                            && Object.referenceEquals newChild2 prevChild2
+                        then
+                            // Both children unchanged, repopulate keyToNode and reuse parent
+                            keyToNode.[key1] <- prev
+                            Some prev
+                        else
+                            // Child changed, will create new parent below
+                            None
+                    | UnkeyedVdom.Focusable _, UnkeyedVdom.Focusable _ ->
+                        // Focusable nodes have complex focus registration logic
+                        // Skip early cutoff and use normal path to avoid issues
+                        None
+                    | _ -> None
+                // Unkeyed leaf nodes
+                | KeylessVdom.Unkeyed (UnkeyedVdom.TextContent (text1, focus1)),
+                  KeylessVdom.Unkeyed (UnkeyedVdom.TextContent (text2, focus2)) when text1 = text2 && focus1 = focus2 ->
+                    Some prev
+                | KeylessVdom.Unkeyed (UnkeyedVdom.Checkbox (checked1, focus1)),
+                  KeylessVdom.Unkeyed (UnkeyedVdom.Checkbox (checked2, focus2)) when
+                    checked1 = checked2 && focus1 = focus2
+                    ->
+                    Some prev
+                // Container nodes need recursive checks
+                | KeylessVdom.Unkeyed (UnkeyedVdom.Bordered child1), KeylessVdom.Unkeyed (UnkeyedVdom.Bordered _) when
+                    prev.OverlaidChildren.Length > 0
+                    ->
+                    // Recursively check child
+                    let prevChild = prev.OverlaidChildren.[0]
+
+                    let newChild =
+                        arrangedToRendered
+                            keyToNode
+                            focusableKeys
+                            initialFocusKey
+                            (Some prevChild)
+                            arranged.Children.[0]
+                            child1
+
+                    if Object.referenceEquals newChild prevChild then
+                        // Child unchanged, reuse parent
+                        Some prev
+                    else
+                        // Child changed, will create new parent below
+                        None
+                | KeylessVdom.Unkeyed (UnkeyedVdom.PanelSplit (dir1, behav1, child1a, child1b)),
+                  KeylessVdom.Unkeyed (UnkeyedVdom.PanelSplit (dir2, behav2, _, _)) when
+                    dir1 = dir2 && behav1 = behav2 && prev.OverlaidChildren.Length >= 2
+                    ->
+                    // Recursively check both children
+                    let prevChild1 = prev.OverlaidChildren.[0]
+                    let prevChild2 = prev.OverlaidChildren.[1]
+
+                    let newChild1 =
+                        arrangedToRendered
+                            keyToNode
+                            focusableKeys
+                            initialFocusKey
+                            (Some prevChild1)
+                            arranged.Children.[0]
+                            child1a
+
+                    let newChild2 =
+                        arrangedToRendered
+                            keyToNode
+                            focusableKeys
+                            initialFocusKey
+                            (Some prevChild2)
+                            arranged.Children.[1]
+                            child1b
+
+                    if
+                        Object.referenceEquals newChild1 prevChild1
+                        && Object.referenceEquals newChild2 prevChild2
+                    then
+                        // Both children unchanged, reuse parent
+                        Some prev
+                    else
+                        // At least one child changed, will create new parent below
+                        None
+                | KeylessVdom.Unkeyed (UnkeyedVdom.Focusable _), KeylessVdom.Unkeyed (UnkeyedVdom.Focusable _) ->
+                    // Focusable nodes have complex focus registration logic
+                    // Skip early cutoff and use normal path to avoid issues
+                    None
+                | _ -> None
+            | _ -> None
+
+        match earlyCutoffResult with
+        | Some reused -> reused
+        | None ->
+
         let children =
             match originalVdom with
             | KeylessVdom.Keyed (KeyedVdom.WithKey (_, unkeyedVdom)) ->
                 match unkeyedVdom with
                 | UnkeyedVdom.Bordered child ->
+                    let prevChild =
+                        match previousRender with
+                        | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
+                        | _ -> None
+
                     [
-                        arrangedToRendered keyToNode focusableKeys initialFocusKey arranged.Children.[0] child
+                        arrangedToRendered keyToNode focusableKeys initialFocusKey prevChild arranged.Children.[0] child
                     ]
                 | UnkeyedVdom.PanelSplit (_, _, child1, child2) ->
-                    [
-                        arrangedToRendered keyToNode focusableKeys initialFocusKey arranged.Children.[0] child1
-                        arrangedToRendered keyToNode focusableKeys initialFocusKey arranged.Children.[1] child2
-                    ]
-                | UnkeyedVdom.Focusable (isInitial, KeyedVdom.WithKey (key, _)) ->
-                    if not (focusableKeys.Add key) then
-                        failwith "TODO: handle this gracefully depending on a global framework flag"
-
-                    if isInitial then
-                        initialFocusKey.Value <- Some key
-
-                    [
-                        arrangedToRendered keyToNode focusableKeys initialFocusKey arranged.Children.[0] originalVdom
-                    ]
-                | UnkeyedVdom.TextContent _
-                | UnkeyedVdom.Checkbox _ -> []
-            | KeylessVdom.Unkeyed unkeyedVdom ->
-                match unkeyedVdom with
-                | UnkeyedVdom.Bordered child ->
-                    [
-                        arrangedToRendered keyToNode focusableKeys initialFocusKey arranged.Children.[0] child
-                    ]
-                | UnkeyedVdom.PanelSplit (_, _, child1, child2) ->
-                    [
-                        arrangedToRendered keyToNode focusableKeys initialFocusKey arranged.Children.[0] child1
-                        arrangedToRendered keyToNode focusableKeys initialFocusKey arranged.Children.[1] child2
-                    ]
-                | UnkeyedVdom.Focusable (isInitial, KeyedVdom.WithKey (key, childVdom)) ->
-                    if not (focusableKeys.Add key) then
-                        failwith "TODO: handle this gracefully depending on a global framework flag"
-
-                    if isInitial then
-                        initialFocusKey.Value <- Some key
+                    let prevChild1, prevChild2 =
+                        match previousRender with
+                        | Some prev when prev.OverlaidChildren.Length >= 2 ->
+                            Some prev.OverlaidChildren.[0], Some prev.OverlaidChildren.[1]
+                        | _ -> None, None
 
                     [
                         arrangedToRendered
                             keyToNode
                             focusableKeys
                             initialFocusKey
+                            prevChild1
+                            arranged.Children.[0]
+                            child1
+                        arrangedToRendered
+                            keyToNode
+                            focusableKeys
+                            initialFocusKey
+                            prevChild2
+                            arranged.Children.[1]
+                            child2
+                    ]
+                | UnkeyedVdom.Focusable (isInitial, KeyedVdom.WithKey (key, _)) ->
+                    // Try to add the key; if it's already there (from early cutoff), ignore
+                    let _ = focusableKeys.Add key
+
+                    if isInitial && initialFocusKey.Value.IsNone then
+                        initialFocusKey.Value <- Some key
+
+                    let prevChild =
+                        match previousRender with
+                        | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
+                        | _ -> None
+
+                    [
+                        arrangedToRendered
+                            keyToNode
+                            focusableKeys
+                            initialFocusKey
+                            prevChild
+                            arranged.Children.[0]
+                            originalVdom
+                    ]
+                | UnkeyedVdom.TextContent _
+                | UnkeyedVdom.Checkbox _ -> []
+            | KeylessVdom.Unkeyed unkeyedVdom ->
+                match unkeyedVdom with
+                | UnkeyedVdom.Bordered child ->
+                    let prevChild =
+                        match previousRender with
+                        | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
+                        | _ -> None
+
+                    [
+                        arrangedToRendered keyToNode focusableKeys initialFocusKey prevChild arranged.Children.[0] child
+                    ]
+                | UnkeyedVdom.PanelSplit (_, _, child1, child2) ->
+                    let prevChild1, prevChild2 =
+                        match previousRender with
+                        | Some prev when prev.OverlaidChildren.Length >= 2 ->
+                            Some prev.OverlaidChildren.[0], Some prev.OverlaidChildren.[1]
+                        | _ -> None, None
+
+                    [
+                        arrangedToRendered
+                            keyToNode
+                            focusableKeys
+                            initialFocusKey
+                            prevChild1
+                            arranged.Children.[0]
+                            child1
+                        arrangedToRendered
+                            keyToNode
+                            focusableKeys
+                            initialFocusKey
+                            prevChild2
+                            arranged.Children.[1]
+                            child2
+                    ]
+                | UnkeyedVdom.Focusable (isInitial, KeyedVdom.WithKey (key, childVdom)) ->
+                    // Try to add the key; if it's already there (from early cutoff), ignore
+                    let _ = focusableKeys.Add key
+
+                    if isInitial && initialFocusKey.Value.IsNone then
+                        initialFocusKey.Value <- Some key
+
+                    let prevChild =
+                        match previousRender with
+                        | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
+                        | _ -> None
+
+                    [
+                        arrangedToRendered
+                            keyToNode
+                            focusableKeys
+                            initialFocusKey
+                            prevChild
                             arranged.Children.[0]
                             (KeylessVdom.Keyed (KeyedVdom.WithKey (key, childVdom)))
                     ]
@@ -321,7 +544,13 @@ module Render =
             // Convert to RenderedNode
             match vdom with
             | Vdom.Unkeyed (unkeyedVdom, _) ->
-                arrangedToRendered keyToNode focusableKeys initialFocusKey arranged (KeylessVdom.Unkeyed unkeyedVdom)
+                arrangedToRendered
+                    keyToNode
+                    focusableKeys
+                    initialFocusKey
+                    previousRender
+                    arranged
+                    (KeylessVdom.Unkeyed unkeyedVdom)
             | Vdom.Keyed _ -> failwith "Top-level vdom must be unkeyed"
 
     let rec private renderToBuffer
@@ -347,6 +576,7 @@ module Render =
                     match previousNode with
                     | Some prev when prev.OverlaidChildren.Length >= 2 -> Some prev.OverlaidChildren.[0]
                     | _ -> None
+
                 let prevChild2 =
                     match previousNode with
                     | Some prev when prev.OverlaidChildren.Length >= 2 -> Some prev.OverlaidChildren.[1]
@@ -379,7 +609,12 @@ module Render =
                     let mutable currY = 0
 
                     while index < content.Length do
-                        setAtRelativeOffset dirty bounds currX currY (ValueSome (TerminalCell.OfChar (content.Chars index)))
+                        setAtRelativeOffset
+                            dirty
+                            bounds
+                            currX
+                            currY
+                            (ValueSome (TerminalCell.OfChar (content.Chars index)))
 
                         currX <- currX + 1
 
@@ -425,10 +660,8 @@ module Render =
                     // via keyToNode, but the actual rendering is done via the child
                     // Do nothing here
                     ()
-                | UnkeyedVdom.Bordered _ ->
-                    failwith "Keyed Bordered node should have a child in OverlaidChildren"
-                | UnkeyedVdom.PanelSplit _ ->
-                    failwith "Keyed PanelSplit node should have children in OverlaidChildren"
+                | UnkeyedVdom.Bordered _ -> failwith "Keyed Bordered node should have a child in OverlaidChildren"
+                | UnkeyedVdom.PanelSplit _ -> failwith "Keyed PanelSplit node should have children in OverlaidChildren"
         | KeylessVdom.Unkeyed vdom ->
             match vdom with
             | UnkeyedVdom.TextContent (content, focus) ->
