@@ -419,7 +419,7 @@ module Render =
                             arranged.Children.[1]
                             child2
                     ]
-                | UnkeyedVdom.Focusable (isInitial, KeyedVdom.WithKey (key, _)) ->
+                | UnkeyedVdom.Focusable (isInitial, KeyedVdom.WithKey (key, childVdom)) ->
                     // Try to add the key; if it's already there (from early cutoff), ignore
                     let _ = focusableKeys.Add key
 
@@ -438,7 +438,7 @@ module Render =
                             initialFocusKey
                             prevChild
                             arranged.Children.[0]
-                            originalVdom
+                            (KeylessVdom.Keyed (KeyedVdom.WithKey (key, childVdom)))
                     ]
                 | UnkeyedVdom.TextContent _
                 | UnkeyedVdom.Checkbox _ -> []
@@ -511,9 +511,17 @@ module Render =
 
         // Register keyed nodes
         match originalVdom with
-        | KeylessVdom.Keyed (KeyedVdom.WithKey (key, _)) -> keyToNode.[key] <- result
+        | KeylessVdom.Keyed (KeyedVdom.WithKey (key, unkeyedVdom)) ->
+            match unkeyedVdom with
+            | UnkeyedVdom.Focusable (_, KeyedVdom.WithKey (childKey, _)) ->
+                // For focusable wrappers, don't register the wrapper key.
+                // The child's key is already registered by the recursive call.
+                ()
+            | _ ->
+                // For other keyed nodes, register the key to this node
+                keyToNode.[key] <- result
         | KeylessVdom.Unkeyed (UnkeyedVdom.Focusable (_, KeyedVdom.WithKey (key, _))) ->
-            // Register the focusable wrapper's key
+            // Register the focusable child's key
             keyToNode.[key] <- children.[0]
         | _ -> ()
 
@@ -634,7 +642,8 @@ module Render =
 
                     let content = if isChecked then '☑' else '☐'
 
-                    if focus then
+                    // Only render focus brackets if width is sufficient (need at least 3 cells for "[ ]")
+                    if focus && bounds.Width >= 3 then
                         setAtRelativeOffset
                             dirty
                             bounds
@@ -649,12 +658,14 @@ module Render =
                             (bounds.Height / 2)
                             (ValueSome (TerminalCell.OfChar ']'))
 
-                    setAtRelativeOffset
-                        dirty
-                        bounds
-                        (bounds.Width / 2)
-                        (bounds.Height / 2)
-                        (ValueSome (TerminalCell.OfChar content))
+                    // Always render checkbox content if we have any space
+                    if bounds.Width > 0 && bounds.Height > 0 then
+                        setAtRelativeOffset
+                            dirty
+                            bounds
+                            (bounds.Width / 2)
+                            (bounds.Height / 2)
+                            (ValueSome (TerminalCell.OfChar content))
                 | UnkeyedVdom.Focusable _ ->
                     // Focusable wrapper with no children - this means it's registered
                     // via keyToNode, but the actual rendering is done via the child
@@ -697,7 +708,8 @@ module Render =
 
                 let content = if isChecked then '☑' else '☐'
 
-                if focus then
+                // Only render focus brackets if width is sufficient (need at least 3 cells for "[ ]")
+                if focus && bounds.Width >= 3 then
                     setAtRelativeOffset
                         dirty
                         bounds
@@ -712,12 +724,14 @@ module Render =
                         (bounds.Height / 2)
                         (ValueSome (TerminalCell.OfChar ']'))
 
-                setAtRelativeOffset
-                    dirty
-                    bounds
-                    (bounds.Width / 2)
-                    (bounds.Height / 2)
-                    (ValueSome (TerminalCell.OfChar content))
+                // Always render checkbox content if we have any space
+                if bounds.Width > 0 && bounds.Height > 0 then
+                    setAtRelativeOffset
+                        dirty
+                        bounds
+                        (bounds.Width / 2)
+                        (bounds.Height / 2)
+                        (ValueSome (TerminalCell.OfChar content))
 
             | UnkeyedVdom.PanelSplit _ ->
                 // Only paint background if this is a new node or bounds changed
@@ -779,24 +793,26 @@ module Render =
                         for x = 0 to bounds.Width - 1 do
                             setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
 
-                    setAtRelativeOffset dirty bounds 0 0 (ValueSome (TerminalCell.OfChar '┌'))
-                    setAtRelativeOffset dirty bounds 0 (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '└'))
-                    setAtRelativeOffset dirty bounds (bounds.Width - 1) 0 (ValueSome (TerminalCell.OfChar '┐'))
+                    // Only draw border if bounds are large enough (need at least 2x2)
+                    if bounds.Width >= 2 && bounds.Height >= 2 then
+                        setAtRelativeOffset dirty bounds 0 0 (ValueSome (TerminalCell.OfChar '┌'))
+                        setAtRelativeOffset dirty bounds 0 (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '└'))
+                        setAtRelativeOffset dirty bounds (bounds.Width - 1) 0 (ValueSome (TerminalCell.OfChar '┐'))
 
-                    setAtRelativeOffset
-                        dirty
-                        bounds
-                        (bounds.Width - 1)
-                        (bounds.Height - 1)
-                        (ValueSome (TerminalCell.OfChar '┘'))
+                        setAtRelativeOffset
+                            dirty
+                            bounds
+                            (bounds.Width - 1)
+                            (bounds.Height - 1)
+                            (ValueSome (TerminalCell.OfChar '┘'))
 
-                    for i = 1 to bounds.Width - 2 do
-                        setAtRelativeOffset dirty bounds i 0 (ValueSome (TerminalCell.OfChar '─'))
-                        setAtRelativeOffset dirty bounds i (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '─'))
+                        for i = 1 to bounds.Width - 2 do
+                            setAtRelativeOffset dirty bounds i 0 (ValueSome (TerminalCell.OfChar '─'))
+                            setAtRelativeOffset dirty bounds i (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '─'))
 
-                    for i = 1 to bounds.Height - 2 do
-                        setAtRelativeOffset dirty bounds 0 i (ValueSome (TerminalCell.OfChar '│'))
-                        setAtRelativeOffset dirty bounds (bounds.Width - 1) i (ValueSome (TerminalCell.OfChar '│'))
+                        for i = 1 to bounds.Height - 2 do
+                            setAtRelativeOffset dirty bounds 0 i (ValueSome (TerminalCell.OfChar '│'))
+                            setAtRelativeOffset dirty bounds (bounds.Width - 1) i (ValueSome (TerminalCell.OfChar '│'))
 
                 // Render child with its previous version
                 let prevChild =

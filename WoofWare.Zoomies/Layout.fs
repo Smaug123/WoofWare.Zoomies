@@ -427,22 +427,48 @@ module internal Layout =
         (constraints : MeasureConstraints)
         : MeasuredNode<DesiredBounds>
         =
-        // IMPORTANT: Child1 is measured with constrained width since we will only
-        // allocate n pixels to it during arrange.
-        let child1Constraints =
-            {
-                MaxWidth =
-                    match constraints.MaxWidth with
-                    | Some parentMax -> Some (min n parentMax)
-                    | None -> Some n
-                MaxHeight = constraints.MaxHeight
-            }
+        // If n < 0, it means "reserve abs(n) for child2, give child1 the rest"
+        // Otherwise n >= 0 means "give child1 exactly n, child2 gets the rest"
+        let isNegative = n < 0
+        let absN = abs n
+
+        // IMPORTANT: Constrain the child that gets the fixed allocation
+        let child1Constraints, child2Constraints =
+            if isNegative then
+                // Child2 gets fixed allocation of absN
+                constraints,
+                {
+                    MaxWidth =
+                        match constraints.MaxWidth with
+                        | Some parentMax -> Some (max 0 (min absN parentMax))
+                        | None -> Some (max 0 absN)
+                    MaxHeight = constraints.MaxHeight
+                }
+            else
+                // Child1 gets fixed allocation of n
+                {
+                    MaxWidth =
+                        match constraints.MaxWidth with
+                        | Some parentMax -> Some (max 0 (min n parentMax))
+                        | None -> Some (max 0 n)
+                    MaxHeight = constraints.MaxHeight
+                },
+                constraints
 
         let child1Measured = measureEither child1Constraints child1
-        let child2Measured = measureEither constraints child2
+        let child2Measured = measureEither child2Constraints child2
 
         let m1 = child1Measured.Measured
         let m2 = child2Measured.Measured
+
+        // Compute container's min/preferred width
+        let containerMinWidth, containerPreferredWidth =
+            if isNegative then
+                // Reserve absN for child2, child1 gets the rest
+                m1.MinWidth + absN, m1.PreferredWidth + absN
+            else
+                // Reserve n for child1, child2 gets the rest
+                n + m2.MinWidth, n + m2.PreferredWidth
 
         {
             Vdom =
@@ -451,25 +477,48 @@ module internal Layout =
                 )
             Measured =
                 {
-                    // Container's minimum is the space we promise to child1 plus child2's minimum
-                    MinWidth = n + m2.MinWidth
-                    PreferredWidth = n + m2.PreferredWidth
+                    MinWidth = containerMinWidth
+                    PreferredWidth = containerPreferredWidth
                     MaxWidth = None
                     MinHeightForWidth =
                         fun w ->
-                            // Child1 gets min(n, w), child2 gets remainder
-                            let w1 = min n w
-                            let w2 = max 0 (w - w1)
+                            let w1, w2 =
+                                if isNegative then
+                                    // Child2 gets min(absN, w), child1 gets remainder
+                                    let w2 = min absN w
+                                    let w1 = max 0 (w - w2)
+                                    w1, w2
+                                else
+                                    // Child1 gets min(n, w), child2 gets remainder
+                                    let w1 = min n w
+                                    let w2 = max 0 (w - w1)
+                                    w1, w2
+
                             max (m1.MinHeightForWidth w1) (m2.MinHeightForWidth w2)
                     PreferredHeightForWidth =
                         fun w ->
-                            let w1 = min n w
-                            let w2 = max 0 (w - w1)
+                            let w1, w2 =
+                                if isNegative then
+                                    let w2 = min absN w
+                                    let w1 = max 0 (w - w2)
+                                    w1, w2
+                                else
+                                    let w1 = min n w
+                                    let w2 = max 0 (w - w1)
+                                    w1, w2
+
                             max (m1.PreferredHeightForWidth w1) (m2.PreferredHeightForWidth w2)
                     MaxHeightForWidth =
                         fun w ->
-                            let w1 = min n w
-                            let w2 = max 0 (w - w1)
+                            let w1, w2 =
+                                if isNegative then
+                                    let w2 = min absN w
+                                    let w1 = max 0 (w - w2)
+                                    w1, w2
+                                else
+                                    let w1 = min n w
+                                    let w2 = max 0 (w - w1)
+                                    w1, w2
 
                             match m1.MaxHeightForWidth w1, m2.MaxHeightForWidth w2 with
                             | Some h1, Some h2 -> Some (max h1 h2)
@@ -486,19 +535,36 @@ module internal Layout =
         (constraints : MeasureConstraints)
         : MeasuredNode<DesiredBounds>
         =
-        // IMPORTANT: Child1 is measured with constrained height since we will only
-        // allocate n pixels to it during arrange.
-        let child1Constraints =
-            {
-                MaxWidth = constraints.MaxWidth
-                MaxHeight =
-                    match constraints.MaxHeight with
-                    | Some parentMax -> Some (min n parentMax)
-                    | None -> Some n
-            }
+        // If n < 0, it means "reserve abs(n) for child2, give child1 the rest"
+        // Otherwise n >= 0 means "give child1 exactly n, child2 gets the rest"
+        let isNegative = n < 0
+        let absN = abs n
+
+        // IMPORTANT: Constrain the child that gets the fixed allocation
+        let child1Constraints, child2Constraints =
+            if isNegative then
+                // Child2 gets fixed allocation of absN
+                constraints,
+                {
+                    MaxWidth = constraints.MaxWidth
+                    MaxHeight =
+                        match constraints.MaxHeight with
+                        | Some parentMax -> Some (max 0 (min absN parentMax))
+                        | None -> Some (max 0 absN)
+                }
+            else
+                // Child1 gets fixed allocation of n
+                {
+                    MaxWidth = constraints.MaxWidth
+                    MaxHeight =
+                        match constraints.MaxHeight with
+                        | Some parentMax -> Some (max 0 (min n parentMax))
+                        | None -> Some (max 0 n)
+                },
+                constraints
 
         let child1Measured = measureEither child1Constraints child1
-        let child2Measured = measureEither constraints child2
+        let child2Measured = measureEither child2Constraints child2
 
         let m1 = child1Measured.Measured
         let m2 = child2Measured.Measured
@@ -515,15 +581,28 @@ module internal Layout =
                     MaxWidth = None
                     MinHeightForWidth =
                         fun w ->
-                            // Child1 gets min(n, h), child2 gets remainder
-                            // We use the child's min height at width w as a baseline
-                            n + m2.MinHeightForWidth w
-                    PreferredHeightForWidth = fun w -> n + m2.PreferredHeightForWidth w
+                            if isNegative then
+                                // Reserve absN for child2, child1 gets the rest
+                                m1.MinHeightForWidth w + absN
+                            else
+                                // Reserve n for child1, child2 gets the rest
+                                n + m2.MinHeightForWidth w
+                    PreferredHeightForWidth =
+                        fun w ->
+                            if isNegative then
+                                m1.PreferredHeightForWidth w + absN
+                            else
+                                n + m2.PreferredHeightForWidth w
                     MaxHeightForWidth =
                         fun w ->
-                            match m2.MaxHeightForWidth w with
-                            | Some h2 -> Some (n + h2)
-                            | None -> None
+                            if isNegative then
+                                match m1.MaxHeightForWidth w with
+                                | Some h1 -> Some (h1 + absN)
+                                | None -> None
+                            else
+                                match m2.MaxHeightForWidth w with
+                                | Some h2 -> Some (n + h2)
+                                | None -> None
                 }
             Children = [ child1Measured ; child2Measured ]
         }

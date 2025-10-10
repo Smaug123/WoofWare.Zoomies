@@ -204,13 +204,14 @@ type Vdom =
             Teq.refl
         )
 
-    /// <summary>Creates a split panel where the first component receives a fixed number of cells.</summary>
+    /// <summary>Creates a split panel where one component receives a fixed number of cells.</summary>
     /// <remarks>
-    /// The first component <c>c1</c> receives exactly <c>p</c> cells, and the second component <c>c2</c> receives all remaining space.
+    /// If <c>p >= 0</c>, the first component <c>c1</c> receives exactly <c>p</c> cells, and the second component <c>c2</c> receives all remaining space.
+    /// If <c>p &lt; 0</c>, the second component <c>c2</c> receives exactly <c>abs(p)</c> cells, and the first component <c>c1</c> receives all remaining space.
     /// </remarks>
     /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
     /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
-    /// <param name="p">The number of cells to allocate to the first component (that is, the top or left one).</param>
+    /// <param name="p">The number of cells to allocate. If positive, allocates to the first component; if negative, allocates abs(p) to the second component.</param>
     /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
     /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
     static member panelSplitAbsolute
@@ -230,13 +231,14 @@ type Vdom =
             Teq.refl
         )
 
-    /// <summary>Creates a split panel where the first component receives a fixed number of cells.</summary>
+    /// <summary>Creates a split panel where one component receives a fixed number of cells.</summary>
     /// <remarks>
-    /// The first component <c>c1</c> receives exactly <c>p</c> cells, and the second component <c>c2</c> receives all remaining space.
+    /// If <c>p >= 0</c>, the first component <c>c1</c> receives exactly <c>p</c> cells, and the second component <c>c2</c> receives all remaining space.
+    /// If <c>p &lt; 0</c>, the second component <c>c2</c> receives exactly <c>abs(p)</c> cells, and the first component <c>c1</c> receives all remaining space.
     /// </remarks>
     /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
     /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
-    /// <param name="p">The number of cells to allocate to the first component (that is, the top or left one).</param>
+    /// <param name="p">The number of cells to allocate. If positive, allocates to the first component; if negative, allocates abs(p) to the second component.</param>
     /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
     /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
     static member panelSplitAbsolute
@@ -256,13 +258,14 @@ type Vdom =
             Teq.refl
         )
 
-    /// <summary>Creates a split panel where the first component receives a fixed number of cells.</summary>
+    /// <summary>Creates a split panel where one component receives a fixed number of cells.</summary>
     /// <remarks>
-    /// The first component <c>c1</c> receives exactly <c>p</c> cells, and the second component <c>c2</c> receives all remaining space.
+    /// If <c>p >= 0</c>, the first component <c>c1</c> receives exactly <c>p</c> cells, and the second component <c>c2</c> receives all remaining space.
+    /// If <c>p &lt; 0</c>, the second component <c>c2</c> receives exactly <c>abs(p)</c> cells, and the first component <c>c1</c> receives all remaining space.
     /// </remarks>
     /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
     /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
-    /// <param name="p">The number of cells to allocate to the first component (that is, the top or left one).</param>
+    /// <param name="p">The number of cells to allocate. If positive, allocates to the first component; if negative, allocates abs(p) to the second component.</param>
     /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
     /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
     static member panelSplitAbsolute
@@ -282,13 +285,14 @@ type Vdom =
             Teq.refl
         )
 
-    /// <summary>Creates a split panel where the first component receives a fixed number of cells.</summary>
+    /// <summary>Creates a split panel where one component receives a fixed number of cells.</summary>
     /// <remarks>
-    /// The first component <c>c1</c> receives exactly <c>p</c> cells, and the second component <c>c2</c> receives all remaining space.
+    /// If <c>p >= 0</c>, the first component <c>c1</c> receives exactly <c>p</c> cells, and the second component <c>c2</c> receives all remaining space.
+    /// If <c>p &lt; 0</c>, the second component <c>c2</c> receives exactly <c>abs(p)</c> cells, and the first component <c>c1</c> receives all remaining space.
     /// </remarks>
     /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
     /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
-    /// <param name="p">The number of cells to allocate to the first component (that is, the top or left one).</param>
+    /// <param name="p">The number of cells to allocate. If positive, allocates to the first component; if negative, allocates abs(p) to the second component.</param>
     /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
     /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
     static member panelSplitAbsolute
