@@ -11,12 +11,12 @@ Replace the current single-pass top-down layout with a two-pass measure/arrange 
 ```fsharp
 /// Constraints provided by parent during measurement
 type MeasureConstraints = {
-    /// Maximum available width (None = unbounded)
-    /// Invariant: if Some n, then n >= 0
-    MaxWidth: int option
-    /// Maximum available height (None = unbounded)
-    /// Invariant: if Some n, then n >= 0
-    MaxHeight: int option
+    /// Maximum available width.
+    /// Invariant: n >= 0
+    MaxWidth: int
+    /// Maximum available height.
+    /// Invariant: n >= 0
+    MaxHeight: int
 }
 
 /// Size requirements reported by a node
@@ -114,16 +114,10 @@ let measureText (text: string) (constraints: MeasureConstraints): MeasuredSize =
     let fullLineWidth = text.Length
 
     // Respect MaxWidth constraint when reporting MinWidth
-    let constrainedMinWidth =
-        match constraints.MaxWidth with
-        | Some mw -> min longestWord mw
-        | None -> longestWord
+    let constrainedMinWidth = min longestWord constraints.MaxWidth
 
     // Clamp preferred width to constraint
-    let constrainedPreferredWidth =
-        match constraints.MaxWidth with
-        | Some mw -> min fullLineWidth mw
-        | None -> fullLineWidth
+    let constrainedPreferredWidth = min fullLineWidth constraints.MaxWidth
 
     {
         MinWidth = constrainedMinWidth
@@ -173,8 +167,8 @@ let measureBordered (child: Vdom<DesiredBounds, 'key>) (constraints: MeasureCons
     // Reduce available space by border thickness (2 on each side = 4 total, but we use 1 per side for simplicity)
     let borderThickness = 2
     let childConstraints = {
-        MaxWidth = constraints.MaxWidth |> Option.map (fun w -> max 0 (w - borderThickness))
-        MaxHeight = constraints.MaxHeight |> Option.map (fun h -> max 0 (h - borderThickness))
+        MaxWidth = max 0 (constraints.MaxWidth - borderThickness)
+        MaxHeight = max 0 (constraints.MaxHeight - borderThickness)
     }
 
     // Measure child with reduced constraints
@@ -319,10 +313,7 @@ let measureVerticalSplitAbsolute
     // allocate n pixels to it during arrange. This ensures the measure pass
     // truthfully represents what space will be available.
     let child1Constraints = {
-        MaxWidth =
-            match constraints.MaxWidth with
-            | Some parentMax -> Some (min n parentMax)
-            | None -> Some n
+        MaxWidth = min n constraints.MaxWidth
         MaxHeight = constraints.MaxHeight
     }
 
@@ -601,8 +592,8 @@ let arrangeBordered (measured: MeasuredNode<DesiredBounds>) (bounds: Rectangle):
 let layout (vdom: Vdom<DesiredBounds, Unkeyed>) (terminalBounds: Rectangle): ArrangedNode =
     // Phase 1: Measure with terminal bounds as constraints
     let constraints = {
-        MaxWidth = Some terminalBounds.Width
-        MaxHeight = Some terminalBounds.Height
+        MaxWidth = terminalBounds.Width
+        MaxHeight = terminalBounds.Height
     }
     let measured = measure constraints vdom
 

@@ -6,12 +6,12 @@ open TypeEquality
 /// Constraints provided by parent during measurement
 type MeasureConstraints =
     {
-        /// Maximum available width (None = unbounded)
-        /// Invariant: if Some n, then n >= 0
-        MaxWidth : int option
-        /// Maximum available height (None = unbounded)
-        /// Invariant: if Some n, then n >= 0
-        MaxHeight : int option
+        /// Maximum available width.
+        /// Invariant: n >= 0
+        MaxWidth : int
+        /// Maximum available height.
+        /// Invariant: n >= 0
+        MaxHeight : int
     }
 
 /// Size requirements reported by a node
@@ -112,16 +112,10 @@ module internal Layout =
         let fullLineWidth = max 1 text.Length
 
         // Respect MaxWidth constraint when reporting MinWidth
-        let constrainedMinWidth =
-            match constraints.MaxWidth with
-            | Some mw -> min longestWord mw
-            | None -> longestWord
+        let constrainedMinWidth = min longestWord constraints.MaxWidth
 
         // Clamp preferred width to constraint
-        let constrainedPreferredWidth =
-            match constraints.MaxWidth with
-            | Some mw -> min fullLineWidth mw
-            | None -> fullLineWidth
+        let constrainedPreferredWidth = min fullLineWidth constraints.MaxWidth
 
         {
             MinWidth = constrainedMinWidth
@@ -166,8 +160,8 @@ module internal Layout =
 
         let childConstraints =
             {
-                MaxWidth = constraints.MaxWidth |> Option.map (fun w -> max 0 (w - borderThickness))
-                MaxHeight = constraints.MaxHeight |> Option.map (fun h -> max 0 (h - borderThickness))
+                MaxWidth = max 0 (constraints.MaxWidth - borderThickness)
+                MaxHeight = max 0 (constraints.MaxHeight - borderThickness)
             }
 
         // Measure child with reduced constraints
@@ -438,19 +432,13 @@ module internal Layout =
                 // Child2 gets fixed allocation of absN
                 constraints,
                 {
-                    MaxWidth =
-                        match constraints.MaxWidth with
-                        | Some parentMax -> Some (max 0 (min absN parentMax))
-                        | None -> Some (max 0 absN)
+                    MaxWidth = max 0 (min absN constraints.MaxWidth)
                     MaxHeight = constraints.MaxHeight
                 }
             else
                 // Child1 gets fixed allocation of n
                 {
-                    MaxWidth =
-                        match constraints.MaxWidth with
-                        | Some parentMax -> Some (max 0 (min n parentMax))
-                        | None -> Some (max 0 n)
+                    MaxWidth = max 0 (min n constraints.MaxWidth)
                     MaxHeight = constraints.MaxHeight
                 },
                 constraints
@@ -547,19 +535,13 @@ module internal Layout =
                 constraints,
                 {
                     MaxWidth = constraints.MaxWidth
-                    MaxHeight =
-                        match constraints.MaxHeight with
-                        | Some parentMax -> Some (max 0 (min absN parentMax))
-                        | None -> Some (max 0 absN)
+                    MaxHeight = max 0 (min absN constraints.MaxHeight)
                 }
             else
                 // Child1 gets fixed allocation of n
                 {
                     MaxWidth = constraints.MaxWidth
-                    MaxHeight =
-                        match constraints.MaxHeight with
-                        | Some parentMax -> Some (max 0 (min n parentMax))
-                        | None -> Some (max 0 n)
+                    MaxHeight = max 0 (min n constraints.MaxHeight)
                 },
                 constraints
 
@@ -667,78 +649,6 @@ module internal Layout =
                 Measured = childMeasured.Measured
                 Children = [ childMeasured ]
             }
-
-    /// Convert MeasuredNode's vdom with DesiredBounds to Rectangle bounds
-    let private convertVdomBounds
-        (measured : MeasuredNode<DesiredBounds>)
-        (bounds : Rectangle)
-        : KeylessVdom<Rectangle>
-        =
-        match measured.Vdom with
-        | KeylessVdom.Keyed (KeyedVdom.WithKey (key, unkeyedVdom)) ->
-            match unkeyedVdom with
-            | UnkeyedVdom.TextContent (text, focused) ->
-                KeylessVdom.Keyed (KeyedVdom.WithKey (key, UnkeyedVdom.TextContent (text, focused)))
-            | UnkeyedVdom.Checkbox (isChecked, isFocused) ->
-                KeylessVdom.Keyed (KeyedVdom.WithKey (key, UnkeyedVdom.Checkbox (isChecked, isFocused)))
-            | UnkeyedVdom.Bordered _ ->
-                // Will be filled in by arrange
-                KeylessVdom.Keyed (
-                    KeyedVdom.WithKey (
-                        key,
-                        UnkeyedVdom.Bordered (KeylessVdom.Unkeyed (UnkeyedVdom.TextContent ("", false)))
-                    )
-                )
-            | UnkeyedVdom.PanelSplit (dir, behaviour, _, _) ->
-                // Will be filled in by arrange
-                KeylessVdom.Keyed (
-                    KeyedVdom.WithKey (
-                        key,
-                        UnkeyedVdom.PanelSplit (
-                            dir,
-                            behaviour,
-                            KeylessVdom.Unkeyed (UnkeyedVdom.TextContent ("", false)),
-                            KeylessVdom.Unkeyed (UnkeyedVdom.TextContent ("", false))
-                        )
-                    )
-                )
-            | UnkeyedVdom.Focusable (isInitial, _) ->
-                // Will be filled in by arrange
-                KeylessVdom.Keyed (
-                    KeyedVdom.WithKey (
-                        key,
-                        UnkeyedVdom.Focusable (
-                            isInitial,
-                            KeyedVdom.WithKey (NodeKey.make "dummy", UnkeyedVdom.TextContent ("", false))
-                        )
-                    )
-                )
-        | KeylessVdom.Unkeyed unkeyedVdom ->
-            match unkeyedVdom with
-            | UnkeyedVdom.TextContent (text, focused) -> KeylessVdom.Unkeyed (UnkeyedVdom.TextContent (text, focused))
-            | UnkeyedVdom.Checkbox (isChecked, isFocused) ->
-                KeylessVdom.Unkeyed (UnkeyedVdom.Checkbox (isChecked, isFocused))
-            | UnkeyedVdom.Bordered _ ->
-                // Will be filled in by arrange
-                KeylessVdom.Unkeyed (UnkeyedVdom.Bordered (KeylessVdom.Unkeyed (UnkeyedVdom.TextContent ("", false))))
-            | UnkeyedVdom.PanelSplit (dir, behaviour, _, _) ->
-                // Will be filled in by arrange
-                KeylessVdom.Unkeyed (
-                    UnkeyedVdom.PanelSplit (
-                        dir,
-                        behaviour,
-                        KeylessVdom.Unkeyed (UnkeyedVdom.TextContent ("", false)),
-                        KeylessVdom.Unkeyed (UnkeyedVdom.TextContent ("", false))
-                    )
-                )
-            | UnkeyedVdom.Focusable (isInitial, _) ->
-                // Will be filled in by arrange
-                KeylessVdom.Unkeyed (
-                    UnkeyedVdom.Focusable (
-                        isInitial,
-                        KeyedVdom.WithKey (NodeKey.make "dummy", UnkeyedVdom.TextContent ("", false))
-                    )
-                )
 
     /// Arrange a measured tree into concrete bounds
     let rec internal arrange (measured : MeasuredNode<DesiredBounds>) (bounds : Rectangle) : ArrangedNode =
@@ -1055,8 +965,8 @@ module internal Layout =
         // Phase 1: Measure with terminal bounds as constraints
         let constraints =
             {
-                MaxWidth = Some terminalBounds.Width
-                MaxHeight = Some terminalBounds.Height
+                MaxWidth = terminalBounds.Width
+                MaxHeight = terminalBounds.Height
             }
 
         let measured =
