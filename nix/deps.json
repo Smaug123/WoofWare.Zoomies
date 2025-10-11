@@ -305,6 +305,11 @@
     "hash": "sha256-Mn0OVvC/AwTYg6+3MCKLkNKGGSdzLfBOaLapxHsUDCw="
   },
   {
+    "pname": "WoofWare.NUnitTestRunner",
+    "version": "0.3.4",
+    "hash": "sha256-OaBYMEAXUDiz9ei2/Zg4Q1A8BNDK1oaMB44uVz4UG/0="
+  },
+  {
     "pname": "WoofWare.Whippet.Fantomas",
     "version": "0.6.3",
     "hash": "sha256-FkW/HtVp8/HE2k6d7yFpnJcnP3FNNe9kGlkoIWmNgDw="
