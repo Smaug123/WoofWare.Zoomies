@@ -221,13 +221,13 @@ module TestRender =
 ┌──────────────────────────────────────┐┌──────────────────────────────────────┐|
 │not praising the praiseworthy keeps pe││errybody wants to be a bodybuilder, bu│|
 │ople uncompetitive; not prizing rare t││t don't nobody want to lift no heavy-a│|
+│reasures keeps people from stealing; n││ss weights                            │|
+│ot looking at the desirable keeps the ││                                      │|
 └──────────────────────────────────────┘└──────────────────────────────────────┘|
    Press Space to toggle                                                        |
 [☑]                                                                             |
                                                                                 |
-only displayed when checked                this one is focusable!               |
-                                         ☐                                      |
-                                                                                |
+only displayed when checked              ☐ this one is focusable!               |
 "
 
                 return ConsoleHarness.toString terminal
@@ -243,13 +243,13 @@ only displayed when checked                this one is focusable!               
 ┌──────────────────────────────────────┐┌──────────────────────────────────────┐|
 │not praising the praiseworthy keeps pe││errybody wants to be a bodybuilder, bu│|
 │ople uncompetitive; not prizing rare t││t don't nobody want to lift no heavy-a│|
+│reasures keeps people from stealing; n││ss weights                            │|
+│ot looking at the desirable keeps the ││                                      │|
 └──────────────────────────────────────┘└──────────────────────────────────────┘|
    Press Space to toggle                                                        |
  ☑                                                                              |
                                                                                 |
-only displayed when checked                this one is focusable!               |
-                                        [☐]                                     |
-                                                                                |
+only displayed when checked             [☐]this one is focusable!               |
 "
 
                 return ConsoleHarness.toString terminal
@@ -265,13 +265,13 @@ only displayed when checked                this one is focusable!               
 ┌──────────────────────────────────────┐┌──────────────────────────────────────┐|
 │not praising the praiseworthy keeps pe││errybody wants to be a bodybuilder, bu│|
 │ople uncompetitive; not prizing rare t││t don't nobody want to lift no heavy-a│|
+│reasures keeps people from stealing; n││ss weights                            │|
+│ot looking at the desirable keeps the ││                                      │|
 └──────────────────────────────────────┘└──────────────────────────────────────┘|
    Press Space to toggle                                                        |
  ☑                                                                              |
                                                                                 |
-only displayed when checked                this one is focusable!               |
-                                        [☑]                                     |
-                                                                                |
+only displayed when checked             [☑]this one is focusable!               |
 "
 
                 return ConsoleHarness.toString terminal
@@ -287,13 +287,13 @@ only displayed when checked                this one is focusable!               
 ┌──────────────────────────────────────┐┌──────────────────────────────────────┐|
 │not praising the praiseworthy keeps pe││errybody wants to be a bodybuilder, bu│|
 │ople uncompetitive; not prizing rare t││t don't nobody want to lift no heavy-a│|
+│reasures keeps people from stealing; n││ss weights                            │|
+│ot looking at the desirable keeps the ││                                      │|
 └──────────────────────────────────────┘└──────────────────────────────────────┘|
    Press Space to toggle                                                        |
 [☑]                                                                             |
                                                                                 |
-only displayed when checked                this one is focusable!               |
-                                         ☑                                      |
-                                                                                |
+only displayed when checked              ☑ this one is focusable!               |
 "
 
                 return ConsoleHarness.toString terminal
@@ -331,13 +331,13 @@ only displayed when checked                this one is focusable!               
 ┌──────────────────────────────────────┐┌──────────────────────────────────────┐|
 │not praising the praiseworthy keeps pe││errybody wants to be a bodybuilder, bu│|
 │ople uncompetitive; not prizing rare t││t don't nobody want to lift no heavy-a│|
+│reasures keeps people from stealing; n││ss weights                            │|
+│ot looking at the desirable keeps the ││                                      │|
 └──────────────────────────────────────┘└──────────────────────────────────────┘|
    Press Space to toggle                                                        |
 [☑]                                                                             |
                                                                                 |
-only displayed when checked                this one is focusable!               |
-                                         ☑                                      |
-                                                                                |
+only displayed when checked              ☑ this one is focusable!               |
 "
 
                 return ConsoleHarness.toString terminal
