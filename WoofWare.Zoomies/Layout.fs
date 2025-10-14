@@ -1,10 +1,9 @@
 namespace WoofWare.Zoomies
 
 open System
-open TypeEquality
 
 /// Constraints provided by parent during measurement
-type MeasureConstraints =
+type internal MeasureConstraints =
     {
         /// Maximum available width.
         /// Invariant: n >= 0
@@ -24,7 +23,7 @@ type MeasureConstraints =
 /// - For any width w >= 0, MinHeightForWidth(w) >= 0
 /// - For any width w >= 0, MinHeightForWidth(w) <= PreferredHeightForWidth(w)
 /// - MinHeightForWidth(0) must return a sensible value (not divide-by-zero)
-type MeasuredSize =
+type internal MeasuredSize =
     {
         /// Minimum width needed to render without data loss.
         /// Must respect any MaxWidth constraint from measurement.
@@ -107,7 +106,7 @@ module internal Layout =
             if String.IsNullOrEmpty text then
                 1
             else
-                text.Split ([| ' ' ; '\t' ; '\n' |]) |> Seq.map String.length |> Seq.fold max 1
+                text.Split [| ' ' ; '\t' ; '\n' |] |> Seq.map String.length |> Seq.fold max 1
 
         let fullLineWidth = max 1 text.Length
 
@@ -268,15 +267,6 @@ module internal Layout =
         let m1 = child1Measured.Measured
         let m2 = child2Measured.Measured
 
-        // For fixed proportion, compute minimum total height:
-        // p*total >= m1.MinHeight => total >= m1.MinHeight / p
-        // (1-p)*total >= m2.MinHeight => total >= m2.MinHeight / (1-p)
-        // We use PreferredHeightForWidth with PreferredWidth to estimate minimum height
-        let m1MinHeight = m1.MinHeightForWidth m1.PreferredWidth
-        let m2MinHeight = m2.MinHeightForWidth m2.PreferredWidth
-        let minFromChild1 = int (ceil (float m1MinHeight / p))
-        let minFromChild2 = int (ceil (float m2MinHeight / (1.0 - p)))
-
         {
             Vdom =
                 KeylessVdom.Unkeyed (
@@ -378,19 +368,6 @@ module internal Layout =
 
         let m1 = child1Measured.Measured
         let m2 = child2Measured.Measured
-
-        // Helper: compute height split based on preferred heights (at preferred widths)
-        let computeHeightSplit (totalHeight : int) (width : int) : int * int =
-            let h1Pref = m1.PreferredHeightForWidth width
-            let h2Pref = m2.PreferredHeightForWidth width
-            let totalPref = h1Pref + h2Pref
-
-            if totalPref = 0 then
-                (totalHeight / 2, totalHeight - totalHeight / 2)
-            else
-                let p = float h1Pref / float totalPref
-                let h1 = int (float totalHeight * p)
-                (h1, totalHeight - h1)
 
         {
             Vdom =
@@ -598,7 +575,7 @@ module internal Layout =
         match vdom with
         | KeylessVdom.Keyed keyedVdom ->
             match keyedVdom with
-            | KeyedVdom.WithKey (key, unkeyedVdom) ->
+            | KeyedVdom.WithKey (_, unkeyedVdom) ->
                 let childMeasured = measureUnkeyed constraints unkeyedVdom
 
                 {
@@ -640,7 +617,7 @@ module internal Layout =
             | SplitDirection.Horizontal, SplitBehaviour.Absolute n ->
                 measureHorizontalSplitAbsolute n child1 child2 constraints
             | SplitDirection.Horizontal, SplitBehaviour.Auto -> measureHorizontalSplitAuto child1 child2 constraints
-        | UnkeyedVdom.Focusable (isInitialFocus, keyedVdom) ->
+        | UnkeyedVdom.Focusable (_, keyedVdom) ->
             // Focusable is transparent for measurement purposes
             let childMeasured = measureEither constraints (KeylessVdom.Keyed keyedVdom)
 
@@ -757,7 +734,7 @@ module internal Layout =
                     Bounds = bounds
                     Children = childrenArranged
                 }
-            | UnkeyedVdom.Focusable (isInitial, keyedVdom) ->
+            | UnkeyedVdom.Focusable (isInitial, _) ->
                 let childArranged = arrange measured.Children.[0] bounds
                 let childVdom = childArranged.Vdom
 
