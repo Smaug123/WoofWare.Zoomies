@@ -8,18 +8,26 @@ type IConsole =
         ForegroundColor : unit -> ConsoleColor
         WindowWidth : unit -> int
         WindowHeight : unit -> int
+        ColorMode : ColorMode
         Execute : TerminalOp -> unit
     }
 
 [<RequireQualifiedAccess>]
 module IConsole =
-    let make () =
+    let make (getEnv : string -> string option) =
+        let colorMode =
+            match getEnv "NO_COLOR" with
+            | Some _ -> ColorMode.NoColor
+            | None -> ColorMode.Color
+
         {
             BackgroundColor = fun () -> Console.BackgroundColor
             ForegroundColor = fun () -> Console.ForegroundColor
             WindowWidth = fun () -> Console.WindowWidth
             WindowHeight = fun () -> Console.WindowHeight
-            Execute = fun o -> TerminalOp.execute Console.BackgroundColor Console.ForegroundColor Console.Write o
+            ColorMode = colorMode
+            Execute =
+                fun o -> TerminalOp.execute colorMode Console.BackgroundColor Console.ForegroundColor Console.Write o
         }
 
     let defaultForTests =
@@ -28,5 +36,6 @@ module IConsole =
             ForegroundColor = fun () -> ConsoleColor.White
             WindowWidth = fun () -> 80
             WindowHeight = fun () -> 10
+            ColorMode = ColorMode.Color
             Execute = fun _ -> failwith "not implemented"
         }

@@ -149,7 +149,7 @@ module FileBrowser =
 
         Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 3, topPane, bottomPane)
 
-    let run (file1 : string) (file2 : string) =
+    let run (getEnv : string -> string option) (file1 : string) (file2 : string) =
         let state = State.Create (file1, file2)
 
         let initialState =
@@ -158,6 +158,7 @@ module FileBrowser =
             }
 
         App.run
+            getEnv
             initialState
             (fun _ -> true) // framework handles focus
             (processWorld initialState)
@@ -165,6 +166,11 @@ module FileBrowser =
 
 // Usage:
 module Program =
+    let getEnv (varName : string) : string option =
+        match Environment.GetEnvironmentVariable varName with
+        | null -> None
+        | value -> Some value
+
     [<EntryPoint>]
     let main argv =
         let cwd = DirectoryInfo Environment.CurrentDirectory
@@ -174,5 +180,5 @@ module Program =
             | [ a ; b ] -> a, b
             | _ -> failwith "oh no"
 
-        FileBrowser.run file1.FullName file2.FullName |> _.Wait()
+        FileBrowser.run getEnv file1.FullName file2.FullName |> _.Wait()
         0
