@@ -149,7 +149,7 @@ For example, instead of filtering to a nonempty list, you can pass an `'a` and a
 
 NUnit's filtering is pretty borked.
 You can't apply filters that contain special characters in the test name (like a space character).
-You have to do e.g. `FullyQualifiedName~singleword` rather than `FullyQualifiedName~single word test`.
+You have to do e.g. `FullyQualifiedName~singleword` rather than `FullyQualifiedName~single word test`, but this only works on tests whose names are single words to begin with.
 
 Instead of running `dotnet test`, you can perform a build (`dotnet build`) and then run `dotnet woofware.nunittestrunner WoofWare.Zoomies.Test/bin/Debug/net9.0/WoofWare.Zoomies.Test.dll`.
 This is an NUnit test runner which accepts a `--filter` arg that takes the same filter syntax as `dotnet test`, but actually parses it correctly: test names can contain spaces.

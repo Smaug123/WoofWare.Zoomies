@@ -160,8 +160,8 @@ module RenderState =
             VdomContext = VdomContext.empty bounds
         }
 
-    let make () =
-        let console = IConsole.make ()
+    let make (getEnv : string -> string option) =
+        let console = IConsole.make getEnv
         make' console
 
 [<RequireQualifiedAccess>]
