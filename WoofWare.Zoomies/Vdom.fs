@@ -36,21 +36,23 @@ type SplitBehaviour =
     | Proportion of float
     /// Split using an absolute cell count: the first component gets exactly this many cells, and the second gets the remainder.
     | Absolute of int
+    /// Split based on content preferences: space is divided proportionally to each component's preferred width/height.
+    | Auto
 
 type Border = | Yes
 
 type DesiredBounds = unit
 
-type private UnkeyedVdom<'bounds> =
+type internal UnkeyedVdom<'bounds> =
     | Bordered of KeylessVdom<'bounds>
     | PanelSplit of SplitDirection * SplitBehaviour * child1 : KeylessVdom<'bounds> * child2 : KeylessVdom<'bounds>
     | TextContent of string * focused : bool
     | Checkbox of isChecked : bool * isFocused : bool
     | Focusable of isInitialFocus : bool * KeyedVdom<'bounds>
 
-and private KeyedVdom<'bounds> = | WithKey of NodeKey * UnkeyedVdom<'bounds>
+and internal KeyedVdom<'bounds> = | WithKey of NodeKey * UnkeyedVdom<'bounds>
 
-and private KeylessVdom<'bounds> =
+and internal KeylessVdom<'bounds> =
     private
     | Keyed of KeyedVdom<'bounds>
     | Unkeyed of UnkeyedVdom<'bounds>
@@ -202,13 +204,14 @@ type Vdom =
             Teq.refl
         )
 
-    /// <summary>Creates a split panel where the first component receives a fixed number of cells.</summary>
+    /// <summary>Creates a split panel where one component receives a fixed number of cells.</summary>
     /// <remarks>
-    /// The first component <c>c1</c> receives exactly <c>p</c> cells, and the second component <c>c2</c> receives all remaining space.
+    /// If <c>p >= 0</c>, the first component <c>c1</c> receives exactly <c>p</c> cells, and the second component <c>c2</c> receives all remaining space.
+    /// If <c>p &lt; 0</c>, the second component <c>c2</c> receives exactly <c>abs(p)</c> cells, and the first component <c>c1</c> receives all remaining space.
     /// </remarks>
     /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
     /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
-    /// <param name="p">The number of cells to allocate to the first component (that is, the top or left one).</param>
+    /// <param name="p">The number of cells to allocate. If positive, allocates to the first component; if negative, allocates abs(p) to the second component.</param>
     /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
     /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
     static member panelSplitAbsolute
@@ -228,13 +231,14 @@ type Vdom =
             Teq.refl
         )
 
-    /// <summary>Creates a split panel where the first component receives a fixed number of cells.</summary>
+    /// <summary>Creates a split panel where one component receives a fixed number of cells.</summary>
     /// <remarks>
-    /// The first component <c>c1</c> receives exactly <c>p</c> cells, and the second component <c>c2</c> receives all remaining space.
+    /// If <c>p >= 0</c>, the first component <c>c1</c> receives exactly <c>p</c> cells, and the second component <c>c2</c> receives all remaining space.
+    /// If <c>p &lt; 0</c>, the second component <c>c2</c> receives exactly <c>abs(p)</c> cells, and the first component <c>c1</c> receives all remaining space.
     /// </remarks>
     /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
     /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
-    /// <param name="p">The number of cells to allocate to the first component (that is, the top or left one).</param>
+    /// <param name="p">The number of cells to allocate. If positive, allocates to the first component; if negative, allocates abs(p) to the second component.</param>
     /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
     /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
     static member panelSplitAbsolute
@@ -254,13 +258,14 @@ type Vdom =
             Teq.refl
         )
 
-    /// <summary>Creates a split panel where the first component receives a fixed number of cells.</summary>
+    /// <summary>Creates a split panel where one component receives a fixed number of cells.</summary>
     /// <remarks>
-    /// The first component <c>c1</c> receives exactly <c>p</c> cells, and the second component <c>c2</c> receives all remaining space.
+    /// If <c>p >= 0</c>, the first component <c>c1</c> receives exactly <c>p</c> cells, and the second component <c>c2</c> receives all remaining space.
+    /// If <c>p &lt; 0</c>, the second component <c>c2</c> receives exactly <c>abs(p)</c> cells, and the first component <c>c1</c> receives all remaining space.
     /// </remarks>
     /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
     /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
-    /// <param name="p">The number of cells to allocate to the first component (that is, the top or left one).</param>
+    /// <param name="p">The number of cells to allocate. If positive, allocates to the first component; if negative, allocates abs(p) to the second component.</param>
     /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
     /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
     static member panelSplitAbsolute
@@ -280,13 +285,14 @@ type Vdom =
             Teq.refl
         )
 
-    /// <summary>Creates a split panel where the first component receives a fixed number of cells.</summary>
+    /// <summary>Creates a split panel where one component receives a fixed number of cells.</summary>
     /// <remarks>
-    /// The first component <c>c1</c> receives exactly <c>p</c> cells, and the second component <c>c2</c> receives all remaining space.
+    /// If <c>p >= 0</c>, the first component <c>c1</c> receives exactly <c>p</c> cells, and the second component <c>c2</c> receives all remaining space.
+    /// If <c>p &lt; 0</c>, the second component <c>c2</c> receives exactly <c>abs(p)</c> cells, and the first component <c>c1</c> receives all remaining space.
     /// </remarks>
     /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
     /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
-    /// <param name="p">The number of cells to allocate to the first component (that is, the top or left one).</param>
+    /// <param name="p">The number of cells to allocate. If positive, allocates to the first component; if negative, allocates abs(p) to the second component.</param>
     /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
     /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
     static member panelSplitAbsolute
@@ -303,6 +309,106 @@ type Vdom =
 
         Vdom.Unkeyed (
             UnkeyedVdom.PanelSplit (d, SplitBehaviour.Absolute p, KeylessVdom.Unkeyed c1, KeylessVdom.Unkeyed c2),
+            Teq.refl
+        )
+
+    /// <summary>Creates a split panel where components share space based on their content preferences.</summary>
+    /// <remarks>
+    /// Space is divided proportionally to each component's preferred width (for vertical splits) or height (for horizontal splits).
+    /// </remarks>
+    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
+    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
+    /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
+    /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
+    static member panelSplitAuto
+        (d, c1 : Vdom<DesiredBounds, Keyed>, c2 : Vdom<DesiredBounds, Keyed>)
+        : Vdom<DesiredBounds, Unkeyed>
+        =
+        match c1 with
+        | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
+        | Keyed (c1, _) ->
+
+        match c2 with
+        | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
+        | Keyed (c2, _) ->
+
+        Vdom.Unkeyed (
+            UnkeyedVdom.PanelSplit (d, SplitBehaviour.Auto, KeylessVdom.Keyed c1, KeylessVdom.Keyed c2),
+            Teq.refl
+        )
+
+    /// <summary>Creates a split panel where components share space based on their content preferences.</summary>
+    /// <remarks>
+    /// Space is divided proportionally to each component's preferred width (for vertical splits) or height (for horizontal splits).
+    /// </remarks>
+    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
+    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
+    /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
+    /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
+    static member panelSplitAuto
+        (d, c1 : Vdom<DesiredBounds, Keyed>, c2 : Vdom<DesiredBounds, Unkeyed>)
+        : Vdom<DesiredBounds, Unkeyed>
+        =
+        match c1 with
+        | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
+        | Keyed (c1, _) ->
+
+        match c2 with
+        | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
+        | Unkeyed (c2, _) ->
+
+        Vdom.Unkeyed (
+            UnkeyedVdom.PanelSplit (d, SplitBehaviour.Auto, KeylessVdom.Keyed c1, KeylessVdom.Unkeyed c2),
+            Teq.refl
+        )
+
+    /// <summary>Creates a split panel where components share space based on their content preferences.</summary>
+    /// <remarks>
+    /// Space is divided proportionally to each component's preferred width (for vertical splits) or height (for horizontal splits).
+    /// </remarks>
+    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
+    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
+    /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
+    /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
+    static member panelSplitAuto
+        (d, c1 : Vdom<DesiredBounds, Unkeyed>, c2 : Vdom<DesiredBounds, Keyed>)
+        : Vdom<DesiredBounds, Unkeyed>
+        =
+        match c1 with
+        | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
+        | Unkeyed (c1, _) ->
+
+        match c2 with
+        | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
+        | Keyed (c2, _) ->
+
+        Vdom.Unkeyed (
+            UnkeyedVdom.PanelSplit (d, SplitBehaviour.Auto, KeylessVdom.Unkeyed c1, KeylessVdom.Keyed c2),
+            Teq.refl
+        )
+
+    /// <summary>Creates a split panel where components share space based on their content preferences.</summary>
+    /// <remarks>
+    /// Space is divided proportionally to each component's preferred width (for vertical splits) or height (for horizontal splits).
+    /// </remarks>
+    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
+    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
+    /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
+    /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
+    static member panelSplitAuto
+        (d, c1 : Vdom<DesiredBounds, Unkeyed>, c2 : Vdom<DesiredBounds, Unkeyed>)
+        : Vdom<DesiredBounds, Unkeyed>
+        =
+        match c1 with
+        | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
+        | Unkeyed (c1, _) ->
+
+        match c2 with
+        | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
+        | Unkeyed (c2, _) ->
+
+        Vdom.Unkeyed (
+            UnkeyedVdom.PanelSplit (d, SplitBehaviour.Auto, KeylessVdom.Unkeyed c1, KeylessVdom.Unkeyed c2),
             Teq.refl
         )
 
