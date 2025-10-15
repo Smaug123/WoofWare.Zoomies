@@ -383,6 +383,8 @@ Components must be able to render gracefully even if given less than their minim
 
 This design choice ensures the layout system always produces a valid layout, even under severe space constraints, rather than failing or producing undefined behavior.
 
+**Important for Proportion Splits**: `Proportion` behavior always honors the specified proportion exactly, regardless of child minimums. This design choice ensures UI stability - a log viewer allocated 25% of the screen never expands to 80% just because the log content grew. The explicit proportion parameter represents stronger programmer intent than the implicit minimums derived from content. See "Proportion vs Minimum Conflicts" below for detailed rationale.
+
 ### Child Alignment Policy
 
 When a container's allocated height exceeds what a child needs, the child is **top-aligned** (positioned at the top of the container, with unused space below). Similarly, for width, children are **left-aligned** (positioned at the left, with unused space to the right).
@@ -406,31 +408,16 @@ let arrangeVerticalSplitProportion
     let m1 = child1.Measured
     let m2 = child2.Measured
 
-    // Step 1: Calculate ideal widths based on proportion
+    // Calculate widths based on proportion
     // CRITICAL: Always calculate w2 as remainder to avoid rounding gaps
-    let idealW1 = int (float availableSpace.Width * p)
-    let idealW2 = availableSpace.Width - idealW1
+    // For Proportion splits, we ALWAYS honor the proportion exactly.
+    // Child minimums are soft constraints - if violated, children must
+    // render gracefully in degraded space. This ensures UI stability:
+    // as child content changes, the split ratio remains constant.
+    let w1 = int (float availableSpace.Width * p)
+    let w2 = availableSpace.Width - w1
 
-    // Step 2: Check constraints and compute final widths
-    let minSum = m1.MinWidth + m2.MinWidth
-
-    let (w1, w2) =
-        if availableSpace.Width < minSum then
-            // Can't satisfy both minimums - scale down proportionally
-            // This violates the soft MinWidth constraint (see "Soft Constraints" section)
-            let scale = float availableSpace.Width / float minSum
-            let w1 = int (float m1.MinWidth * scale)
-            (w1, availableSpace.Width - w1)
-        elif idealW1 >= m1.MinWidth && idealW2 >= m2.MinWidth then
-            // Happy path: ideal allocation satisfies minimums
-            (idealW1, idealW2)
-        else
-            // Ideal violates minimums - satisfy minimums first, distribute remainder
-            let remainder = availableSpace.Width - minSum
-            let w1 = m1.MinWidth + int (float remainder * p)
-            (w1, availableSpace.Width - w1)
-
-    // Step 3: Create final rectangles for children
+    // Create final rectangles for children
     // CRITICAL: Use the height we were given, not a computed height
     let bounds1 = {
         TopLeftX = availableSpace.TopLeftX
@@ -445,7 +432,7 @@ let arrangeVerticalSplitProportion
         Height = availableSpace.Height
     }
 
-    // Step 4: Recursively arrange children
+    // Recursively arrange children
     let arranged1 = arrange child1 bounds1
     let arranged2 = arrange child2 bounds2
 
@@ -604,7 +591,7 @@ let layout (vdom: Vdom<DesiredBounds, Unkeyed>) (terminalBounds: Rectangle): Arr
 ### Backwards Compatibility
 
 Existing split behaviours map naturally:
-- `Proportion p`: Remains identical, now with proper conflict resolution
+- `Proportion p`: Semantics clarified - always honors the specified proportion exactly, treating child minimums as soft constraints for UI stability
 - `Absolute n`: Semantics clarified - now consistently reserves n pixels for first child
 
 New users gain access to `Auto` split mode for content-driven layout.
@@ -731,6 +718,20 @@ This pattern must be followed throughout all container arrangement code.
 During the **measure** pass, heights are calculated as functions of width using `PreferredHeightForWidth(w)` and similar functions. This allows the measure pass to report "given width W, I would need height H".
 
 During the **arrange** pass, heights are provided by the parent as part of the concrete `Rectangle`. Children do not compute their own heights - they accept what the parent gives them. The parent has already considered the child's height preferences when deciding what rectangle to allocate.
+
+### Proportion vs Minimum Conflicts
+
+When `Proportion p` splits conflict with child minimum size requirements, **the proportion always wins**. This design choice prioritizes:
+
+1. **UI Stability**: As child content changes (e.g., log viewer text growing), the split ratio remains constant. A log viewer allocated 25% of the screen never expands to 80% just because the log content grew.
+
+2. **Explicit Intent**: The programmer wrote `Proportion 0.7` explicitly; minimums are inferred from content. Explicit beats implicit.
+
+3. **TUI Constraints**: Unlike GUI apps with scrolling, TUI has hard space limits where minimums cannot always be satisfied. Prioritizing minimums would cause cascading layout failures.
+
+4. **Measurement Already Accounts for Proportion**: The container's `MinHeightForWidth` (or `MinWidth` for vertical splits) already encodes "to maintain proportion p, I need this much space". If the parent allocated more than that minimum, the proportion can be honored.
+
+This differs from `Auto` splits, which distribute space based on content preferences and may adjust ratios to better accommodate minimum requirements.
 
 ## Future Considerations
 

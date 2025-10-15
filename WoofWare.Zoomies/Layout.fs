@@ -767,26 +767,15 @@ module internal Layout =
             let w1, w2 =
                 match behaviour with
                 | SplitBehaviour.Proportion p ->
-                    // Step 1: Calculate ideal widths based on proportion
-                    let idealW1 = int (float bounds.Width * p)
-                    let idealW2 = bounds.Width - idealW1
-
-                    // Step 2: Check constraints and compute final widths
-                    let minSum = m1.MinWidth + m2.MinWidth
-
-                    if bounds.Width < minSum then
-                        // Can't satisfy both minimums - scale down proportionally
-                        let scale = float bounds.Width / float minSum
-                        let w1 = int (float m1.MinWidth * scale)
-                        (w1, bounds.Width - w1)
-                    elif idealW1 >= m1.MinWidth && idealW2 >= m2.MinWidth then
-                        // Happy path: ideal allocation satisfies minimums
-                        (idealW1, idealW2)
-                    else
-                        // Ideal violates minimums - satisfy minimums first, distribute remainder
-                        let remainder = bounds.Width - minSum
-                        let w1 = m1.MinWidth + int (float remainder * p)
-                        (w1, bounds.Width - w1)
+                    // Calculate widths based on proportion
+                    // CRITICAL: Always calculate w2 as remainder to avoid rounding gaps
+                    // For Proportion splits, we ALWAYS honor the proportion exactly.
+                    // Child minimums are soft constraints - if violated, children must
+                    // render gracefully in degraded space. This ensures UI stability:
+                    // as child content changes, the split ratio remains constant.
+                    let w1 = int (float bounds.Width * p)
+                    let w2 = bounds.Width - w1
+                    (w1, w2)
                 | SplitBehaviour.Absolute n ->
                     // Negative n means "give the second child n pixels, first gets the rest"
                     // Positive n means "give the first child n pixels, second gets the rest"
@@ -851,28 +840,15 @@ module internal Layout =
             let h1, h2 =
                 match behaviour with
                 | SplitBehaviour.Proportion p ->
-                    // Step 1: Calculate ideal heights based on proportion
-                    let idealH1 = int (float bounds.Height * p)
-                    let idealH2 = bounds.Height - idealH1
-
-                    // Step 2: Check constraints and compute final heights
-                    let minH1 = m1.MinHeightForWidth bounds.Width
-                    let minH2 = m2.MinHeightForWidth bounds.Width
-                    let minSum = minH1 + minH2
-
-                    if bounds.Height < minSum then
-                        // Can't satisfy both minimums - scale down proportionally
-                        let scale = float bounds.Height / float minSum
-                        let h1 = int (float minH1 * scale)
-                        (h1, bounds.Height - h1)
-                    elif idealH1 >= minH1 && idealH2 >= minH2 then
-                        // Happy path: ideal allocation satisfies minimums
-                        (idealH1, idealH2)
-                    else
-                        // Ideal violates minimums - satisfy minimums first, distribute remainder
-                        let remainder = bounds.Height - minSum
-                        let h1 = minH1 + int (float remainder * p)
-                        (h1, bounds.Height - h1)
+                    // Calculate heights based on proportion
+                    // CRITICAL: Always calculate h2 as remainder to avoid rounding gaps
+                    // For Proportion splits, we ALWAYS honor the proportion exactly.
+                    // Child minimums are soft constraints - if violated, children must
+                    // render gracefully in degraded space. This ensures UI stability:
+                    // as child content changes, the split ratio remains constant.
+                    let h1 = int (float bounds.Height * p)
+                    let h2 = bounds.Height - h1
+                    (h1, h2)
                 | SplitBehaviour.Absolute n ->
                     // Negative n means "give the second child n pixels, first gets the rest"
                     // Positive n means "give the first child n pixels, second gets the rest"
