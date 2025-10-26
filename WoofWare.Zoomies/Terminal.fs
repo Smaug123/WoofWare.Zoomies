@@ -2,6 +2,10 @@ namespace WoofWare.Zoomies
 
 open System
 
+type ColorMode =
+    | NoColor
+    | Color
+
 [<Struct>]
 type TerminalCell =
     {
@@ -39,6 +43,7 @@ type TerminalOp =
 [<RequireQualifiedAccess>]
 module TerminalOp =
     let execute
+        (colorMode : ColorMode)
         (currentBackground : ConsoleColor)
         (currentForeground : ConsoleColor)
         (consoleWrite : string -> unit)
@@ -48,14 +53,14 @@ module TerminalOp =
         match o with
         | TerminalOp.WriteChar c ->
             let backgroundEscape =
-                match c.BackgroundColor with
-                | ValueSome bg when bg <> currentBackground ->
+                match colorMode, c.BackgroundColor with
+                | ColorMode.Color, ValueSome bg when bg <> currentBackground ->
                     Some (ConsoleColor.toBackgroundEscapeCode bg, ConsoleColor.toBackgroundEscapeCode currentBackground)
                 | _ -> None
 
             let foregroundEscape =
-                match c.TextColor with
-                | ValueSome fg when fg <> currentForeground ->
+                match colorMode, c.TextColor with
+                | ColorMode.Color, ValueSome fg when fg <> currentForeground ->
                     Some (ConsoleColor.toForegroundEscapeCode fg, ConsoleColor.toForegroundEscapeCode currentForeground)
                 | _ -> None
 
@@ -76,4 +81,4 @@ module TerminalOp =
         | TerminalOp.RegisterMouseMode -> consoleWrite "\u001b[?1000;1006h"
         | TerminalOp.UnregisterMouseMode -> consoleWrite "\u001b[?1000;1006l"
         | TerminalOp.RegisterBracketedPaste -> consoleWrite "\u001b[?2004h"
-        | TerminalOp.UnregisterBracketedPaste -> consoleWrite "\u001b[?1000;1006l"
+        | TerminalOp.UnregisterBracketedPaste -> consoleWrite "\u001b[?2004l"

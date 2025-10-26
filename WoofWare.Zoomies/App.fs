@@ -275,6 +275,7 @@ module App =
         complete.Task
 
     let run<'state, 'appEvent when 'state : equality>
+        (getEnv : string -> string option)
         (state : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
         (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'state>)
@@ -283,7 +284,7 @@ module App =
         =
         run'
             CancellationToken.None
-            (IConsole.make ())
+            (IConsole.make getEnv)
             (CtrlCHandler.make ())
             WorldFreezer.listen
             state

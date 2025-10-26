@@ -63,6 +63,7 @@ module ConsoleHarness =
                 ForegroundColor = fun () -> ConsoleColor.White
                 WindowWidth = width
                 WindowHeight = height
+                ColorMode = ColorMode.Color
                 Execute = execute fake
             }
 
