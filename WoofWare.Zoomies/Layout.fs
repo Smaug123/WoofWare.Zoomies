@@ -664,6 +664,8 @@ module internal Layout =
                     Children = [ childArranged ]
                 }
             | UnkeyedVdom.PanelSplit (dir, behaviour, _, _) ->
+                // Keyed wrappers store the wrapped node as their only child (see measureEither's Keyed case),
+                // so we must unwrap to get the actual PanelSplit's MeasuredNode
                 let childrenArranged = arrangePanelSplit measured.Children.[0] bounds dir behaviour
                 let child1Vdom = childrenArranged.[0].Vdom
                 let child2Vdom = childrenArranged.[1].Vdom
@@ -725,6 +727,7 @@ module internal Layout =
                     Children = [ childArranged ]
                 }
             | UnkeyedVdom.PanelSplit (dir, behaviour, _, _) ->
+                // Unkeyed nodes have no wrapper, so 'measured' is directly the PanelSplit's MeasuredNode
                 let childrenArranged = arrangePanelSplit measured bounds dir behaviour
                 let child1Vdom = childrenArranged.[0].Vdom
                 let child2Vdom = childrenArranged.[1].Vdom
