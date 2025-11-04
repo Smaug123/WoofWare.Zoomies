@@ -846,7 +846,7 @@ This is focusable text                                                          
             let renderState = RenderState.make' console
 
             // First render: fill with X's
-            let state = App.pumpOnce worldFreezer false (fun _ -> true) renderState processWorld vdom
+            let _state = App.pumpOnce worldFreezer false (fun _ -> true) renderState processWorld vdom
 
             expect {
                 snapshot
@@ -863,7 +863,7 @@ This is focusable text                                                          
 
             // Second render: show keyed PanelSplit
             // The X's should be cleared (replaced with spaces), not left as artifacts
-            let state = App.pumpOnce worldFreezer true (fun _ -> true) renderState processWorld vdom
+            let _state = App.pumpOnce worldFreezer true (fun _ -> true) renderState processWorld vdom
 
             expect {
                 snapshot
