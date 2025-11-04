@@ -804,3 +804,77 @@ This is focusable text                                                          
         // layoutOf should still work after second render, even though early cutoff was taken
         let layout2 = RenderState.layoutOf key renderState
         layout2.IsSome |> shouldEqual true
+
+    [<Test>]
+    let ``Keyed PanelSplit clears background on initial render`` () =
+        task {
+            let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let splitKey = NodeKey.make "split"
+
+            let vdom (vdomContext : VdomContext) (showSplit : bool) =
+                if showSplit then
+                    // A keyed PanelSplit with small children
+                    // The background should be cleared
+                    let left = Vdom.textContent false "L"
+                    let right = Vdom.textContent false "R"
+                    let split =
+                        Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, left, right)
+                        |> Vdom.withKey splitKey
+                    // Wrap in bordered to make it Unkeyed at the top level
+                    Vdom.bordered split
+                else
+                    // Fill the screen with characters to create "artifacts"
+                    Vdom.textContent false "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+                    |> Vdom.bordered
+
+            let processWorld =
+                { new WorldProcessor<unit, bool> with
+                    member _.ProcessWorld (worldChanges, _, state) =
+                        ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make' console
+
+            // First render: fill with X's
+            let state = App.pumpOnce worldFreezer false (fun _ -> true) renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+┌──────────────────────────────────────┐|
+│XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX│|
+│XX                                    │|
+│                                      │|
+└──────────────────────────────────────┘|
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
+            // Second render: show keyed PanelSplit
+            // The X's should be cleared (replaced with spaces), not left as artifacts
+            let state = App.pumpOnce worldFreezer true (fun _ -> true) renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+┌──────────────────────────────────────┐|
+│L                  R                  │|
+│                                      │|
+│                                      │|
+└──────────────────────────────────────┘|
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
