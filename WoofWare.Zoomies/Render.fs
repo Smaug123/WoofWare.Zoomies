@@ -2,7 +2,6 @@ namespace WoofWare.Zoomies
 
 open System
 open System.Collections.Generic
-open TypeEquality
 
 /// So that we can do early cutoff.
 type RenderedNode =
@@ -167,52 +166,11 @@ module RenderState =
 
 [<RequireQualifiedAccess>]
 module Render =
-    let private shrinkBounds (bounds : Rectangle) : Rectangle =
-        {
-            TopLeftX = bounds.TopLeftX + 1
-            TopLeftY = bounds.TopLeftY + 1
-            Width = bounds.Width - 2
-            Height = bounds.Height - 2
-        }
-
     let inline private yIndex (bounds : Rectangle) (relativeY : int) = bounds.TopLeftY + relativeY
     let inline private xIndex (bounds : Rectangle) (relativeX : int) = bounds.TopLeftX + relativeX
 
     let private setAtRelativeOffset (arr : 'a[,]) (bounds : Rectangle) (relativeX : int) (relativeY : int) (v : 'a) =
         arr.[yIndex bounds relativeY, xIndex bounds relativeX] <- v
-
-    let private freshRenderTextContent
-        (bounds : Rectangle)
-        (vdom : UnkeyedVdom<DesiredBounds>)
-        (content : string)
-        (focus : bool)
-        (arranged : Layout.ArrangedNode option)
-        =
-        {
-            Bounds = bounds
-            OverlaidChildren = []
-            VDomSource = vdom |> KeylessVdom.Unkeyed
-            Self = UnkeyedVdom.TextContent (content, focus) |> KeylessVdom.Unkeyed
-            ArrangedSource = arranged
-        }
-
-    let private freshRenderCheckbox
-        (bounds : Rectangle)
-        (vdom : UnkeyedVdom<DesiredBounds>)
-        (isChecked : bool)
-        (focus : bool)
-        (arranged : Layout.ArrangedNode option)
-        =
-        if bounds.Width < 3 then
-            failwith "TODO: not enough room"
-
-        {
-            Bounds = bounds
-            OverlaidChildren = []
-            VDomSource = KeylessVdom.Unkeyed vdom
-            Self = UnkeyedVdom.Checkbox (isChecked, focus) |> KeylessVdom.Unkeyed
-            ArrangedSource = arranged
-        }
 
     /// Convert ArrangedNode to RenderedNode, populating keyToNode and focusableKeys
     let rec private arrangedToRendered
