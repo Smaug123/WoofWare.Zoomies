@@ -827,6 +827,7 @@ This is focusable text                                                          
                     // The background should be cleared
                     let left = Vdom.textContent false "L"
                     let right = Vdom.textContent false "R"
+
                     let split =
                         Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, left, right)
                         |> Vdom.withKey splitKey
@@ -840,13 +841,16 @@ This is focusable text                                                          
             let processWorld =
                 { new WorldProcessor<unit, bool> with
                     member _.ProcessWorld (worldChanges, _, state) =
-                        ProcessWorldResult.make state
+                        // Toggle state on any keystroke
+                        let newState = if worldChanges.Length > 0 then not state else state
+                        ProcessWorldResult.make newState
                 }
 
             let renderState = RenderState.make' console
 
             // First render: fill with X's
-            let _state = App.pumpOnce worldFreezer false (fun _ -> true) renderState processWorld vdom
+            let mutable state =
+                App.pumpOnce worldFreezer false (fun _ -> true) renderState processWorld vdom
 
             expect {
                 snapshot
@@ -861,9 +865,12 @@ This is focusable text                                                          
                 return ConsoleHarness.toString terminal
             }
 
+            // Send a keystroke to trigger state change
+            world.SendKey (ConsoleKeyInfo ('x', ConsoleKey.NoName, false, false, false))
+
             // Second render: show keyed PanelSplit
             // The X's should be cleared (replaced with spaces), not left as artifacts
-            let _state = App.pumpOnce worldFreezer true (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
             expect {
                 snapshot
