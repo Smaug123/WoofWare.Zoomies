@@ -621,29 +621,31 @@ module Render =
                         for x = 0 to bounds.Width - 1 do
                             setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
 
-                    // dumb implementation! could do much better
-                    let mutable index = 0
-                    let mutable currX = 0
-                    let mutable currY = 0
+                    // Only render text if we have space (width and height both > 0)
+                    if bounds.Width > 0 && bounds.Height > 0 then
+                        // dumb implementation! could do much better
+                        let mutable index = 0
+                        let mutable currX = 0
+                        let mutable currY = 0
 
-                    while index < content.Length do
-                        setAtRelativeOffset
-                            dirty
-                            bounds
-                            currX
-                            currY
-                            (ValueSome (TerminalCell.OfChar (content.Chars index)))
+                        while index < content.Length do
+                            setAtRelativeOffset
+                                dirty
+                                bounds
+                                currX
+                                currY
+                                (ValueSome (TerminalCell.OfChar (content.Chars index)))
 
-                        currX <- currX + 1
+                            currX <- currX + 1
 
-                        if currX = bounds.Width then
-                            currX <- 0
-                            currY <- currY + 1
+                            if currX = bounds.Width then
+                                currX <- 0
+                                currY <- currY + 1
 
-                            if currY >= bounds.Height then
-                                index <- content.Length
+                                if currY >= bounds.Height then
+                                    index <- content.Length
 
-                        index <- index + 1
+                            index <- index + 1
 
                 | UnkeyedVdom.Checkbox (isChecked, focus) ->
                     for y = 0 to bounds.Height - 1 do
@@ -692,24 +694,31 @@ module Render =
                     for x = 0 to bounds.Width - 1 do
                         setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
 
-                // dumb implementation! could do much better
-                let mutable index = 0
-                let mutable currX = 0
-                let mutable currY = 0
+                // Only render text if we have space (width and height both > 0)
+                if bounds.Width > 0 && bounds.Height > 0 then
+                    // dumb implementation! could do much better
+                    let mutable index = 0
+                    let mutable currX = 0
+                    let mutable currY = 0
 
-                while index < content.Length do
-                    setAtRelativeOffset dirty bounds currX currY (ValueSome (TerminalCell.OfChar (content.Chars index)))
+                    while index < content.Length do
+                        setAtRelativeOffset
+                            dirty
+                            bounds
+                            currX
+                            currY
+                            (ValueSome (TerminalCell.OfChar (content.Chars index)))
 
-                    currX <- currX + 1
+                        currX <- currX + 1
 
-                    if currX = bounds.Width then
-                        currX <- 0
-                        currY <- currY + 1
+                        if currX = bounds.Width then
+                            currX <- 0
+                            currY <- currY + 1
 
-                        if currY >= bounds.Height then
-                            index <- content.Length
+                            if currY >= bounds.Height then
+                                index <- content.Length
 
-                    index <- index + 1
+                        index <- index + 1
 
             | UnkeyedVdom.Checkbox (isChecked, focus) ->
                 for y = 0 to bounds.Height - 1 do
