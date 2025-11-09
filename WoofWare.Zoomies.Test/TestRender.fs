@@ -908,9 +908,7 @@ This is focusable text                                                          
                     // The border should be drawn
                     let content = Vdom.textContent false "content"
 
-                    let keyedBordered =
-                        Vdom.bordered content
-                        |> Vdom.withKey borderedKey
+                    let keyedBordered = Vdom.bordered content |> Vdom.withKey borderedKey
                     // Wrap in another bordered to make it Unkeyed at the top level
                     Vdom.bordered keyedBordered
                 else
@@ -957,7 +955,6 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
 ┌──────────────────────────────────────┐|
 │┌────────────────────────────────────┐│|
 ││content                             ││|
-││                                    ││|
 │└────────────────────────────────────┘│|
 └──────────────────────────────────────┘|
 "
