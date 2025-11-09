@@ -1038,3 +1038,93 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
 
             hasBrackets |> shouldEqual false
         }
+
+    [<Test>]
+    let ``Text rendering handles zero-width bounds without error`` () =
+        task {
+            // Regression test for: "Text rendering does not handle zero-size bounds"
+            // With Width=0 (from a proportion split), rendering can write off-bounds and throw
+            let terminalOps = ResizeArray<TerminalOp> ()
+
+            // Use a very small terminal width so that after splitting, one side has 0 width
+            let console =
+                { IConsole.defaultForTests with
+                    Execute = fun x -> terminalOps.Add x
+                    WindowWidth = fun _ -> 1
+                    WindowHeight = fun _ -> 5
+                }
+
+            let renderState = RenderState.make' console
+
+            // Create a vdom where text content has Width=0
+            // With a terminal width of 1 and a 50/50 split, each side gets 0 or 1 width
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                let leftText = Vdom.textContent false "some text content"
+                let rightText = Vdom.textContent false "other text"
+                // Split with 0.5 proportion, terminal has width 1, so left gets 0 width
+                Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, leftText, rightText)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            // This should not throw an IndexOutOfRangeException
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+        }
+
+    [<Test>]
+    let ``Keyed text rendering handles zero-width bounds without error`` () =
+        task {
+            // Regression test for: "Text rendering does not handle zero-size bounds"
+            // Test the keyed branch of text rendering
+            let terminalOps = ResizeArray<TerminalOp> ()
+
+            // Use a very small terminal width so that after splitting, one side has 0 width
+            let console =
+                { IConsole.defaultForTests with
+                    Execute = fun x -> terminalOps.Add x
+                    WindowWidth = fun _ -> 1
+                    WindowHeight = fun _ -> 5
+                }
+
+            let renderState = RenderState.make' console
+
+            let textKey = NodeKey.make "text"
+
+            // Create a vdom where keyed text content has Width=0
+            // With a terminal width of 1 and a 50/50 split, each side gets 0 or 1 width
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                let leftText = Vdom.textContent false "some text content" |> Vdom.withKey textKey
+                let rightText = Vdom.textContent false "other text"
+                // Split with 0.5 proportion, terminal has width 1, so left gets 0 width
+                Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, leftText, rightText)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            // This should not throw an IndexOutOfRangeException
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+        }
