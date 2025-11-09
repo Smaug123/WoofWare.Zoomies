@@ -1226,3 +1226,342 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
             bottomLayout.IsSome |> shouldEqual true
             bottomLayout.Value.Height |> shouldEqual 2
         }
+
+    [<Test>]
+    let ``panelSplitAuto distributes space normally when all components fit`` () =
+        task {
+            // Test the normal case where there's enough space for all preferred sizes
+            let console, terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 10)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Create two text components with different preferred widths
+                // "Hello world" has preferred width ~11, "Hi" has preferred width ~2
+                let left = Vdom.textContent false "Hello world"
+                let right = Vdom.textContent false "Hi"
+
+                Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make' console
+
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+
+            expect {
+                snapshot
+                    @"
+Hello world                                                        Hi           |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``panelSplitAuto handles stress when not enough space for all preferences`` () =
+        task {
+            // Test when available space is between minimums and preferences
+            // Terminal is 20 wide, but text wants more
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Long text content that will wrap when space is limited.
+                // The longer one (`left`) has its longest word of length 6, vs the shorter one having longest word
+                // of length 4, so satisfying their minimum requests allocates more space to `left`;
+                // then leftover spare space gets allocated equally between them, and `left` ends up a bit bigger.
+                let left = Vdom.textContent false "This is a longer piece of text"
+                let right = Vdom.textContent false "Also long text here"
+
+                Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make' console
+
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+
+            expect {
+                snapshot
+                    @"
+This is a lAlso long|
+onger piece text her|
+ of text   e        |
+                    |
+                    |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``panelSplitAuto handles extreme stress when not enough space for minimums`` () =
+        task {
+            // Test when available space is less than sum of minimums
+            // This forces proportional scaling of minimums
+            let console, terminal = ConsoleHarness.make' (fun () -> 8) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Words with minimum widths that exceed available space
+                let left = Vdom.textContent false "Hello" // min width ~5
+                let right = Vdom.textContent false "World" // min width ~5
+
+                Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make' console
+
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+
+            expect {
+                snapshot
+                    @"
+HellWorl|
+o   d   |
+        |
+        |
+        |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``panelSplitAuto works with horizontal splits in normal conditions`` () =
+        task {
+            // Test horizontal auto splits with enough space
+            let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 10)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Short text (prefers 1 line) and longer text (prefers multiple lines)
+                let top = Vdom.textContent false "Short"
+
+                let bottom =
+                    Vdom.textContent false "This is a much longer text that will take multiple lines when rendered"
+
+                Vdom.panelSplitAuto (SplitDirection.Horizontal, top, bottom)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make' console
+
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+
+            expect {
+                snapshot
+                    @"
+Short                                   |
+                                        |
+                                        |
+This is a much longer text that will tak|
+e multiple lines when rendered          |
+                                        |
+                                        |
+                                        |
+                                        |
+                                        |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``panelSplitAuto handles horizontal stress when height is limited but still sufficient`` () =
+        task {
+            // Test horizontal auto splits when not enough vertical space
+            let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 4)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Both components want more height than available
+                let top = Vdom.textContent false "Top section with some content that wraps around"
+                let bottom = Vdom.textContent false "Bottom section also with content"
+
+                Vdom.panelSplitAuto (SplitDirection.Horizontal, top, bottom)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make' console
+
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+
+            expect {
+                snapshot
+                    @"
+Top section with some content |
+that wraps around             |
+Bottom section also with conte|
+nt                            |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``panelSplitAuto with bordered components shows layout adaptation`` () =
+        task {
+            // Test auto splits with bordered components to make the allocation visible
+            let console, terminal = ConsoleHarness.make' (fun () -> 50) (fun () -> 8)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Bordered panels to clearly show space allocation
+                let left = Vdom.textContent false "Small" |> Vdom.bordered
+
+                let right = Vdom.textContent false "This is much larger content" |> Vdom.bordered
+
+                Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make' console
+
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+
+            expect {
+                snapshot
+                    @"
+┌───────┐┌───────────────────────────────────────┐|
+│Small  ││This is much larger content            │|
+│       ││                                       │|
+│       ││                                       │|
+│       ││                                       │|
+│       ││                                       │|
+│       ││                                       │|
+└───────┘└───────────────────────────────────────┘|
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``panelSplitAuto handles zero-width allocation gracefully`` () =
+        task {
+            // Test extreme stress where one component gets zero or minimal space
+            let console, terminal = ConsoleHarness.make' (fun () -> 2) (fun () -> 2)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                let left = Vdom.textContent false "A"
+                let right = Vdom.textContent false "B"
+
+                Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make' console
+
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+
+            expect {
+                snapshot
+                    @"
+AB|
+  |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
