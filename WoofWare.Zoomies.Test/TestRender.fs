@@ -1128,3 +1128,101 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
             App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
             |> ignore<FakeUnit>
         }
+
+    [<Test>]
+    let ``Proportion splits can yield zero-size children`` () =
+        task {
+            // Demonstrates that proportion splits with small terminals can allocate zero width/height
+            let console, _ = ConsoleHarness.make' (fun () -> 1) (fun () -> 1)
+
+            let renderState = RenderState.make' console
+
+            let leftKey = NodeKey.make "left"
+            let rightKey = NodeKey.make "right"
+
+            // Create a vdom with proportion split
+            // Terminal width is 1, split at 0.1 proportion
+            // This means left gets: int (float 1 * 0.1) = int 0.1 = 0
+            // And right gets: 1 - 0 = 1
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                let leftText = Vdom.textContent false "left" |> Vdom.withKey leftKey
+                let rightText = Vdom.textContent false "right" |> Vdom.withKey rightKey
+                Vdom.panelSplitProportion (SplitDirection.Vertical, 0.1, leftText, rightText)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            // Render
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+
+            // Check that the left child has zero width
+            let leftLayout = RenderState.layoutOf leftKey renderState
+            leftLayout.IsSome |> shouldEqual true
+            leftLayout.Value.Width |> shouldEqual 0
+
+            // Check that the right child has the remaining width
+            let rightLayout = RenderState.layoutOf rightKey renderState
+            rightLayout.IsSome |> shouldEqual true
+            rightLayout.Value.Width |> shouldEqual 1
+        }
+
+    [<Test>]
+    let ``Horizontal proportion splits can yield zero-size children`` () =
+        task {
+            // Same as above but for horizontal splits
+            let console, _ = ConsoleHarness.make' (fun () -> 10) (fun () -> 2)
+
+            let renderState = RenderState.make' console
+
+            let topKey = NodeKey.make "top"
+            let bottomKey = NodeKey.make "bottom"
+
+            // Create a vdom with horizontal proportion split
+            // Terminal height is 2, split at 0.1 proportion
+            // This means top gets: int (float 2 * 0.1) = int 0.2 = 0
+            // And bottom gets: 2 - 0 = 2
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                let topText = Vdom.textContent false "top" |> Vdom.withKey topKey
+                let bottomText = Vdom.textContent false "bottom" |> Vdom.withKey bottomKey
+                Vdom.panelSplitProportion (SplitDirection.Horizontal, 0.1, topText, bottomText)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            // Render
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+
+            // Check that the top child has zero height
+            let topLayout = RenderState.layoutOf topKey renderState
+            topLayout.IsSome |> shouldEqual true
+            topLayout.Value.Height |> shouldEqual 0
+
+            // Check that the bottom child has the remaining height
+            let bottomLayout = RenderState.layoutOf bottomKey renderState
+            bottomLayout.IsSome |> shouldEqual true
+            bottomLayout.Value.Height |> shouldEqual 2
+        }
