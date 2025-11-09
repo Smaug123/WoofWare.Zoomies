@@ -519,6 +519,12 @@ module Render =
                     (KeylessVdom.Unkeyed unkeyedVdom)
             | Vdom.Keyed _ -> failwith "Top-level vdom must be unkeyed"
 
+    /// Clear a rectangular region by filling it with spaces
+    let private clearBoundsWithSpaces (dirty : TerminalCell voption[,]) (bounds : Rectangle) : unit =
+        for y = 0 to bounds.Height - 1 do
+            for x = 0 to bounds.Width - 1 do
+                setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
+
     let rec private renderToBuffer
         (dirty : TerminalCell voption[,])
         (previousNode : RenderedNode option)
@@ -537,68 +543,86 @@ module Render =
             // Keyed nodes just wrap their child
             match unkeyedVdom with
             | UnkeyedVdom.PanelSplit _ ->
-                // Keyed PanelSplit: no background clearing (optimization relying on early cutoff and child responsibility)
-                // Children will clear their own bounds, and early cutoff skips unchanged subtrees entirely
-                let prevChild1 =
+                // Keyed PanelSplit: clear background if bounds changed
+                let previousNode =
                     match previousNode with
-                    | Some prev when prev.OverlaidChildren.Length >= 2 -> Some prev.OverlaidChildren.[0]
-                    | _ -> None
+                    | Some prev when
+                        prev.Bounds = bounds
+                        && match prev.VDomSource with
+                           | KeylessVdom.Keyed (KeyedVdom.WithKey (_, UnkeyedVdom.PanelSplit _)) -> true
+                           | _ -> false
+                        ->
+                        // Container unchanged
+                        previousNode
+                    | _ ->
+                        // Container changed: clear and invalidate children
+                        clearBoundsWithSpaces dirty bounds
+                        None
 
-                let prevChild2 =
+                // Extract child previous state (None if we cleared)
+                let prevChild1, prevChild2 =
                     match previousNode with
-                    | Some prev when prev.OverlaidChildren.Length >= 2 -> Some prev.OverlaidChildren.[1]
-                    | _ -> None
+                    | Some prev when prev.OverlaidChildren.Length >= 2 ->
+                        Some prev.OverlaidChildren.[0], Some prev.OverlaidChildren.[1]
+                    | _ -> None, None
 
                 renderToBuffer dirty prevChild1 node.OverlaidChildren.[0]
                 renderToBuffer dirty prevChild2 node.OverlaidChildren.[1]
             | UnkeyedVdom.Bordered _ ->
                 // Only paint background and border if this is a new node or bounds changed
-                match previousNode with
-                | Some prev when
-                    prev.Bounds = bounds
-                    && match prev.VDomSource with
-                       | KeylessVdom.Keyed (KeyedVdom.WithKey (_, UnkeyedVdom.Bordered _)) -> true
-                       | _ -> false
-                    ->
-                    // Container unchanged, skip background/border paint
-                    ()
-                | _ ->
-                    // New container or bounds changed, paint background and border
-                    for y = 0 to bounds.Height - 1 do
-                        for x = 0 to bounds.Width - 1 do
-                            setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
-
-                    // Only draw border if bounds are large enough (need at least 2x2)
-                    if bounds.Width >= 2 && bounds.Height >= 2 then
-                        setAtRelativeOffset dirty bounds 0 0 (ValueSome (TerminalCell.OfChar '┌'))
-                        setAtRelativeOffset dirty bounds 0 (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '└'))
-                        setAtRelativeOffset dirty bounds (bounds.Width - 1) 0 (ValueSome (TerminalCell.OfChar '┐'))
-
-                        setAtRelativeOffset
-                            dirty
-                            bounds
-                            (bounds.Width - 1)
-                            (bounds.Height - 1)
-                            (ValueSome (TerminalCell.OfChar '┘'))
-
-                        for i = 1 to bounds.Width - 2 do
-                            setAtRelativeOffset dirty bounds i 0 (ValueSome (TerminalCell.OfChar '─'))
-                            setAtRelativeOffset dirty bounds i (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '─'))
-
-                        for i = 1 to bounds.Height - 2 do
-                            setAtRelativeOffset dirty bounds 0 i (ValueSome (TerminalCell.OfChar '│'))
-                            setAtRelativeOffset dirty bounds (bounds.Width - 1) i (ValueSome (TerminalCell.OfChar '│'))
-
-                // Render child with its previous version
-                let prevChild =
+                let previousNode =
                     match previousNode with
                     | Some prev when
-                        prev.OverlaidChildren.Length > 0
+                        prev.Bounds = bounds
                         && match prev.VDomSource with
                            | KeylessVdom.Keyed (KeyedVdom.WithKey (_, UnkeyedVdom.Bordered _)) -> true
                            | _ -> false
                         ->
-                        Some prev.OverlaidChildren.[0]
+                        // Container unchanged
+                        previousNode
+                    | _ ->
+                        // New container or bounds changed, paint background and border
+                        clearBoundsWithSpaces dirty bounds
+
+                        // Only draw border if bounds are large enough (need at least 2x2)
+                        if bounds.Width >= 2 && bounds.Height >= 2 then
+                            setAtRelativeOffset dirty bounds 0 0 (ValueSome (TerminalCell.OfChar '┌'))
+                            setAtRelativeOffset dirty bounds 0 (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '└'))
+                            setAtRelativeOffset dirty bounds (bounds.Width - 1) 0 (ValueSome (TerminalCell.OfChar '┐'))
+
+                            setAtRelativeOffset
+                                dirty
+                                bounds
+                                (bounds.Width - 1)
+                                (bounds.Height - 1)
+                                (ValueSome (TerminalCell.OfChar '┘'))
+
+                            for i = 1 to bounds.Width - 2 do
+                                setAtRelativeOffset dirty bounds i 0 (ValueSome (TerminalCell.OfChar '─'))
+
+                                setAtRelativeOffset
+                                    dirty
+                                    bounds
+                                    i
+                                    (bounds.Height - 1)
+                                    (ValueSome (TerminalCell.OfChar '─'))
+
+                            for i = 1 to bounds.Height - 2 do
+                                setAtRelativeOffset dirty bounds 0 i (ValueSome (TerminalCell.OfChar '│'))
+
+                                setAtRelativeOffset
+                                    dirty
+                                    bounds
+                                    (bounds.Width - 1)
+                                    i
+                                    (ValueSome (TerminalCell.OfChar '│'))
+
+                        None // Invalidate children
+
+                // Extract child previous state (None if we cleared)
+                let prevChild =
+                    match previousNode with
+                    | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
                     | _ -> None
 
                 renderToBuffer dirty prevChild node.OverlaidChildren.[0]
@@ -617,9 +641,7 @@ module Render =
                 | UnkeyedVdom.TextContent (content, focus) ->
                     // TODO: can do better here if we can compute a more efficient diff
                     // TODO: work out how to display this differently when it has focus
-                    for y = 0 to bounds.Height - 1 do
-                        for x = 0 to bounds.Width - 1 do
-                            setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
+                    clearBoundsWithSpaces dirty bounds
 
                     // Only render text if we have space (width and height both > 0)
                     if bounds.Width > 0 && bounds.Height > 0 then
@@ -648,9 +670,7 @@ module Render =
                             index <- index + 1
 
                 | UnkeyedVdom.Checkbox (isChecked, focus) ->
-                    for y = 0 to bounds.Height - 1 do
-                        for x = 0 to bounds.Width - 1 do
-                            setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
+                    clearBoundsWithSpaces dirty bounds
 
                     let content = if isChecked then '☑' else '☐'
 
@@ -690,9 +710,7 @@ module Render =
             | UnkeyedVdom.TextContent (content, focus) ->
                 // TODO: can do better here if we can compute a more efficient diff
                 // TODO: work out how to display this differently when it has focus
-                for y = 0 to bounds.Height - 1 do
-                    for x = 0 to bounds.Width - 1 do
-                        setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
+                clearBoundsWithSpaces dirty bounds
 
                 // Only render text if we have space (width and height both > 0)
                 if bounds.Width > 0 && bounds.Height > 0 then
@@ -721,9 +739,7 @@ module Render =
                         index <- index + 1
 
             | UnkeyedVdom.Checkbox (isChecked, focus) ->
-                for y = 0 to bounds.Height - 1 do
-                    for x = 0 to bounds.Width - 1 do
-                        setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
+                clearBoundsWithSpaces dirty bounds
 
                 let content = if isChecked then '☑' else '☐'
 
@@ -754,95 +770,86 @@ module Render =
 
             | UnkeyedVdom.PanelSplit _ ->
                 // Only paint background if this is a new node or bounds changed
-                match previousNode with
-                | Some prev when
-                    prev.Bounds = bounds
-                    && match prev.VDomSource with
-                       | KeylessVdom.Unkeyed (UnkeyedVdom.PanelSplit _) -> true
-                       | _ -> false
-                    ->
-                    // Container unchanged, skip background paint
-                    ()
-                | _ ->
-                    // New container or bounds changed, paint background
-                    for y = 0 to bounds.Height - 1 do
-                        for x = 0 to bounds.Width - 1 do
-                            setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
-
-                // Render children with their previous versions
-                let prevChild1 =
+                let previousNode =
                     match previousNode with
                     | Some prev when
-                        prev.OverlaidChildren.Length >= 2
+                        prev.Bounds = bounds
                         && match prev.VDomSource with
                            | KeylessVdom.Unkeyed (UnkeyedVdom.PanelSplit _) -> true
                            | _ -> false
                         ->
-                        Some prev.OverlaidChildren.[0]
-                    | _ -> None
+                        // Container unchanged
+                        previousNode
+                    | _ ->
+                        // New container or bounds changed: clear and invalidate children
+                        clearBoundsWithSpaces dirty bounds
+                        None
 
-                let prevChild2 =
+                // Extract child previous state (None if we cleared)
+                let prevChild1, prevChild2 =
                     match previousNode with
-                    | Some prev when
-                        prev.OverlaidChildren.Length >= 2
-                        && match prev.VDomSource with
-                           | KeylessVdom.Unkeyed (UnkeyedVdom.PanelSplit _) -> true
-                           | _ -> false
-                        ->
-                        Some prev.OverlaidChildren.[1]
-                    | _ -> None
+                    | Some prev when prev.OverlaidChildren.Length >= 2 ->
+                        Some prev.OverlaidChildren.[0], Some prev.OverlaidChildren.[1]
+                    | _ -> None, None
 
                 renderToBuffer dirty prevChild1 node.OverlaidChildren.[0]
                 renderToBuffer dirty prevChild2 node.OverlaidChildren.[1]
 
             | UnkeyedVdom.Bordered _ ->
                 // Only paint background and border if this is a new node or bounds changed
-                match previousNode with
-                | Some prev when
-                    prev.Bounds = bounds
-                    && match prev.VDomSource with
-                       | KeylessVdom.Unkeyed (UnkeyedVdom.Bordered _) -> true
-                       | _ -> false
-                    ->
-                    // Container unchanged, skip background/border paint
-                    ()
-                | _ ->
-                    // New container or bounds changed, paint background and border
-                    for y = 0 to bounds.Height - 1 do
-                        for x = 0 to bounds.Width - 1 do
-                            setAtRelativeOffset dirty bounds x y (ValueSome (TerminalCell.OfChar ' '))
-
-                    // Only draw border if bounds are large enough (need at least 2x2)
-                    if bounds.Width >= 2 && bounds.Height >= 2 then
-                        setAtRelativeOffset dirty bounds 0 0 (ValueSome (TerminalCell.OfChar '┌'))
-                        setAtRelativeOffset dirty bounds 0 (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '└'))
-                        setAtRelativeOffset dirty bounds (bounds.Width - 1) 0 (ValueSome (TerminalCell.OfChar '┐'))
-
-                        setAtRelativeOffset
-                            dirty
-                            bounds
-                            (bounds.Width - 1)
-                            (bounds.Height - 1)
-                            (ValueSome (TerminalCell.OfChar '┘'))
-
-                        for i = 1 to bounds.Width - 2 do
-                            setAtRelativeOffset dirty bounds i 0 (ValueSome (TerminalCell.OfChar '─'))
-                            setAtRelativeOffset dirty bounds i (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '─'))
-
-                        for i = 1 to bounds.Height - 2 do
-                            setAtRelativeOffset dirty bounds 0 i (ValueSome (TerminalCell.OfChar '│'))
-                            setAtRelativeOffset dirty bounds (bounds.Width - 1) i (ValueSome (TerminalCell.OfChar '│'))
-
-                // Render child with its previous version
-                let prevChild =
+                let previousNode =
                     match previousNode with
                     | Some prev when
-                        prev.OverlaidChildren.Length > 0
+                        prev.Bounds = bounds
                         && match prev.VDomSource with
                            | KeylessVdom.Unkeyed (UnkeyedVdom.Bordered _) -> true
                            | _ -> false
                         ->
-                        Some prev.OverlaidChildren.[0]
+                        // Container unchanged
+                        previousNode
+                    | _ ->
+                        // New container or bounds changed, paint background and border
+                        clearBoundsWithSpaces dirty bounds
+
+                        // Only draw border if bounds are large enough (need at least 2x2)
+                        if bounds.Width >= 2 && bounds.Height >= 2 then
+                            setAtRelativeOffset dirty bounds 0 0 (ValueSome (TerminalCell.OfChar '┌'))
+                            setAtRelativeOffset dirty bounds 0 (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '└'))
+                            setAtRelativeOffset dirty bounds (bounds.Width - 1) 0 (ValueSome (TerminalCell.OfChar '┐'))
+
+                            setAtRelativeOffset
+                                dirty
+                                bounds
+                                (bounds.Width - 1)
+                                (bounds.Height - 1)
+                                (ValueSome (TerminalCell.OfChar '┘'))
+
+                            for i = 1 to bounds.Width - 2 do
+                                setAtRelativeOffset dirty bounds i 0 (ValueSome (TerminalCell.OfChar '─'))
+
+                                setAtRelativeOffset
+                                    dirty
+                                    bounds
+                                    i
+                                    (bounds.Height - 1)
+                                    (ValueSome (TerminalCell.OfChar '─'))
+
+                            for i = 1 to bounds.Height - 2 do
+                                setAtRelativeOffset dirty bounds 0 i (ValueSome (TerminalCell.OfChar '│'))
+
+                                setAtRelativeOffset
+                                    dirty
+                                    bounds
+                                    (bounds.Width - 1)
+                                    i
+                                    (ValueSome (TerminalCell.OfChar '│'))
+
+                        None // Invalidate children
+
+                // Extract child previous state (None if we cleared)
+                let prevChild =
+                    match previousNode with
+                    | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
                     | _ -> None
 
                 renderToBuffer dirty prevChild node.OverlaidChildren.[0]
@@ -872,8 +879,9 @@ module Render =
         (compute : 'state -> Vdom<DesiredBounds, Unkeyed>)
         =
         do
-            let terminalHeight = VdomContext.terminalBounds(renderState.VdomContext).Height
-            let terminalWidth = VdomContext.terminalBounds(renderState.VdomContext).Width
+            let bounds = VdomContext.terminalBounds renderState.VdomContext
+            let terminalHeight = bounds.Height
+            let terminalWidth = bounds.Width
 
             if
                 renderState.Buffer.GetLength 0 <> terminalHeight
