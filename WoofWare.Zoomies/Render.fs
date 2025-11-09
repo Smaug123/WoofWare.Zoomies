@@ -537,7 +537,8 @@ module Render =
             // Keyed nodes just wrap their child
             match unkeyedVdom with
             | UnkeyedVdom.PanelSplit _ ->
-                // PanelSplit has two children - render both
+                // Keyed PanelSplit: no background clearing (optimization relying on early cutoff and child responsibility)
+                // Children will clear their own bounds, and early cutoff skips unchanged subtrees entirely
                 let prevChild1 =
                     match previousNode with
                     | Some prev when prev.OverlaidChildren.Length >= 2 -> Some prev.OverlaidChildren.[0]
