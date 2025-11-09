@@ -1414,10 +1414,10 @@ o   d   |
                 snapshot
                     @"
 Short                                   |
-                                        |
-                                        |
 This is a much longer text that will tak|
 e multiple lines when rendered          |
+                                        |
+                                        |
                                         |
                                         |
                                         |
@@ -1560,6 +1560,104 @@ nt                            |
                     @"
 AB|
   |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    type TestState =
+        {
+            ShowLongTop : bool
+        }
+
+    [<Test>]
+    let ``regression test of stale characters when child shrinks in panelSplitAuto`` () =
+        task {
+            let console, terminal = ConsoleHarness.make ()
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (vdomContext : VdomContext) (state : TestState) =
+                let topText =
+                    if state.ShowLongTop then
+                        "AAAAAAAAAA AAAAAAAAAA AAAAAAAAAA AAAAAAAAAA"
+                    else
+                        "A"
+
+                let bottomText =
+                    if state.ShowLongTop then
+                        "B"
+                    else
+                        "BBBBBBBBBB BBBBBBBBBB BBBBBBBBBB BBBBBBBBBB"
+
+                let top = Vdom.textContent false topText
+                let bottom = Vdom.textContent false bottomText
+
+                Vdom.panelSplitAuto (SplitDirection.Horizontal, top, bottom) |> Vdom.bordered
+
+            let processWorld =
+                { new WorldProcessor<unit, TestState> with
+                    member _.ProcessWorld (worldChanges, renderState, state) =
+                        let mutable newState = state
+
+                        for change in worldChanges do
+                            match change with
+                            | Keystroke c when c.KeyChar = ' ' ->
+                                newState <-
+                                    {
+                                        ShowLongTop = not state.ShowLongTop
+                                    }
+                            | Keystroke _ -> ()
+                            | KeyboardEvent _ -> ()
+                            | MouseEvent _ -> ()
+                            | ApplicationEvent () -> ()
+                            | ApplicationEventException _ -> ()
+
+                        ProcessWorldResult.make newState
+                }
+
+            let mutable state =
+                {
+                    ShowLongTop = false
+                }
+
+            let renderState = RenderState.make' console
+
+            // First render: long text at bottom, short at top
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+┌──────────────────────────────────────────────────────────────────────────────┐|
+│A                                                                             │|
+│BBBBBBBBBB BBBBBBBBBB BBBBBBBBBB BBBBBBBBBB                                   │|
+└──────────────────────────────────────────────────────────────────────────────┘|
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
+            // Toggle: now long text at top, short at bottom
+            // The panelSplitAuto should rebalance, giving more space to top
+            // The old "BBBB..." text should be cleared
+            world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+┌──────────────────────────────────────────────────────────────────────────────┐|
+│AAAAAAAAAA AAAAAAAAAA AAAAAAAAAA AAAAAAAAAA                                   │|
+│B                                                                             │|
+└──────────────────────────────────────────────────────────────────────────────┘|
 "
 
                 return ConsoleHarness.toString terminal
