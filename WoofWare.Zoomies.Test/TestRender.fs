@@ -885,3 +885,83 @@ This is focusable text                                                          
                 return ConsoleHarness.toString terminal
             }
         }
+
+    [<Test>]
+    let ``Keyed Bordered draws its border`` () =
+        task {
+            let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let borderedKey = NodeKey.make "bordered"
+
+            let vdom (vdomContext : VdomContext) (showBordered : bool) =
+                if showBordered then
+                    // A keyed Bordered with small text content
+                    // The border should be drawn
+                    let content = Vdom.textContent false "content"
+
+                    let keyedBordered =
+                        Vdom.bordered content
+                        |> Vdom.withKey borderedKey
+                    // Wrap in another bordered to make it Unkeyed at the top level
+                    Vdom.bordered keyedBordered
+                else
+                    // Fill the screen with characters to create "artifacts"
+                    Vdom.textContent false "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+
+            let processWorld =
+                { new WorldProcessor<unit, bool> with
+                    member _.ProcessWorld (worldChanges, _, state) =
+                        // Toggle state on any keystroke
+                        let newState = if worldChanges.Length > 0 then not state else state
+                        ProcessWorldResult.make newState
+                }
+
+            let renderState = RenderState.make' console
+
+            // First render: fill with X's
+            let mutable state =
+                App.pumpOnce worldFreezer false (fun _ -> true) renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
+                                        |
+                                        |
+                                        |
+                                        |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
+            // Send a keystroke to trigger state change
+            world.SendKey (ConsoleKeyInfo ('x', ConsoleKey.NoName, false, false, false))
+
+            // Second render: show keyed Bordered
+            // The border should be drawn, and the X's should be cleared
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+┌──────────────────────────────────────┐|
+│┌────────────────────────────────────┐│|
+││content                             ││|
+││                                    ││|
+│└────────────────────────────────────┘│|
+└──────────────────────────────────────┘|
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
