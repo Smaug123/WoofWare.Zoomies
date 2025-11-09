@@ -316,15 +316,38 @@ module internal Layout =
         let m1 = child1Measured.Measured
         let m2 = child2Measured.Measured
 
-        // Helper: compute width split based on preferred widths
+        // Helper: compute width split - must match arrange logic for accurate height calculation
         let computeWidthSplit (totalWidth : int) : int * int =
             let totalPref = m1.PreferredWidth + m2.PreferredWidth
+            let minSum = m1.MinWidth + m2.MinWidth
 
-            if totalPref = 0 then
-                (totalWidth / 2, totalWidth - totalWidth / 2)
-            else
-                let p = float m1.PreferredWidth / float totalPref
-                let w1 = int (float totalWidth * p)
+            if totalWidth < minSum then
+                // Can't satisfy minimums - scale proportionally by minimum requirements
+                let scale = float totalWidth / float minSum
+                let w1 = int (float m1.MinWidth * scale)
+                (w1, totalWidth - w1)
+            elif totalWidth >= minSum && totalWidth <= totalPref then
+                // Between minimums and preferences - distribute by preference ratio
+                let p =
+                    if totalPref = 0 then
+                        0.5
+                    else
+                        float m1.PreferredWidth / float totalPref
+                // Satisfy minimums, distribute remainder by ratio
+                let remainder = totalWidth - minSum
+                let w1 = m1.MinWidth + int (float remainder * p)
+                (w1, totalWidth - w1)
+            else // totalWidth > totalPref
+                // More than preferences - distribute excess proportionally to preferences
+                let p =
+                    if totalPref = 0 then
+                        0.5
+                    else
+                        float m1.PreferredWidth / float totalPref
+
+                let extraSpace = totalWidth - totalPref
+                let extraFor1 = int (float extraSpace * p)
+                let w1 = m1.PreferredWidth + extraFor1
                 (w1, totalWidth - w1)
 
         {
@@ -885,16 +908,54 @@ module internal Layout =
                         (h1, bounds.Height - h1)
                     else // bounds.Height > totalPref
                         // More than preferences - distribute excess proportionally to preferences
-                        let p =
-                            if totalPref = 0 then
-                                0.5
-                            else
-                                float prefH1 / float totalPref
+                        // BUT respect max height constraints
+                        let maxH1 = m1.MaxHeightForWidth bounds.Width
+                        let maxH2 = m2.MaxHeightForWidth bounds.Width
 
-                        let extraSpace = bounds.Height - totalPref
-                        let extraFor1 = int (float extraSpace * p)
-                        let h1 = prefH1 + extraFor1
-                        (h1, bounds.Height - h1)
+                        // Clamp preferences to maxes
+                        let effectivePrefH1 =
+                            match maxH1 with
+                            | Some m -> min prefH1 m
+                            | None -> prefH1
+
+                        let effectivePrefH2 =
+                            match maxH2 with
+                            | Some m -> min prefH2 m
+                            | None -> prefH2
+
+                        let effectiveTotalPref = effectivePrefH1 + effectivePrefH2
+
+                        if bounds.Height <= effectiveTotalPref then
+                            // Even after clamping to maxes, we're at or below total
+                            // Distribute as normal
+                            let p =
+                                if effectiveTotalPref = 0 then
+                                    0.5
+                                else
+                                    float effectivePrefH1 / float effectiveTotalPref
+
+                            let remainder = bounds.Height - (minH1 + minH2)
+                            let h1 = minH1 + int (float remainder * p)
+                            (h1, bounds.Height - h1)
+                        else
+                            // Have excess beyond maxes - give each their effective pref, distribute remainder
+                            let extraSpace = bounds.Height - effectiveTotalPref
+
+                            let p =
+                                if effectiveTotalPref = 0 then
+                                    0.5
+                                else
+                                    float effectivePrefH1 / float effectiveTotalPref
+
+                            let extraFor1 = int (float extraSpace * p)
+                            let h1 = effectivePrefH1 + extraFor1
+                            // Clamp h1 to max if it exists (shouldn't exceed it, but just to be safe)
+                            let h1 =
+                                match maxH1 with
+                                | Some m -> min h1 m
+                                | None -> h1
+
+                            (h1, bounds.Height - h1)
 
             let bounds1 =
                 {
