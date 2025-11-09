@@ -652,8 +652,8 @@ module Render =
 
                     let content = if isChecked then '☑' else '☐'
 
-                    // Only render focus brackets if width is sufficient (need at least 3 cells for "[ ]")
-                    if focus && bounds.Width >= 3 then
+                    // Only render focus brackets if width and height are sufficient (need at least 3 cells for "[ ]")
+                    if focus && bounds.Width >= 3 && bounds.Height > 0 then
                         setAtRelativeOffset
                             dirty
                             bounds
@@ -718,8 +718,8 @@ module Render =
 
                 let content = if isChecked then '☑' else '☐'
 
-                // Only render focus brackets if width is sufficient (need at least 3 cells for "[ ]")
-                if focus && bounds.Width >= 3 then
+                // Only render focus brackets if width and height are sufficient (need at least 3 cells for "[ ]")
+                if focus && bounds.Width >= 3 && bounds.Height > 0 then
                     setAtRelativeOffset
                         dirty
                         bounds
