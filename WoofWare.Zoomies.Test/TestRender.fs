@@ -1083,8 +1083,9 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
             |> ignore<FakeUnit>
         }
 
-    [<Test>]
-    let ``Keyed text rendering handles zero-width bounds without error`` () =
+    [<TestCase true>]
+    [<TestCase false>]
+    let ``Keyed text rendering handles zero-width bounds without error`` (leftIsKeyed : bool) =
         task {
             // Regression test for: "Text rendering does not handle zero-size bounds"
             // Test the keyed branch of text rendering
@@ -1105,10 +1106,14 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
             // Create a vdom where keyed text content has Width=0
             // With a terminal width of 1 and a 50/50 split, each side gets 0 or 1 width
             let vdom (_ : VdomContext) (_ : FakeUnit) =
-                let leftText = Vdom.textContent false "some text content" |> Vdom.withKey textKey
+                let leftText = Vdom.textContent false "some text content"
                 let rightText = Vdom.textContent false "other text"
-                // Split with 0.5 proportion, terminal has width 1, so left gets 0 width
-                Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, leftText, rightText)
+
+                // Split with 0.5 proportion so that one side gets 0 width
+                if leftIsKeyed then
+                    Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, Vdom.withKey textKey leftText, rightText)
+                else
+                    Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, leftText, Vdom.withKey textKey rightText)
 
             let processWorld =
                 { new WorldProcessor<unit, FakeUnit> with
@@ -1168,14 +1173,14 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
             |> ignore<FakeUnit>
 
             // Check that the left child has zero width
-            let leftLayout = RenderState.layoutOf leftKey renderState
-            leftLayout.IsSome |> shouldEqual true
-            leftLayout.Value.Width |> shouldEqual 0
+            match RenderState.layoutOf leftKey renderState with
+            | None -> failwith "should have found leftKey node"
+            | Some leftLayout -> leftLayout.Width |> shouldEqual 0
 
             // Check that the right child has the remaining width
-            let rightLayout = RenderState.layoutOf rightKey renderState
-            rightLayout.IsSome |> shouldEqual true
-            rightLayout.Value.Width |> shouldEqual 1
+            match RenderState.layoutOf rightKey renderState with
+            | None -> failwith "should have found rightKey node"
+            | Some rightLayout -> rightLayout.Width |> shouldEqual 1
         }
 
     [<Test>]
@@ -1217,14 +1222,14 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
             |> ignore<FakeUnit>
 
             // Check that the top child has zero height
-            let topLayout = RenderState.layoutOf topKey renderState
-            topLayout.IsSome |> shouldEqual true
-            topLayout.Value.Height |> shouldEqual 0
+            match RenderState.layoutOf topKey renderState with
+            | None -> failwith "should have found topKey node"
+            | Some topLayout -> topLayout.Height |> shouldEqual 0
 
             // Check that the bottom child has the remaining height
-            let bottomLayout = RenderState.layoutOf bottomKey renderState
-            bottomLayout.IsSome |> shouldEqual true
-            bottomLayout.Value.Height |> shouldEqual 2
+            match RenderState.layoutOf bottomKey renderState with
+            | None -> failwith "should have found bottomKey node"
+            | Some bottomLayout -> bottomLayout.Height |> shouldEqual 2
         }
 
     [<Test>]
@@ -1527,8 +1532,8 @@ nt                            |
     [<Test>]
     let ``panelSplitAuto handles zero-width allocation gracefully`` () =
         task {
-            // Test extreme stress where one component gets zero or minimal space
-            let console, terminal = ConsoleHarness.make' (fun () -> 2) (fun () -> 2)
+            // Test extreme stress where one component gets zero space
+            let console, terminal = ConsoleHarness.make' (fun () -> 1) (fun () -> 2)
 
             let world = MockWorld.make ()
 
@@ -1558,8 +1563,8 @@ nt                            |
             expect {
                 snapshot
                     @"
-AB|
-  |
+B|
+ |
 "
 
                 return ConsoleHarness.toString terminal
@@ -1583,10 +1588,10 @@ AB|
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (vdomContext : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
                 // A 25-character word in a 10-character wide terminal
                 // Should wrap to 3 lines: "AAAAAAAAAA" + "AAAAAAAAAA" + "AAAAA"
-                let longWord = "AAAAAAAAAAAAAAAAAAAAAAAAA"
+                let longWord = String.replicate 25 "A"
                 let text = Vdom.textContent false longWord
 
                 // Put it in an auto split with another component
@@ -1648,7 +1653,7 @@ bottom    |
                 else
                     // 25/75 split - left side has only "AAA"
                     // Bug: the area between where "AAA" ends and where the old 50% split was
-                    // will still have X's from the previous render
+                    // still contained X's from the previous render
                     let left = Vdom.textContent false "AAA"
                     let right = Vdom.textContent false "right"
                     Vdom.panelSplitProportion (SplitDirection.Vertical, 0.25, left, right)
@@ -1666,7 +1671,18 @@ bottom    |
             let mutable state =
                 App.pumpOnce worldFreezer true (fun _ -> true) renderState processWorld vdom
 
-            let firstRender = ConsoleHarness.toString terminal
+            expect {
+                snapshot
+                    @"
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXright                                   |
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX                                        |
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX                                        |
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX                                        |
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX                                        |
+"
+
+                return ConsoleHarness.toString terminal
+            }
 
             // Send keystroke to trigger rebalance
             world.SendKey (ConsoleKeyInfo ('x', ConsoleKey.NoName, false, false, false))
@@ -1674,19 +1690,25 @@ bottom    |
             // Second render: 25/75 split with only "AAA" on left
             state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
+            // For reference, although the actual test assertion comes afterwards:
             let secondRender = ConsoleHarness.toString terminal
 
+            expect {
+                snapshot
+                    @"
+AAA                 right                                                       |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+"
+
+                return secondRender
+            }
+
             // The bug: stale X's remain in the area between "AAA" and where the right panel starts
-            // Check the first line - it should start with "AAA", then spaces, then "right"
-            // If the bug exists, we'll see X's between "AAA" and "right"
-            let firstLine = secondRender.Split('\n').[0]
-
-            // The first line should match pattern: "AAA" + spaces + "right" + spaces
-            // It should NOT contain any X's
-            let hasStaleXs = firstLine.Contains ('X')
-
-            if hasStaleXs then
-                failwith $"Bug detected: Second render contains stale X's. First line: {firstLine}"
+            if secondRender.Contains 'X' then
+                failwith $"Bug detected: Second render contains stale X's. %s{secondRender}"
         }
 
     [<Test>]
@@ -1735,8 +1757,6 @@ bottom    |
             let mutable state =
                 App.pumpOnce worldFreezer true (fun _ -> true) renderState processWorld vdom
 
-            let firstRender = ConsoleHarness.toString terminal
-
             // Send keystroke to trigger rebalance
             world.SendKey (ConsoleKeyInfo ('x', ConsoleKey.NoName, false, false, false))
 
@@ -1747,19 +1767,14 @@ bottom    |
 
             // Bug: the keyed PanelSplit's bounds don't change, so it doesn't clear its background
             // When children are re-laid out, stale content remains in the exposed areas
-            // Check second line (first line is border) for stale X's
-            let secondLine = secondRender.Split('\n').[1]
-
-            let hasStaleXs = secondLine.Contains ('X')
-
-            if hasStaleXs then
-                failwith $"Bug detected: Keyed PanelSplit contains stale X's after rebalance. Line: {secondLine}"
+            if secondRender.Contains 'X' then
+                failwith $"Bug detected: Keyed PanelSplit contains stale X's after rebalance. %s{secondRender}"
         }
 
     [<Test>]
-    let ``PanelSplit with Bordered children shows stale content when rebalancing`` () =
+    let ``PanelSplit with Bordered children should not show stale content when rebalancing`` () =
         task {
-            // This test demonstrates the actual bug scenario:
+            // This test demonstrates the bug scenario:
             // PanelSplit containing Bordered panels. When the split rebalances,
             // the PanelSplit's background might not be fully covered by the new child positions.
             let console, terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 10)
@@ -1780,7 +1795,7 @@ bottom    |
                     let right = Vdom.textContent false "R" |> Vdom.bordered
                     Vdom.panelSplitProportion (SplitDirection.Vertical, 0.7, left, right)
                 else
-                    // Left side gets 30% - fill it with A's in a bordered panel
+                    // Left side gets 30% - just add a couple of A's in a bordered panel
                     // The area from 30% to 70% should be cleared, but if the bug exists,
                     // it will still contain X's from the previous render
                     let left = Vdom.textContent false "AAA" |> Vdom.bordered
@@ -1800,7 +1815,7 @@ bottom    |
             let mutable state =
                 App.pumpOnce worldFreezer true (fun _ -> true) renderState processWorld vdom
 
-            let firstRender = ConsoleHarness.toString terminal
+            ConsoleHarness.toString terminal |> shouldContainText "XXXX"
 
             // Send keystroke to trigger rebalance
             world.SendKey (ConsoleKeyInfo ('x', ConsoleKey.NoName, false, false, false))
@@ -1811,13 +1826,8 @@ bottom    |
             let secondRender = ConsoleHarness.toString terminal
 
             // Check if any line contains X's - they should all be cleared
-            let lines = secondRender.Split ('\n')
-
-            let hasStaleXs = lines |> Array.exists (fun line -> line.Contains ('X'))
-
-            if hasStaleXs then
-                let problematicLine = lines |> Array.find (fun line -> line.Contains ('X'))
-                failwith $"Bug detected: Stale X's remain after PanelSplit rebalance. Line: {problematicLine}"
+            if secondRender.Contains 'X' then
+                failwith $"Bug detected: Stale X's remain after PanelSplit rebalance. %s{secondRender}"
         }
 
     [<Test>]
