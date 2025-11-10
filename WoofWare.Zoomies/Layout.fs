@@ -147,9 +147,9 @@ module internal Layout =
                     Some (wordWrapCount text safeWidth)
         }
 
-    /// Measure a checkbox node
+    /// Measure a toggle with glyphs node
     let private measureCheckbox (constraints : MeasureConstraints) : MeasuredSize =
-        // Checkbox is "[ ]" or "[X]" - ideally 3 chars wide
+        // Toggle with glyph and optional focus brackets - ideally 3 chars wide
         let idealWidth = 3
         // Respect MaxWidth constraint when reporting MinWidth and PreferredWidth
         let constrainedWidth = min idealWidth constraints.MaxWidth

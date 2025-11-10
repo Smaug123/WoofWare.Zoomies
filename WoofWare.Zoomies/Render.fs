@@ -636,7 +636,7 @@ module Render =
 
                 renderToBuffer dirty prevChild node.OverlaidChildren.[0]
             | _ ->
-                // Leaf node (TextContent/Checkbox) - render directly
+                // Leaf node (TextContent/ToggleWithGlyph) - render directly
                 // Note: Focusable should have a child, but if we get here, treat it as transparent
                 match unkeyedVdom with
                 | UnkeyedVdom.TextContent (content, focus) ->
