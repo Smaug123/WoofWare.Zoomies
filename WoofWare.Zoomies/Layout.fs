@@ -17,33 +17,24 @@ type internal MeasureConstraints =
 /// Invariants (must hold for all valid MeasuredSize values):
 /// - 0 <= MinWidth <= PreferredWidth
 /// - If MaxWidth = Some m, then MinWidth <= PreferredWidth <= m
-/// - CRITICAL CONSTRAINT: If MaxWidth = Some m, then MinWidth <= m
-///   A node must not report a MinWidth that exceeds the constraint it was given.
-///   This prevents impossible demands that would break layout algorithms.
+/// - If MaxWidth = Some m, then MinWidth <= m (nodes must not report a MinWidth exceeding constraints)
 /// - For any width w >= 0, MinHeightForWidth(w) >= 0
 /// - For any width w >= 0, MinHeightForWidth(w) <= PreferredHeightForWidth(w)
-/// - MinHeightForWidth(0) must return a sensible value (not divide-by-zero)
 type internal MeasuredSize =
     {
         /// Minimum width needed to render without data loss.
         /// Must respect any MaxWidth constraint from measurement.
-        /// NOTE: This is a strong preference but may be violated by the arrange
-        /// pass if insufficient space is available (see "Soft Constraints" in design doc).
+        /// May be violated by the arrange pass if insufficient space is available.
         MinWidth : int
         /// Preferred width if space is available.
         PreferredWidth : int
-        /// Maximum useful width (None = unbounded growth acceptable)
-        /// This is a hint: arrangement may allocate beyond this, but the component
-        /// gains no additional utility from the extra space.
+        /// Maximum useful width (None = unbounded). Arrangement may allocate beyond this.
         MaxWidth : int option
         /// Minimum height needed given some width
-        /// MUST handle width=0 gracefully (e.g., return height for single-char-per-line layout)
         MinHeightForWidth : int -> int
         /// Preferred height given some width
-        /// MUST handle width=0 gracefully
         PreferredHeightForWidth : int -> int
         /// Maximum useful height given some width (None = unbounded)
-        /// MUST handle width=0 gracefully
         MaxHeightForWidth : int -> int option
     }
 
@@ -144,7 +135,6 @@ module internal Layout =
             MaxWidth = None // Can grow arbitrarily wide
             MinHeightForWidth =
                 fun w ->
-                    // CRITICAL: Handle w=0 case
                     let safeWidth = max 1 w
                     let wrappedLines = wordWrapCount text safeWidth
                     max 1 wrappedLines
@@ -196,7 +186,6 @@ module internal Layout =
                 MaxWidth = childMeasured.Measured.MaxWidth |> Option.map (fun w -> w + borderThickness)
                 MinHeightForWidth =
                     fun w ->
-                        // CRITICAL: Handle narrow widths
                         let innerWidth = max 0 (w - borderThickness)
                         childMeasured.Measured.MinHeightForWidth innerWidth + borderThickness
                 PreferredHeightForWidth =
@@ -448,9 +437,8 @@ module internal Layout =
         let isNegative = n < 0
         let absN = abs n
 
-        // IMPORTANT: Constrain BOTH children appropriately
         // The fixed child gets the fixed allocation (clamped to parent's constraint)
-        // The non-fixed child gets the remainder to ensure container MinWidth <= parent MaxWidth
+        // The non-fixed child gets the remainder
         let child1Constraints, child2Constraints =
             if isNegative then
                 // Child2 gets fixed allocation of absN, child1 gets remainder
@@ -558,9 +546,8 @@ module internal Layout =
         let isNegative = n < 0
         let absN = abs n
 
-        // IMPORTANT: Constrain BOTH children appropriately
         // The fixed child gets the fixed allocation (clamped to parent's constraint)
-        // The non-fixed child gets the remainder to ensure container MinHeight <= parent MaxHeight
+        // The non-fixed child gets the remainder
         let child1Constraints, child2Constraints =
             if isNegative then
                 // Child2 gets fixed allocation of absN, child1 gets remainder
@@ -831,12 +818,8 @@ module internal Layout =
             let w1, w2 =
                 match behaviour with
                 | SplitBehaviour.Proportion p ->
-                    // Calculate widths based on proportion
-                    // CRITICAL: Always calculate w2 as remainder to avoid rounding gaps
-                    // For Proportion splits, we ALWAYS honor the proportion exactly.
-                    // Child minimums are soft constraints - if violated, children must
-                    // render gracefully in degraded space. This ensures UI stability:
-                    // as child content changes, the split ratio remains constant.
+                    // For proportion splits, we honor the proportion exactly regardless of child minimums.
+                    // Calculate w2 as remainder to avoid rounding gaps.
                     let w1 = int (float bounds.Width * p)
                     let w2 = bounds.Width - w1
                     (w1, w2)
@@ -904,12 +887,8 @@ module internal Layout =
             let h1, h2 =
                 match behaviour with
                 | SplitBehaviour.Proportion p ->
-                    // Calculate heights based on proportion
-                    // CRITICAL: Always calculate h2 as remainder to avoid rounding gaps
-                    // For Proportion splits, we ALWAYS honor the proportion exactly.
-                    // Child minimums are soft constraints - if violated, children must
-                    // render gracefully in degraded space. This ensures UI stability:
-                    // as child content changes, the split ratio remains constant.
+                    // For proportion splits, we honor the proportion exactly regardless of child minimums.
+                    // Calculate h2 as remainder to avoid rounding gaps.
                     let h1 = int (float bounds.Height * p)
                     let h2 = bounds.Height - h1
                     (h1, h2)
