@@ -47,7 +47,7 @@ type internal UnkeyedVdom<'bounds> =
     | Bordered of KeylessVdom<'bounds>
     | PanelSplit of SplitDirection * SplitBehaviour * child1 : KeylessVdom<'bounds> * child2 : KeylessVdom<'bounds>
     | TextContent of string * focused : bool
-    | Checkbox of isChecked : bool * isFocused : bool
+    | ToggleWithGlyph of uncheckedGlyph : char * checkedGlyph : char * isChecked : bool * isFocused : bool
     | Focusable of isInitialFocus : bool * KeyedVdom<'bounds>
 
 and internal KeyedVdom<'bounds> = | WithKey of NodeKey * UnkeyedVdom<'bounds>
@@ -421,7 +421,7 @@ type Vdom =
     /// <param name="isChecked">Specifies that this checkbox is currently checked. Derive the value of this parameter
     /// from your application state.</param>
     static member checkbox (isFocused : bool) (isChecked : bool) : Vdom<DesiredBounds, Unkeyed> =
-        Vdom.Unkeyed (UnkeyedVdom.Checkbox (isChecked, isFocused), Teq.refl)
+        Vdom.Unkeyed (UnkeyedVdom.ToggleWithGlyph ('☐', '☑', isChecked, isFocused), Teq.refl)
 
     /// Creates a bordered wrapper around a component, drawing a border around its content.
     static member bordered (inner : Vdom<_, Keyed>) : Vdom<DesiredBounds, Unkeyed> =
