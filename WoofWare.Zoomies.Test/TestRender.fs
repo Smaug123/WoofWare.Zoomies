@@ -804,3 +804,1266 @@ This is focusable text                                                          
         // layoutOf should still work after second render, even though early cutoff was taken
         let layout2 = RenderState.layoutOf key renderState
         layout2.IsSome |> shouldEqual true
+
+    [<Test>]
+    let ``Keyed PanelSplit clears background on initial render`` () =
+        task {
+            let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let splitKey = NodeKey.make "split"
+
+            let vdom (vdomContext : VdomContext) (showSplit : bool) =
+                if showSplit then
+                    // A keyed PanelSplit with small children
+                    // The background should be cleared
+                    let left = Vdom.textContent false "L"
+                    let right = Vdom.textContent false "R"
+
+                    let split =
+                        Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, left, right)
+                        |> Vdom.withKey splitKey
+                    // Wrap in bordered to make it Unkeyed at the top level
+                    Vdom.bordered split
+                else
+                    // Fill the screen with characters to create "artifacts"
+                    Vdom.textContent false "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+                    |> Vdom.bordered
+
+            let processWorld =
+                { new WorldProcessor<unit, bool> with
+                    member _.ProcessWorld (worldChanges, _, state) =
+                        // Toggle state on any keystroke
+                        let newState = if worldChanges.Length > 0 then not state else state
+                        ProcessWorldResult.make newState
+                }
+
+            let renderState = RenderState.make' console
+
+            // First render: fill with X's
+            let mutable state =
+                App.pumpOnce worldFreezer false (fun _ -> true) renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+┌──────────────────────────────────────┐|
+│XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX│|
+│XX                                    │|
+│                                      │|
+└──────────────────────────────────────┘|
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
+            // Send a keystroke to trigger state change
+            world.SendKey (ConsoleKeyInfo ('x', ConsoleKey.NoName, false, false, false))
+
+            // Second render: show keyed PanelSplit
+            // The X's should be cleared (replaced with spaces), not left as artifacts
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+┌──────────────────────────────────────┐|
+│L                  R                  │|
+│                                      │|
+│                                      │|
+└──────────────────────────────────────┘|
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``Keyed Bordered draws its border`` () =
+        task {
+            let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let borderedKey = NodeKey.make "bordered"
+
+            let vdom (vdomContext : VdomContext) (showBordered : bool) =
+                if showBordered then
+                    // A keyed Bordered with small text content
+                    // The border should be drawn
+                    let content = Vdom.textContent false "content"
+
+                    let keyedBordered = Vdom.bordered content |> Vdom.withKey borderedKey
+                    // Wrap in another bordered to make it Unkeyed at the top level
+                    Vdom.bordered keyedBordered
+                else
+                    // Fill the screen with characters to create "artifacts"
+                    Vdom.textContent false "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+
+            let processWorld =
+                { new WorldProcessor<unit, bool> with
+                    member _.ProcessWorld (worldChanges, _, state) =
+                        // Toggle state on any keystroke
+                        let newState = if worldChanges.Length > 0 then not state else state
+                        ProcessWorldResult.make newState
+                }
+
+            let renderState = RenderState.make' console
+
+            // First render: fill with X's
+            let mutable state =
+                App.pumpOnce worldFreezer false (fun _ -> true) renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
+                                        |
+                                        |
+                                        |
+                                        |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
+            // Send a keystroke to trigger state change
+            world.SendKey (ConsoleKeyInfo ('x', ConsoleKey.NoName, false, false, false))
+
+            // Second render: show keyed Bordered
+            // The border should be drawn, and the X's should be cleared
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+┌──────────────────────────────────────┐|
+│┌────────────────────────────────────┐│|
+││content                             ││|
+│└────────────────────────────────────┘│|
+└──────────────────────────────────────┘|
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``Checkbox with focus does not write brackets when Height is 0`` () =
+        task {
+            // Regression test for: "Checkbox focus brackets can write with Height=0"
+            // The guard should check bounds.Width >= 3 && bounds.Height > 0 before drawing brackets
+            let terminalOps = ResizeArray<TerminalOp> ()
+
+            let console =
+                { IConsole.defaultForTests with
+                    Execute = fun x -> terminalOps.Add x
+                    WindowWidth = fun _ -> 10
+                    WindowHeight = fun _ -> 5
+                }
+
+            let renderState = RenderState.make' console
+
+            let checkboxKey = NodeKey.make "checkbox"
+
+            // Create a vdom where the checkbox has focus and is allocated bounds with Height=0
+            // We use an absolute split to force the checkbox into a zero-height allocation
+            let vdom (vdomContext : VdomContext) (_ : FakeUnit) =
+                let currentFocus = VdomContext.focusedKey vdomContext
+                let topContent = Vdom.textContent false "top"
+
+                let checkbox =
+                    Vdom.checkbox (currentFocus = Some checkboxKey) false
+                    |> Vdom.withKey checkboxKey
+                    |> Vdom.withFocusTracking
+
+                // Give the checkbox 0 rows (split at row 5 in a 5-row terminal)
+                Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 5, topContent, checkbox)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            // Render without focus
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+
+            terminalOps.Clear ()
+
+            // Tab to give focus to the checkbox
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+
+            // Check that the checkbox has bounds with Height=0
+            let checkboxLayout = RenderState.layoutOf checkboxKey renderState
+            checkboxLayout.IsSome |> shouldEqual true
+            checkboxLayout.Value.Height |> shouldEqual 0
+
+            // The bug would cause bracket characters '[' or ']' to be written at invalid positions
+            // With the fix, no brackets should be written when Height=0
+            let hasBrackets =
+                terminalOps
+                |> Seq.exists (
+                    function
+                    | TerminalOp.WriteChar cell when cell.Char = '[' || cell.Char = ']' -> true
+                    | _ -> false
+                )
+
+            hasBrackets |> shouldEqual false
+        }
+
+    [<Test>]
+    let ``Text rendering handles zero-width bounds without error`` () =
+        task {
+            // Regression test for: "Text rendering does not handle zero-size bounds"
+            // With Width=0 (from a proportion split), rendering can write off-bounds and throw
+            let terminalOps = ResizeArray<TerminalOp> ()
+
+            // Use a very small terminal width so that after splitting, one side has 0 width
+            let console =
+                { IConsole.defaultForTests with
+                    Execute = fun x -> terminalOps.Add x
+                    WindowWidth = fun _ -> 1
+                    WindowHeight = fun _ -> 5
+                }
+
+            let renderState = RenderState.make' console
+
+            // Create a vdom where text content has Width=0
+            // With a terminal width of 1 and a 50/50 split, each side gets 0 or 1 width
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                let leftText = Vdom.textContent false "some text content"
+                let rightText = Vdom.textContent false "other text"
+                // Split with 0.5 proportion, terminal has width 1, so left gets 0 width
+                Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, leftText, rightText)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            // This should not throw an IndexOutOfRangeException
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+        }
+
+    [<TestCase true>]
+    [<TestCase false>]
+    let ``Keyed text rendering handles zero-width bounds without error`` (leftIsKeyed : bool) =
+        task {
+            // Regression test for: "Text rendering does not handle zero-size bounds"
+            // Test the keyed branch of text rendering
+            let terminalOps = ResizeArray<TerminalOp> ()
+
+            // Use a very small terminal width so that after splitting, one side has 0 width
+            let console =
+                { IConsole.defaultForTests with
+                    Execute = fun x -> terminalOps.Add x
+                    WindowWidth = fun _ -> 1
+                    WindowHeight = fun _ -> 5
+                }
+
+            let renderState = RenderState.make' console
+
+            let textKey = NodeKey.make "text"
+
+            // Create a vdom where keyed text content has Width=0
+            // With a terminal width of 1 and a 50/50 split, each side gets 0 or 1 width
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                let leftText = Vdom.textContent false "some text content"
+                let rightText = Vdom.textContent false "other text"
+
+                // Split with 0.5 proportion so that one side gets 0 width
+                if leftIsKeyed then
+                    Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, Vdom.withKey textKey leftText, rightText)
+                else
+                    Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, leftText, Vdom.withKey textKey rightText)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            // This should not throw an IndexOutOfRangeException
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+        }
+
+    [<Test>]
+    let ``Proportion splits can yield zero-size children`` () =
+        task {
+            // Demonstrates that proportion splits with small terminals can allocate zero width/height
+            let console, _ = ConsoleHarness.make' (fun () -> 1) (fun () -> 1)
+
+            let renderState = RenderState.make' console
+
+            let leftKey = NodeKey.make "left"
+            let rightKey = NodeKey.make "right"
+
+            // Create a vdom with proportion split
+            // Terminal width is 1, split at 0.1 proportion
+            // This means left gets: int (float 1 * 0.1) = int 0.1 = 0
+            // And right gets: 1 - 0 = 1
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                let leftText = Vdom.textContent false "left" |> Vdom.withKey leftKey
+                let rightText = Vdom.textContent false "right" |> Vdom.withKey rightKey
+                Vdom.panelSplitProportion (SplitDirection.Vertical, 0.1, leftText, rightText)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            // Render
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+
+            // Check that the left child has zero width
+            match RenderState.layoutOf leftKey renderState with
+            | None -> failwith "should have found leftKey node"
+            | Some leftLayout -> leftLayout.Width |> shouldEqual 0
+
+            // Check that the right child has the remaining width
+            match RenderState.layoutOf rightKey renderState with
+            | None -> failwith "should have found rightKey node"
+            | Some rightLayout -> rightLayout.Width |> shouldEqual 1
+        }
+
+    [<Test>]
+    let ``Horizontal proportion splits can yield zero-size children`` () =
+        task {
+            // Same as above but for horizontal splits
+            let console, _ = ConsoleHarness.make' (fun () -> 10) (fun () -> 2)
+
+            let renderState = RenderState.make' console
+
+            let topKey = NodeKey.make "top"
+            let bottomKey = NodeKey.make "bottom"
+
+            // Create a vdom with horizontal proportion split
+            // Terminal height is 2, split at 0.1 proportion
+            // This means top gets: int (float 2 * 0.1) = int 0.2 = 0
+            // And bottom gets: 2 - 0 = 2
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                let topText = Vdom.textContent false "top" |> Vdom.withKey topKey
+                let bottomText = Vdom.textContent false "bottom" |> Vdom.withKey bottomKey
+                Vdom.panelSplitProportion (SplitDirection.Horizontal, 0.1, topText, bottomText)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            // Render
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+
+            // Check that the top child has zero height
+            match RenderState.layoutOf topKey renderState with
+            | None -> failwith "should have found topKey node"
+            | Some topLayout -> topLayout.Height |> shouldEqual 0
+
+            // Check that the bottom child has the remaining height
+            match RenderState.layoutOf bottomKey renderState with
+            | None -> failwith "should have found bottomKey node"
+            | Some bottomLayout -> bottomLayout.Height |> shouldEqual 2
+        }
+
+    [<Test>]
+    let ``panelSplitAuto distributes space normally when all components fit`` () =
+        task {
+            // Test the normal case where there's enough space for all preferred sizes
+            let console, terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 10)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Create two text components with different preferred widths
+                // "Hello world" has preferred width ~11, "Hi" has preferred width ~2
+                let left = Vdom.textContent false "Hello world"
+                let right = Vdom.textContent false "Hi"
+
+                Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make' console
+
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+
+            expect {
+                snapshot
+                    @"
+Hello world                                                        Hi           |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``panelSplitAuto handles stress when not enough space for all preferences`` () =
+        task {
+            // Test when available space is between minimums and preferences
+            // Terminal is 20 wide, but text wants more
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Long text content that will wrap when space is limited.
+                // The longer one (`left`) has its longest word of length 6, vs the shorter one having longest word
+                // of length 4, so satisfying their minimum requests allocates more space to `left`;
+                // then leftover spare space gets allocated equally between them, and `left` ends up a bit bigger.
+                let left = Vdom.textContent false "This is a longer piece of text"
+                let right = Vdom.textContent false "Also long text here"
+
+                Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make' console
+
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+
+            expect {
+                snapshot
+                    @"
+This is a lAlso long|
+onger piece text her|
+ of text   e        |
+                    |
+                    |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``panelSplitAuto handles extreme stress when not enough space for minimums`` () =
+        task {
+            // Test when available space is less than sum of minimums
+            // This forces proportional scaling of minimums
+            let console, terminal = ConsoleHarness.make' (fun () -> 8) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Words with minimum widths that exceed available space
+                let left = Vdom.textContent false "Hello" // min width ~5
+                let right = Vdom.textContent false "World" // min width ~5
+
+                Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make' console
+
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+
+            expect {
+                snapshot
+                    @"
+HellWorl|
+o   d   |
+        |
+        |
+        |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``panelSplitAuto works with horizontal splits in normal conditions`` () =
+        task {
+            // Test horizontal auto splits with enough space
+            let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 10)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Short text (prefers 1 line) and longer text (prefers multiple lines)
+                let top = Vdom.textContent false "Short"
+
+                let bottom =
+                    Vdom.textContent false "This is a much longer text that will take multiple lines when rendered"
+
+                Vdom.panelSplitAuto (SplitDirection.Horizontal, top, bottom)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make' console
+
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+
+            expect {
+                snapshot
+                    @"
+Short                                   |
+This is a much longer text that will tak|
+e multiple lines when rendered          |
+                                        |
+                                        |
+                                        |
+                                        |
+                                        |
+                                        |
+                                        |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``panelSplitAuto handles horizontal stress when height is limited but still sufficient`` () =
+        task {
+            // Test horizontal auto splits when not enough vertical space
+            let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 4)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Both components want more height than available
+                let top = Vdom.textContent false "Top section with some content that wraps around"
+                let bottom = Vdom.textContent false "Bottom section also with content"
+
+                Vdom.panelSplitAuto (SplitDirection.Horizontal, top, bottom)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make' console
+
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+
+            expect {
+                snapshot
+                    @"
+Top section with some content |
+that wraps around             |
+Bottom section also with conte|
+nt                            |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``panelSplitAuto with bordered components shows layout adaptation`` () =
+        task {
+            // Test auto splits with bordered components to make the allocation visible
+            let console, terminal = ConsoleHarness.make' (fun () -> 50) (fun () -> 8)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Bordered panels to clearly show space allocation
+                let left = Vdom.textContent false "Small" |> Vdom.bordered
+
+                let right = Vdom.textContent false "This is much larger content" |> Vdom.bordered
+
+                Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make' console
+
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+
+            expect {
+                snapshot
+                    @"
+┌───────┐┌───────────────────────────────────────┐|
+│Small  ││This is much larger content            │|
+│       ││                                       │|
+│       ││                                       │|
+│       ││                                       │|
+│       ││                                       │|
+│       ││                                       │|
+└───────┘└───────────────────────────────────────┘|
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``panelSplitAuto handles zero-width allocation gracefully`` () =
+        task {
+            // Test extreme stress where one component gets zero space
+            let console, terminal = ConsoleHarness.make' (fun () -> 1) (fun () -> 2)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                let left = Vdom.textContent false "A"
+                let right = Vdom.textContent false "B"
+
+                Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make' console
+
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+
+            expect {
+                snapshot
+                    @"
+B|
+ |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``regression test for wordWrapCount underestimating height for long words that exceed width`` () =
+        task {
+            // Test case: a single long word that exceeds the available width
+            // wordWrapCount treats it as 1 line (places the whole word on one line)
+            // But rendering wraps character-by-character, so it actually takes multiple lines
+            let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 10)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // A 25-character word in a 10-character wide terminal
+                // Should wrap to 3 lines: "AAAAAAAAAA" + "AAAAAAAAAA" + "AAAAA"
+                let longWord = String.replicate 25 "A"
+                let text = Vdom.textContent false longWord
+
+                // Put it in an auto split with another component
+                let bottom = Vdom.textContent false "bottom"
+                Vdom.panelSplitAuto (SplitDirection.Horizontal, text, bottom)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make' console
+
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+
+            expect {
+                snapshot
+                    @"
+AAAAAAAAAA|
+AAAAAAAAAA|
+AAAAA     |
+bottom    |
+          |
+          |
+          |
+          |
+          |
+          |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``Unkeyed PanelSplit clears exposed area when child shrinks`` () =
+        task {
+            // Regression test for: "PanelSplit background only cleared when container node/bounds change"
+            // When a PanelSplit rebalances (same container bounds, different child bounds),
+            // exposed areas should be cleared
+            let console, terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (useLargeSplit : bool) =
+                if useLargeSplit then
+                    // 50/50 split - left side filled with X's
+                    let left = Vdom.textContent false (String.replicate 200 "X")
+                    let right = Vdom.textContent false "right"
+                    Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, left, right)
+                else
+                    // 25/75 split - left side has only "AAA"
+                    // Bug: the area between where "AAA" ends and where the old 50% split was
+                    // still contained X's from the previous render
+                    let left = Vdom.textContent false "AAA"
+                    let right = Vdom.textContent false "right"
+                    Vdom.panelSplitProportion (SplitDirection.Vertical, 0.25, left, right)
+
+            let processWorld =
+                { new WorldProcessor<unit, bool> with
+                    member _.ProcessWorld (worldChanges, _, state) =
+                        let newState = if worldChanges.Length > 0 then not state else state
+                        ProcessWorldResult.make newState
+                }
+
+            let renderState = RenderState.make' console
+
+            // First render: 50/50 split with X's filling the left side
+            let mutable state =
+                App.pumpOnce worldFreezer true (fun _ -> true) renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXright                                   |
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX                                        |
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX                                        |
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX                                        |
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX                                        |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
+            // Send keystroke to trigger rebalance
+            world.SendKey (ConsoleKeyInfo ('x', ConsoleKey.NoName, false, false, false))
+
+            // Second render: 25/75 split with only "AAA" on left
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+
+            // For reference, although the actual test assertion comes afterwards:
+            let secondRender = ConsoleHarness.toString terminal
+
+            expect {
+                snapshot
+                    @"
+AAA                 right                                                       |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+"
+
+                return secondRender
+            }
+
+            // The bug: stale X's remain in the area between "AAA" and where the right panel starts
+            if secondRender.Contains 'X' then
+                failwith $"Bug detected: Second render contains stale X's. %s{secondRender}"
+        }
+
+    [<Test>]
+    let ``Keyed PanelSplit clears exposed area when child shrinks`` () =
+        task {
+            // Same as above but with a keyed PanelSplit
+            let console, terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let splitKey = NodeKey.make "split"
+
+            let vdom (_ : VdomContext) (useLargeSplit : bool) =
+                let split =
+                    if useLargeSplit then
+                        // 50/50 split
+                        let left = Vdom.textContent false (String.replicate 200 "X")
+                        let right = Vdom.textContent false "right"
+                        Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, left, right)
+                    else
+                        // 25/75 split
+                        let left = Vdom.textContent false "AAA"
+                        let right = Vdom.textContent false "right"
+                        Vdom.panelSplitProportion (SplitDirection.Vertical, 0.25, left, right)
+
+                // Wrap in bordered to make it Unkeyed at the top level
+                split |> Vdom.withKey splitKey |> Vdom.bordered
+
+            let processWorld =
+                { new WorldProcessor<unit, bool> with
+                    member _.ProcessWorld (worldChanges, _, state) =
+                        let newState = if worldChanges.Length > 0 then not state else state
+                        ProcessWorldResult.make newState
+                }
+
+            let renderState = RenderState.make' console
+
+            // First render: 50/50 split
+            let mutable state =
+                App.pumpOnce worldFreezer true (fun _ -> true) renderState processWorld vdom
+
+            // Send keystroke to trigger rebalance
+            world.SendKey (ConsoleKeyInfo ('x', ConsoleKey.NoName, false, false, false))
+
+            // Second render: 25/75 split
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+
+            let secondRender = ConsoleHarness.toString terminal
+
+            // Bug: the keyed PanelSplit's bounds don't change, so it doesn't clear its background
+            // When children are re-laid out, stale content remains in the exposed areas
+            if secondRender.Contains 'X' then
+                failwith $"Bug detected: Keyed PanelSplit contains stale X's after rebalance. %s{secondRender}"
+        }
+
+    [<Test>]
+    let ``PanelSplit with Bordered children should not show stale content when rebalancing`` () =
+        task {
+            // This test demonstrates the bug scenario:
+            // PanelSplit containing Bordered panels. When the split rebalances,
+            // the PanelSplit's background might not be fully covered by the new child positions.
+            let console, terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 10)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (useWideLeft : bool) =
+                if useWideLeft then
+                    // Left side gets 70% - fill it with X's in a bordered panel
+                    let left = Vdom.textContent false (String.replicate 500 "X") |> Vdom.bordered
+                    let right = Vdom.textContent false "R" |> Vdom.bordered
+                    Vdom.panelSplitProportion (SplitDirection.Vertical, 0.7, left, right)
+                else
+                    // Left side gets 30% - just add a couple of A's in a bordered panel
+                    // The area from 30% to 70% should be cleared, but if the bug exists,
+                    // it will still contain X's from the previous render
+                    let left = Vdom.textContent false "AAA" |> Vdom.bordered
+                    let right = Vdom.textContent false "R" |> Vdom.bordered
+                    Vdom.panelSplitProportion (SplitDirection.Vertical, 0.3, left, right)
+
+            let processWorld =
+                { new WorldProcessor<unit, bool> with
+                    member _.ProcessWorld (worldChanges, _, state) =
+                        let newState = if worldChanges.Length > 0 then not state else state
+                        ProcessWorldResult.make newState
+                }
+
+            let renderState = RenderState.make' console
+
+            // First render: 70/30 split with X's on the left
+            let mutable state =
+                App.pumpOnce worldFreezer true (fun _ -> true) renderState processWorld vdom
+
+            ConsoleHarness.toString terminal |> shouldContainText "XXXX"
+
+            // Send keystroke to trigger rebalance
+            world.SendKey (ConsoleKeyInfo ('x', ConsoleKey.NoName, false, false, false))
+
+            // Second render: 30/70 split
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+
+            let secondRender = ConsoleHarness.toString terminal
+
+            // Check if any line contains X's - they should all be cleared
+            if secondRender.Contains 'X' then
+                failwith $"Bug detected: Stale X's remain after PanelSplit rebalance. %s{secondRender}"
+        }
+
+    [<Test>]
+    let ``Unkeyed Bordered clears exposed area when child content shrinks`` () =
+        task {
+            // Test for Bordered containers with shrinking child content
+            let console, terminal = ConsoleHarness.make' (fun () -> 60) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (useLongText : bool) =
+                if useLongText then
+                    // Long text filling the bordered area
+                    Vdom.textContent false (String.replicate 200 "X") |> Vdom.bordered
+                else
+                    // Short text - exposed area should be cleared
+                    Vdom.textContent false "AAA" |> Vdom.bordered
+
+            let processWorld =
+                { new WorldProcessor<unit, bool> with
+                    member _.ProcessWorld (worldChanges, _, state) =
+                        let newState = if worldChanges.Length > 0 then not state else state
+                        ProcessWorldResult.make newState
+                }
+
+            let renderState = RenderState.make' console
+
+            // First render: long text
+            let mutable state =
+                App.pumpOnce worldFreezer true (fun _ -> true) renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+┌──────────────────────────────────────────────────────────┐|
+│XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX│|
+│XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX│|
+│XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX│|
+└──────────────────────────────────────────────────────────┘|
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
+            // Send keystroke to change content
+            world.SendKey (ConsoleKeyInfo ('x', ConsoleKey.NoName, false, false, false))
+
+            // Second render: short text
+            // Border bounds unchanged, child bounds unchanged, but content shrinks
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+┌──────────────────────────────────────────────────────────┐|
+│AAA                                                       │|
+│                                                          │|
+│                                                          │|
+└──────────────────────────────────────────────────────────┘|
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``Keyed Bordered clears exposed area when child content shrinks`` () =
+        task {
+            // Same as above but with a keyed Bordered
+            let console, terminal = ConsoleHarness.make' (fun () -> 60) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let borderedKey = NodeKey.make "bordered"
+
+            let vdom (_ : VdomContext) (useLongText : bool) =
+                let bordered =
+                    if useLongText then
+                        Vdom.textContent false (String.replicate 200 "X") |> Vdom.bordered
+                    else
+                        Vdom.textContent false "AAA" |> Vdom.bordered
+
+                // Wrap in another bordered to make it Unkeyed at the top level
+                bordered |> Vdom.withKey borderedKey |> Vdom.bordered
+
+            let processWorld =
+                { new WorldProcessor<unit, bool> with
+                    member _.ProcessWorld (worldChanges, _, state) =
+                        let newState = if worldChanges.Length > 0 then not state else state
+                        ProcessWorldResult.make newState
+                }
+
+            let renderState = RenderState.make' console
+
+            // First render: long text
+            let mutable state =
+                App.pumpOnce worldFreezer true (fun _ -> true) renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+┌──────────────────────────────────────────────────────────┐|
+│┌────────────────────────────────────────────────────────┐│|
+││XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX││|
+│└────────────────────────────────────────────────────────┘│|
+└──────────────────────────────────────────────────────────┘|
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
+            // Send keystroke to change content
+            world.SendKey (ConsoleKeyInfo ('x', ConsoleKey.NoName, false, false, false))
+
+            // Second render: short text
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+┌──────────────────────────────────────────────────────────┐|
+│┌────────────────────────────────────────────────────────┐│|
+││AAA                                                     ││|
+│└────────────────────────────────────────────────────────┘│|
+└──────────────────────────────────────────────────────────┘|
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``Absolute split with wide non-fixed child violates MinWidth constraint`` () =
+        task {
+            // Regression test for: "In measureVerticalSplitAbsolute, only the fixed child is constrained"
+            // This test exposes the bug where container MinWidth can exceed parent's MaxWidth constraint.
+            //
+            // Setup: Terminal width = 50
+            //   - Absolute vertical split: give child1 20 pixels (positive n=20), child2 gets remainder
+            //   - child1: simple text (MinWidth ~5)
+            //   - child2: long text in bordered panel (MinWidth ~40)
+            //   - Container reports MinWidth = 20 + 40 = 60 > 50 (VIOLATES INVARIANT!)
+            //
+            // The bug is subtle: it violates documented invariants but may not cause visible artifacts
+            // because the arrange phase works with actual allocated space, not reported MinWidth.
+            // However, if this absolute split is nested in an Auto split, the Auto split sees
+            // the inflated MinWidth and makes incorrect space allocation decisions.
+
+            let console, terminal = ConsoleHarness.make' (fun () -> 50) (fun () -> 10)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Outer Auto split allocates space to its children based on their reported MinWidth
+                let left =
+                    // This is the problematic absolute split
+                    // It's measured with MaxWidth=50 (full terminal width for Auto split)
+                    // But it will report MinWidth = 20 + child2.MinWidth
+                    let child1 = Vdom.textContent false "small"
+                    // Long text in bordered panel: needs ~35 chars minimum for longest word "unnecessarily"
+                    // Plus 2 for border = ~37
+                    let child2 =
+                        Vdom.textContent false "This text contains unnecessarily long words that wrap"
+                        |> Vdom.bordered
+
+                    // Fixed width split: child1 gets 20, child2 gets the rest
+                    // When this is measured with MaxWidth=50:
+                    // - child1 measured with MaxWidth=min(20,50)=20, reports MinWidth=5
+                    // - child2 measured with MaxWidth=50, reports MinWidth=~37
+                    // - Container reports MinWidth = 20 + 37 = 57 > 50 ❌ VIOLATES INVARIANT
+                    Vdom.panelSplitAbsolute (SplitDirection.Vertical, 20, child1, child2)
+
+                let right = Vdom.textContent false "Right side content"
+
+                // Auto split sees left.MinWidth=57, right.MinWidth=18
+                // minSum = 75 > 50 (terminal width)
+                // Auto split thinks it can't satisfy minimums and scales proportionally
+                // This is the wrong decision - the absolute split could actually fit in less space
+                Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make' console
+
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+
+            // Expected behavior after fix:
+            // - Absolute split now constrains child2 to remainder: MaxWidth=50-20=30
+            // - child2 (bordered text) reports MinWidth=min(longest_word+2, 30) = 30
+            // - Container reports MinWidth = 20 + 30 = 50 (respects constraint ✓)
+            // - Auto split sees left.MinWidth=50, right.MinWidth=18, total=68 > 50
+            // - Auto split still needs to scale, but makes better decisions
+            // - Result: bordered panel is narrower, but "Right side content" is no longer cut off
+
+            expect {
+                // This snapshot documents the corrected behavior
+                // The layout is now better: "Right side content" displays completely
+                snapshot
+                    @"
+small               ┌──────────────────┐Right side|
+                    │This text contains│ content  |
+                    │ unnecessarily lon│          |
+                    │g words that wrap │          |
+                    │                  │          |
+                    │                  │          |
+                    │                  │          |
+                    │                  │          |
+                    │                  │          |
+                    └──────────────────┘          |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
