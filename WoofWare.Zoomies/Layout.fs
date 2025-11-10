@@ -649,7 +649,7 @@ module internal Layout =
                 Measured = measureText text constraints
                 Children = []
             }
-        | UnkeyedVdom.Checkbox (_isChecked, _isFocused) ->
+        | UnkeyedVdom.ToggleWithGlyph (_uncheckedGlyph, _checkedGlyph, _isChecked, _isFocused) ->
             {
                 Vdom = KeylessVdom.Unkeyed vdom
                 Measured = measureCheckbox constraints
@@ -689,9 +689,15 @@ module internal Layout =
                     Bounds = bounds
                     Children = []
                 }
-            | UnkeyedVdom.Checkbox (isChecked, isFocused) ->
+            | UnkeyedVdom.ToggleWithGlyph (uncheckedGlyph, checkedGlyph, isChecked, isFocused) ->
                 {
-                    Vdom = KeylessVdom.Keyed (KeyedVdom.WithKey (key, UnkeyedVdom.Checkbox (isChecked, isFocused)))
+                    Vdom =
+                        KeylessVdom.Keyed (
+                            KeyedVdom.WithKey (
+                                key,
+                                UnkeyedVdom.ToggleWithGlyph (uncheckedGlyph, checkedGlyph, isChecked, isFocused)
+                            )
+                        )
                     Bounds = bounds
                     Children = []
                 }
@@ -752,9 +758,12 @@ module internal Layout =
                     Bounds = bounds
                     Children = []
                 }
-            | UnkeyedVdom.Checkbox (isChecked, isFocused) ->
+            | UnkeyedVdom.ToggleWithGlyph (uncheckedGlyph, checkedGlyph, isChecked, isFocused) ->
                 {
-                    Vdom = KeylessVdom.Unkeyed (UnkeyedVdom.Checkbox (isChecked, isFocused))
+                    Vdom =
+                        KeylessVdom.Unkeyed (
+                            UnkeyedVdom.ToggleWithGlyph (uncheckedGlyph, checkedGlyph, isChecked, isFocused)
+                        )
                     Bounds = bounds
                     Children = []
                 }
