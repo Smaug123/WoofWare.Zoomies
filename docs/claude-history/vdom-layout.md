@@ -268,14 +268,29 @@ let measureVerticalSplitAuto
     let m1 = child1Measured.Measured
     let m2 = child2Measured.Measured
 
-    // Helper: compute width split based on preferred widths
+    // Helper: compute width split - must match arrange logic for accurate height calculation
     let computeWidthSplit (totalWidth: int) : int * int =
         let totalPref = m1.PreferredWidth + m2.PreferredWidth
-        if totalPref = 0 then
-            (totalWidth / 2, totalWidth - totalWidth / 2)
-        else
-            let p = float m1.PreferredWidth / float totalPref
-            let w1 = int (float totalWidth * p)
+        let minSum = m1.MinWidth + m2.MinWidth
+
+        if totalWidth < minSum then
+            // Can't satisfy minimums - scale proportionally by minimum requirements
+            let scale = float totalWidth / float minSum
+            let w1 = int (float m1.MinWidth * scale)
+            (w1, totalWidth - w1)
+        elif totalWidth >= minSum && totalWidth <= totalPref then
+            // Between minimums and preferences - distribute by preference ratio
+            let p = if totalPref = 0 then 0.5 else float m1.PreferredWidth / float totalPref
+            // Satisfy minimums, distribute remainder by ratio
+            let remainder = totalWidth - minSum
+            let w1 = m1.MinWidth + int (float remainder * p)
+            (w1, totalWidth - w1)
+        else  // totalWidth > totalPref
+            // More than preferences - distribute excess proportionally to preferences
+            let p = if totalPref = 0 then 0.5 else float m1.PreferredWidth / float totalPref
+            let extraSpace = totalWidth - totalPref
+            let extraFor1 = int (float extraSpace * p)
+            let w1 = m1.PreferredWidth + extraFor1
             (w1, totalWidth - w1)
 
     {
