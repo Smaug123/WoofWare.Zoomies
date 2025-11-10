@@ -94,12 +94,15 @@ module internal Layout =
                         // Calculate how many lines this word will take if placed starting on a new line
                         // Words longer than width wrap character-by-character (like rendering does)
                         let linesForWord =
-                            if wordLen <= width then 1
-                            else (wordLen + width - 1) / width  // Ceiling division
+                            if wordLen <= width then
+                                1
+                            else
+                                (wordLen + width - 1) / width // Ceiling division
 
                         // Calculate the width of the final line after placing this word
                         let finalLineWidth =
-                            if wordLen <= width then wordLen
+                            if wordLen <= width then
+                                wordLen
                             else
                                 let remainder = wordLen % width
                                 if remainder = 0 then width else remainder
@@ -113,8 +116,8 @@ module internal Layout =
                             currentLineWidth <- currentLineWidth + 1 + wordLen
                         else
                             // Word doesn't fit, start new line
-                            lineCount <- lineCount + 1  // Move to new line
-                            lineCount <- lineCount + linesForWord - 1  // Additional lines if word is long
+                            lineCount <- lineCount + 1 // Move to new line
+                            lineCount <- lineCount + linesForWord - 1 // Additional lines if word is long
                             currentLineWidth <- finalLineWidth
 
                 lineCount
