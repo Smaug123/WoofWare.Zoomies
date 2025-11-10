@@ -1962,3 +1962,98 @@ bottom    |
                 return ConsoleHarness.toString terminal
             }
         }
+
+    [<Test>]
+    let ``Absolute split with wide non-fixed child violates MinWidth constraint`` () =
+        task {
+            // Regression test for: "In measureVerticalSplitAbsolute, only the fixed child is constrained"
+            // This test exposes the bug where container MinWidth can exceed parent's MaxWidth constraint.
+            //
+            // Setup: Terminal width = 50
+            //   - Absolute vertical split: give child1 20 pixels (positive n=20), child2 gets remainder
+            //   - child1: simple text (MinWidth ~5)
+            //   - child2: long text in bordered panel (MinWidth ~40)
+            //   - Container reports MinWidth = 20 + 40 = 60 > 50 (VIOLATES INVARIANT!)
+            //
+            // The bug is subtle: it violates documented invariants but may not cause visible artifacts
+            // because the arrange phase works with actual allocated space, not reported MinWidth.
+            // However, if this absolute split is nested in an Auto split, the Auto split sees
+            // the inflated MinWidth and makes incorrect space allocation decisions.
+
+            let console, terminal = ConsoleHarness.make' (fun () -> 50) (fun () -> 10)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Outer Auto split allocates space to its children based on their reported MinWidth
+                let left =
+                    // This is the problematic absolute split
+                    // It's measured with MaxWidth=50 (full terminal width for Auto split)
+                    // But it will report MinWidth = 20 + child2.MinWidth
+                    let child1 = Vdom.textContent false "small"
+                    // Long text in bordered panel: needs ~35 chars minimum for longest word "unnecessarily"
+                    // Plus 2 for border = ~37
+                    let child2 =
+                        Vdom.textContent false "This text contains unnecessarily long words that wrap"
+                        |> Vdom.bordered
+
+                    // Fixed width split: child1 gets 20, child2 gets the rest
+                    // When this is measured with MaxWidth=50:
+                    // - child1 measured with MaxWidth=min(20,50)=20, reports MinWidth=5
+                    // - child2 measured with MaxWidth=50, reports MinWidth=~37
+                    // - Container reports MinWidth = 20 + 37 = 57 > 50 ❌ VIOLATES INVARIANT
+                    Vdom.panelSplitAbsolute (SplitDirection.Vertical, 20, child1, child2)
+
+                let right = Vdom.textContent false "Right side content"
+
+                // Auto split sees left.MinWidth=57, right.MinWidth=18
+                // minSum = 75 > 50 (terminal width)
+                // Auto split thinks it can't satisfy minimums and scales proportionally
+                // This is the wrong decision - the absolute split could actually fit in less space
+                Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make' console
+
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+
+            // Expected behavior after fix:
+            // - Absolute split now constrains child2 to remainder: MaxWidth=50-20=30
+            // - child2 (bordered text) reports MinWidth=min(longest_word+2, 30) = 30
+            // - Container reports MinWidth = 20 + 30 = 50 (respects constraint ✓)
+            // - Auto split sees left.MinWidth=50, right.MinWidth=18, total=68 > 50
+            // - Auto split still needs to scale, but makes better decisions
+            // - Result: bordered panel is narrower, but "Right side content" is no longer cut off
+
+            expect {
+                // This snapshot documents the corrected behavior
+                // The layout is now better: "Right side content" displays completely
+                snapshot
+                    @"
+small               ┌──────────────────┐Right side|
+                    │This text contains│ content  |
+                    │ unnecessarily lon│          |
+                    │g words that wrap │          |
+                    │                  │          |
+                    │                  │          |
+                    │                  │          |
+                    │                  │          |
+                    │                  │          |
+                    └──────────────────┘          |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }

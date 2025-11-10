@@ -448,22 +448,30 @@ module internal Layout =
         let isNegative = n < 0
         let absN = abs n
 
-        // IMPORTANT: Constrain the child that gets the fixed allocation
+        // IMPORTANT: Constrain BOTH children appropriately
+        // The fixed child gets the fixed allocation (clamped to parent's constraint)
+        // The non-fixed child gets the remainder to ensure container MinWidth <= parent MaxWidth
         let child1Constraints, child2Constraints =
             if isNegative then
-                // Child2 gets fixed allocation of absN
-                constraints,
+                // Child2 gets fixed allocation of absN, child1 gets remainder
+                {
+                    MaxWidth = max 0 (constraints.MaxWidth - absN)
+                    MaxHeight = constraints.MaxHeight
+                },
                 {
                     MaxWidth = max 0 (min absN constraints.MaxWidth)
                     MaxHeight = constraints.MaxHeight
                 }
             else
-                // Child1 gets fixed allocation of n
+                // Child1 gets fixed allocation of n, child2 gets remainder
                 {
                     MaxWidth = max 0 (min n constraints.MaxWidth)
                     MaxHeight = constraints.MaxHeight
                 },
-                constraints
+                {
+                    MaxWidth = max 0 (constraints.MaxWidth - n)
+                    MaxHeight = constraints.MaxHeight
+                }
 
         let child1Measured = measureEither child1Constraints child1
         let child2Measured = measureEither child2Constraints child2
@@ -550,22 +558,30 @@ module internal Layout =
         let isNegative = n < 0
         let absN = abs n
 
-        // IMPORTANT: Constrain the child that gets the fixed allocation
+        // IMPORTANT: Constrain BOTH children appropriately
+        // The fixed child gets the fixed allocation (clamped to parent's constraint)
+        // The non-fixed child gets the remainder to ensure container MinHeight <= parent MaxHeight
         let child1Constraints, child2Constraints =
             if isNegative then
-                // Child2 gets fixed allocation of absN
-                constraints,
+                // Child2 gets fixed allocation of absN, child1 gets remainder
+                {
+                    MaxWidth = constraints.MaxWidth
+                    MaxHeight = max 0 (constraints.MaxHeight - absN)
+                },
                 {
                     MaxWidth = constraints.MaxWidth
                     MaxHeight = max 0 (min absN constraints.MaxHeight)
                 }
             else
-                // Child1 gets fixed allocation of n
+                // Child1 gets fixed allocation of n, child2 gets remainder
                 {
                     MaxWidth = constraints.MaxWidth
                     MaxHeight = max 0 (min n constraints.MaxHeight)
                 },
-                constraints
+                {
+                    MaxWidth = constraints.MaxWidth
+                    MaxHeight = max 0 (constraints.MaxHeight - n)
+                }
 
         let child1Measured = measureEither child1Constraints child1
         let child2Measured = measureEither child2Constraints child2
