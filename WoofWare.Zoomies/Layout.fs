@@ -148,11 +148,16 @@ module internal Layout =
         }
 
     /// Measure a checkbox node
-    let private measureCheckbox : MeasuredSize =
+    let private measureCheckbox (constraints : MeasureConstraints) : MeasuredSize =
+        // Checkbox is "[ ]" or "[X]" - ideally 3 chars wide
+        let idealWidth = 3
+        // Respect MaxWidth constraint when reporting MinWidth and PreferredWidth
+        let constrainedWidth = min idealWidth constraints.MaxWidth
+
         {
-            MinWidth = 3 // "[ ]" or "[X]"
-            PreferredWidth = 3
-            MaxWidth = Some 3 // Fixed size component
+            MinWidth = constrainedWidth
+            PreferredWidth = constrainedWidth
+            MaxWidth = Some constrainedWidth // Fixed size component (but respects parent constraints)
             MinHeightForWidth = fun _ -> 1
             PreferredHeightForWidth = fun _ -> 1
             MaxHeightForWidth = fun _ -> Some 1
@@ -647,7 +652,7 @@ module internal Layout =
         | UnkeyedVdom.Checkbox (_isChecked, _isFocused) ->
             {
                 Vdom = KeylessVdom.Unkeyed vdom
-                Measured = measureCheckbox
+                Measured = measureCheckbox constraints
                 Children = []
             }
         | UnkeyedVdom.Bordered child -> measureBordered child constraints
