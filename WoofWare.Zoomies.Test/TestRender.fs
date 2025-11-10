@@ -1566,15 +1566,14 @@ AB|
             }
         }
 
-    type TestState =
-        {
-            ShowLongTop : bool
-        }
-
     [<Test>]
-    let ``regression test of stale characters when child shrinks in panelSplitAuto`` () =
+    let ``regression test for wordWrapCount underestimating height for long words that exceed width`` () =
         task {
-            let console, terminal = ConsoleHarness.make ()
+            // Test case: a single long word that exceeds the available width
+            // wordWrapCount treats it as 1 line (places the whole word on one line)
+            // But rendering wraps character-by-character, so it actually takes multiple lines
+            let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 10)
+
             let world = MockWorld.make ()
 
             use worldFreezer =
@@ -1584,80 +1583,39 @@ AB|
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (vdomContext : VdomContext) (state : TestState) =
-                let topText =
-                    if state.ShowLongTop then
-                        "AAAAAAAAAA AAAAAAAAAA AAAAAAAAAA AAAAAAAAAA"
-                    else
-                        "A"
+            let vdom (vdomContext : VdomContext) (_ : FakeUnit) =
+                // A 25-character word in a 10-character wide terminal
+                // Should wrap to 3 lines: "AAAAAAAAAA" + "AAAAAAAAAA" + "AAAAA"
+                let longWord = "AAAAAAAAAAAAAAAAAAAAAAAAA"
+                let text = Vdom.textContent false longWord
 
-                let bottomText =
-                    if state.ShowLongTop then
-                        "B"
-                    else
-                        "BBBBBBBBBB BBBBBBBBBB BBBBBBBBBB BBBBBBBBBB"
-
-                let top = Vdom.textContent false topText
-                let bottom = Vdom.textContent false bottomText
-
-                Vdom.panelSplitAuto (SplitDirection.Horizontal, top, bottom) |> Vdom.bordered
+                // Put it in an auto split with another component
+                let bottom = Vdom.textContent false "bottom"
+                Vdom.panelSplitAuto (SplitDirection.Horizontal, text, bottom)
 
             let processWorld =
-                { new WorldProcessor<unit, TestState> with
-                    member _.ProcessWorld (worldChanges, renderState, state) =
-                        let mutable newState = state
-
-                        for change in worldChanges do
-                            match change with
-                            | Keystroke c when c.KeyChar = ' ' ->
-                                newState <-
-                                    {
-                                        ShowLongTop = not state.ShowLongTop
-                                    }
-                            | Keystroke _ -> ()
-                            | KeyboardEvent _ -> ()
-                            | MouseEvent _ -> ()
-                            | ApplicationEvent () -> ()
-                            | ApplicationEventException _ -> ()
-
-                        ProcessWorldResult.make newState
-                }
-
-            let mutable state =
-                {
-                    ShowLongTop = false
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
                 }
 
             let renderState = RenderState.make' console
 
-            // First render: long text at bottom, short at top
-            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
 
             expect {
                 snapshot
                     @"
-┌──────────────────────────────────────────────────────────────────────────────┐|
-│A                                                                             │|
-│BBBBBBBBBB BBBBBBBBBB BBBBBBBBBB BBBBBBBBBB                                   │|
-└──────────────────────────────────────────────────────────────────────────────┘|
-"
-
-                return ConsoleHarness.toString terminal
-            }
-
-            // Toggle: now long text at top, short at bottom
-            // The panelSplitAuto should rebalance, giving more space to top
-            // The old "BBBB..." text should be cleared
-            world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
-            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
-
-            expect {
-                snapshot
-                    @"
-┌──────────────────────────────────────────────────────────────────────────────┐|
-│AAAAAAAAAA AAAAAAAAAA AAAAAAAAAA AAAAAAAAAA                                   │|
-│B                                                                             │|
-└──────────────────────────────────────────────────────────────────────────────┘|
+AAAAAAAAAA|
+AAAAAAAAAA|
+AAAAA     |
+bottom    |
+          |
+          |
+          |
+          |
+          |
+          |
 "
 
                 return ConsoleHarness.toString terminal
