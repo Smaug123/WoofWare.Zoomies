@@ -207,8 +207,9 @@ module Render =
                         // Repopulate keyToNode for reused keyed node
                         keyToNode.[key1] <- prev
                         Some prev
-                    | UnkeyedVdom.Checkbox (checked1, focus1), UnkeyedVdom.Checkbox (checked2, focus2) when
-                        checked1 = checked2 && focus1 = focus2
+                    | UnkeyedVdom.ToggleWithGlyph (ug1, cg1, checked1, focus1),
+                      UnkeyedVdom.ToggleWithGlyph (ug2, cg2, checked2, focus2) when
+                        ug1 = ug2 && cg1 = cg2 && checked1 = checked2 && focus1 = focus2
                         ->
                         // Repopulate keyToNode for reused keyed node
                         keyToNode.[key1] <- prev
@@ -278,9 +279,9 @@ module Render =
                 | KeylessVdom.Unkeyed (UnkeyedVdom.TextContent (text1, focus1)),
                   KeylessVdom.Unkeyed (UnkeyedVdom.TextContent (text2, focus2)) when text1 = text2 && focus1 = focus2 ->
                     Some prev
-                | KeylessVdom.Unkeyed (UnkeyedVdom.Checkbox (checked1, focus1)),
-                  KeylessVdom.Unkeyed (UnkeyedVdom.Checkbox (checked2, focus2)) when
-                    checked1 = checked2 && focus1 = focus2
+                | KeylessVdom.Unkeyed (UnkeyedVdom.ToggleWithGlyph (ug1, cg1, checked1, focus1)),
+                  KeylessVdom.Unkeyed (UnkeyedVdom.ToggleWithGlyph (ug2, cg2, checked2, focus2)) when
+                    ug1 = ug2 && cg1 = cg2 && checked1 = checked2 && focus1 = focus2
                     ->
                     Some prev
                 // Container nodes need recursive checks
@@ -409,7 +410,7 @@ module Render =
                             (KeylessVdom.Keyed (KeyedVdom.WithKey (key, childVdom)))
                     ]
                 | UnkeyedVdom.TextContent _
-                | UnkeyedVdom.Checkbox _ -> []
+                | UnkeyedVdom.ToggleWithGlyph _ -> []
             | KeylessVdom.Unkeyed unkeyedVdom ->
                 match unkeyedVdom with
                 | UnkeyedVdom.Bordered child ->
@@ -466,7 +467,7 @@ module Render =
                             (KeylessVdom.Keyed (KeyedVdom.WithKey (key, childVdom)))
                     ]
                 | UnkeyedVdom.TextContent _
-                | UnkeyedVdom.Checkbox _ -> []
+                | UnkeyedVdom.ToggleWithGlyph _ -> []
 
         let result =
             {
@@ -509,8 +510,8 @@ module Render =
 
         match node.Vdom with
         | KeylessVdom.Unkeyed (UnkeyedVdom.TextContent _) -> fprintf writer "TextContent"
-        | KeylessVdom.Unkeyed (UnkeyedVdom.Checkbox (isChecked, isFocused)) ->
-            fprintf writer $"Checkbox(checked=%b{isChecked}, focused=%b{isFocused})"
+        | KeylessVdom.Unkeyed (UnkeyedVdom.ToggleWithGlyph (_, _, isChecked, isFocused)) ->
+            fprintf writer $"ToggleWithGlyph(checked=%b{isChecked}, focused=%b{isFocused})"
         | KeylessVdom.Unkeyed (UnkeyedVdom.Bordered _) -> fprintf writer "Bordered"
         | KeylessVdom.Unkeyed (UnkeyedVdom.PanelSplit (direction, behaviour, _, _)) ->
             let dirStr =
@@ -694,7 +695,7 @@ module Render =
 
                 renderToBuffer dirty prevChild node.OverlaidChildren.[0]
             | _ ->
-                // Leaf node (TextContent/Checkbox) - render directly
+                // Leaf node (TextContent/ToggleWithGlyph) - render directly
                 // Note: Focusable should have a child, but if we get here, treat it as transparent
                 match unkeyedVdom with
                 | UnkeyedVdom.TextContent (content, focus) ->
@@ -728,10 +729,10 @@ module Render =
 
                             index <- index + 1
 
-                | UnkeyedVdom.Checkbox (isChecked, focus) ->
+                | UnkeyedVdom.ToggleWithGlyph (uncheckedGlyph, checkedGlyph, isChecked, focus) ->
                     clearBoundsWithSpaces dirty bounds
 
-                    let content = if isChecked then '☑' else '☐'
+                    let content = if isChecked then checkedGlyph else uncheckedGlyph
 
                     // Only render focus brackets if width and height are sufficient (need at least 3 cells for "[ ]")
                     if focus && bounds.Width >= 3 && bounds.Height > 0 then
@@ -749,7 +750,7 @@ module Render =
                             (bounds.Height / 2)
                             (ValueSome (TerminalCell.OfChar ']'))
 
-                    // Always render checkbox content if we have any space
+                    // Always render content if we have any space
                     if bounds.Width > 0 && bounds.Height > 0 then
                         setAtRelativeOffset
                             dirty
@@ -797,10 +798,10 @@ module Render =
 
                         index <- index + 1
 
-            | UnkeyedVdom.Checkbox (isChecked, focus) ->
+            | UnkeyedVdom.ToggleWithGlyph (uncheckedGlyph, checkedGlyph, isChecked, focus) ->
                 clearBoundsWithSpaces dirty bounds
 
-                let content = if isChecked then '☑' else '☐'
+                let content = if isChecked then checkedGlyph else uncheckedGlyph
 
                 // Only render focus brackets if width and height are sufficient (need at least 3 cells for "[ ]")
                 if focus && bounds.Width >= 3 && bounds.Height > 0 then
@@ -818,7 +819,7 @@ module Render =
                         (bounds.Height / 2)
                         (ValueSome (TerminalCell.OfChar ']'))
 
-                // Always render checkbox content if we have any space
+                // Always render content if we have any space
                 if bounds.Width > 0 && bounds.Height > 0 then
                     setAtRelativeOffset
                         dirty
