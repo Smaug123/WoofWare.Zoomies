@@ -77,7 +77,7 @@ module TestBatchProcessing =
 
             let vdom (_vdomContext : VdomContext) (_state : ImmutableArray<char>) = Vdom.textContent false ""
 
-            let renderState = RenderState.make' console
+            let renderState = RenderState.make' console None
             let mutable currentState = initialState
 
             // Keep pumping until all events are processed
@@ -277,7 +277,7 @@ module TestBatchProcessing =
 
                 Vdom.panelSplitAbsolute (SplitDirection.Vertical, -3, checkbox0, checkbox1)
 
-            let renderState = RenderState.make' console
+            let renderState = RenderState.make' console None
             let mutable currentState = initialState
 
             // Initial render
@@ -425,7 +425,7 @@ module TestBatchProcessing =
                     vdomRenderCount <- vdomRenderCount + 1
                     Vdom.textContent false ""
 
-                let renderState = RenderState.make' console
+                let renderState = RenderState.make' console None
                 let mutable currentState = []
 
                 // Initial render

@@ -205,6 +205,7 @@ module App =
         (haveFrameworkHandleFocus : 'state -> bool)
         (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'state>)
         (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
+        (debugWriter : IO.StreamWriter option)
         : Task
         =
         // RunContinuationsAsynchronously so that we don't force continuation on the UI thread.
@@ -216,7 +217,7 @@ module App =
         let _thread =
             fun () ->
                 // TODO: react to changes in dimension
-                let renderState = RenderState.make' console
+                use renderState = RenderState.make' console debugWriter
 
                 RenderState.enterAlternateScreen renderState
                 RenderState.registerMouseMode renderState
@@ -282,6 +283,28 @@ module App =
         (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
         : Task
         =
+        // Check if debug logging is enabled
+        let debugWriter =
+            match getEnv "WOOFWARE_ZOOMIES_DEBUG_TO_FILE" with
+            | Some value when
+                value.Equals ("true", StringComparison.OrdinalIgnoreCase)
+                || value.Equals ("1", StringComparison.OrdinalIgnoreCase)
+                ->
+                // Create temp file with unpredictable name to prevent symlink attacks
+                let tempPath = IO.Path.GetTempPath ()
+                let fileName = $"zoomies-layout-{Guid.NewGuid ()}.txt"
+                let fullPath = IO.Path.Combine (tempPath, fileName)
+
+                // Create the file exclusively (will fail if it somehow already exists)
+                let stream =
+                    new IO.FileStream (fullPath, IO.FileMode.CreateNew, IO.FileAccess.Write, IO.FileShare.Read)
+
+                let writer = new IO.StreamWriter (stream, AutoFlush = true)
+
+                Console.Error.WriteLine $"WoofWare.Zoomies: Debug layout logging enabled. Writing to: {fullPath}"
+                Some writer
+            | _ -> None
+
         run'
             CancellationToken.None
             (IConsole.make getEnv)
@@ -291,3 +314,4 @@ module App =
             haveFrameworkHandleFocus
             processWorld
             vdom
+            debugWriter

@@ -32,7 +32,15 @@ type RenderState =
             /// This gets handed out to users every so often: it's the fragment of state that they will want to
             /// construct the vdom with.
             VdomContext : VdomContext
+            /// Debug file writer for layout diagnostics (if WOOFWARE_ZOOMIES_DEBUG_TO_FILE is enabled)
+            DebugWriter : IO.StreamWriter option
         }
+
+    interface IDisposable with
+        member this.Dispose () =
+            match this.DebugWriter with
+            | Some writer -> writer.Dispose ()
+            | None -> ()
 
 [<RequireQualifiedAccess>]
 module RenderState =
@@ -138,7 +146,7 @@ module RenderState =
 
     let internal vdomContext (rs : RenderState) = rs.VdomContext
 
-    let make' (c : IConsole) =
+    let make' (c : IConsole) (debugWriter : IO.StreamWriter option) =
         let bounds = getBounds c
 
         let changeBuffer = Array2D.zeroCreate bounds.Height bounds.Width
@@ -158,11 +166,13 @@ module RenderState =
             FocusableKeys = OrderedSet ()
             InitialFocusKey = ref None
             VdomContext = VdomContext.empty bounds
+            DebugWriter = debugWriter
         }
 
     let make (getEnv : string -> string option) =
         let console = IConsole.make getEnv
-        make' console
+        // Debug writer is managed at the App level
+        make' console None
 
 [<RequireQualifiedAccess>]
 module Render =
@@ -485,6 +495,46 @@ module Render =
 
         result
 
+    let rec private dump (writer : IO.TextWriter) (indent : int) (node : Layout.ArrangedNode) =
+        let prefix = String.replicate indent "  "
+
+        fprintf
+            writer
+            "%sBounds={X=%d Y=%d W=%d H=%d} "
+            prefix
+            node.Bounds.TopLeftX
+            node.Bounds.TopLeftY
+            node.Bounds.Width
+            node.Bounds.Height
+
+        match node.Vdom with
+        | KeylessVdom.Unkeyed (UnkeyedVdom.TextContent _) -> fprintf writer "TextContent"
+        | KeylessVdom.Unkeyed (UnkeyedVdom.Checkbox (isChecked, isFocused)) ->
+            fprintf writer $"Checkbox(checked=%b{isChecked}, focused=%b{isFocused})"
+        | KeylessVdom.Unkeyed (UnkeyedVdom.Bordered _) -> fprintf writer "Bordered"
+        | KeylessVdom.Unkeyed (UnkeyedVdom.PanelSplit (direction, behaviour, _, _)) ->
+            let dirStr =
+                if direction = SplitDirection.Vertical then
+                    "Vertical"
+                else
+                    "Horizontal"
+
+            let behavStr =
+                match behaviour with
+                | SplitBehaviour.Proportion p -> $"Proportion({p})"
+                | SplitBehaviour.Absolute n -> $"Absolute({n})"
+                | SplitBehaviour.Auto -> "Auto"
+
+            fprintf writer $"PanelSplit(%s{dirStr}, %s{behavStr})"
+        | KeylessVdom.Unkeyed (UnkeyedVdom.Focusable (isInitial, _)) ->
+            fprintf writer $"Focusable(isInitial=%b{isInitial})"
+        | KeylessVdom.Keyed _ -> fprintf writer "Keyed"
+
+        fprintfn writer ""
+
+        for child in node.Children do
+            dump writer (indent + 1) child
+
     /// Top-level layout function that uses the two-pass system
     let internal layout
         (keyToNode : Dictionary<NodeKey, RenderedNode>)
@@ -493,6 +543,7 @@ module Render =
         (previousRender : RenderedNode option)
         (bounds : Rectangle)
         (vdom : Vdom<DesiredBounds, Unkeyed>)
+        (debugWriter : IO.StreamWriter option)
         : RenderedNode
         =
         // Early cutoff: if previous render exists with same bounds, try reusing it
@@ -506,6 +557,14 @@ module Render =
         | None ->
             // Run the two-pass layout
             let arranged = Layout.layout vdom bounds
+
+            // Debug: dump layout to file if enabled
+            match debugWriter with
+            | Some writer ->
+                fprintfn writer "=== Frame %s ===" (DateTime.Now.ToString "HH:mm:ss.fff")
+                dump writer 0 arranged
+                fprintfn writer ""
+            | None -> ()
 
             // Convert to RenderedNode
             match vdom with
@@ -906,6 +965,7 @@ module Render =
                 renderState.PreviousVdom
                 (VdomContext.terminalBounds renderState.VdomContext)
                 vdom
+                renderState.DebugWriter
 
         // If the focused element from the previous tick no longer exists, clear focused state
         match VdomContext.focusedKey renderState.VdomContext with
