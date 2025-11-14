@@ -534,8 +534,15 @@ module WorldFreezer =
         }
 
     let listen<'appEvent> () : WorldFreezer<'appEvent> =
+        let isInputRedirected = Console.IsInputRedirected
+
         listen'
             UnrecognisedEscapeCodeBehaviour.PassThrough
             Stopwatch.system
-            (fun () -> Console.KeyAvailable)
+            (fun () ->
+                if isInputRedirected then
+                    Console.In.Peek () <> -1
+                else
+                    Console.KeyAvailable
+            )
             (fun () -> Console.ReadKey true)
