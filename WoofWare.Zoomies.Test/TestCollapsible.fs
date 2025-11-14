@@ -4,6 +4,7 @@ open System
 open NUnit.Framework
 open WoofWare.Expect
 open WoofWare.Zoomies
+open WoofWare.Zoomies.Components
 
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
@@ -296,6 +297,149 @@ Line 2 of content                                           |
                                                             |
                                                             |
                                                             |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``collapsible with long label text`` () =
+        task {
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 10)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let state =
+                {
+                    CollapsibleState =
+                        {
+                            IsExpanded = false
+                        }
+                }
+
+            let longLabel = "This is a very long label that should wrap onto multiple lines"
+
+            let vdom (vdomContext : VdomContext) (state : State) =
+                let collapsibleKey = NodeKey.make "collapsible"
+
+                let childContent =
+                    Vdom.textContent false "Child content here"
+                    |> Vdom.withKey (NodeKey.make "child")
+
+                Collapsible.make vdomContext collapsibleKey state.CollapsibleState longLabel childContent
+
+            let haveFrameworkHandleFocus _ = true
+
+            let processWorld =
+                { new WorldProcessor<_, State> with
+                    member _.ProcessWorld (inputs, renderState, state) =
+                        let mutable newState = state
+
+                        for s in inputs do
+                            match s with
+                            | WorldStateChange.Keystroke c ->
+                                if c.KeyChar = ' ' then
+                                    match VdomContext.focusedKey renderState with
+                                    | None -> ()
+                                    | Some focused ->
+                                        let key = NodeKey.toString focused
+
+                                        if key = "collapsible" then
+                                            newState <-
+                                                {
+                                                    CollapsibleState =
+                                                        {
+                                                            IsExpanded = not state.CollapsibleState.IsExpanded
+                                                        }
+                                                }
+                                        else
+                                            failwith "unexpected key"
+                                else
+                                    failwith "unexpected key char"
+                            | WorldStateChange.MouseEvent _ -> failwith "no mouse events"
+                            | WorldStateChange.ApplicationEvent () -> failwith "no app events"
+                            | WorldStateChange.KeyboardEvent _ -> failwith "no keyboard events"
+                            | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
+
+                        ProcessWorldResult.make newState
+                }
+
+            let renderState = RenderState.make' console
+            let mutable currentState = state
+
+            // Initial render: collapsed and unfocused - long text is truncated but on same line as glyph
+            currentState <-
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+ ▶ This is a very lo|
+   ng label that sho|
+   uld wrap onto mul|
+   tiple lines      |
+                    |
+                    |
+                    |
+                    |
+                    |
+                    |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
+            // Tab to focus
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+
+            currentState <-
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+[▶]This is a very lo|
+   ng label that sho|
+   uld wrap onto mul|
+   tiple lines      |
+                    |
+                    |
+                    |
+                    |
+                    |
+                    |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
+            // Expand
+            world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
+
+            currentState <-
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+[▼]This is a very lo|
+   ng label that sho|
+   uld wrap onto mul|
+   tiple lines      |
+Child content here  |
+                    |
+                    |
+                    |
+                    |
+                    |
 "
 
                 return ConsoleHarness.toString terminal

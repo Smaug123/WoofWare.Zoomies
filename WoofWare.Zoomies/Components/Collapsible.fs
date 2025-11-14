@@ -1,4 +1,6 @@
-namespace WoofWare.Zoomies
+namespace WoofWare.Zoomies.Components
+
+open WoofWare.Zoomies
 
 /// High-level collapsible component module providing ergonomic expandable/collapsible content.
 [<RequireQualifiedAccess>]
@@ -53,16 +55,15 @@ module Collapsible =
             Vdom.toggleWithGlyph '▶' '▼' state.IsExpanded isFocused
             |> Vdom.withKey key
             |> Vdom.withFocusTracking
+            |> fun v -> Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 1, v, Vdom.textContent false "")
 
         let labelVdom = Vdom.textContent false label
 
         let headerContent =
             Vdom.panelSplitAbsolute (SplitDirection.Vertical, 3, toggle, labelVdom)
 
-        // Always constrain header to 1 line to prevent toggle glyph from centering in excessive vertical space
         if state.IsExpanded then
-            Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 1, headerContent, child)
+            Vdom.panelSplitAuto (SplitDirection.Horizontal, headerContent, child)
         else
-            // Constrain to 1 line even when collapsed by using a dummy bottom element
             let emptyBottom = Vdom.textContent false ""
-            Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 1, headerContent, emptyBottom)
+            Vdom.panelSplitAuto (SplitDirection.Horizontal, headerContent, emptyBottom)

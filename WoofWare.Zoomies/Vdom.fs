@@ -454,21 +454,6 @@ type Vdom =
         | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
         | Unkeyed (inner, _) -> Vdom.Unkeyed (UnkeyedVdom.Bordered (KeylessVdom.Unkeyed inner), Teq.refl)
 
-    /// Creates a checkbox with a text label positioned to its right.
-    static member labelledCheckbox
-        (isFocused : bool)
-        (isChecked : bool)
-        (label : string)
-        : Vdom<DesiredBounds, Unkeyed>
-        =
-        // TODO: centre this text horizontally so it's next to the checkbox
-        Vdom.panelSplitAbsolute (
-            SplitDirection.Vertical,
-            3,
-            Vdom.checkbox isFocused isChecked,
-            Vdom.textContent false label
-        )
-
     /// Attach a key to a VDOM node, effectively giving that node a name.
     ///
     /// You're free to arbitrarily reshuffle keys, reassign them to new nodes, etc., between renders.

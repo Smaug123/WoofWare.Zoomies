@@ -1,13 +1,25 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <!-- we want to keep TargetFramework as low as possible to maximise compatibility -->
     <TargetFramework>net6.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <OtherFlags>$(OtherFlags) --reflectionfree</OtherFlags>
+    <WarnOn>FS3559</WarnOn>
+    <PackageId>WoofWare.Zoomies</PackageId>
+    <Authors>PatrickStevens</Authors>
+    <Copyright>Copyright (c) Patrick Stevens 2025</Copyright>
+    <Description>An immediate-mode declarative terminal user interface framework built around manipulating virtual DOMs.</Description>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/Smaug123/WoofWare.Zoomies</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>fsharp;tui;terminal;immediate;vdom;interface;console</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- similarly, maximise compatibility by keeping FSharp.Core as low as we can -->
     <PackageReference Update="FSharp.Core" Version="6.0.0" />
     <PackageReference Include="TypeEquality" Version="0.3.0" />
   </ItemGroup>
@@ -27,10 +39,15 @@
     <Compile Include="IStopwatch.fs" />
     <Compile Include="WorldFreezer.fs" />
     <Compile Include="VdomContext.fs" />
-    <Compile Include="Collapsible.fs" />
     <Compile Include="Layout.fs" />
     <Compile Include="Render.fs" />
     <Compile Include="App.fs" />
+    <Compile Include="Components\Collapsible.fs" />
+    <Compile Include="Components\LabelledCheckbox.fs" />
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>
