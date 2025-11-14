@@ -34,6 +34,14 @@ It stores state internally for efficiency, but as far as the end-user programmer
 
 Always format with Fantomas before committing, and run the analyzers with `./analyzers/run.sh`.
 
+## Debugging
+
+### Debug Layout Logging
+
+Set the environment variable `WOOFWARE_ZOOMIES_DEBUG_TO_FILE=true` (or `=1`) to enable debug layout logging. When enabled, the framework will write detailed layout information to a temporary file with a path like `/tmp/zoomies-layout-<guid>.txt`. The file path will be printed to stderr when the application starts.
+
+This is useful for diagnosing layout issues by seeing how the framework is arranging components in the virtual DOM.
+
 # Architecture
 
 ## Project Structure
