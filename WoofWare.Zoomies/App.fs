@@ -217,7 +217,7 @@ module App =
         let _thread =
             fun () ->
                 // TODO: react to changes in dimension
-                use renderState = RenderState.make' console debugWriter
+                use renderState = RenderState.make console debugWriter
 
                 RenderState.enterAlternateScreen renderState
                 RenderState.registerMouseMode renderState

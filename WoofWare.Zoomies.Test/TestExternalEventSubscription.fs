@@ -107,7 +107,7 @@ module TestExternalEventSubscription =
                 Vdom.textContent false $"%i{state.Counter}"
 
             let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 1)
-            let renderState = RenderState.make' console None
+            let renderState = RenderState.make console None
 
             let world = MockWorld.make ()
 

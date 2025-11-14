@@ -109,7 +109,7 @@ module TestFocusCycle =
                             }
                 }
 
-            let renderState = RenderState.make' console None
+            let renderState = RenderState.make console None
             let mutable currentState = state
 
             currentState <-
@@ -321,7 +321,7 @@ module TestFocusCycle =
                             }
                 }
 
-            let renderState = RenderState.make' console None
+            let renderState = RenderState.make console None
             let mutable currentState = state
 
             currentState <-
@@ -485,7 +485,7 @@ module TestFocusCycle =
                         ProcessWorldResult.make renderCheckbox1
                 }
 
-            let renderState = RenderState.make' console None
+            let renderState = RenderState.make console None
             let mutable renderCheckbox1 = true
 
             renderCheckbox1 <-
@@ -593,7 +593,7 @@ module TestFocusCycle =
                 }
 
             let mutable renderFocusable = 0
-            let renderState = RenderState.make' console None
+            let renderState = RenderState.make console None
 
             renderFocusable <-
                 App.pumpOnce worldFreezer renderFocusable haveFrameworkHandleFocus renderState processWorld vdom

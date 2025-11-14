@@ -146,7 +146,7 @@ module RenderState =
 
     let internal vdomContext (rs : RenderState) = rs.VdomContext
 
-    let make' (c : IConsole) (debugWriter : IO.StreamWriter option) =
+    let internal make (c : IConsole) (debugWriter : IO.StreamWriter option) =
         let bounds = getBounds c
 
         let changeBuffer = Array2D.zeroCreate bounds.Height bounds.Width
@@ -168,11 +168,6 @@ module RenderState =
             VdomContext = VdomContext.empty bounds
             DebugWriter = debugWriter
         }
-
-    let make (getEnv : string -> string option) =
-        let console = IConsole.make getEnv
-        // Debug writer is managed at the App level
-        make' console None
 
 [<RequireQualifiedAccess>]
 module Render =

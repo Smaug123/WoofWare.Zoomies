@@ -87,7 +87,7 @@ module TestRender =
 
         let state = State.Empty ()
 
-        let renderState = RenderState.make' console None
+        let renderState = RenderState.make console None
 
         Render.oneStep renderState state (vdom (RenderState.vdomContext renderState))
 
@@ -143,7 +143,7 @@ module TestRender =
 
             let mutable state = State.Empty ()
 
-            let renderState = RenderState.make' console None
+            let renderState = RenderState.make console None
 
             state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
 
@@ -389,7 +389,7 @@ only displayed when checked                this one is focusable!               
                         ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make' console None
+            let renderState = RenderState.make console None
 
             App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
             |> ignore<FakeUnit>
@@ -541,7 +541,7 @@ This is focusable text                                                          
                         ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make' console None
+            let renderState = RenderState.make console None
 
             App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
             |> ignore<FakeUnit>
@@ -639,7 +639,7 @@ This is focusable text                                                          
                 WindowHeight = fun _ -> 3
             }
 
-        let renderState = RenderState.make' console None
+        let renderState = RenderState.make console None
 
         // Create vdom with a PanelSplit where a bordered child changes
         // Bordered doesn't repaint its entire area, so we can detect if PanelSplit is adding extra repaints
@@ -693,7 +693,7 @@ This is focusable text                                                          
                 WindowHeight = fun _ -> 3
             }
 
-        let renderState = RenderState.make' console None
+        let renderState = RenderState.make console None
 
         // Create vdom with bordered text that can change
         let vdom (content : string) =
@@ -747,7 +747,7 @@ This is focusable text                                                          
                 WindowHeight = fun _ -> 5
             }
 
-        let renderState = RenderState.make' console None
+        let renderState = RenderState.make console None
 
         // Create vdom with some content that will result in multiple cells being written
         let vdom =
@@ -779,7 +779,7 @@ This is focusable text                                                          
                 Execute = fun x -> terminalOps.Add x
             }
 
-        let renderState = RenderState.make' console None
+        let renderState = RenderState.make console None
 
         let key = NodeKey.make "test-key"
 
@@ -846,7 +846,7 @@ This is focusable text                                                          
                         ProcessWorldResult.make newState
                 }
 
-            let renderState = RenderState.make' console None
+            let renderState = RenderState.make console None
 
             // First render: fill with X's
             let mutable state =
@@ -923,7 +923,7 @@ This is focusable text                                                          
                         ProcessWorldResult.make newState
                 }
 
-            let renderState = RenderState.make' console None
+            let renderState = RenderState.make console None
 
             // First render: fill with X's
             let mutable state =
@@ -977,7 +977,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
                     WindowHeight = fun _ -> 5
                 }
 
-            let renderState = RenderState.make' console None
+            let renderState = RenderState.make console None
 
             let checkboxKey = NodeKey.make "checkbox"
 
@@ -1054,7 +1054,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
                     WindowHeight = fun _ -> 5
                 }
 
-            let renderState = RenderState.make' console None
+            let renderState = RenderState.make console None
 
             // Create a vdom where text content has Width=0
             // With a terminal width of 1 and a 50/50 split, each side gets 0 or 1 width
@@ -1099,7 +1099,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
                     WindowHeight = fun _ -> 5
                 }
 
-            let renderState = RenderState.make' console None
+            let renderState = RenderState.make console None
 
             let textKey = NodeKey.make "text"
 
@@ -1140,7 +1140,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
             // Demonstrates that proportion splits with small terminals can allocate zero width/height
             let console, _ = ConsoleHarness.make' (fun () -> 1) (fun () -> 1)
 
-            let renderState = RenderState.make' console None
+            let renderState = RenderState.make console None
 
             let leftKey = NodeKey.make "left"
             let rightKey = NodeKey.make "right"
@@ -1189,7 +1189,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
             // Same as above but for horizontal splits
             let console, _ = ConsoleHarness.make' (fun () -> 10) (fun () -> 2)
 
-            let renderState = RenderState.make' console None
+            let renderState = RenderState.make console None
 
             let topKey = NodeKey.make "top"
             let bottomKey = NodeKey.make "bottom"
@@ -1260,7 +1260,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make' console None
+            let renderState = RenderState.make console None
 
             App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
             |> ignore<FakeUnit>
@@ -1315,7 +1315,7 @@ Hello world                                                        Hi           
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make' console None
+            let renderState = RenderState.make console None
 
             App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
             |> ignore<FakeUnit>
@@ -1362,7 +1362,7 @@ onger piece text her|
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make' console None
+            let renderState = RenderState.make console None
 
             App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
             |> ignore<FakeUnit>
@@ -1410,7 +1410,7 @@ o   d   |
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make' console None
+            let renderState = RenderState.make console None
 
             App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
             |> ignore<FakeUnit>
@@ -1461,7 +1461,7 @@ e multiple lines when rendered          |
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make' console None
+            let renderState = RenderState.make console None
 
             App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
             |> ignore<FakeUnit>
@@ -1507,7 +1507,7 @@ nt                            |
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make' console None
+            let renderState = RenderState.make console None
 
             App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
             |> ignore<FakeUnit>
@@ -1555,7 +1555,7 @@ nt                            |
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make' console None
+            let renderState = RenderState.make console None
 
             App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
             |> ignore<FakeUnit>
@@ -1603,7 +1603,7 @@ B|
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make' console None
+            let renderState = RenderState.make console None
 
             App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
             |> ignore<FakeUnit>
@@ -1665,7 +1665,7 @@ bottom    |
                         ProcessWorldResult.make newState
                 }
 
-            let renderState = RenderState.make' console None
+            let renderState = RenderState.make console None
 
             // First render: 50/50 split with X's filling the left side
             let mutable state =
@@ -1751,7 +1751,7 @@ AAA                 right                                                       
                         ProcessWorldResult.make newState
                 }
 
-            let renderState = RenderState.make' console None
+            let renderState = RenderState.make console None
 
             // First render: 50/50 split
             let mutable state =
@@ -1809,7 +1809,7 @@ AAA                 right                                                       
                         ProcessWorldResult.make newState
                 }
 
-            let renderState = RenderState.make' console None
+            let renderState = RenderState.make console None
 
             // First render: 70/30 split with X's on the left
             let mutable state =
@@ -1860,7 +1860,7 @@ AAA                 right                                                       
                         ProcessWorldResult.make newState
                 }
 
-            let renderState = RenderState.make' console None
+            let renderState = RenderState.make console None
 
             // First render: long text
             let mutable state =
@@ -1934,7 +1934,7 @@ AAA                 right                                                       
                         ProcessWorldResult.make newState
                 }
 
-            let renderState = RenderState.make' console None
+            let renderState = RenderState.make console None
 
             // First render: long text
             let mutable state =
@@ -2034,7 +2034,7 @@ AAA                 right                                                       
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make' console None
+            let renderState = RenderState.make console None
 
             App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
             |> ignore<FakeUnit>
