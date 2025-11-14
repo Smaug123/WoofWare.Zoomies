@@ -1,6 +1,7 @@
 namespace WoofWare.Zoomies
 
 open System
+open System.IO
 open System.Threading
 open System.Threading.Tasks
 
@@ -16,6 +17,25 @@ type RerenderRequest =
     /// This feature is here in case you hit a bug in the early cutoff mechanism and need to tell the system to
     /// rerender, but I can't think of any legitimate reason to use this otherwise.
     | Rerender of indexOfLastProcessedEvent : int
+
+type RunningApp =
+    {
+        /// Enters the successful state after the first vdom has been requested and the first render to the screen has
+        /// completed (modulo possible flushing concerns; WoofWare.Zoomies has submitted all the console write commands
+        /// to the console stream, at least).
+        ///
+        /// Enters the faulted state with any exception that was raised by your vdom function when we requested the
+        /// first vdom to render.
+        FirstPaint : Task
+        /// Enters the successful state after the application has completely torn down and WoofWare.Zoomies no longer
+        /// considers itself to own the console. (So, for example, we have already restored the terminal to the state
+        /// it was in before you launched the framework.)
+        ///
+        /// Enters the faulted state with any exception that was raised by your vdom function when we requested a vdom
+        /// to render (including on the first ever render, in which case you get the same exception in here as you
+        /// get in FirstPaint).
+        Shutdown : Task
+    }
 
 /// Make one of these with `ProcessWorldResult.make`.
 [<Struct>]
@@ -205,13 +225,16 @@ module App =
         (haveFrameworkHandleFocus : 'state -> bool)
         (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'state>)
         (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
-        (debugWriter : IO.StreamWriter option)
-        : Task
+        (debugWriter : StreamWriter option)
+        : RunningApp
         =
         // RunContinuationsAsynchronously so that we don't force continuation on the UI thread.
         // I want to make sure the UI thread could in principle be torn down once execution of the UI has finished.
         // Synchronous continuations would run on that thread.
         let complete =
+            TaskCompletionSource TaskCreationOptions.RunContinuationsAsynchronously
+
+        let firstPaint =
             TaskCompletionSource TaskCreationOptions.RunContinuationsAsynchronously
 
         let _thread =
@@ -237,32 +260,50 @@ module App =
                 let listener = worldFreezer ()
                 let processWorld = processWorld listener
 
-                let cleanUp () =
-                    ctrlC.Unregister ctrlCHandler
-
-                    // ANALYZER: synchronous blocking call allowed: we're on a dedicated thread, so can't deadlock.
-                    (listener :> IAsyncDisposable).DisposeAsync().GetAwaiter().GetResult ()
-
-                    RenderState.unregisterBracketedPaste renderState
-                    RenderState.unregisterMouseMode renderState
-                    RenderState.exitAlternateScreen renderState
-                    RenderState.setCursorVisible renderState
+                RenderState.setCursorInvisible renderState
+                let mutable currentState = initialState
 
                 let exc =
                     try
-                        RenderState.setCursorInvisible renderState
-
-                        let mutable currentState = initialState
-
-                        while cancels = 0 && not terminate.IsCancellationRequested do
-                            currentState <-
-                                pumpOnce listener currentState haveFrameworkHandleFocus renderState processWorld vdom
+                        currentState <-
+                            pumpOnce listener currentState haveFrameworkHandleFocus renderState processWorld vdom
 
                         None
                     with e ->
                         Some e
 
-                cleanUp ()
+                let exc =
+                    match exc with
+                    | Some e ->
+                        firstPaint.SetException e
+                        Some e
+                    | None ->
+                        firstPaint.SetResult ()
+
+                        try
+                            while cancels = 0 && not terminate.IsCancellationRequested do
+                                currentState <-
+                                    pumpOnce
+                                        listener
+                                        currentState
+                                        haveFrameworkHandleFocus
+                                        renderState
+                                        processWorld
+                                        vdom
+
+                            None
+                        with e ->
+                            Some e
+
+                ctrlC.Unregister ctrlCHandler
+
+                // ANALYZER: synchronous blocking call allowed: we're on a dedicated thread, so can't deadlock.
+                (listener :> IAsyncDisposable).DisposeAsync().GetAwaiter().GetResult ()
+
+                RenderState.unregisterBracketedPaste renderState
+                RenderState.unregisterMouseMode renderState
+                RenderState.exitAlternateScreen renderState
+                RenderState.setCursorVisible renderState
 
                 match exc with
                 | None -> complete.SetResult ()
@@ -273,7 +314,10 @@ module App =
             |> Thread
             |> _.Start()
 
-        complete.Task
+        {
+            FirstPaint = firstPaint.Task
+            Shutdown = complete.Task
+        }
 
     let run<'state, 'appEvent when 'state : equality>
         (getEnv : string -> string option)
@@ -281,7 +325,7 @@ module App =
         (haveFrameworkHandleFocus : 'state -> bool)
         (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'state>)
         (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
-        : Task
+        : RunningApp
         =
         // Check if debug logging is enabled
         let debugWriter =
@@ -291,15 +335,15 @@ module App =
                 || value.Equals ("1", StringComparison.OrdinalIgnoreCase)
                 ->
                 // Create temp file with unpredictable name to prevent symlink attacks
-                let tempPath = IO.Path.GetTempPath ()
+                let tempPath = Path.GetTempPath ()
                 let fileName = $"zoomies-layout-{Guid.NewGuid ()}.txt"
-                let fullPath = IO.Path.Combine (tempPath, fileName)
+                let fullPath = Path.Combine (tempPath, fileName)
 
                 // Create the file exclusively (will fail if it somehow already exists)
                 let stream =
-                    new IO.FileStream (fullPath, IO.FileMode.CreateNew, IO.FileAccess.Write, IO.FileShare.Read)
+                    new FileStream (fullPath, FileMode.CreateNew, FileAccess.Write, FileShare.Read)
 
-                let writer = new IO.StreamWriter (stream, AutoFlush = true)
+                let writer = new StreamWriter (stream, AutoFlush = true)
 
                 Console.Error.WriteLine $"WoofWare.Zoomies: Debug layout logging enabled. Writing to: {fullPath}"
                 Some writer

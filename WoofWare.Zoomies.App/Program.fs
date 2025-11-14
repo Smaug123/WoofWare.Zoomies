@@ -180,5 +180,6 @@ module Program =
             | [ a ; b ] -> a, b
             | _ -> failwith "oh no"
 
-        FileBrowser.run getEnv file1.FullName file2.FullName |> _.Wait()
+        let app = FileBrowser.run getEnv file1.FullName file2.FullName
+        app.Shutdown.Wait ()
         0
