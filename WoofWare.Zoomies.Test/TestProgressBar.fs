@@ -342,12 +342,46 @@ Progress:[██████░░░░]         |
         }
 
     [<Test>]
-    let ``progress bar validates width`` () =
-        Assert.Throws<ArgumentException> (fun () -> ProgressBar.make 0.5 (Some 0) |> ignore)
-        |> ignore
+    let ``progress bar handles invalid width gracefully`` () =
+        task {
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+                let bar1 = ProgressBar.make 0.5 (Some 0)
+                let bar2 = ProgressBar.make 0.5 (Some -1)
 
-        Assert.Throws<ArgumentException> (fun () -> ProgressBar.make 0.5 (Some -1) |> ignore)
-        |> ignore
+                Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 1, bar1, bar2)
+
+            let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 2)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = false
+
+            let processWorld =
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console None
+
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+[█████░░░░░] 50%                        |
+[█████░░░░░] 50%                        |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
 
     [<Test>]
     let ``progress bar with non-divisible progress`` () =

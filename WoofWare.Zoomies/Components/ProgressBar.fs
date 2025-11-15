@@ -83,10 +83,9 @@ module ProgressBar =
 
         match width with
         | Some w ->
-            if w <= 0 then
-                invalidArg (nameof width) "width must be positive"
-
-            renderBarWithWidth w
+            // Use a sensible default if width is invalid
+            let barWidth = if w <= 0 then 10 else w
+            renderBarWithWidth barWidth
         | None ->
             // Use flexible content to render into whatever space we get
             let measure (constraints : MeasureConstraints) =
