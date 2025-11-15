@@ -224,8 +224,12 @@ module App =
                 false, state
 
         let mutable state = state
-        while (let goAgain, state' = go state in state <- state'; goAgain) do
+
+        while (let goAgain, state' = go state in
+               state <- state'
+               goAgain) do
             ()
+
         state
 
     /// We set up a ConsoleCancelEventHandler to suppress one Ctrl+C, and we also listen to stdin,
