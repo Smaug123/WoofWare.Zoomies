@@ -349,4 +349,40 @@ Progress:[██████░░░░]         |
         Assert.Throws<ArgumentException> (fun () -> ProgressBar.make 0.5 (Some -1) |> ignore)
         |> ignore
 
-// TODO: add a test for how it renders when the numbers don't evenly divide
+    [<Test>]
+    let ``progress bar with non-divisible progress`` () =
+        task {
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> = ProgressBar.make 0.33 (Some 10)
+
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 2)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = false
+
+            let processWorld =
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console None
+
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
+
+            expect {
+                snapshot
+                    @"
+[███░░░░░░░] 33%    |
+                    |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
