@@ -57,10 +57,16 @@ module Collapsible =
             |> Vdom.withFocusTracking
             |> fun v -> Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 1, v, Vdom.empty)
 
+        let spacer = Vdom.textContent false " "
         let labelVdom = Vdom.textContent false label
 
         let headerContent =
-            Vdom.panelSplitAbsolute (SplitDirection.Vertical, 3, toggle, labelVdom)
+            Vdom.panelSplitAbsolute (
+                SplitDirection.Vertical,
+                3,
+                toggle,
+                Vdom.panelSplitAbsolute (SplitDirection.Vertical, 1, spacer, labelVdom)
+            )
 
         if state.IsExpanded then
             Vdom.panelSplitAuto (SplitDirection.Horizontal, headerContent, child)

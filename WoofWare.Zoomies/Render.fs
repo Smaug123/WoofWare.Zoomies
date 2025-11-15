@@ -769,8 +769,10 @@ module Render =
                     // Do nothing here
                     ()
                 | UnkeyedVdom.Empty ->
-                    // Empty nodes render nothing
-                    ()
+                    // Empty nodes render nothing, but need to clear if replacing a previous node
+                    match previousNode with
+                    | Some _ -> clearBoundsWithSpaces dirty bounds
+                    | None -> ()
                 | UnkeyedVdom.Bordered _ -> failwith "Keyed Bordered node should have a child in OverlaidChildren"
                 | UnkeyedVdom.PanelSplit _ -> failwith "Keyed PanelSplit node should have children in OverlaidChildren"
         | KeylessVdom.Unkeyed vdom ->

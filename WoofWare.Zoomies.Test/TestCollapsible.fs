@@ -92,7 +92,7 @@ module TestCollapsible =
             expect {
                 snapshot
                     @"
- ▶ Collapsible section                                      |
+ ▶  Collapsible section                                     |
                                                             |
                                                             |
                                                             |
@@ -116,7 +116,7 @@ module TestCollapsible =
             expect {
                 snapshot
                     @"
-[▶]Collapsible section                                      |
+[▶] Collapsible section                                     |
                                                             |
                                                             |
                                                             |
@@ -140,7 +140,7 @@ module TestCollapsible =
             expect {
                 snapshot
                     @"
-[▼]Collapsible section                                      |
+[▼] Collapsible section                                     |
 This stuff was hidden                                       |
                                                             |
                                                             |
@@ -164,7 +164,7 @@ This stuff was hidden                                       |
             expect {
                 snapshot
                     @"
-[▶]Collapsible section                                      |
+[▶] Collapsible section                                     |
                                                             |
                                                             |
                                                             |
@@ -257,7 +257,7 @@ This stuff was hidden                                       |
             expect {
                 snapshot
                     @"
- ▶ Multi-line section                                       |
+ ▶  Multi-line section                                      |
                                                             |
                                                             |
                                                             |
@@ -287,7 +287,7 @@ This stuff was hidden                                       |
             expect {
                 snapshot
                     @"
-[▼]Multi-line section                                       |
+[▼] Multi-line section                                      |
 Line 1 of content                                           |
 Line 2 of content                                           |
                                                             |
@@ -382,10 +382,10 @@ Line 2 of content                                           |
             expect {
                 snapshot
                     @"
- ▶ This is a very lo|
-   ng label that sho|
-   uld wrap onto mul|
-   tiple lines      |
+ ▶  This is a very l|
+    ong label that s|
+    hould wrap onto |
+    multiple lines  |
                     |
                     |
                     |
@@ -406,10 +406,10 @@ Line 2 of content                                           |
             expect {
                 snapshot
                     @"
-[▶]This is a very lo|
-   ng label that sho|
-   uld wrap onto mul|
-   tiple lines      |
+[▶] This is a very l|
+    ong label that s|
+    hould wrap onto |
+    multiple lines  |
                     |
                     |
                     |
@@ -430,10 +430,10 @@ Line 2 of content                                           |
             expect {
                 snapshot
                     @"
-[▼]This is a very lo|
-   ng label that sho|
-   uld wrap onto mul|
-   tiple lines      |
+[▼] This is a very l|
+    ong label that s|
+    hould wrap onto |
+    multiple lines  |
 Child content here  |
                     |
                     |
