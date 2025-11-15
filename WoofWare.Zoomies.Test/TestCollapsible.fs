@@ -82,7 +82,7 @@ module TestCollapsible =
                         ProcessWorldResult.make newState
                 }
 
-            let renderState = RenderState.make' console
+            let renderState = RenderState.make console None
             let mutable currentState = state
 
             // Initial render: collapsed and unfocused
@@ -247,7 +247,7 @@ This stuff was hidden                                       |
                         ProcessWorldResult.make newState
                 }
 
-            let renderState = RenderState.make' console
+            let renderState = RenderState.make console None
             let mutable currentState = state
 
             // Initial render: collapsed
@@ -372,7 +372,7 @@ Line 2 of content                                           |
                         ProcessWorldResult.make newState
                 }
 
-            let renderState = RenderState.make' console
+            let renderState = RenderState.make console None
             let mutable currentState = state
 
             // Initial render: collapsed and unfocused - long text is truncated but on same line as glyph
