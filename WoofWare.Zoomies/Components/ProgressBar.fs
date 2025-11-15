@@ -30,7 +30,7 @@ module ProgressBar =
 
     /// <summary>Creates a progress bar component.</summary>
     /// <param name="options">Customise the display, e.g. by adding a text label.</param>
-    /// <param name="progress">Current progress value (must be between 0.0 and 1.0).</param>
+    /// <param name="progress">Current progress value (should be between 0.0 and 1.0; invalid values show an empty bar with "n/a%" text).</param>
     /// <param name="width">Width of the bar portion in characters, or None to automatically size. Non-positive widths default to 10.</param>
     /// <remarks>
     /// The bar uses Unicode block characters:
@@ -124,7 +124,7 @@ module ProgressBar =
             Vdom.flexibleContent measure render
 
     /// <summary>Creates a progress bar component.</summary>
-    /// <param name="progress">Current progress value (must be between 0.0 and 1.0).</param>
+    /// <param name="progress">Current progress value (should be between 0.0 and 1.0; invalid values show an empty bar with "n/a%" text).</param>
     /// <param name="width">Width of the bar portion in characters, or None to automatically size. Non-positive widths default to 10.</param>
     /// <remarks>
     /// The bar uses Unicode block characters:
