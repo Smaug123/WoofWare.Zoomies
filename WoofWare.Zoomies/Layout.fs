@@ -64,52 +64,53 @@ module internal Layout =
 
     /// Helper: count lines after word-wrapping
     /// Precondition: width >= 1
-    let private wordWrapCount (text : string) (width : int) : int =
+    let internal wordWrapCount (text : string) (width : int) : int =
+        if String.IsNullOrEmpty text then
+            0
+        else
+
         let words = text.Split ([| ' ' ; '\t' ; '\n' |], StringSplitOptions.None)
 
-        if words.Length = 0 then
-            1
-        else
-            let mutable lineCount = 1
-            let mutable currentLineWidth = 0
+        let mutable lineCount = 1
+        let mutable currentLineWidth = 0
 
-            for word in words do
-                let wordLen = word.Length
+        for word in words do
+            let wordLen = word.Length
 
-                if wordLen = 0 then
-                    // Empty word (from consecutive separators), skip
-                    ()
-                else
-                    // Calculate how many lines this word will take if placed starting on a new line
-                    // Words longer than width wrap character-by-character (like rendering does)
-                    let linesForWord =
-                        if wordLen <= width then
-                            1
-                        else
-                            (wordLen + width - 1) / width // Ceiling division
-
-                    // Calculate the width of the final line after placing this word
-                    let finalLineWidth =
-                        if wordLen <= width then
-                            wordLen
-                        else
-                            let remainder = wordLen % width
-                            if remainder = 0 then width else remainder
-
-                    if currentLineWidth = 0 then
-                        // First word on line - place it starting here
-                        lineCount <- lineCount + linesForWord - 1
-                        currentLineWidth <- finalLineWidth
-                    elif currentLineWidth + 1 + wordLen <= width then
-                        // Word fits on current line (with space separator)
-                        currentLineWidth <- currentLineWidth + 1 + wordLen
+            if wordLen = 0 then
+                // Empty word (from consecutive separators), skip
+                ()
+            else
+                // Calculate how many lines this word will take if placed starting on a new line
+                // Words longer than width wrap character-by-character (like rendering does)
+                let linesForWord =
+                    if wordLen <= width then
+                        1
                     else
-                        // Word doesn't fit, start new line
-                        lineCount <- lineCount + 1 // Move to new line
-                        lineCount <- lineCount + linesForWord - 1 // Additional lines if word is long
-                        currentLineWidth <- finalLineWidth
+                        (wordLen + width - 1) / width // Ceiling division
 
-            lineCount
+                // Calculate the width of the final line after placing this word
+                let finalLineWidth =
+                    if wordLen <= width then
+                        wordLen
+                    else
+                        let remainder = wordLen % width
+                        if remainder = 0 then width else remainder
+
+                if currentLineWidth = 0 then
+                    // First word on line - place it starting here
+                    lineCount <- lineCount + linesForWord - 1
+                    currentLineWidth <- finalLineWidth
+                elif currentLineWidth + 1 + wordLen <= width then
+                    // Word fits on current line (with space separator)
+                    currentLineWidth <- currentLineWidth + 1 + wordLen
+                else
+                    // Word doesn't fit, start new line
+                    lineCount <- lineCount + 1 // Move to new line
+                    lineCount <- lineCount + linesForWord - 1 // Additional lines if word is long
+                    currentLineWidth <- finalLineWidth
+
+        lineCount
 
     /// Measure a text content node
     let private measureText (text : string) (constraints : MeasureConstraints) : MeasuredSize =
