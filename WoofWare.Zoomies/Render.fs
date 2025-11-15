@@ -367,9 +367,8 @@ module Render =
                     // Focusable nodes have complex focus registration logic
                     // Skip early cutoff and use normal path to avoid issues
                     None
-                | KeylessVdom.Unkeyed (UnkeyedVdom.FlexibleContent _), KeylessVdom.Unkeyed (UnkeyedVdom.FlexibleContent _) when
-                    prev.OverlaidChildren.Length > 0
-                    ->
+                | KeylessVdom.Unkeyed (UnkeyedVdom.FlexibleContent _),
+                  KeylessVdom.Unkeyed (UnkeyedVdom.FlexibleContent _) when prev.OverlaidChildren.Length > 0 ->
                     // FlexibleContent is a transparent container - check if the child changed
                     let prevChild = prev.OverlaidChildren.[0]
 
@@ -607,6 +606,7 @@ module Render =
             fprintf writer $"PanelSplit(%s{dirStr}, %s{behavStr})"
         | KeylessVdom.Unkeyed (UnkeyedVdom.Focusable (isInitial, _)) ->
             fprintf writer $"Focusable(isInitial=%b{isInitial})"
+        | KeylessVdom.Unkeyed (UnkeyedVdom.FlexibleContent _) -> fprintf writer "FlexibleContent"
         | KeylessVdom.Keyed _ -> fprintf writer "Keyed"
 
         fprintfn writer ""
@@ -856,6 +856,8 @@ module Render =
                     | None -> ()
                 | UnkeyedVdom.Bordered _ -> failwith "Keyed Bordered node should have a child in OverlaidChildren"
                 | UnkeyedVdom.PanelSplit _ -> failwith "Keyed PanelSplit node should have children in OverlaidChildren"
+                | UnkeyedVdom.FlexibleContent _ ->
+                    failwith "Keyed FlexibleContent node should have a child in OverlaidChildren"
         | KeylessVdom.Unkeyed vdom ->
             match vdom with
             | UnkeyedVdom.TextContent (content, focus) ->

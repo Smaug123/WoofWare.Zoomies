@@ -1,14 +1,5 @@
 namespace WoofWare.Zoomies
 
-[<Struct>]
-type Rectangle =
-    {
-        TopLeftX : int
-        TopLeftY : int
-        Width : int
-        Height : int
-    }
-
 /// Context provided to vdom construction, containing information about the layout of the previous render cycle.
 /// This is mutable (although you aren't given the tools to mutate it), so don't persist it.
 type VdomContext =

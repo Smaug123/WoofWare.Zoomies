@@ -50,7 +50,9 @@ type internal UnkeyedVdom<'bounds> =
     | ToggleWithGlyph of uncheckedGlyph : char * checkedGlyph : char * isChecked : bool * isFocused : bool
     | Focusable of isInitialFocus : bool * KeyedVdom<'bounds>
     | Empty
-    | FlexibleContent of measure : (MeasureConstraints -> MeasuredSize) * render : (Rectangle -> KeylessVdom<DesiredBounds>)
+    | FlexibleContent of
+        measure : (MeasureConstraints -> MeasuredSize) *
+        render : (Rectangle -> KeylessVdom<DesiredBounds>)
 
 and internal KeyedVdom<'bounds> = | WithKey of NodeKey * UnkeyedVdom<'bounds>
 

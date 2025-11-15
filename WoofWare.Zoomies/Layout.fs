@@ -2,42 +2,6 @@ namespace WoofWare.Zoomies
 
 open System
 
-/// Constraints provided by parent during measurement
-type internal MeasureConstraints =
-    {
-        /// Maximum available width.
-        /// Invariant: n >= 0
-        MaxWidth : int
-        /// Maximum available height.
-        /// Invariant: n >= 0
-        MaxHeight : int
-    }
-
-/// Size requirements reported by a node
-/// Invariants (must hold for all valid MeasuredSize values):
-/// - 0 <= MinWidth <= PreferredWidth
-/// - If MaxWidth = Some m, then MinWidth <= PreferredWidth <= m
-/// - If MaxWidth = Some m, then MinWidth <= m (nodes must not report a MinWidth exceeding constraints)
-/// - For any width w >= 0, MinHeightForWidth(w) >= 0
-/// - For any width w >= 0, MinHeightForWidth(w) <= PreferredHeightForWidth(w)
-type internal MeasuredSize =
-    {
-        /// Minimum width needed to render without data loss.
-        /// Must respect any MaxWidth constraint from measurement.
-        /// May be violated by the arrange pass if insufficient space is available.
-        MinWidth : int
-        /// Preferred width if space is available.
-        PreferredWidth : int
-        /// Maximum useful width (None = unbounded). Arrangement may allocate beyond this.
-        MaxWidth : int option
-        /// Minimum height needed given some width
-        MinHeightForWidth : int -> int
-        /// Preferred height given some width
-        PreferredHeightForWidth : int -> int
-        /// Maximum useful height given some width (None = unbounded)
-        MaxHeightForWidth : int -> int option
-    }
-
 [<RequireQualifiedAccess>]
 module internal Layout =
     /// A node annotated with its measurement result
@@ -711,7 +675,7 @@ module internal Layout =
             {
                 Vdom = KeylessVdom.Unkeyed vdom
                 Measured = clampedMeasured
-                Children = []  // No children yet - we don't know what they are until arrange
+                Children = [] // No children yet - we don't know what they are until arrange
             }
 
     /// Arrange a measured tree into concrete bounds
