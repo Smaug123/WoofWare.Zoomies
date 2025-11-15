@@ -27,8 +27,10 @@ type RenderState =
             KeyToNode : Dictionary<NodeKey, RenderedNode>
             /// List of focusable keys in tree order (for Tab navigation)
             FocusableKeys : OrderedSet<NodeKey>
-            /// The key marked with isInitialFocus=true, if any
-            InitialFocusKey : NodeKey option ref
+            /// The key marked with isFirstToFocus=true, if any
+            FirstToFocusKey : NodeKey option ref
+            /// The key marked with isInitiallyFocused=true, if any
+            InitiallyFocusedKey : NodeKey option ref
             /// This gets handed out to users every so often: it's the fragment of state that they will want to
             /// construct the vdom with.
             VdomContext : VdomContext
@@ -99,10 +101,10 @@ module RenderState =
 
         match VdomContext.focusedKey s.VdomContext with
         | None ->
-            // No current focus, use initial focus key if available, otherwise first focusable element
-            match s.InitialFocusKey.Value with
-            | Some initialKey when s.FocusableKeys.Contains initialKey ->
-                VdomContext.setFocusedKey (Some initialKey) s.VdomContext
+            // No current focus, use first-to-focus key if available, otherwise first focusable element
+            match s.FirstToFocusKey.Value with
+            | Some firstKey when s.FocusableKeys.Contains firstKey ->
+                VdomContext.setFocusedKey (Some firstKey) s.VdomContext
             | _ -> VdomContext.setFocusedKey (Some s.FocusableKeys.[0]) s.VdomContext
         | Some currentKey ->
             // Find the current key in the list and move to the next one
@@ -111,10 +113,10 @@ module RenderState =
                 let nextIndex = (index + 1) % s.FocusableKeys.Count
                 VdomContext.setFocusedKey (Some s.FocusableKeys.[nextIndex]) s.VdomContext
             | None ->
-                // Current key is not in the focusable list, use initial focus key if available
-                match s.InitialFocusKey.Value with
-                | Some initialKey when s.FocusableKeys.Contains initialKey ->
-                    VdomContext.setFocusedKey (Some initialKey) s.VdomContext
+                // Current key is not in the focusable list, use first-to-focus key if available
+                match s.FirstToFocusKey.Value with
+                | Some firstKey when s.FocusableKeys.Contains firstKey ->
+                    VdomContext.setFocusedKey (Some firstKey) s.VdomContext
                 | _ -> VdomContext.setFocusedKey (Some s.FocusableKeys.[0]) s.VdomContext
 
     /// Retreat focus to the previous focusable node (Shift+Tab key)
@@ -126,10 +128,10 @@ module RenderState =
 
         match VdomContext.focusedKey s.VdomContext with
         | None ->
-            // No current focus, use initial focus key if available, otherwise last focusable element
-            match s.InitialFocusKey.Value with
-            | Some initialKey when s.FocusableKeys.Contains initialKey ->
-                VdomContext.setFocusedKey (Some initialKey) s.VdomContext
+            // No current focus, use first-to-focus key if available, otherwise last focusable element
+            match s.FirstToFocusKey.Value with
+            | Some firstKey when s.FocusableKeys.Contains firstKey ->
+                VdomContext.setFocusedKey (Some firstKey) s.VdomContext
             | _ -> VdomContext.setFocusedKey (Some s.FocusableKeys.[s.FocusableKeys.Count - 1]) s.VdomContext
         | Some currentKey ->
             // Find the current key in the list and move to the previous one
@@ -138,10 +140,10 @@ module RenderState =
                 let prevIndex = (index - 1 + s.FocusableKeys.Count) % s.FocusableKeys.Count
                 VdomContext.setFocusedKey (Some s.FocusableKeys.[prevIndex]) s.VdomContext
             | None ->
-                // Current key is not in the focusable list, use initial focus key if available
-                match s.InitialFocusKey.Value with
-                | Some initialKey when s.FocusableKeys.Contains initialKey ->
-                    VdomContext.setFocusedKey (Some initialKey) s.VdomContext
+                // Current key is not in the focusable list, use first-to-focus key if available
+                match s.FirstToFocusKey.Value with
+                | Some firstKey when s.FocusableKeys.Contains firstKey ->
+                    VdomContext.setFocusedKey (Some firstKey) s.VdomContext
                 | _ -> VdomContext.setFocusedKey (Some s.FocusableKeys.[s.FocusableKeys.Count - 1]) s.VdomContext
 
     let internal vdomContext (rs : RenderState) = rs.VdomContext
@@ -164,7 +166,8 @@ module RenderState =
             ForegroundColor = fg
             KeyToNode = Dictionary<NodeKey, RenderedNode> ()
             FocusableKeys = OrderedSet ()
-            InitialFocusKey = ref None
+            FirstToFocusKey = ref None
+            InitiallyFocusedKey = ref None
             VdomContext = VdomContext.empty bounds
             DebugWriter = debugWriter
         }
@@ -181,7 +184,8 @@ module Render =
     let rec private arrangedToRendered
         (keyToNode : Dictionary<NodeKey, RenderedNode>)
         (focusableKeys : OrderedSet<NodeKey>)
-        (initialFocusKey : NodeKey option ref)
+        (firstToFocusKey : NodeKey option ref)
+        (initiallyFocusedKey : NodeKey option ref)
         (previousRender : RenderedNode option)
         (arranged : Layout.ArrangedNode)
         (originalVdom : KeylessVdom<DesiredBounds>)
@@ -221,7 +225,8 @@ module Render =
                             arrangedToRendered
                                 keyToNode
                                 focusableKeys
-                                initialFocusKey
+                                firstToFocusKey
+                                initiallyFocusedKey
                                 (Some prevChild)
                                 arranged.Children.[0]
                                 child1
@@ -245,7 +250,8 @@ module Render =
                             arrangedToRendered
                                 keyToNode
                                 focusableKeys
-                                initialFocusKey
+                                firstToFocusKey
+                                initiallyFocusedKey
                                 (Some prevChild1)
                                 arranged.Children.[0]
                                 child1a
@@ -254,7 +260,8 @@ module Render =
                             arrangedToRendered
                                 keyToNode
                                 focusableKeys
-                                initialFocusKey
+                                firstToFocusKey
+                                initiallyFocusedKey
                                 (Some prevChild2)
                                 arranged.Children.[1]
                                 child1b
@@ -281,7 +288,8 @@ module Render =
                             arrangedToRendered
                                 keyToNode
                                 focusableKeys
-                                initialFocusKey
+                                firstToFocusKey
+                                initiallyFocusedKey
                                 (Some prevChild)
                                 arranged.Children.[0]
                                 arranged.Children.[0].VDomSource
@@ -317,7 +325,8 @@ module Render =
                         arrangedToRendered
                             keyToNode
                             focusableKeys
-                            initialFocusKey
+                            firstToFocusKey
+                            initiallyFocusedKey
                             (Some prevChild)
                             arranged.Children.[0]
                             child1
@@ -340,7 +349,8 @@ module Render =
                         arrangedToRendered
                             keyToNode
                             focusableKeys
-                            initialFocusKey
+                            firstToFocusKey
+                            initiallyFocusedKey
                             (Some prevChild1)
                             arranged.Children.[0]
                             child1a
@@ -349,7 +359,8 @@ module Render =
                         arrangedToRendered
                             keyToNode
                             focusableKeys
-                            initialFocusKey
+                            firstToFocusKey
+                            initiallyFocusedKey
                             (Some prevChild2)
                             arranged.Children.[1]
                             child1b
@@ -376,7 +387,8 @@ module Render =
                         arrangedToRendered
                             keyToNode
                             focusableKeys
-                            initialFocusKey
+                            firstToFocusKey
+                            initiallyFocusedKey
                             (Some prevChild)
                             arranged.Children.[0]
                             arranged.Children.[0].VDomSource
@@ -405,7 +417,14 @@ module Render =
                         | _ -> None
 
                     [
-                        arrangedToRendered keyToNode focusableKeys initialFocusKey prevChild arranged.Children.[0] child
+                        arrangedToRendered
+                            keyToNode
+                            focusableKeys
+                            firstToFocusKey
+                            initiallyFocusedKey
+                            prevChild
+                            arranged.Children.[0]
+                            child
                     ]
                 | UnkeyedVdom.PanelSplit (_, _, child1, child2) ->
                     let prevChild1, prevChild2 =
@@ -418,24 +437,29 @@ module Render =
                         arrangedToRendered
                             keyToNode
                             focusableKeys
-                            initialFocusKey
+                            firstToFocusKey
+                            initiallyFocusedKey
                             prevChild1
                             arranged.Children.[0]
                             child1
                         arrangedToRendered
                             keyToNode
                             focusableKeys
-                            initialFocusKey
+                            firstToFocusKey
+                            initiallyFocusedKey
                             prevChild2
                             arranged.Children.[1]
                             child2
                     ]
-                | UnkeyedVdom.Focusable (isInitial, KeyedVdom.WithKey (key, childVdom)) ->
+                | UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, KeyedVdom.WithKey (key, childVdom)) ->
                     // Try to add the key; if it's already there (from early cutoff), ignore
                     let _ = focusableKeys.Add key
 
-                    if isInitial && initialFocusKey.Value.IsNone then
-                        initialFocusKey.Value <- Some key
+                    if isFirstToFocus && firstToFocusKey.Value.IsNone then
+                        firstToFocusKey.Value <- Some key
+
+                    if isInitiallyFocused && initiallyFocusedKey.Value.IsNone then
+                        initiallyFocusedKey.Value <- Some key
 
                     let prevChild =
                         match previousRender with
@@ -446,7 +470,8 @@ module Render =
                         arrangedToRendered
                             keyToNode
                             focusableKeys
-                            initialFocusKey
+                            firstToFocusKey
+                            initiallyFocusedKey
                             prevChild
                             arranged.Children.[0]
                             (KeylessVdom.Keyed (KeyedVdom.WithKey (key, childVdom)))
@@ -462,7 +487,8 @@ module Render =
                         arrangedToRendered
                             keyToNode
                             focusableKeys
-                            initialFocusKey
+                            firstToFocusKey
+                            initiallyFocusedKey
                             prevChild
                             arranged.Children.[0]
                             arranged.Children.[0].VDomSource
@@ -479,7 +505,14 @@ module Render =
                         | _ -> None
 
                     [
-                        arrangedToRendered keyToNode focusableKeys initialFocusKey prevChild arranged.Children.[0] child
+                        arrangedToRendered
+                            keyToNode
+                            focusableKeys
+                            firstToFocusKey
+                            initiallyFocusedKey
+                            prevChild
+                            arranged.Children.[0]
+                            child
                     ]
                 | UnkeyedVdom.PanelSplit (_, _, child1, child2) ->
                     let prevChild1, prevChild2 =
@@ -492,24 +525,29 @@ module Render =
                         arrangedToRendered
                             keyToNode
                             focusableKeys
-                            initialFocusKey
+                            firstToFocusKey
+                            initiallyFocusedKey
                             prevChild1
                             arranged.Children.[0]
                             child1
                         arrangedToRendered
                             keyToNode
                             focusableKeys
-                            initialFocusKey
+                            firstToFocusKey
+                            initiallyFocusedKey
                             prevChild2
                             arranged.Children.[1]
                             child2
                     ]
-                | UnkeyedVdom.Focusable (isInitial, KeyedVdom.WithKey (key, childVdom)) ->
+                | UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, KeyedVdom.WithKey (key, childVdom)) ->
                     // Try to add the key; if it's already there (from early cutoff), ignore
                     let _ = focusableKeys.Add key
 
-                    if isInitial && initialFocusKey.Value.IsNone then
-                        initialFocusKey.Value <- Some key
+                    if isFirstToFocus && firstToFocusKey.Value.IsNone then
+                        firstToFocusKey.Value <- Some key
+
+                    if isInitiallyFocused && initiallyFocusedKey.Value.IsNone then
+                        initiallyFocusedKey.Value <- Some key
 
                     let prevChild =
                         match previousRender with
@@ -520,7 +558,8 @@ module Render =
                         arrangedToRendered
                             keyToNode
                             focusableKeys
-                            initialFocusKey
+                            firstToFocusKey
+                            initiallyFocusedKey
                             prevChild
                             arranged.Children.[0]
                             (KeylessVdom.Keyed (KeyedVdom.WithKey (key, childVdom)))
@@ -536,7 +575,8 @@ module Render =
                         arrangedToRendered
                             keyToNode
                             focusableKeys
-                            initialFocusKey
+                            firstToFocusKey
+                            initiallyFocusedKey
                             prevChild
                             arranged.Children.[0]
                             arranged.Children.[0].VDomSource
@@ -558,14 +598,14 @@ module Render =
         match originalVdom with
         | KeylessVdom.Keyed (KeyedVdom.WithKey (key, unkeyedVdom)) ->
             match unkeyedVdom with
-            | UnkeyedVdom.Focusable (_, KeyedVdom.WithKey (childKey, _)) ->
+            | UnkeyedVdom.Focusable (_, _, KeyedVdom.WithKey (childKey, _)) ->
                 // For focusable wrappers, don't register the wrapper key.
                 // The child's key is already registered by the recursive call.
                 ()
             | _ ->
                 // For other keyed nodes, register the key to this node
                 keyToNode.[key] <- result
-        | KeylessVdom.Unkeyed (UnkeyedVdom.Focusable (_, KeyedVdom.WithKey (key, _))) ->
+        | KeylessVdom.Unkeyed (UnkeyedVdom.Focusable (_, _, KeyedVdom.WithKey (key, _))) ->
             // Register the focusable child's key
             keyToNode.[key] <- children.[0]
         | _ -> ()
@@ -604,8 +644,8 @@ module Render =
                 | SplitBehaviour.Auto -> "Auto"
 
             fprintf writer $"PanelSplit(%s{dirStr}, %s{behavStr})"
-        | KeylessVdom.Unkeyed (UnkeyedVdom.Focusable (isInitial, _)) ->
-            fprintf writer $"Focusable(isInitial=%b{isInitial})"
+        | KeylessVdom.Unkeyed (UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, _)) ->
+            fprintf writer $"Focusable(isFirstToFocus=%b{isFirstToFocus}, isInitiallyFocused=%b{isInitiallyFocused})"
         | KeylessVdom.Unkeyed (UnkeyedVdom.FlexibleContent _) -> fprintf writer "FlexibleContent"
         | KeylessVdom.Keyed _ -> fprintf writer "Keyed"
 
@@ -618,7 +658,8 @@ module Render =
     let internal layout
         (keyToNode : Dictionary<NodeKey, RenderedNode>)
         (focusableKeys : OrderedSet<NodeKey>)
-        (initialFocusKey : NodeKey option ref)
+        (firstToFocusKey : NodeKey option ref)
+        (initiallyFocusedKey : NodeKey option ref)
         (previousRender : RenderedNode option)
         (bounds : Rectangle)
         (vdom : Vdom<DesiredBounds, Unkeyed>)
@@ -651,7 +692,8 @@ module Render =
                 arrangedToRendered
                     keyToNode
                     focusableKeys
-                    initialFocusKey
+                    firstToFocusKey
+                    initiallyFocusedKey
                     previousRender
                     arranged
                     (KeylessVdom.Unkeyed unkeyedVdom)
@@ -1061,7 +1103,8 @@ module Render =
 
         renderState.KeyToNode.Clear ()
         renderState.FocusableKeys.Clear ()
-        renderState.InitialFocusKey.Value <- None
+        renderState.FirstToFocusKey.Value <- None
+        renderState.InitiallyFocusedKey.Value <- None
 
         let vdom = compute userState
 
@@ -1070,7 +1113,8 @@ module Render =
             layout
                 renderState.KeyToNode
                 renderState.FocusableKeys
-                renderState.InitialFocusKey
+                renderState.FirstToFocusKey
+                renderState.InitiallyFocusedKey
                 renderState.PreviousVdom
                 (VdomContext.terminalBounds renderState.VdomContext)
                 vdom
@@ -1082,6 +1126,40 @@ module Render =
         | Some key ->
             if not (renderState.FocusableKeys.Contains key) then
                 VdomContext.setFocusedKey None renderState.VdomContext
+
+        // Set initial focus to the isInitiallyFocused element if nothing is currently focused
+        let needsRecompute =
+            match VdomContext.focusedKey renderState.VdomContext with
+            | None ->
+                match renderState.InitiallyFocusedKey.Value with
+                | Some initialKey when renderState.FocusableKeys.Contains initialKey ->
+                    VdomContext.setFocusedKey (Some initialKey) renderState.VdomContext
+                    true // Need to recompute vdom with the new focus state
+                | _ -> false
+            | Some _ -> false
+
+        // Recompute vdom if we just set initial focus
+        let layoutResult =
+            if needsRecompute then
+                // Clear and recompute to get correct focus rendering
+                renderState.KeyToNode.Clear ()
+                renderState.FocusableKeys.Clear ()
+                renderState.FirstToFocusKey.Value <- None
+                renderState.InitiallyFocusedKey.Value <- None
+
+                let vdom = compute userState
+
+                layout
+                    renderState.KeyToNode
+                    renderState.FocusableKeys
+                    renderState.FirstToFocusKey
+                    renderState.InitiallyFocusedKey
+                    renderState.PreviousVdom
+                    (VdomContext.terminalBounds renderState.VdomContext)
+                    vdom
+                    renderState.DebugWriter
+            else
+                layoutResult
 
         // Phase 2: Render to buffer (only if something changed)
         match renderState.PreviousVdom with
