@@ -50,6 +50,9 @@ type internal UnkeyedVdom<'bounds> =
     | ToggleWithGlyph of uncheckedGlyph : char * checkedGlyph : char * isChecked : bool * isFocused : bool
     | Focusable of isInitialFocus : bool * KeyedVdom<'bounds>
     | Empty
+    | FlexibleContent of
+        measure : (MeasureConstraints -> MeasuredSize) *
+        render : (Rectangle -> KeylessVdom<DesiredBounds>)
 
 and internal KeyedVdom<'bounds> = | WithKey of NodeKey * UnkeyedVdom<'bounds>
 
@@ -496,6 +499,33 @@ type Vdom =
         match vdom with
         | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
         | Keyed (vdom, _) -> Vdom.Unkeyed (UnkeyedVdom.Focusable (isInitialFocus, vdom), Teq.refl)
+
+    /// <summary>Creates a flexible content component that can render different content based on allocated bounds.</summary>
+    /// <param name="measure">Function that specifies size requirements given measurement constraints.</param>
+    /// <param name="render">Function that produces the actual VDOM content given the allocated bounds.</param>
+    /// <remarks>
+    /// This allows components to make region-dependent rendering decisions, such as rendering a progress bar
+    /// with different levels of detail depending on available width.
+    ///
+    /// The measure function is called during the measurement phase with constraints from the parent.
+    /// It should return accurate size requirements.
+    ///
+    /// The render function is called during the arrange phase with the actual allocated bounds.
+    /// It produces the final VDOM content for those bounds.
+    ///
+    /// Note: The render function may return another FlexibleContent, allowing nested flexible rendering.
+    /// </remarks>
+    static member flexibleContent
+        (measure : MeasureConstraints -> MeasuredSize)
+        (render : Rectangle -> Vdom<DesiredBounds, Unkeyed>)
+        : Vdom<DesiredBounds, Unkeyed>
+        =
+        let renderInternal (bounds : Rectangle) : KeylessVdom<DesiredBounds> =
+            match render bounds with
+            | Vdom.Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
+            | Vdom.Unkeyed (vdom, _) -> KeylessVdom.Unkeyed vdom
+
+        Vdom.Unkeyed (UnkeyedVdom.FlexibleContent (measure, renderInternal), Teq.refl)
 
 [<Sealed>]
 type private KeylessVdom =
