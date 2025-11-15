@@ -199,7 +199,7 @@ module App =
         (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
         : 'state
         =
-        let rec go state =
+        let go state =
             let resizeGeneration = listener.TerminalResizeGeneration
             RenderState.refreshTerminalSize renderState
 
@@ -219,11 +219,14 @@ module App =
                 RenderState.clearScreen renderState
                 renderState.PreviousVdom <- None
                 VdomContext.markDirty renderState.VdomContext
-                go state
+                true, state
             else
-                state
+                false, state
 
-        go state
+        let mutable state = state
+        while (let goAgain, state' = go state in state <- state'; goAgain) do
+            ()
+        state
 
     /// We set up a ConsoleCancelEventHandler to suppress one Ctrl+C, and we also listen to stdin,
     /// for as long as this task is running.
