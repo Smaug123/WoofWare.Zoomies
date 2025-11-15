@@ -655,6 +655,20 @@ module internal Layout =
                 Measured = measureCheckbox constraints
                 Children = []
             }
+        | UnkeyedVdom.Empty ->
+            {
+                Vdom = KeylessVdom.Unkeyed vdom
+                Measured =
+                    {
+                        MinWidth = 0
+                        PreferredWidth = 0
+                        MaxWidth = Some 0
+                        MinHeightForWidth = fun _ -> 0
+                        PreferredHeightForWidth = fun _ -> 0
+                        MaxHeightForWidth = fun _ -> Some 0
+                    }
+                Children = []
+            }
         | UnkeyedVdom.Bordered child -> measureBordered child constraints
         | UnkeyedVdom.PanelSplit (direction, behaviour, child1, child2) ->
             match direction, behaviour with
@@ -698,6 +712,12 @@ module internal Layout =
                                 UnkeyedVdom.ToggleWithGlyph (uncheckedGlyph, checkedGlyph, isChecked, isFocused)
                             )
                         )
+                    Bounds = bounds
+                    Children = []
+                }
+            | UnkeyedVdom.Empty ->
+                {
+                    Vdom = KeylessVdom.Keyed (KeyedVdom.WithKey (key, UnkeyedVdom.Empty))
                     Bounds = bounds
                     Children = []
                 }
@@ -764,6 +784,12 @@ module internal Layout =
                         KeylessVdom.Unkeyed (
                             UnkeyedVdom.ToggleWithGlyph (uncheckedGlyph, checkedGlyph, isChecked, isFocused)
                         )
+                    Bounds = bounds
+                    Children = []
+                }
+            | UnkeyedVdom.Empty ->
+                {
+                    Vdom = KeylessVdom.Unkeyed UnkeyedVdom.Empty
                     Bounds = bounds
                     Children = []
                 }

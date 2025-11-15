@@ -2070,3 +2070,42 @@ small               ┌──────────────────┐
                 return ConsoleHarness.toString terminal
             }
         }
+
+    [<Test>]
+    let ``Vdom.empty allows right justification`` () =
+        task {
+            let console, terminal = ConsoleHarness.make ()
+
+            let vdom (_ : VdomContext) (_ : unit) : Vdom<DesiredBounds, _> =
+                // Use Vdom.empty with panelSplitAbsolute to right-justify content
+                // Negative absolute value gives the right side a fixed width, left side gets the rest
+                // Empty fills the left side, pushing "Right" to the right edge
+                Vdom.panelSplitAbsolute (
+                    SplitDirection.Vertical,
+                    -5,
+                    Vdom.empty |> Vdom.withKey (NodeKey.make "spacer"),
+                    Vdom.textContent false "Right" |> Vdom.withKey (NodeKey.make "content")
+                )
+
+            let renderState = RenderState.make console None
+
+            Render.oneStep renderState () (vdom (RenderState.vdomContext renderState))
+
+            expect {
+                snapshot
+                    @"
+                                                                           Right|
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }

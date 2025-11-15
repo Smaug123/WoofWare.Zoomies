@@ -1,6 +1,7 @@
 namespace WoofWare.Zoomies
 
 open System
+open System.IO
 open System.Threading
 open System.Threading.Tasks
 
@@ -57,8 +58,20 @@ type WorldProcessor<'appEvent, 'userState> =
 [<RequireQualifiedAccess>]
 module App =
 
-    let pumpOnce<'state, 'appEvent when 'state : equality>
-        (listener : WorldFreezer<'appEvent>)
+    let internal processNoChanges<'state>
+        (state : 'state)
+        (renderState : RenderState)
+        (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
+        : 'state
+        =
+        if renderState.VdomContext.IsDirty then
+            Render.oneStep renderState state (vdom renderState.VdomContext)
+            VdomContext.markClean renderState.VdomContext
+
+        state
+
+    let internal processChanges<'state, 'appEvent when 'state : equality>
+        (changes : WorldStateChange<'appEvent>[])
         (state : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
         (renderState : RenderState)
@@ -66,21 +79,6 @@ module App =
         (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
         : 'state
         =
-        RenderState.refreshTerminalSize renderState
-
-        listener.RefreshExternal ()
-
-        let changes = listener.Changes ()
-
-        match changes with
-        | ValueNone ->
-            if renderState.VdomContext.IsDirty then
-                Render.oneStep renderState state (vdom renderState.VdomContext)
-                VdomContext.markClean renderState.VdomContext
-
-            state
-        | ValueSome changes ->
-
         let mutable startState = state
         let mutable currentState = state
         let mutable startOfBatch = 0
@@ -191,6 +189,25 @@ module App =
 
         currentState
 
+    let pumpOnce<'state, 'appEvent when 'state : equality>
+        (listener : WorldFreezer<'appEvent>)
+        (state : 'state)
+        (haveFrameworkHandleFocus : 'state -> bool)
+        (renderState : RenderState)
+        (processWorld : WorldProcessor<'appEvent, 'state>)
+        (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
+        : 'state
+        =
+        RenderState.refreshTerminalSize renderState
+
+        listener.RefreshExternal ()
+
+        let changes = listener.Changes ()
+
+        match changes with
+        | ValueNone -> processNoChanges state renderState vdom
+        | ValueSome changes -> processChanges changes state haveFrameworkHandleFocus renderState processWorld vdom
+
     /// We set up a ConsoleCancelEventHandler to suppress one Ctrl+C, and we also listen to stdin,
     /// for as long as this task is running.
     /// Cancel the CancellationToken to cause the render loop to quit and to unhook all these state listeners.
@@ -205,7 +222,7 @@ module App =
         (haveFrameworkHandleFocus : 'state -> bool)
         (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'state>)
         (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
-        (debugWriter : IO.StreamWriter option)
+        (debugWriter : StreamWriter option)
         : Task
         =
         // RunContinuationsAsynchronously so that we don't force continuation on the UI thread.
@@ -222,6 +239,7 @@ module App =
                 RenderState.enterAlternateScreen renderState
                 RenderState.registerMouseMode renderState
                 RenderState.registerBracketedPaste renderState
+                RenderState.setCursorInvisible renderState
 
                 let mutable cancels = 0
 
@@ -234,35 +252,42 @@ module App =
 
                 ctrlC.Register ctrlCHandler
 
-                let listener = worldFreezer ()
-                let processWorld = processWorld listener
-
-                let cleanUp () =
-                    ctrlC.Unregister ctrlCHandler
-
-                    // ANALYZER: synchronous blocking call allowed: we're on a dedicated thread, so can't deadlock.
-                    (listener :> IAsyncDisposable).DisposeAsync().GetAwaiter().GetResult ()
-
-                    RenderState.unregisterBracketedPaste renderState
-                    RenderState.unregisterMouseMode renderState
-                    RenderState.exitAlternateScreen renderState
-                    RenderState.setCursorVisible renderState
+                let mutable listener = None
 
                 let exc =
                     try
-                        RenderState.setCursorInvisible renderState
+                        let mutable currentState = processNoChanges initialState renderState vdom
 
-                        let mutable currentState = initialState
+                        let listener' = worldFreezer ()
+                        listener <- Some listener'
+                        let processWorld = processWorld listener'
 
                         while cancels = 0 && not terminate.IsCancellationRequested do
                             currentState <-
-                                pumpOnce listener currentState haveFrameworkHandleFocus renderState processWorld vdom
+                                pumpOnce listener' currentState haveFrameworkHandleFocus renderState processWorld vdom
 
                         None
                     with e ->
                         Some e
 
-                cleanUp ()
+                ctrlC.Unregister ctrlCHandler
+
+                match listener with
+                | None -> ()
+                | Some listener ->
+                    // ANALYZER: synchronous blocking call allowed: we're on a dedicated thread, so can't deadlock.
+                    (listener :> IAsyncDisposable).DisposeAsync().GetAwaiter().GetResult ()
+
+                // Ideally the terminal emulator has a completely self-contained state in the alternate buffer,
+                // which means our LIFO ordering here is confined to the alternate buffer, correctly leaving the
+                // main buffer in whatever state it was in before we started executing.
+                // According to the LLMs, some terminals *don't* confine state to the alternate buffer, but in that
+                // case this order is still correct: we'll leave the cursor visible when such a terminal leaks cursor
+                // visibility out into the main buffer.
+                RenderState.setCursorVisible renderState
+                RenderState.unregisterBracketedPaste renderState
+                RenderState.unregisterMouseMode renderState
+                RenderState.exitAlternateScreen renderState
 
                 match exc with
                 | None -> complete.SetResult ()
@@ -291,15 +316,15 @@ module App =
                 || value.Equals ("1", StringComparison.OrdinalIgnoreCase)
                 ->
                 // Create temp file with unpredictable name to prevent symlink attacks
-                let tempPath = IO.Path.GetTempPath ()
+                let tempPath = Path.GetTempPath ()
                 let fileName = $"zoomies-layout-{Guid.NewGuid ()}.txt"
-                let fullPath = IO.Path.Combine (tempPath, fileName)
+                let fullPath = Path.Combine (tempPath, fileName)
 
                 // Create the file exclusively (will fail if it somehow already exists)
                 let stream =
-                    new IO.FileStream (fullPath, IO.FileMode.CreateNew, IO.FileAccess.Write, IO.FileShare.Read)
+                    new FileStream (fullPath, FileMode.CreateNew, FileAccess.Write, FileShare.Read)
 
-                let writer = new IO.StreamWriter (stream, AutoFlush = true)
+                let writer = new StreamWriter (stream, AutoFlush = true)
 
                 Console.Error.WriteLine $"WoofWare.Zoomies: Debug layout logging enabled. Writing to: {fullPath}"
                 Some writer
