@@ -209,6 +209,10 @@ module Render =
                         // Repopulate keyToNode for reused keyed node
                         keyToNode.[key1] <- prev
                         Some prev
+                    | UnkeyedVdom.Empty, UnkeyedVdom.Empty ->
+                        // Empty nodes are always equal, repopulate keyToNode and reuse
+                        keyToNode.[key1] <- prev
+                        Some prev
                     | UnkeyedVdom.Bordered child1, UnkeyedVdom.Bordered _ when prev.OverlaidChildren.Length > 0 ->
                         // Recursively check child
                         let prevChild = prev.OverlaidChildren.[0]
@@ -278,6 +282,9 @@ module Render =
                   KeylessVdom.Unkeyed (UnkeyedVdom.ToggleWithGlyph (ug2, cg2, checked2, focus2)) when
                     ug1 = ug2 && cg1 = cg2 && checked1 = checked2 && focus1 = focus2
                     ->
+                    Some prev
+                | KeylessVdom.Unkeyed UnkeyedVdom.Empty, KeylessVdom.Unkeyed UnkeyedVdom.Empty ->
+                    // Empty nodes are always equal
                     Some prev
                 // Container nodes need recursive checks
                 | KeylessVdom.Unkeyed (UnkeyedVdom.Bordered child1), KeylessVdom.Unkeyed (UnkeyedVdom.Bordered _) when
@@ -405,7 +412,8 @@ module Render =
                             (KeylessVdom.Keyed (KeyedVdom.WithKey (key, childVdom)))
                     ]
                 | UnkeyedVdom.TextContent _
-                | UnkeyedVdom.ToggleWithGlyph _ -> []
+                | UnkeyedVdom.ToggleWithGlyph _
+                | UnkeyedVdom.Empty -> []
             | KeylessVdom.Unkeyed unkeyedVdom ->
                 match unkeyedVdom with
                 | UnkeyedVdom.Bordered child ->
@@ -462,7 +470,8 @@ module Render =
                             (KeylessVdom.Keyed (KeyedVdom.WithKey (key, childVdom)))
                     ]
                 | UnkeyedVdom.TextContent _
-                | UnkeyedVdom.ToggleWithGlyph _ -> []
+                | UnkeyedVdom.ToggleWithGlyph _
+                | UnkeyedVdom.Empty -> []
 
         let result =
             {
@@ -507,6 +516,7 @@ module Render =
         | KeylessVdom.Unkeyed (UnkeyedVdom.TextContent _) -> fprintf writer "TextContent"
         | KeylessVdom.Unkeyed (UnkeyedVdom.ToggleWithGlyph (_, _, isChecked, isFocused)) ->
             fprintf writer $"ToggleWithGlyph(checked=%b{isChecked}, focused=%b{isFocused})"
+        | KeylessVdom.Unkeyed UnkeyedVdom.Empty -> fprintf writer "Empty"
         | KeylessVdom.Unkeyed (UnkeyedVdom.Bordered _) -> fprintf writer "Bordered"
         | KeylessVdom.Unkeyed (UnkeyedVdom.PanelSplit (direction, behaviour, _, _)) ->
             let dirStr =
@@ -758,6 +768,9 @@ module Render =
                     // via keyToNode, but the actual rendering is done via the child
                     // Do nothing here
                     ()
+                | UnkeyedVdom.Empty ->
+                    // Empty nodes render nothing
+                    ()
                 | UnkeyedVdom.Bordered _ -> failwith "Keyed Bordered node should have a child in OverlaidChildren"
                 | UnkeyedVdom.PanelSplit _ -> failwith "Keyed PanelSplit node should have children in OverlaidChildren"
         | KeylessVdom.Unkeyed vdom ->
@@ -822,6 +835,10 @@ module Render =
                         (bounds.Width / 2)
                         (bounds.Height / 2)
                         (ValueSome (TerminalCell.OfChar content))
+
+            | UnkeyedVdom.Empty ->
+                // Empty nodes render nothing
+                ()
 
             | UnkeyedVdom.PanelSplit _ ->
                 // Only paint background if this is a new node or bounds changed
