@@ -2,6 +2,7 @@ namespace WoofWare.Zoomies
 
 open System
 open System.IO
+open System.Runtime.InteropServices
 open System.Threading
 open System.Threading.Tasks
 
@@ -198,15 +199,31 @@ module App =
         (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
         : 'state
         =
-        RenderState.refreshTerminalSize renderState
+        let rec go state =
+            let resizeGeneration = listener.TerminalResizeGeneration
+            RenderState.refreshTerminalSize renderState
 
-        listener.RefreshExternal ()
+            listener.RefreshExternal ()
 
-        let changes = listener.Changes ()
+            let changes = listener.Changes ()
 
-        match changes with
-        | ValueNone -> processNoChanges state renderState vdom
-        | ValueSome changes -> processChanges changes state haveFrameworkHandleFocus renderState processWorld vdom
+            let state =
+                match changes with
+                | ValueNone -> processNoChanges state renderState vdom
+                | ValueSome changes ->
+                    processChanges changes state haveFrameworkHandleFocus renderState processWorld vdom
+
+            if listener.TerminalResizeGeneration <> resizeGeneration then
+                // Our knowledge of the current terminal's contents could be arbitrarily corrupted:
+                // we were drawing to the screen when it had an arbitrary size. Need a *complete* refresh.
+                RenderState.clearScreen renderState
+                renderState.PreviousVdom <- None
+                VdomContext.markDirty renderState.VdomContext
+                go state
+            else
+                state
+
+        go state
 
     /// We set up a ConsoleCancelEventHandler to suppress one Ctrl+C, and we also listen to stdin,
     /// for as long as this task is running.
@@ -259,6 +276,13 @@ module App =
                         let mutable currentState = processNoChanges initialState renderState vdom
 
                         let listener' = worldFreezer ()
+
+                        use _ =
+                            PosixSignalRegistration.Create (
+                                PosixSignal.SIGWINCH,
+                                fun _ -> listener'.NotifyTerminalResize ()
+                            )
+
                         listener <- Some listener'
                         let processWorld = processWorld listener'
 

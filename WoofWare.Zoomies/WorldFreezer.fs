@@ -204,10 +204,20 @@ type WorldFreezer<'appEvent> =
             _IsDisposing : int ref
             _HasDisposed : TaskCompletionSource<unit>
             _ActiveSubscriptionRequests : int ref
+            /// Incremented when the terminal is resized. Checked by the render loop.
+            _TerminalResizeGeneration : int ref
         }
 
     /// Load pending changes from the external world, like keystrokes, into the change list.
     member this.RefreshExternal () = this._RefreshExternal ()
+
+    /// Increment the terminal resize generation. This is intended to be called by signal handlers (e.g., SIGWINCH).
+    /// The render loop will detect the change and refresh terminal bounds.
+    member internal this.NotifyTerminalResize () =
+        Interlocked.Increment this._TerminalResizeGeneration |> ignore<int>
+
+    /// Get the current terminal resize generation. Used by the render loop to detect resizes.
+    member internal this.TerminalResizeGeneration = this._TerminalResizeGeneration.Value
 
     /// Dump any pending changes into a freshly cloned array. This clears the state of the internal buffer.
     /// To save allocations, we don't give you back an array for the extremely common case where that array
@@ -531,6 +541,7 @@ module WorldFreezer =
             _IsDisposing = ref 0
             _ActiveSubscriptionRequests = ref 0
             _HasDisposed = TaskCompletionSource<_> ()
+            _TerminalResizeGeneration = ref 0
         }
 
     let listen<'appEvent> () : WorldFreezer<'appEvent> =
