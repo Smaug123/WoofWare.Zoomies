@@ -291,7 +291,8 @@ module App =
                                     fun _ -> listener'.NotifyTerminalResize ()
                                 )
                             with :? PlatformNotSupportedException ->
-                                // SIGWINCH not supported on this platform (e.g., Windows)
+                                // SIGWINCH not supported on this platform (e.g., Windows).
+                                // Recall that the `use` syntax is special-cased to not throw on null!
                                 null
 
                         listener <- Some listener'
