@@ -25,7 +25,7 @@ module TestProgressBar =
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> = ProgressBar.make 0.0 (Some 10)
 
-            let console, terminal = ConsoleHarness.make' (fun () -> 60) (fun () -> 10)
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 2)
 
             let world = MockWorld.make ()
 
@@ -46,21 +46,12 @@ module TestProgressBar =
             let renderState = RenderState.make console None
 
             App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
-            |> ignore
 
             expect {
                 snapshot
                     @"
-[░░░░░░░░░░] 0%                                             |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
+[░░░░░░░░░░] 0%     |
+                    |
 "
 
                 return ConsoleHarness.toString terminal
@@ -72,7 +63,7 @@ module TestProgressBar =
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> = ProgressBar.make 0.5 (Some 10)
 
-            let console, terminal = ConsoleHarness.make' (fun () -> 60) (fun () -> 10)
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 2)
 
             let world = MockWorld.make ()
 
@@ -93,21 +84,12 @@ module TestProgressBar =
             let renderState = RenderState.make console None
 
             App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
-            |> ignore
 
             expect {
                 snapshot
                     @"
-[█████░░░░░] 50%                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
+[█████░░░░░] 50%    |
+                    |
 "
 
                 return ConsoleHarness.toString terminal
@@ -119,7 +101,7 @@ module TestProgressBar =
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> = ProgressBar.make 1.0 (Some 10)
 
-            let console, terminal = ConsoleHarness.make' (fun () -> 60) (fun () -> 10)
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 2)
 
             let world = MockWorld.make ()
 
@@ -140,21 +122,12 @@ module TestProgressBar =
             let renderState = RenderState.make console None
 
             App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
-            |> ignore
 
             expect {
                 snapshot
                     @"
-[██████████] 100%                                           |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
+[██████████] 100%   |
+                    |
 "
 
                 return ConsoleHarness.toString terminal
@@ -170,7 +143,7 @@ module TestProgressBar =
 
                 ProgressBar.make' options 0.3 (Some 10)
 
-            let console, terminal = ConsoleHarness.make' (fun () -> 60) (fun () -> 10)
+            let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 2)
 
             let world = MockWorld.make ()
 
@@ -191,21 +164,12 @@ module TestProgressBar =
             let renderState = RenderState.make console None
 
             App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
-            |> ignore
 
             expect {
                 snapshot
                     @"
-Loading:[███░░░░░░░] 30%                                    |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
+Loading:[███░░░░░░░] 30%      |
+                              |
 "
 
                 return ConsoleHarness.toString terminal
@@ -219,7 +183,7 @@ Loading:[███░░░░░░░] 30%                                    
                 let options = ProgressBar.Options.Default |> ProgressBar.Options.WithoutPercentage
                 ProgressBar.make' options 0.7 (Some 10)
 
-            let console, terminal = ConsoleHarness.make' (fun () -> 60) (fun () -> 10)
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 2)
 
             let world = MockWorld.make ()
 
@@ -240,21 +204,12 @@ Loading:[███░░░░░░░] 30%                                    
             let renderState = RenderState.make console None
 
             App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
-            |> ignore
 
             expect {
                 snapshot
                     @"
-[███████░░░]                                                |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
+[███████░░░]        |
+                    |
 "
 
                 return ConsoleHarness.toString terminal
@@ -272,7 +227,7 @@ Loading:[███░░░░░░░] 30%                                    
 
                 ProgressBar.make' options 0.6 (Some 10)
 
-            let console, terminal = ConsoleHarness.make' (fun () -> 60) (fun () -> 10)
+            let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 2)
 
             let world = MockWorld.make ()
 
@@ -293,21 +248,12 @@ Loading:[███░░░░░░░] 30%                                    
             let renderState = RenderState.make console None
 
             App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
-            |> ignore
 
             expect {
                 snapshot
                     @"
-Progress:[██████░░░░]                                       |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
+Progress:[██████░░░░]         |
+                              |
 "
 
                 return ConsoleHarness.toString terminal
@@ -323,7 +269,7 @@ Progress:[██████░░░░]                                       
 
                 Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 1, bar1, bar2)
 
-            let console, terminal = ConsoleHarness.make' (fun () -> 60) (fun () -> 10)
+            let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 2)
 
             let world = MockWorld.make ()
 
@@ -344,21 +290,12 @@ Progress:[██████░░░░]                                       
             let renderState = RenderState.make console None
 
             App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
-            |> ignore
 
             expect {
                 snapshot
                     @"
-[██░░░] 50%                                                 |
-[██████████░░░░░░░░░░] 50%                                  |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
+[██░░░] 50%                             |
+[██████████░░░░░░░░░░] 50%              |
 "
 
                 return ConsoleHarness.toString terminal
@@ -370,7 +307,7 @@ Progress:[██████░░░░]                                       
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> = ProgressBar.make -0.1 (Some 10)
 
-            let console, terminal = ConsoleHarness.make' (fun () -> 60) (fun () -> 10)
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 2)
 
             let world = MockWorld.make ()
 
@@ -396,16 +333,8 @@ Progress:[██████░░░░]                                       
             expect {
                 snapshot
                     @"
-[░░░░░░░░░░] n/a%                                           |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
-                                                            |
+[░░░░░░░░░░] n/a%   |
+                    |
 "
 
                 return ConsoleHarness.toString terminal
