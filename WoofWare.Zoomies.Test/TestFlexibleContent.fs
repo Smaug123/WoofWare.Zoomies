@@ -31,6 +31,8 @@ module TestFlexibleContent =
     /// A simple progress bar that renders differently based on width
     let progressBar (fraction : float) : Vdom<DesiredBounds, Unkeyed> =
         let measure (constraints : MeasureConstraints) =
+            constraints.MaxWidth |> shouldBeGreaterThan 19
+
             {
                 MinWidth = 10
                 PreferredWidth = 50
@@ -63,6 +65,8 @@ module TestFlexibleContent =
     /// A responsive layout that switches between horizontal and vertical
     let responsiveLayout (content1 : string) (content2 : string) : Vdom<DesiredBounds, Unkeyed> =
         let measure (constraints : MeasureConstraints) =
+            constraints.MaxWidth |> shouldBeGreaterThan 19
+
             {
                 MinWidth = 20
                 PreferredWidth = 80
@@ -98,42 +102,46 @@ module TestFlexibleContent =
         Vdom.flexibleContent measure render
 
     [<Test>]
-    let ``FlexibleContent renders different content at different widths`` () =
-        let terminalOps1 = ResizeArray ()
-        let terminalOps2 = ResizeArray ()
+    let ``FlexibleContent renders at width 80`` () =
+        let console, harness = ConsoleHarness.make' (fun () -> 80) (fun () -> 5)
+        let renderState = RenderState.make console None
+        let vdom = progressBar 0.6
 
-        // Create console with width 80
-        let console1 =
-            { IConsole.defaultForTests with
-                WindowWidth = fun () -> 80
-                WindowHeight = fun () -> 24
-                Execute = fun x -> terminalOps1.Add x
-            }
+        Render.oneStep renderState () (fun _ -> vdom)
 
-        // Create console with width 20
-        let console2 =
-            { IConsole.defaultForTests with
-                WindowWidth = fun () -> 20
-                WindowHeight = fun () -> 24
-                Execute = fun x -> terminalOps2.Add x
-            }
+        expect {
+            snapshot
+                @"
+[==============================================>                               ]|
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+"
 
-        let renderState1 = RenderState.make console1 None
-        let renderState2 = RenderState.make console2 None
+            return ConsoleHarness.toString harness
+        }
 
-        let vdom1 = progressBar 0.6
-        let vdom2 = progressBar 0.6
+    [<Test>]
+    let ``FlexibleContent renders at width 20`` () =
+        let console, harness = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
+        let renderState = RenderState.make console None
+        let vdom = progressBar 0.6
 
-        Render.oneStep renderState1 () (fun _ -> vdom1)
-        Render.oneStep renderState2 () (fun _ -> vdom2)
+        Render.oneStep renderState () (fun _ -> vdom)
 
-        // The two renders should produce different output
-        // (one is wide, one is narrow)
-        (terminalOps1.Count > 0) |> shouldEqual true
-        (terminalOps2.Count > 0) |> shouldEqual true
+        expect {
+            snapshot
+                @"
+[==========>       ]|
+                    |
+                    |
+                    |
+                    |
+"
 
-        // They should be different
-        terminalOps1.Count |> shouldNotEqual terminalOps2.Count
+            return ConsoleHarness.toString harness
+        }
 
     [<Test>]
     let ``FlexibleContent early cutoff works when bounds don't change`` () =
@@ -143,7 +151,7 @@ module TestFlexibleContent =
             { IConsole.defaultForTests with
                 WindowWidth = fun () -> 80
                 WindowHeight = fun () -> 24
-                Execute = fun x -> terminalOps.Add x
+                Execute = terminalOps.Add
             }
 
         let renderState = RenderState.make console None
@@ -172,7 +180,7 @@ module TestFlexibleContent =
             { IConsole.defaultForTests with
                 WindowWidth = fun () -> width
                 WindowHeight = fun () -> 24
-                Execute = fun x -> terminalOps.Add x
+                Execute = terminalOps.Add
             }
 
         let renderState = RenderState.make console None
@@ -195,7 +203,9 @@ module TestFlexibleContent =
 
     [<Test>]
     let ``FlexibleContent measurement respects constraints`` () =
-        let measure (constraints : MeasureConstraints) =
+        let measure (measureConstraint : MeasureConstraints) =
+            measureConstraint.MaxWidth |> shouldBeSmallerThan 100
+
             {
                 MinWidth = 100 // Request more than constraint
                 PreferredWidth = 200
@@ -206,7 +216,7 @@ module TestFlexibleContent =
             }
 
         let render (bounds : Rectangle) =
-            Vdom.textContent false (sprintf "Width: %d" bounds.Width)
+            Vdom.textContent false $"Width: %d{bounds.Width}"
 
         let vdom = Vdom.flexibleContent measure render
 
@@ -216,7 +226,7 @@ module TestFlexibleContent =
             { IConsole.defaultForTests with
                 WindowWidth = fun () -> 50 // Constraint is narrower than request
                 WindowHeight = fun () -> 24
-                Execute = fun x -> terminalOps.Add x
+                Execute = terminalOps.Add
             }
 
         let renderState = RenderState.make console None
