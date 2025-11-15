@@ -56,6 +56,8 @@ module internal Layout =
         {
             /// The VDOM node being arranged
             Vdom : KeylessVdom<Rectangle>
+            /// The original DesiredBounds VDOM this was arranged from
+            VDomSource : KeylessVdom<DesiredBounds>
             /// Final allocated rectangle for this node
             Bounds : Rectangle
             /// Arranged children (for container nodes)
@@ -691,6 +693,26 @@ module internal Layout =
                 Measured = childMeasured.Measured
                 Children = [ childMeasured ]
             }
+        | UnkeyedVdom.FlexibleContent (measure, _) ->
+            // Call the user's measure function
+            let measured = measure constraints
+
+            // Validate and clamp the measurements to respect constraints
+            let clampedMeasured =
+                {
+                    MinWidth = min measured.MinWidth constraints.MaxWidth
+                    PreferredWidth = min measured.PreferredWidth constraints.MaxWidth
+                    MaxWidth = measured.MaxWidth
+                    MinHeightForWidth = measured.MinHeightForWidth
+                    PreferredHeightForWidth = measured.PreferredHeightForWidth
+                    MaxHeightForWidth = measured.MaxHeightForWidth
+                }
+
+            {
+                Vdom = KeylessVdom.Unkeyed vdom
+                Measured = clampedMeasured
+                Children = []  // No children yet - we don't know what they are until arrange
+            }
 
     /// Arrange a measured tree into concrete bounds
     let rec internal arrange (measured : MeasuredNode<DesiredBounds>) (bounds : Rectangle) : ArrangedNode =
@@ -700,6 +722,7 @@ module internal Layout =
             | UnkeyedVdom.TextContent (text, focused) ->
                 {
                     Vdom = KeylessVdom.Keyed (KeyedVdom.WithKey (key, UnkeyedVdom.TextContent (text, focused)))
+                    VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = []
                 }
@@ -712,12 +735,14 @@ module internal Layout =
                                 UnkeyedVdom.ToggleWithGlyph (uncheckedGlyph, checkedGlyph, isChecked, isFocused)
                             )
                         )
+                    VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = []
                 }
             | UnkeyedVdom.Empty ->
                 {
                     Vdom = KeylessVdom.Keyed (KeyedVdom.WithKey (key, UnkeyedVdom.Empty))
+                    VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = []
                 }
@@ -737,6 +762,7 @@ module internal Layout =
 
                 {
                     Vdom = KeylessVdom.Keyed (KeyedVdom.WithKey (key, UnkeyedVdom.Bordered childVdom))
+                    VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = [ childArranged ]
                 }
@@ -752,6 +778,7 @@ module internal Layout =
                         KeylessVdom.Keyed (
                             KeyedVdom.WithKey (key, UnkeyedVdom.PanelSplit (dir, behaviour, child1Vdom, child2Vdom))
                         )
+                    VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = childrenArranged
                 }
@@ -767,14 +794,38 @@ module internal Layout =
 
                 {
                     Vdom = focusableVdom
+                    VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = [ childArranged ]
+                }
+            | UnkeyedVdom.FlexibleContent (measure, render) ->
+                // Call the render function with allocated bounds
+                let renderedVdom = render bounds
+
+                // Measure the rendered Vdom with constraints = allocated bounds
+                let renderConstraints =
+                    {
+                        MaxWidth = bounds.Width
+                        MaxHeight = bounds.Height
+                    }
+
+                let measuredRendered = measureEither renderConstraints renderedVdom
+
+                // Arrange the rendered Vdom with the same bounds
+                let arrangedRendered = arrange measuredRendered bounds
+
+                {
+                    Vdom = KeylessVdom.Keyed (KeyedVdom.WithKey (key, UnkeyedVdom.FlexibleContent (measure, render)))
+                    VDomSource = measured.Vdom
+                    Bounds = bounds
+                    Children = [ arrangedRendered ]
                 }
         | KeylessVdom.Unkeyed unkeyedVdom ->
             match unkeyedVdom with
             | UnkeyedVdom.TextContent (text, focused) ->
                 {
                     Vdom = KeylessVdom.Unkeyed (UnkeyedVdom.TextContent (text, focused))
+                    VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = []
                 }
@@ -784,12 +835,14 @@ module internal Layout =
                         KeylessVdom.Unkeyed (
                             UnkeyedVdom.ToggleWithGlyph (uncheckedGlyph, checkedGlyph, isChecked, isFocused)
                         )
+                    VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = []
                 }
             | UnkeyedVdom.Empty ->
                 {
                     Vdom = KeylessVdom.Unkeyed UnkeyedVdom.Empty
+                    VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = []
                 }
@@ -809,6 +862,7 @@ module internal Layout =
 
                 {
                     Vdom = KeylessVdom.Unkeyed (UnkeyedVdom.Bordered childVdom)
+                    VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = [ childArranged ]
                 }
@@ -820,6 +874,7 @@ module internal Layout =
 
                 {
                     Vdom = KeylessVdom.Unkeyed (UnkeyedVdom.PanelSplit (dir, behaviour, child1Vdom, child2Vdom))
+                    VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = childrenArranged
                 }
@@ -834,8 +889,31 @@ module internal Layout =
 
                 {
                     Vdom = focusableVdom
+                    VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = [ childArranged ]
+                }
+            | UnkeyedVdom.FlexibleContent (measure, render) ->
+                // Call the render function with allocated bounds
+                let renderedVdom = render bounds
+
+                // Measure the rendered Vdom with constraints = allocated bounds
+                let renderConstraints =
+                    {
+                        MaxWidth = bounds.Width
+                        MaxHeight = bounds.Height
+                    }
+
+                let measuredRendered = measureEither renderConstraints renderedVdom
+
+                // Arrange the rendered Vdom with the same bounds
+                let arrangedRendered = arrange measuredRendered bounds
+
+                {
+                    Vdom = KeylessVdom.Unkeyed (UnkeyedVdom.FlexibleContent (measure, render))
+                    VDomSource = measured.Vdom
+                    Bounds = bounds
+                    Children = [ arrangedRendered ]
                 }
 
     /// Arrange a panel split container
