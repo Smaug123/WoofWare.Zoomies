@@ -49,7 +49,10 @@ module TestRender =
         let currentFocus = VdomContext.focusedKey vdomContext
 
         let bottomHalf =
-            Vdom.labelledCheckbox (currentFocus = Some toggle1Key) state.IsToggle1Checked "Press Space to toggle"
+            Components.LabelledCheckbox.make
+                (currentFocus = Some toggle1Key)
+                state.IsToggle1Checked
+                "Press Space to toggle"
             |> Vdom.withKey toggle1Key
             |> Vdom.withFocusTracking
 
@@ -64,7 +67,7 @@ module TestRender =
                     SplitDirection.Vertical,
                     0.5,
                     Vdom.textContent false "only displayed when checked",
-                    Vdom.labelledCheckbox
+                    Components.LabelledCheckbox.make
                         (currentFocus = Some toggle2Key)
                         state.IsToggle2Checked
                         "this one is focusable!"

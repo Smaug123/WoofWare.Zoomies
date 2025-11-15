@@ -433,6 +433,25 @@ type Vdom =
     static member checkbox (isFocused : bool) (isChecked : bool) : Vdom<DesiredBounds, Unkeyed> =
         Vdom.Unkeyed (UnkeyedVdom.ToggleWithGlyph ('☐', '☑', isChecked, isFocused), Teq.refl)
 
+    /// <summary>Creates a toggle component with custom glyphs.</summary>
+    /// <param name="uncheckedGlyph">The character to display when the toggle is in the unchecked/collapsed state.</param>
+    /// <param name="checkedGlyph">The character to display when the toggle is in the checked/expanded state.</param>
+    /// <param name="isChecked">Specifies that this toggle is currently checked. Derive the value of this parameter
+    /// from your application state.</param>
+    /// <param name="isFocused">
+    /// Specifies that this toggle should render as if it has keyboard focus.
+    /// This has nothing to do with the WoofWare.Zoomies automatic focus tracking system; it's purely a display concern.
+    /// See <c>Vdom.withFocusTracking</c> for details.
+    /// </param>
+    static member toggleWithGlyph
+        (uncheckedGlyph : char)
+        (checkedGlyph : char)
+        (isChecked : bool)
+        (isFocused : bool)
+        : Vdom<DesiredBounds, Unkeyed>
+        =
+        Vdom.Unkeyed (UnkeyedVdom.ToggleWithGlyph (uncheckedGlyph, checkedGlyph, isChecked, isFocused), Teq.refl)
+
     /// Creates a bordered wrapper around a component, drawing a border around its content.
     static member bordered (inner : Vdom<_, Keyed>) : Vdom<DesiredBounds, Unkeyed> =
         match inner with
@@ -444,21 +463,6 @@ type Vdom =
         match inner with
         | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
         | Unkeyed (inner, _) -> Vdom.Unkeyed (UnkeyedVdom.Bordered (KeylessVdom.Unkeyed inner), Teq.refl)
-
-    /// Creates a checkbox with a text label positioned to its right.
-    static member labelledCheckbox
-        (isFocused : bool)
-        (isChecked : bool)
-        (label : string)
-        : Vdom<DesiredBounds, Unkeyed>
-        =
-        // TODO: centre this text horizontally so it's next to the checkbox
-        Vdom.panelSplitAbsolute (
-            SplitDirection.Vertical,
-            3,
-            Vdom.checkbox isFocused isChecked,
-            Vdom.textContent false label
-        )
 
     /// Attach a key to a VDOM node, effectively giving that node a name.
     ///
