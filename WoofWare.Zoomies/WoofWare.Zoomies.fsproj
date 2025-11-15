@@ -31,6 +31,7 @@
     <Compile Include="Exception.fs" />
     <Compile Include="OrderedSet.fs" />
     <Compile Include="ConsoleModifiers.fs" />
+    <Compile Include="LayoutTypes.fs" />
     <Compile Include="Vdom.fs" />
     <Compile Include="CtrlCHandler.fs" />
     <Compile Include="ConsoleColor.fs" />

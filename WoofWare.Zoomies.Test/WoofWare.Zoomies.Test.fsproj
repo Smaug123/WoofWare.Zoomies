@@ -25,6 +25,7 @@
     <Compile Include="TestCollapsible.fs" />
     <Compile Include="TestProgressBar.fs" />
     <Compile Include="TestBatchProcessing.fs" />
+    <Compile Include="TestFlexibleContent.fs" />
     <Compile Include="TestWorldFreezer.fs" />
   </ItemGroup>
 
