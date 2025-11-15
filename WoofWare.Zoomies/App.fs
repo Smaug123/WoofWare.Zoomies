@@ -281,10 +281,14 @@ module App =
                         let listener' = worldFreezer ()
 
                         use _ =
-                            PosixSignalRegistration.Create (
-                                PosixSignal.SIGWINCH,
-                                fun _ -> listener'.NotifyTerminalResize ()
-                            )
+                            try
+                                PosixSignalRegistration.Create (
+                                    PosixSignal.SIGWINCH,
+                                    fun _ -> listener'.NotifyTerminalResize ()
+                                )
+                            with :? PlatformNotSupportedException ->
+                                // SIGWINCH not supported on this platform (e.g., Windows)
+                                null
 
                         listener <- Some listener'
                         let processWorld = processWorld listener'
