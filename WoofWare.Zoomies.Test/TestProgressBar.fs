@@ -23,9 +23,7 @@ module TestProgressBar =
     [<Test>]
     let ``progress bar at 0%`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) =
-                ProgressBar.make 0.0 10
-                |> Vdom.withKey (NodeKey.make "progress")
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> = ProgressBar.make 0.0 (Some 10)
 
             let console, terminal = ConsoleHarness.make' (fun () -> 60) (fun () -> 10)
 
@@ -41,9 +39,8 @@ module TestProgressBar =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<_, State> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        ProcessWorldResult.make state
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
             let renderState = RenderState.make console None
@@ -54,7 +51,7 @@ module TestProgressBar =
             expect {
                 snapshot
                     @"
-[░░░░░░░░░░] 0%                                         |
+[░░░░░░░░░░] 0%                                             |
                                                             |
                                                             |
                                                             |
@@ -73,9 +70,7 @@ module TestProgressBar =
     [<Test>]
     let ``progress bar at 50%`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) =
-                ProgressBar.make 0.5 10
-                |> Vdom.withKey (NodeKey.make "progress")
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> = ProgressBar.make 0.5 (Some 10)
 
             let console, terminal = ConsoleHarness.make' (fun () -> 60) (fun () -> 10)
 
@@ -91,9 +86,8 @@ module TestProgressBar =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<_, State> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        ProcessWorldResult.make state
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
             let renderState = RenderState.make console None
@@ -104,7 +98,7 @@ module TestProgressBar =
             expect {
                 snapshot
                     @"
-[█████░░░░░] 50%                                        |
+[█████░░░░░] 50%                                            |
                                                             |
                                                             |
                                                             |
@@ -123,9 +117,7 @@ module TestProgressBar =
     [<Test>]
     let ``progress bar at 100%`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) =
-                ProgressBar.make 1.0 10
-                |> Vdom.withKey (NodeKey.make "progress")
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> = ProgressBar.make 1.0 (Some 10)
 
             let console, terminal = ConsoleHarness.make' (fun () -> 60) (fun () -> 10)
 
@@ -141,9 +133,8 @@ module TestProgressBar =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<_, State> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        ProcessWorldResult.make state
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
             let renderState = RenderState.make console None
@@ -154,7 +145,7 @@ module TestProgressBar =
             expect {
                 snapshot
                     @"
-[██████████] 100%                                       |
+[██████████] 100%                                           |
                                                             |
                                                             |
                                                             |
@@ -173,9 +164,11 @@ module TestProgressBar =
     [<Test>]
     let ``progress bar with label`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) =
-                ProgressBar.make 0.3 10 (label = "Loading:")
-                |> Vdom.withKey (NodeKey.make "progress")
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+                let options =
+                    ProgressBar.Options.Default |> ProgressBar.Options.WithLabel "Loading:"
+
+                ProgressBar.make' options 0.3 (Some 10)
 
             let console, terminal = ConsoleHarness.make' (fun () -> 60) (fun () -> 10)
 
@@ -191,9 +184,8 @@ module TestProgressBar =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<_, State> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        ProcessWorldResult.make state
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
             let renderState = RenderState.make console None
@@ -204,7 +196,7 @@ module TestProgressBar =
             expect {
                 snapshot
                     @"
-Loading:[███░░░░░░░] 30%                                |
+Loading:[███░░░░░░░] 30%                                    |
                                                             |
                                                             |
                                                             |
@@ -223,9 +215,9 @@ Loading:[███░░░░░░░] 30%                                |
     [<Test>]
     let ``progress bar without percentage`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) =
-                ProgressBar.make 0.7 10 (showPercentage = false)
-                |> Vdom.withKey (NodeKey.make "progress")
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+                let options = ProgressBar.Options.Default |> ProgressBar.Options.WithoutPercentage
+                ProgressBar.make' options 0.7 (Some 10)
 
             let console, terminal = ConsoleHarness.make' (fun () -> 60) (fun () -> 10)
 
@@ -241,9 +233,8 @@ Loading:[███░░░░░░░] 30%                                |
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<_, State> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        ProcessWorldResult.make state
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
             let renderState = RenderState.make console None
@@ -254,7 +245,7 @@ Loading:[███░░░░░░░] 30%                                |
             expect {
                 snapshot
                     @"
-[███████░░░]                                            |
+[███████░░░]                                                |
                                                             |
                                                             |
                                                             |
@@ -273,9 +264,13 @@ Loading:[███░░░░░░░] 30%                                |
     [<Test>]
     let ``progress bar with label and no percentage`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) =
-                ProgressBar.make 0.6 10 (label = "Progress:", showPercentage = false)
-                |> Vdom.withKey (NodeKey.make "progress")
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+                let options =
+                    ProgressBar.Options.Default
+                    |> ProgressBar.Options.WithLabel "Progress:"
+                    |> ProgressBar.Options.WithoutPercentage
+
+                ProgressBar.make' options 0.6 (Some 10)
 
             let console, terminal = ConsoleHarness.make' (fun () -> 60) (fun () -> 10)
 
@@ -291,9 +286,8 @@ Loading:[███░░░░░░░] 30%                                |
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<_, State> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        ProcessWorldResult.make state
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
             let renderState = RenderState.make console None
@@ -304,7 +298,7 @@ Loading:[███░░░░░░░] 30%                                |
             expect {
                 snapshot
                     @"
-Progress:[██████░░░░]                                   |
+Progress:[██████░░░░]                                       |
                                                             |
                                                             |
                                                             |
@@ -323,17 +317,11 @@ Progress:[██████░░░░]                                   |
     [<Test>]
     let ``progress bar with varying widths`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) =
-                let bar1 =
-                    ProgressBar.make 0.5 5
-                    |> Vdom.withKey (NodeKey.make "bar1")
-
-                let bar2 =
-                    ProgressBar.make 0.5 20
-                    |> Vdom.withKey (NodeKey.make "bar2")
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+                let bar1 = ProgressBar.make 0.5 (Some 5)
+                let bar2 = ProgressBar.make 0.5 (Some 20)
 
                 Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 1, bar1, bar2)
-                |> Vdom.withKey (NodeKey.make "root")
 
             let console, terminal = ConsoleHarness.make' (fun () -> 60) (fun () -> 10)
 
@@ -349,9 +337,8 @@ Progress:[██████░░░░]                                   |
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<_, State> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        ProcessWorldResult.make state
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
             let renderState = RenderState.make console None
@@ -362,8 +349,8 @@ Progress:[██████░░░░]                                   |
             expect {
                 snapshot
                     @"
-[██░░░] 50%                                             |
-[██████████░░░░░░░░░] 50%                               |
+[██░░░] 50%                                                 |
+[██████████░░░░░░░░░░] 50%                                  |
                                                             |
                                                             |
                                                             |
@@ -379,31 +366,58 @@ Progress:[██████░░░░]                                   |
         }
 
     [<Test>]
-    let ``progress bar validates progress range`` () =
-        Assert.Throws<ArgumentException> (fun () ->
-            ProgressBar.make -0.1 10
-            |> ignore
-        )
-        |> ignore
+    let ``progress bar displays n/a for invalid progress`` () =
+        task {
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> = ProgressBar.make -0.1 (Some 10)
 
-        Assert.Throws<ArgumentException> (fun () ->
-            ProgressBar.make 1.1 10
+            let console, terminal = ConsoleHarness.make' (fun () -> 60) (fun () -> 10)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = false
+
+            let processWorld =
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console None
+
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
             |> ignore
-        )
-        |> ignore
+
+            expect {
+                snapshot
+                    @"
+[░░░░░░░░░░] n/a%                                           |
+                                                            |
+                                                            |
+                                                            |
+                                                            |
+                                                            |
+                                                            |
+                                                            |
+                                                            |
+                                                            |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
 
     [<Test>]
     let ``progress bar validates width`` () =
-        Assert.Throws<ArgumentException> (fun () ->
-            ProgressBar.make 0.5 0
-            |> ignore
-        )
+        Assert.Throws<ArgumentException> (fun () -> ProgressBar.make 0.5 (Some 0) |> ignore)
         |> ignore
 
-        Assert.Throws<ArgumentException> (fun () ->
-            ProgressBar.make 0.5 -1
-            |> ignore
-        )
+        Assert.Throws<ArgumentException> (fun () -> ProgressBar.make 0.5 (Some -1) |> ignore)
         |> ignore
 
-    // TODO: add a test for how it renders when the numbers don't evenly divide
+// TODO: add a test for how it renders when the numbers don't evenly divide

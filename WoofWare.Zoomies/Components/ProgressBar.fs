@@ -11,18 +11,21 @@ module ProgressBar =
             Label : string option
             ShowPercentage : bool
         }
+
         static member Default =
             {
                 Label = None
                 ShowPercentage = true
             }
+
         static member WithLabel (s : string) (o : Options) =
-            {
-                o with Label = Some s
+            { o with
+                Label = Some s
             }
+
         static member WithoutPercentage (o : Options) =
-            {
-                o with ShowPercentage = false
+            { o with
+                ShowPercentage = false
             }
 
     /// <summary>Creates a progress bar component.</summary>
@@ -47,49 +50,79 @@ module ProgressBar =
             else
                 true, progress
 
-        if width <= 0 then
-            invalidArg (nameof width) "width must be positive"
-
         let showPercentage = options.ShowPercentage
 
-        let filledCount = int (progress * float width)
-        let emptyCount = width - filledCount
+        let renderBarWithWidth (barWidth : int) : Vdom<DesiredBounds, Unkeyed> =
+            let filledCount = int (progress * float barWidth)
+            let emptyCount = barWidth - filledCount
 
-        let filledBar = System.String('█', filledCount)
-        let emptyBar = System.String('░', emptyCount)
-        let barContent = $"[%s{filledBar}%s{emptyBar}]"
+            let filledBar = System.String ('█', filledCount)
+            let emptyBar = System.String ('░', emptyCount)
+            let barContent = $"[%s{filledBar}%s{emptyBar}]"
 
-        let barVdom = Vdom.textContent false barContent
+            let fullContent =
+                if showPercentage then
+                    let percentage =
+                        if isValid then
+                            " " + $"%.0f{progress * 100.0}" + "%"
+                        else
+                            " n/a%"
 
-        let withPercentage =
-            if showPercentage then
-                let percentage =
-                    if isValid then
-                        " " + $"%.0f{progress * 100.0}" + "%"
-                    else
-                        " n/a%"
-                let percentageVdom = Vdom.textContent false percentage
-                let percentageWidth = percentage.Length
-                Vdom.panelSplitAbsolute (
-                    SplitDirection.Vertical,
-                    -percentageWidth,
-                    barVdom,
-                    percentageVdom
-                )
-            else
-                barVdom
+                    barContent + percentage
+                else
+                    barContent
 
-        match options.Label with
-        | Some labelText ->
-            let labelVdom = Vdom.textContent false labelText
-            let labelWidth = labelText.Length
-            Vdom.panelSplitAbsolute (
-                SplitDirection.Vertical,
-                labelWidth,
-                labelVdom,
-                withPercentage
-            )
-        | None -> withPercentage
+            let barVdom = Vdom.textContent false fullContent
+
+            match options.Label with
+            | Some labelText ->
+                let labelVdom = Vdom.textContent false labelText
+                let labelWidth = labelText.Length
+                Vdom.panelSplitAbsolute (SplitDirection.Vertical, labelWidth, labelVdom, barVdom)
+            | None -> barVdom
+
+        match width with
+        | Some w ->
+            if w <= 0 then
+                invalidArg (nameof width) "width must be positive"
+
+            renderBarWithWidth w
+        | None ->
+            // Use flexible content to render into whatever space we get
+            let measure (constraints : MeasureConstraints) =
+                let labelWidth =
+                    match options.Label with
+                    | Some label -> label.Length
+                    | None -> 0
+
+                let percentageWidth = if showPercentage then 5 else 0 // " 100%"
+                let minBarWidth = 10
+                let preferredBarWidth = 40
+
+                {
+                    MinWidth = labelWidth + minBarWidth + percentageWidth
+                    PreferredWidth = labelWidth + preferredBarWidth + percentageWidth
+                    MaxWidth = None
+                    MinHeightForWidth = fun _ -> 1
+                    PreferredHeightForWidth = fun _ -> 1
+                    MaxHeightForWidth = fun _ -> Some 1
+                }
+
+            let render (bounds : Rectangle) =
+                let labelWidth =
+                    match options.Label with
+                    | Some label -> label.Length
+                    | None -> 0
+
+                let percentageWidth = if showPercentage then 5 else 0 // " 100%"
+                // barWidth is the width of the filled/empty portion (not including brackets or percentage)
+                // renderBarWithWidth will add brackets (+2) and percentage (percentageWidth)
+                let barWidth = bounds.Width - labelWidth - percentageWidth - 2 // -2 for brackets
+                let barWidth = max 5 barWidth // Ensure minimum bar width
+
+                renderBarWithWidth barWidth
+
+            Vdom.flexibleContent measure render
 
     /// <summary>Creates a progress bar component.</summary>
     /// <param name="progress">Current progress value (must be between 0.0 and 1.0).</param>
