@@ -55,7 +55,7 @@ module Collapsible =
             Vdom.toggleWithGlyph '▶' '▼' state.IsExpanded isFocused
             |> Vdom.withKey key
             |> Vdom.withFocusTracking
-            |> fun v -> Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 1, v, Vdom.textContent false "")
+            |> fun v -> Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 1, v, Vdom.empty)
 
         let labelVdom = Vdom.textContent false label
 
@@ -65,5 +65,4 @@ module Collapsible =
         if state.IsExpanded then
             Vdom.panelSplitAuto (SplitDirection.Horizontal, headerContent, child)
         else
-            let emptyBottom = Vdom.textContent false ""
-            Vdom.panelSplitAuto (SplitDirection.Horizontal, headerContent, emptyBottom)
+            Vdom.panelSplitAuto (SplitDirection.Horizontal, headerContent, Vdom.empty)
