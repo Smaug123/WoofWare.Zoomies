@@ -661,11 +661,25 @@ module internal Layout =
             // Call the user's measure function
             let measured = measure constraints
 
-            // Validate and clamp the measurements to respect constraints
+            // Validate and clamp the measurements to respect constraints and maintain invariants:
+            // - MinWidth <= PreferredWidth
+            // - If MaxWidth = Some m, then PreferredWidth <= m
+            let clampedMinWidth = min measured.MinWidth constraints.MaxWidth
+            let clampedPreferredWidth = min measured.PreferredWidth constraints.MaxWidth
+
+            // If MaxWidth is Some, ensure PreferredWidth doesn't exceed it
+            let finalPreferredWidth =
+                match measured.MaxWidth with
+                | Some maxW -> min clampedPreferredWidth maxW
+                | None -> clampedPreferredWidth
+
+            // Ensure MinWidth doesn't exceed PreferredWidth (maintains invariant)
+            let finalMinWidth = min clampedMinWidth finalPreferredWidth
+
             let clampedMeasured =
                 {
-                    MinWidth = min measured.MinWidth constraints.MaxWidth
-                    PreferredWidth = min measured.PreferredWidth constraints.MaxWidth
+                    MinWidth = finalMinWidth
+                    PreferredWidth = finalPreferredWidth
                     MaxWidth = measured.MaxWidth
                     MinHeightForWidth = measured.MinHeightForWidth
                     PreferredHeightForWidth = measured.PreferredHeightForWidth
