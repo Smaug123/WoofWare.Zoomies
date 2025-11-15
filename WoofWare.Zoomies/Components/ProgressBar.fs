@@ -31,7 +31,7 @@ module ProgressBar =
     /// <summary>Creates a progress bar component.</summary>
     /// <param name="options">Customise the display, e.g. by adding a text label.</param>
     /// <param name="progress">Current progress value (must be between 0.0 and 1.0).</param>
-    /// <param name="width">Width of the bar portion in characters (must be strictly positive), or None to automatically size.</param>
+    /// <param name="width">Width of the bar portion in characters, or None to automatically size. Non-positive widths default to 10.</param>
     /// <remarks>
     /// The bar uses Unicode block characters:
     /// - Filled: █ (U+2588)
@@ -99,8 +99,8 @@ module ProgressBar =
                 let preferredBarWidth = 40
 
                 {
-                    MinWidth = labelWidth + minBarWidth + percentageWidth
-                    PreferredWidth = labelWidth + preferredBarWidth + percentageWidth
+                    MinWidth = labelWidth + minBarWidth + percentageWidth + 2
+                    PreferredWidth = labelWidth + preferredBarWidth + percentageWidth + 2
                     MaxWidth = None
                     MinHeightForWidth = fun _ -> 1
                     PreferredHeightForWidth = fun _ -> 1
@@ -125,7 +125,7 @@ module ProgressBar =
 
     /// <summary>Creates a progress bar component.</summary>
     /// <param name="progress">Current progress value (must be between 0.0 and 1.0).</param>
-    /// <param name="width">Width of the bar portion in characters (must be strictly positive), or None to automatically size.</param>
+    /// <param name="width">Width of the bar portion in characters, or None to automatically size. Non-positive widths default to 10.</param>
     /// <remarks>
     /// The bar uses Unicode block characters:
     /// - Filled: █ (U+2588)
@@ -135,7 +135,7 @@ module ProgressBar =
     /// - "[█████░░░░░] 52%"
     /// - "[██████████] 100%"
     ///
-    /// Use <see cref="make'"/> to
+    /// Use <see cref="make'"/> to customize the display with labels and other options.
     /// </remarks>
     let make (progress : float) (width : int option) : Vdom<DesiredBounds, Unkeyed> =
         make' Options.Default progress width
