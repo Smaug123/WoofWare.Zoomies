@@ -278,6 +278,12 @@ module App =
                     // ANALYZER: synchronous blocking call allowed: we're on a dedicated thread, so can't deadlock.
                     (listener :> IAsyncDisposable).DisposeAsync().GetAwaiter().GetResult ()
 
+                // Ideally the terminal emulator has a completely self-contained state in the alternate buffer,
+                // which means our LIFO ordering here is confined to the alternate buffer, correctly leaving the
+                // main buffer in whatever state it was in before we started executing.
+                // According to the LLMs, some terminals *don't* confine state to the alternate buffer, but in that
+                // case this order is still correct: we'll leave the cursor visible when such a terminal leaks cursor
+                // visibility out into the main buffer.
                 RenderState.setCursorVisible renderState
                 RenderState.unregisterBracketedPaste renderState
                 RenderState.unregisterMouseMode renderState
