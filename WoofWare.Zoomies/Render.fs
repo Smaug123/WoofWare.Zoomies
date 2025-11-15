@@ -837,8 +837,10 @@ module Render =
                         (ValueSome (TerminalCell.OfChar content))
 
             | UnkeyedVdom.Empty ->
-                // Empty nodes render nothing
-                ()
+                // Empty nodes render nothing, but need to clear if replacing a previous node
+                match previousNode with
+                | Some _ -> clearBoundsWithSpaces dirty bounds
+                | None -> ()
 
             | UnkeyedVdom.PanelSplit _ ->
                 // Only paint background if this is a new node or bounds changed
