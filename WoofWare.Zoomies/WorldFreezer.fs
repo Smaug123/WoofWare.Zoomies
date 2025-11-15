@@ -217,7 +217,7 @@ type WorldFreezer<'appEvent> =
         Interlocked.Increment this._TerminalResizeGeneration |> ignore<int>
 
     /// Get the current terminal resize generation. Used by the render loop to detect resizes.
-    member internal this.TerminalResizeGeneration = this._TerminalResizeGeneration.Value
+    member internal this.TerminalResizeGeneration = Volatile.Read &this._TerminalResizeGeneration.contents
 
     /// Dump any pending changes into a freshly cloned array. This clears the state of the internal buffer.
     /// To save allocations, we don't give you back an array for the extremely common case where that array
