@@ -31,6 +31,8 @@ module VdomContext =
 
     let internal markClean (v : VdomContext) = v.IsDirty <- false
 
+    let internal markDirty (v : VdomContext) = v.IsDirty <- true
+
     /// Get the dimensions of the terminal (on the previous render).
     let terminalBounds (v : VdomContext) : Rectangle = v._TerminalBounds
     /// Get the NodeKey of the Vdom element, if any, which was focused in the last render.
