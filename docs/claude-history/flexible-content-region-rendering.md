@@ -43,7 +43,7 @@ type UnkeyedVdom<'bounds> =
 1. **Two separate functions**: `measure` and `render` are provided by the user
 2. **Measurement is speculative**: The `measure` function produces a `MeasuredSize` without knowing the final bounds
 3. **Rendering is definitive**: The `render` function receives the actual allocated `Rectangle` and produces final Vdom
-4. **No infinite regress**: The `render` function returns `KeylessVdom<DesiredBounds>`, not another `FlexibleContent`, preventing nested flexible content
+4. **Composable**: The `render` function returns `KeylessVdom<DesiredBounds>`, which may include another `FlexibleContent`, allowing nested flexible content
 
 ### Conceptual Model
 
@@ -457,9 +457,7 @@ let responsiveContent (content: string) =
 
 **Problem**: Can a `render` function produce another FlexibleContent?
 
-**Answer**: No, by type signature. The `render` function returns `KeylessVdom<DesiredBounds>`, and all FlexibleContent nodes carry `DesiredBounds` type parameter. This prevents nesting.
-
-**Workaround**: If genuinely needed, compose in measurement space - have the outer FlexibleContent's `measure` function account for inner flexible behavior.
+**Answer**: Yes. The `render` function returns `KeylessVdom<DesiredBounds>`, which can include a FlexibleContent node. Nested flexible content is allowed and will work correctly, with each level's measure and render functions being called in the appropriate phases.
 
 ## Testing Strategy
 

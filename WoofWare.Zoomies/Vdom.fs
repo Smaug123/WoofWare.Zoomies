@@ -513,8 +513,7 @@ type Vdom =
     /// The render function is called during the arrange phase with the actual allocated bounds.
     /// It produces the final VDOM content for those bounds.
     ///
-    /// Note: The render function must return Vdom with DesiredBounds, not another FlexibleContent.
-    /// This prevents infinite regress.
+    /// Note: The render function may return another FlexibleContent, allowing nested flexible rendering.
     /// </remarks>
     static member flexibleContent
         (measure : MeasureConstraints -> MeasuredSize)
