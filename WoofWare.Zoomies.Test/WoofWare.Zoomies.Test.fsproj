@@ -23,6 +23,7 @@
     <Compile Include="TestRender.fs" />
     <Compile Include="TestFocusCycle.fs" />
     <Compile Include="TestCollapsible.fs" />
+    <Compile Include="TestProgressBar.fs" />
     <Compile Include="TestBatchProcessing.fs" />
     <Compile Include="TestWorldFreezer.fs" />
   </ItemGroup>
