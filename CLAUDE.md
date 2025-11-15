@@ -17,6 +17,10 @@ The framework renders the world afresh each cycle.
 It doesn't inherently consider the virtual DOM on one render loop to be related to the DOM of the previous loop, for example.
 It stores state internally for efficiency, but as far as the end-user programmer is concerned, they simply provide a virtual DOM on request every tick, and we render it.
 
+The framework should never throw exceptions when user input is bad.
+Instead, invalid inputs should be handled gracefully by using sensible defaults or rendering fallback content.
+This ensures the application remains stable and provides a better user experience.
+
 # Commands
 
 ## Build
