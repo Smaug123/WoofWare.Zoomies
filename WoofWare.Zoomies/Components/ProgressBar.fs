@@ -40,7 +40,7 @@ module ProgressBar =
     /// Examples:
     /// - No label: "[██████████] 100%"
     /// - No label: "[█████░░░░░] 52%"
-    /// - With label: "Loading: [███░░░░░░░] 30%"
+    /// - With label: "Loading:[███░░░░░░░] 30%"
     /// - No percentage: "[█████░░░░░]"
     /// </remarks>
     let make' (options : Options) (progress : float) (width : int option) : Vdom<DesiredBounds, Unkeyed> =
