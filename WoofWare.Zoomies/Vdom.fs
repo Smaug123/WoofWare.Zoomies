@@ -48,7 +48,7 @@ type internal UnkeyedVdom<'bounds> =
     | PanelSplit of SplitDirection * SplitBehaviour * child1 : KeylessVdom<'bounds> * child2 : KeylessVdom<'bounds>
     | TextContent of string * focused : bool
     | ToggleWithGlyph of uncheckedGlyph : char * checkedGlyph : char * isChecked : bool * isFocused : bool
-    | Focusable of isInitialFocus : bool * KeyedVdom<'bounds>
+    | Focusable of isFirstToFocus : bool * isInitiallyFocused : bool * KeyedVdom<'bounds>
     | Empty
     | FlexibleContent of
         measure : (MeasureConstraints -> MeasuredSize) *
@@ -488,17 +488,25 @@ type Vdom =
     /// When the user hits TAB while automatic focus tracking is enabled, the WoofWare.Zoomies framework will
     /// cycle through tree nodes which are `focusable`.
     ///
-    /// If `isInitialFocus` is true, this node will receive focus first when the system needs to select an initial
-    /// focus target (e.g., on first render or when no focusable node currently has focus).
-    /// At most one node should have `isInitialFocus = true` in a given VDOM tree.
+    /// If `isFirstToFocus` is true, this node will receive focus first when the system needs to select a
+    /// focus target when no focusable node currently has focus (e.g., when TAB is pressed but nothing is focused).
+    /// At most one node should have `isFirstToFocus = true` in a given VDOM tree.
+    ///
+    /// If `isInitiallyFocused` is true, this node will start with focus from the very first render,
+    /// rather than starting with no elements focused. At most one node should have `isInitiallyFocused = true`
+    /// in a given VDOM tree.
     ///
     /// This annotation does nothing if WoofWare.Zoomies is running with automatic focus tracking turned off.
-    static member withFocusTracking (vdom : Vdom<'bounds, Keyed>, ?isInitialFocus : bool) : Vdom<'bounds, Unkeyed> =
-        let isInitialFocus = defaultArg isInitialFocus false
+    static member withFocusTracking
+        (vdom : Vdom<'bounds, Keyed>, ?isFirstToFocus : bool, ?isInitiallyFocused : bool)
+        : Vdom<'bounds, Unkeyed>
+        =
+        let isFirstToFocus = defaultArg isFirstToFocus false
+        let isInitiallyFocused = defaultArg isInitiallyFocused false
 
         match vdom with
         | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
-        | Keyed (vdom, _) -> Vdom.Unkeyed (UnkeyedVdom.Focusable (isInitialFocus, vdom), Teq.refl)
+        | Keyed (vdom, _) -> Vdom.Unkeyed (UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, vdom), Teq.refl)
 
     /// <summary>Creates a flexible content component that can render different content based on allocated bounds.</summary>
     /// <param name="measure">Function that specifies size requirements given measurement constraints.</param>

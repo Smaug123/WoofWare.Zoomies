@@ -648,7 +648,7 @@ module internal Layout =
             | SplitDirection.Horizontal, SplitBehaviour.Absolute n ->
                 measureHorizontalSplitAbsolute n child1 child2 constraints
             | SplitDirection.Horizontal, SplitBehaviour.Auto -> measureHorizontalSplitAuto child1 child2 constraints
-        | UnkeyedVdom.Focusable (_, keyedVdom) ->
+        | UnkeyedVdom.Focusable (_, _, keyedVdom) ->
             // Focusable is transparent for measurement purposes
             let childMeasured = measureEither constraints (KeylessVdom.Keyed keyedVdom)
 
@@ -760,14 +760,19 @@ module internal Layout =
                     Bounds = bounds
                     Children = childrenArranged
                 }
-            | UnkeyedVdom.Focusable (isInitial, _) ->
+            | UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, _) ->
                 let childArranged = arrange measured.Children.[0] bounds
                 let childVdom = childArranged.Vdom
 
                 let focusableVdom =
                     match childVdom with
                     | KeylessVdom.Keyed keyedVdom ->
-                        KeylessVdom.Keyed (KeyedVdom.WithKey (key, UnkeyedVdom.Focusable (isInitial, keyedVdom)))
+                        KeylessVdom.Keyed (
+                            KeyedVdom.WithKey (
+                                key,
+                                UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, keyedVdom)
+                            )
+                        )
                     | KeylessVdom.Unkeyed _ -> failwith "Focusable child must be keyed"
 
                 {
@@ -856,13 +861,14 @@ module internal Layout =
                     Bounds = bounds
                     Children = childrenArranged
                 }
-            | UnkeyedVdom.Focusable (isInitial, _) ->
+            | UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, _) ->
                 let childArranged = arrange measured.Children.[0] bounds
                 let childVdom = childArranged.Vdom
 
                 let focusableVdom =
                     match childVdom with
-                    | KeylessVdom.Keyed keyedVdom -> KeylessVdom.Unkeyed (UnkeyedVdom.Focusable (isInitial, keyedVdom))
+                    | KeylessVdom.Keyed keyedVdom ->
+                        KeylessVdom.Unkeyed (UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, keyedVdom))
                     | KeylessVdom.Unkeyed _ -> failwith "Focusable child must be keyed"
 
                 {

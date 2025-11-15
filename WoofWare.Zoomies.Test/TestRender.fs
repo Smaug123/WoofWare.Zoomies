@@ -516,7 +516,7 @@ This is focusable text                                                          
                 let checkbox2 =
                     Vdom.checkbox (currentFocus = Some checkbox2Key) false
                     |> Vdom.withKey checkbox2Key
-                    |> fun v -> Vdom.withFocusTracking (v, isInitialFocus = true)
+                    |> fun v -> Vdom.withFocusTracking (v, isFirstToFocus = true)
 
                 let checkbox3 =
                     Vdom.checkbox (currentFocus = Some checkbox3Key) false
@@ -613,6 +613,148 @@ This is focusable text                                                          
 
             // Tab again should cycle back to checkbox2
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+
+            expect {
+                snapshot
+                    @"
+                                                                                |
+             ☐                        [☐]                         ☐             |
+                                                                                |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``initially focused element starts with focus`` () =
+        task {
+            let console, terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 3)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (vdomContext : VdomContext) (_ : FakeUnit) =
+                let currentFocus = VdomContext.focusedKey vdomContext
+                let checkbox1Key = NodeKey.make "checkbox1"
+                let checkbox2Key = NodeKey.make "checkbox2"
+                let checkbox3Key = NodeKey.make "checkbox3"
+
+                let checkbox1 =
+                    Vdom.checkbox (currentFocus = Some checkbox1Key) false
+                    |> Vdom.withKey checkbox1Key
+                    |> Vdom.withFocusTracking
+
+                let checkbox2 =
+                    Vdom.checkbox (currentFocus = Some checkbox2Key) false
+                    |> Vdom.withKey checkbox2Key
+                    |> fun v -> Vdom.withFocusTracking (v, isInitiallyFocused = true)
+
+                let checkbox3 =
+                    Vdom.checkbox (currentFocus = Some checkbox3Key) false
+                    |> Vdom.withKey checkbox3Key
+                    |> Vdom.withFocusTracking
+
+                Vdom.panelSplitProportion (
+                    SplitDirection.Vertical,
+                    0.33,
+                    checkbox1,
+                    Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, checkbox2, checkbox3)
+                )
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) =
+                        for change in worldChanges do
+                            match change with
+                            | Keystroke _ -> ()
+                            | KeyboardEvent _ -> failwith "no keyboard events"
+                            | MouseEvent _ -> failwith "no mouse events"
+                            | ApplicationEvent () -> failwith "no app events"
+                            | ApplicationEventException _ -> failwith "no exceptions possible"
+
+                        ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console None
+
+            // First render: checkbox2 should start with focus (marked with isInitiallyFocused=true)
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+
+            expect {
+                snapshot
+                    @"
+                                                                                |
+             ☐                        [☐]                         ☐             |
+                                                                                |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
+            // Tab should cycle to checkbox3
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+
+            expect {
+                snapshot
+                    @"
+                                                                                |
+             ☐                         ☐                         [☐]            |
+                                                                                |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
+            // Tab again should cycle to checkbox1
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+
+            expect {
+                snapshot
+                    @"
+                                                                                |
+            [☐]                        ☐                          ☐             |
+                                                                                |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
+            // Shift+Tab should cycle backwards to checkbox3
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, true, false, false))
+
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            |> ignore<FakeUnit>
+
+            expect {
+                snapshot
+                    @"
+                                                                                |
+             ☐                         ☐                         [☐]            |
+                                                                                |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
+            // Shift+Tab again should cycle backwards to checkbox2
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, true, false, false))
 
             App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
             |> ignore<FakeUnit>
