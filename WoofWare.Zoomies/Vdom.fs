@@ -87,8 +87,9 @@ type Vdom =
 
     /// <summary>Creates an empty zero-sized element.</summary>
     /// <remarks>
-    /// This element takes up no space and is useful for justification within split panels.
-    /// For example, use <c>Vdom.panelSplitAuto</c> with <c>Vdom.empty</c> to justify content to one side of a frame.
+    /// This element takes up no space and is useful for positioning content within split panels.
+    /// For example, use <c>Vdom.panelSplitAbsolute</c> with a negative width and <c>Vdom.empty</c> to push content
+    /// to the right edge of a panel.
     /// </remarks>
     static member empty : Vdom<DesiredBounds, Unkeyed> =
         Vdom.Unkeyed (UnkeyedVdom.Empty, Teq.refl)
