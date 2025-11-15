@@ -88,6 +88,9 @@ module ProgressBar =
             renderBarWithWidth barWidth
         | None ->
             // Use flexible content to render into whatever space we get
+            let minBarWidth = 10
+            let preferredBarWidth = 40
+
             let measure (constraints : MeasureConstraints) =
                 let labelWidth =
                     match options.Label with
@@ -95,8 +98,6 @@ module ProgressBar =
                     | None -> 0
 
                 let percentageWidth = if showPercentage then 5 else 0 // " 100%"
-                let minBarWidth = 10
-                let preferredBarWidth = 40
 
                 {
                     MinWidth = labelWidth + minBarWidth + percentageWidth + 2
@@ -117,7 +118,7 @@ module ProgressBar =
                 // barWidth is the width of the filled/empty portion (not including brackets or percentage)
                 // renderBarWithWidth will add brackets (+2) and percentage (percentageWidth)
                 let barWidth = bounds.Width - labelWidth - percentageWidth - 2 // -2 for brackets
-                let barWidth = max 5 barWidth // Ensure minimum bar width
+                let barWidth = max minBarWidth barWidth // Ensure minimum bar width
 
                 renderBarWithWidth barWidth
 
