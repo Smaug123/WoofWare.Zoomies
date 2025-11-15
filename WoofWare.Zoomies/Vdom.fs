@@ -49,6 +49,7 @@ type internal UnkeyedVdom<'bounds> =
     | TextContent of string * focused : bool
     | ToggleWithGlyph of uncheckedGlyph : char * checkedGlyph : char * isChecked : bool * isFocused : bool
     | Focusable of isInitialFocus : bool * KeyedVdom<'bounds>
+    | Empty
 
 and internal KeyedVdom<'bounds> = | WithKey of NodeKey * UnkeyedVdom<'bounds>
 
@@ -83,6 +84,15 @@ type Vdom =
     static member textContent (isFocused : bool) (s : string) : Vdom<DesiredBounds, Unkeyed> =
         // TODO: create text areas which do smart truncation etc for you
         Vdom.Unkeyed (UnkeyedVdom.TextContent (s, isFocused), Teq.refl)
+
+    /// <summary>Creates an empty zero-sized element.</summary>
+    /// <remarks>
+    /// This element takes up no space and is useful for positioning content within split panels.
+    /// For example, use <c>Vdom.panelSplitAbsolute</c> with a negative width and <c>Vdom.empty</c> to push content
+    /// to the right edge of a panel.
+    /// </remarks>
+    static member empty : Vdom<DesiredBounds, Unkeyed> =
+        Vdom.Unkeyed (UnkeyedVdom.Empty, Teq.refl)
 
     /// <summary>Creates a split panel where two components share space according to a proportion.</summary>
     /// <remarks>
