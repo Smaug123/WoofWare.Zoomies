@@ -64,7 +64,7 @@ module ProgressBar =
                 if showPercentage then
                     let percentage =
                         if isValid then
-                            " " + $"%.0f{progress * 100.0}" + "%"
+                            " " + $"%d{int (progress * 100.0)}" + "%"
                         else
                             " n/a%"
 
