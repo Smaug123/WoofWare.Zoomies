@@ -69,3 +69,25 @@ module VdomContext =
     let internal clearActivation (key : NodeKey) (ctx : VdomContext) : unit =
         if ctx._LastActivationTimes.Remove key then
             ctx.IsDirty <- true
+
+    /// Remove any activation records that have expired, marking the context dirty if anything changes.
+    let internal pruneExpiredActivations (ctx : VdomContext) : unit =
+        let now = getUtcNow ctx
+
+        let mutable removed = false
+        // Avoid mutating the dictionary while iterating by snapshotting the keys first.
+        let expired =
+            ctx._LastActivationTimes
+            |> Seq.choose (fun (KeyValue (key, time)) ->
+                if (now - time).TotalMilliseconds >= RECENT_ACTIVATION_TIMEOUT_MS then
+                    Some key
+                else
+                    None
+            )
+            |> Array.ofSeq
+
+        for key in expired do
+            removed <- ctx._LastActivationTimes.Remove key || removed
+
+        if removed then
+            ctx.IsDirty <- true

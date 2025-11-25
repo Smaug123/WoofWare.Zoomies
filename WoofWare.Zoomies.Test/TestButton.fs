@@ -418,7 +418,7 @@ Goodbye, World!                         |
 
             // See how the button press evolves over time. Wait til just before the timer elapses:
 
-            clock.Advance (TimeSpan.FromSeconds (VdomContext.RECENT_ACTIVATION_TIMEOUT_MS - 0.01))
+            clock.Advance (TimeSpan.FromMilliseconds (VdomContext.RECENT_ACTIVATION_TIMEOUT_MS - 0.01))
             |> ignore<DateTime>
 
             state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
@@ -434,7 +434,7 @@ Goodbye, World!                         |
                 return ConsoleHarness.toString terminal
             }
 
-            clock.Advance (TimeSpan.FromSeconds 0.02) |> ignore<DateTime>
+            clock.Advance (TimeSpan.FromMilliseconds 0.02) |> ignore<DateTime>
             state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
 
             expect {
@@ -442,7 +442,7 @@ Goodbye, World!                         |
                     @"
 Goodbye, World!                         |
                                         |
-              [[ Flip Text ]]           |
+            [[ Flip Text ]]             |
 "
 
                 return ConsoleHarness.toString terminal

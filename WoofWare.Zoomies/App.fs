@@ -167,13 +167,6 @@ module App =
                                 // Record activation time for visual feedback
                                 VdomContext.recordActivation focusedKey renderState.VdomContext
 
-                                // Schedule visual timeout
-                                task {
-                                    do! Task.Delay 500
-                                    listener.PostInternalEvent (FrameworkEvent.ActivationVisualTimeout focusedKey)
-                                }
-                                |> ignore
-
                                 // Inject the resolved event
                                 let injectedEvent = [| WorldStateChange.ApplicationEvent appEvent |]
 
@@ -255,6 +248,7 @@ module App =
         let go state =
             let resizeGeneration = listener.TerminalResizeGeneration
             RenderState.refreshTerminalSize renderState
+            VdomContext.pruneExpiredActivations renderState.VdomContext
 
             // Handle internal events first
             for internalEvt in listener.DrainInternalEvents () do

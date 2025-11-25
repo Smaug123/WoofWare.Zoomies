@@ -25,6 +25,7 @@ type Button =
         (ctx : VdomContext, key : NodeKey, label : string, ?isFirstToFocus : bool, ?isInitiallyFocused : bool)
         =
         let isFocused = VdomContext.focusedKey ctx = Some key
+        // TODO: I think we're clearing the field to dirty the vdom before we compute the vdom!
         let isPressed = VdomContext.wasRecentlyActivated key ctx
 
         let button = Vdom.button isFocused isPressed label |> Vdom.withKey key
