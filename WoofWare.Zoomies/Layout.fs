@@ -621,6 +621,17 @@ module internal Layout =
                 Measured = measureCheckbox constraints
                 Children = []
             }
+        | UnkeyedVdom.Button (label, _isFocused, _isPressed) ->
+            // Button renders as "[ label ]" or "[[ label ]]" so measure accordingly
+            // "[ label ]" = 2 brackets + 2 spaces + label length = label.Length + 4
+            // "[[ label ]]" = 4 brackets + 2 spaces + label length = label.Length + 6
+            // Use the larger size (focused) for consistent layout
+            let buttonText = $"[[ {label} ]]"
+            {
+                Vdom = KeylessVdom.Unkeyed vdom
+                Measured = measureText buttonText constraints
+                Children = []
+            }
         | UnkeyedVdom.Empty ->
             {
                 Vdom = KeylessVdom.Unkeyed vdom
@@ -713,6 +724,14 @@ module internal Layout =
                                 UnkeyedVdom.ToggleWithGlyph (uncheckedGlyph, checkedGlyph, isChecked, isFocused)
                             )
                         )
+                    VDomSource = measured.Vdom
+                    Bounds = bounds
+                    Children = []
+                }
+            | UnkeyedVdom.Button (label, isFocused, isPressed) ->
+                {
+                    Vdom =
+                        KeylessVdom.Keyed (KeyedVdom.WithKey (key, UnkeyedVdom.Button (label, isFocused, isPressed)))
                     VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = []
@@ -818,6 +837,13 @@ module internal Layout =
                         KeylessVdom.Unkeyed (
                             UnkeyedVdom.ToggleWithGlyph (uncheckedGlyph, checkedGlyph, isChecked, isFocused)
                         )
+                    VDomSource = measured.Vdom
+                    Bounds = bounds
+                    Children = []
+                }
+            | UnkeyedVdom.Button (label, isFocused, isPressed) ->
+                {
+                    Vdom = KeylessVdom.Unkeyed (UnkeyedVdom.Button (label, isFocused, isPressed))
                     VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = []

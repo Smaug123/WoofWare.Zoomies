@@ -163,6 +163,7 @@ module FileBrowser =
             (fun _ -> true) // framework handles focus
             (processWorld initialState)
             view
+            ActivationResolver.none
 
 // Usage:
 module Program =

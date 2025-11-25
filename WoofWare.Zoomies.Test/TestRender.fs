@@ -148,7 +148,7 @@ module TestRender =
 
             let renderState = RenderState.make console None
 
-            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -171,7 +171,7 @@ module TestRender =
             // Switching focus moves focus to the first focusable element
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -194,7 +194,7 @@ module TestRender =
             // Switching focus again does nothing because there are no more focusable elements
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -216,7 +216,7 @@ module TestRender =
 
             // Turn on the toggle, revealing a new interface element!
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
-            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -238,7 +238,7 @@ only displayed when checked                this one is focusable!               
 
             // Switch to the other checkbox
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -260,7 +260,7 @@ only displayed when checked                this one is focusable!               
 
             // Toggle the other one on
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
-            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -282,7 +282,7 @@ only displayed when checked                this one is focusable!               
 
             // Switch back to the first one
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -304,7 +304,7 @@ only displayed when checked                this one is focusable!               
 
             // Disable it again
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
-            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -326,7 +326,7 @@ only displayed when checked                this one is focusable!               
 
             // Re-enable; it remembered its state
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
-            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -394,7 +394,7 @@ only displayed when checked                this one is focusable!               
 
             let renderState = RenderState.make console None
 
-            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom ActivationResolver.none
             |> ignore<FakeUnit>
 
             expect {
@@ -418,7 +418,7 @@ This is focusable text                                                          
             // Tab to focus the text
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom ActivationResolver.none
             |> ignore<FakeUnit>
 
             expect {
@@ -442,7 +442,7 @@ This is focusable text                                                          
             // Tab to focus the checkbox
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom ActivationResolver.none
             |> ignore<FakeUnit>
 
             expect {
@@ -466,7 +466,7 @@ This is focusable text                                                          
             // Tab back to text
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom ActivationResolver.none
             |> ignore<FakeUnit>
 
             expect {
@@ -546,7 +546,7 @@ This is focusable text                                                          
 
             let renderState = RenderState.make console None
 
-            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom ActivationResolver.none
             |> ignore<FakeUnit>
 
             expect {
@@ -563,7 +563,7 @@ This is focusable text                                                          
             // Tab should focus checkbox2 (marked with isInitialFocus=true), not checkbox1
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom ActivationResolver.none
             |> ignore<FakeUnit>
 
             expect {
@@ -580,7 +580,7 @@ This is focusable text                                                          
             // Tab again should cycle to checkbox3
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom ActivationResolver.none
             |> ignore<FakeUnit>
 
             expect {
@@ -597,7 +597,7 @@ This is focusable text                                                          
             // Tab again should cycle to checkbox1
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom ActivationResolver.none
             |> ignore<FakeUnit>
 
             expect {
@@ -614,7 +614,7 @@ This is focusable text                                                          
             // Tab again should cycle back to checkbox2
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom ActivationResolver.none
             |> ignore<FakeUnit>
 
             expect {
@@ -688,7 +688,7 @@ This is focusable text                                                          
             let renderState = RenderState.make console None
 
             // First render: checkbox2 should start with focus (marked with isInitiallyFocused=true)
-            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom ActivationResolver.none
             |> ignore<FakeUnit>
 
             expect {
@@ -705,7 +705,7 @@ This is focusable text                                                          
             // Tab should cycle to checkbox3
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom ActivationResolver.none
             |> ignore<FakeUnit>
 
             expect {
@@ -722,7 +722,7 @@ This is focusable text                                                          
             // Tab again should cycle to checkbox1
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom ActivationResolver.none
             |> ignore<FakeUnit>
 
             expect {
@@ -739,7 +739,7 @@ This is focusable text                                                          
             // Shift+Tab should cycle backwards to checkbox3
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, true, false, false))
 
-            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom ActivationResolver.none
             |> ignore<FakeUnit>
 
             expect {
@@ -756,7 +756,7 @@ This is focusable text                                                          
             // Shift+Tab again should cycle backwards to checkbox2
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, true, false, false))
 
-            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom ActivationResolver.none
             |> ignore<FakeUnit>
 
             expect {
@@ -995,7 +995,7 @@ This is focusable text                                                          
 
             // First render: fill with X's
             let mutable state =
-                App.pumpOnce worldFreezer false (fun _ -> true) renderState processWorld vdom
+                App.pumpOnce worldFreezer false (fun _ -> true) renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -1015,7 +1015,7 @@ This is focusable text                                                          
 
             // Second render: show keyed PanelSplit
             // The X's should be cleared (replaced with spaces), not left as artifacts
-            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -1072,7 +1072,7 @@ This is focusable text                                                          
 
             // First render: fill with X's
             let mutable state =
-                App.pumpOnce worldFreezer false (fun _ -> true) renderState processWorld vdom
+                App.pumpOnce worldFreezer false (fun _ -> true) renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -1092,7 +1092,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
 
             // Second render: show keyed Bordered
             // The border should be drawn, and the X's should be cleared
-            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -1155,7 +1155,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
                     world.ReadKey
 
             // Render without focus
-            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom ActivationResolver.none
             |> ignore<FakeUnit>
 
             terminalOps.Clear ()
@@ -1163,7 +1163,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
             // Tab to give focus to the checkbox
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom ActivationResolver.none
             |> ignore<FakeUnit>
 
             // Check that the checkbox has bounds with Height=0
@@ -1224,7 +1224,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
                     world.ReadKey
 
             // This should not throw an IndexOutOfRangeException
-            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom ActivationResolver.none
             |> ignore<FakeUnit>
         }
 
@@ -1275,7 +1275,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
                     world.ReadKey
 
             // This should not throw an IndexOutOfRangeException
-            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom ActivationResolver.none
             |> ignore<FakeUnit>
         }
 
@@ -1314,7 +1314,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
                     world.ReadKey
 
             // Render
-            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom ActivationResolver.none
             |> ignore<FakeUnit>
 
             // Check that the left child has zero width
@@ -1363,7 +1363,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
                     world.ReadKey
 
             // Render
-            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom ActivationResolver.none
             |> ignore<FakeUnit>
 
             // Check that the top child has zero height
@@ -1407,7 +1407,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
 
             let renderState = RenderState.make console None
 
-            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom ActivationResolver.none
             |> ignore<FakeUnit>
 
             expect {
@@ -1462,7 +1462,7 @@ Hello world                                                        Hi           
 
             let renderState = RenderState.make console None
 
-            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom ActivationResolver.none
             |> ignore<FakeUnit>
 
             expect {
@@ -1509,7 +1509,7 @@ onger piece text her|
 
             let renderState = RenderState.make console None
 
-            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom ActivationResolver.none
             |> ignore<FakeUnit>
 
             expect {
@@ -1557,7 +1557,7 @@ o   d   |
 
             let renderState = RenderState.make console None
 
-            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom ActivationResolver.none
             |> ignore<FakeUnit>
 
             expect {
@@ -1608,7 +1608,7 @@ e multiple lines when rendered          |
 
             let renderState = RenderState.make console None
 
-            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom ActivationResolver.none
             |> ignore<FakeUnit>
 
             expect {
@@ -1654,7 +1654,7 @@ nt                            |
 
             let renderState = RenderState.make console None
 
-            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom ActivationResolver.none
             |> ignore<FakeUnit>
 
             expect {
@@ -1702,7 +1702,7 @@ nt                            |
 
             let renderState = RenderState.make console None
 
-            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom ActivationResolver.none
             |> ignore<FakeUnit>
 
             expect {
@@ -1750,7 +1750,7 @@ B|
 
             let renderState = RenderState.make console None
 
-            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom ActivationResolver.none
             |> ignore<FakeUnit>
 
             expect {
@@ -1814,7 +1814,7 @@ bottom    |
 
             // First render: 50/50 split with X's filling the left side
             let mutable state =
-                App.pumpOnce worldFreezer true (fun _ -> true) renderState processWorld vdom
+                App.pumpOnce worldFreezer true (fun _ -> true) renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -1833,7 +1833,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX                                        
             world.SendKey (ConsoleKeyInfo ('x', ConsoleKey.NoName, false, false, false))
 
             // Second render: 25/75 split with only "AAA" on left
-            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
 
             // For reference, although the actual test assertion comes afterwards:
             let secondRender = ConsoleHarness.toString terminal
@@ -1900,13 +1900,13 @@ AAA                 right                                                       
 
             // First render: 50/50 split
             let mutable state =
-                App.pumpOnce worldFreezer true (fun _ -> true) renderState processWorld vdom
+                App.pumpOnce worldFreezer true (fun _ -> true) renderState processWorld vdom ActivationResolver.none
 
             // Send keystroke to trigger rebalance
             world.SendKey (ConsoleKeyInfo ('x', ConsoleKey.NoName, false, false, false))
 
             // Second render: 25/75 split
-            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
 
             let secondRender = ConsoleHarness.toString terminal
 
@@ -1958,7 +1958,7 @@ AAA                 right                                                       
 
             // First render: 70/30 split with X's on the left
             let mutable state =
-                App.pumpOnce worldFreezer true (fun _ -> true) renderState processWorld vdom
+                App.pumpOnce worldFreezer true (fun _ -> true) renderState processWorld vdom ActivationResolver.none
 
             ConsoleHarness.toString terminal |> shouldContainText "XXXX"
 
@@ -1966,7 +1966,7 @@ AAA                 right                                                       
             world.SendKey (ConsoleKeyInfo ('x', ConsoleKey.NoName, false, false, false))
 
             // Second render: 30/70 split
-            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
 
             let secondRender = ConsoleHarness.toString terminal
 
@@ -2009,7 +2009,7 @@ AAA                 right                                                       
 
             // First render: long text
             let mutable state =
-                App.pumpOnce worldFreezer true (fun _ -> true) renderState processWorld vdom
+                App.pumpOnce worldFreezer true (fun _ -> true) renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -2029,7 +2029,7 @@ AAA                 right                                                       
 
             // Second render: short text
             // Border bounds unchanged, child bounds unchanged, but content shrinks
-            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -2083,7 +2083,7 @@ AAA                 right                                                       
 
             // First render: long text
             let mutable state =
-                App.pumpOnce worldFreezer true (fun _ -> true) renderState processWorld vdom
+                App.pumpOnce worldFreezer true (fun _ -> true) renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -2102,7 +2102,7 @@ AAA                 right                                                       
             world.SendKey (ConsoleKeyInfo ('x', ConsoleKey.NoName, false, false, false))
 
             // Second render: short text
-            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom
+            state <- App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -2181,7 +2181,7 @@ AAA                 right                                                       
 
             let renderState = RenderState.make console None
 
-            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom
+            App.pumpOnce worldFreezer (FakeUnit.fake ()) (fun _ -> true) renderState processWorld vdom ActivationResolver.none
             |> ignore<FakeUnit>
 
             // Expected behavior after fix:

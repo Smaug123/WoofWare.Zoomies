@@ -45,7 +45,7 @@ module TestProgressBar =
 
             let renderState = RenderState.make console None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -83,7 +83,7 @@ module TestProgressBar =
 
             let renderState = RenderState.make console None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -121,7 +121,7 @@ module TestProgressBar =
 
             let renderState = RenderState.make console None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -163,7 +163,7 @@ module TestProgressBar =
 
             let renderState = RenderState.make console None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -203,7 +203,7 @@ Loading:[███░░░░░░░] 30%      |
 
             let renderState = RenderState.make console None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -247,7 +247,7 @@ Loading:[███░░░░░░░] 30%      |
 
             let renderState = RenderState.make console None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -289,7 +289,7 @@ Progress:[██████░░░░]         |
 
             let renderState = RenderState.make console None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -327,7 +327,7 @@ Progress:[██████░░░░]         |
 
             let renderState = RenderState.make console None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
             |> ignore
 
             expect {
@@ -370,7 +370,7 @@ Progress:[██████░░░░]         |
 
             let renderState = RenderState.make console None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -408,7 +408,7 @@ Progress:[██████░░░░]         |
 
             let renderState = RenderState.make console None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot

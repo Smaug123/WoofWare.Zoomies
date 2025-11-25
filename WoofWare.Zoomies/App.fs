@@ -78,6 +78,8 @@ module App =
         (renderState : RenderState)
         (processWorld : WorldProcessor<'appEvent, 'state>)
         (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
+        (resolveActivation : ActivationResolver<'appEvent, 'state>)
+        (listener : WorldFreezer<'appEvent>)
         : 'state
         =
         let mutable startState = state
@@ -151,6 +153,55 @@ module App =
                             // Split artificially at this boundary so that we have a completely fresh vdom just before
                             // the tab.
                             processBatch ()
+
+                    | WorldStateChange.Keystroke k ->
+                        // Check if the resolver handles this keystroke
+                        match VdomContext.focusedKey renderState.VdomContext with
+                        | Some focusedKey ->
+                            match resolveActivation.Invoke (focusedKey, k, currentState) with
+                            | Some appEvent ->
+                                // Activation! Process batch up to here, then inject event
+                                if nextToProcess > startOfBatch then
+                                    processBatch ()
+
+                                // Record activation time for visual feedback
+                                VdomContext.recordActivation focusedKey renderState.VdomContext
+
+                                // Schedule visual timeout
+                                task {
+                                    do! Task.Delay 500
+                                    listener.PostInternalEvent (FrameworkEvent.ActivationVisualTimeout focusedKey)
+                                }
+                                |> ignore
+
+                                // Inject the resolved event
+                                let injectedEvent = [| WorldStateChange.ApplicationEvent appEvent |]
+                                let processResult =
+                                    processWorld.ProcessWorld (
+                                        ReadOnlySpan injectedEvent,
+                                        renderState.VdomContext,
+                                        currentState
+                                    )
+
+                                currentState <- processResult.NewState
+
+                                // Re-render for visual feedback
+                                Render.oneStep renderState currentState (vdom renderState.VdomContext)
+                                VdomContext.markClean renderState.VdomContext
+                                startState <- currentState
+
+                                // Successfully consumed the keystroke; move forward
+                                nextToProcess <- nextToProcess + 1
+                                startOfBatch <- nextToProcess
+
+                            | None ->
+                                // Resolver didn't handle it, include in batch
+                                nextToProcess <- nextToProcess + 1
+
+                        | None ->
+                            // Nothing focused, include in batch
+                            nextToProcess <- nextToProcess + 1
+
                     | _ -> nextToProcess <- nextToProcess + 1
 
                 // And finally, process any sequences which *don't* end in a tab.
@@ -197,11 +248,17 @@ module App =
         (renderState : RenderState)
         (processWorld : WorldProcessor<'appEvent, 'state>)
         (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
+        (resolveActivation : ActivationResolver<'appEvent, 'state>)
         : 'state
         =
         let go state =
             let resizeGeneration = listener.TerminalResizeGeneration
             RenderState.refreshTerminalSize renderState
+
+            // Handle internal events first
+            for internalEvt in listener.DrainInternalEvents () do
+                match internalEvt with
+                | FrameworkEvent.ActivationVisualTimeout key -> VdomContext.clearActivation key renderState.VdomContext
 
             listener.RefreshExternal ()
 
@@ -211,7 +268,7 @@ module App =
                 match changes with
                 | ValueNone -> processNoChanges state renderState vdom
                 | ValueSome changes ->
-                    processChanges changes state haveFrameworkHandleFocus renderState processWorld vdom
+                    processChanges changes state haveFrameworkHandleFocus renderState processWorld vdom resolveActivation listener
 
             if listener.TerminalResizeGeneration <> resizeGeneration then
                 // Our knowledge of the current terminal's contents could be arbitrarily corrupted:
@@ -246,6 +303,7 @@ module App =
         (haveFrameworkHandleFocus : 'state -> bool)
         (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'state>)
         (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
+        (resolveActivation : ActivationResolver<'appEvent, 'state>)
         (debugWriter : StreamWriter option)
         : Task
         =
@@ -300,7 +358,7 @@ module App =
 
                         while cancels = 0 && not terminate.IsCancellationRequested do
                             currentState <-
-                                pumpOnce listener' currentState haveFrameworkHandleFocus renderState processWorld vdom
+                                pumpOnce listener' currentState haveFrameworkHandleFocus renderState processWorld vdom resolveActivation
 
                         None
                     with e ->
@@ -342,6 +400,7 @@ module App =
         (haveFrameworkHandleFocus : 'state -> bool)
         (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'state>)
         (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
+        (resolveActivation : ActivationResolver<'appEvent, 'state>)
         : Task
         =
         // Check if debug logging is enabled
@@ -375,4 +434,5 @@ module App =
             haveFrameworkHandleFocus
             processWorld
             vdom
+            resolveActivation
             debugWriter

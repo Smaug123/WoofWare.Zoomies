@@ -87,7 +87,7 @@ module TestCollapsible =
 
             // Initial render: collapsed and unfocused
             currentState <-
-                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -111,7 +111,7 @@ module TestCollapsible =
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             currentState <-
-                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -135,7 +135,7 @@ module TestCollapsible =
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
             currentState <-
-                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -159,7 +159,7 @@ This stuff was hidden                                       |
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
             currentState <-
-                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -252,7 +252,7 @@ This stuff was hidden                                       |
 
             // Initial render: collapsed
             currentState <-
-                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -276,13 +276,13 @@ This stuff was hidden                                       |
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             currentState <-
-                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
             // Expand
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
             currentState <-
-                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -377,7 +377,7 @@ Line 2 of content                                           |
 
             // Initial render: collapsed and unfocused - long text is truncated but on same line as glyph
             currentState <-
-                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -401,7 +401,7 @@ Line 2 of content                                           |
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             currentState <-
-                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -425,7 +425,7 @@ Line 2 of content                                           |
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
             currentState <-
-                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
