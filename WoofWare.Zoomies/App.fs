@@ -161,6 +161,9 @@ module App =
                             match resolveActivation.Invoke (focusedKey, k, currentState) with
                             | Some appEvent ->
                                 // Activation! Process batch up to here, then inject event
+                                // Capture index before processBatch() sets nextToProcess to Int32.MaxValue
+                                let idxBeforeProcessing = nextToProcess
+
                                 if nextToProcess > startOfBatch then
                                     processBatch ()
 
@@ -185,8 +188,9 @@ module App =
                                 startState <- currentState
 
                                 // Successfully consumed the keystroke; move forward
-                                nextToProcess <- nextToProcess + 1
-                                startOfBatch <- nextToProcess
+                                // Use captured index to avoid arithmetic on sentinel value (Int32.MaxValue)
+                                startOfBatch <- idxBeforeProcessing + 1
+                                nextToProcess <- startOfBatch
 
                             | None ->
                                 // Resolver didn't handle it, include in batch
