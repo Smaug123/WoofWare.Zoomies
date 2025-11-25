@@ -69,7 +69,12 @@ module TestActivationWithPartialBatch =
                         // This tests whether events get lost when activation handling happens
                         // immediately after a partial batch.
                         let shouldPartiallyConsume = processWorldCallCount = 1
-                        let toProcess = if shouldPartiallyConsume then min 1 inputs.Length else inputs.Length
+
+                        let toProcess =
+                            if shouldPartiallyConsume then
+                                min 1 inputs.Length
+                            else
+                                inputs.Length
 
                         // Process events
                         for i = 0 to toProcess - 1 do
