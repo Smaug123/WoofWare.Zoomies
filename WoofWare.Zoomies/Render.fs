@@ -148,7 +148,7 @@ module RenderState =
 
     let internal vdomContext (rs : RenderState) = rs.VdomContext
 
-    let internal make (c : IConsole) (debugWriter : IO.StreamWriter option) =
+    let internal make (c : IConsole) (getUtcNow : unit -> DateTime) (debugWriter : IO.StreamWriter option) =
         let bounds = getBounds c
 
         let changeBuffer = Array2D.zeroCreate bounds.Height bounds.Width
@@ -168,7 +168,7 @@ module RenderState =
             FocusableKeys = OrderedSet ()
             FirstToFocusKey = ref None
             InitiallyFocusedKey = ref None
-            VdomContext = VdomContext.empty bounds
+            VdomContext = VdomContext.empty getUtcNow bounds
             DebugWriter = debugWriter
         }
 
@@ -906,8 +906,13 @@ module Render =
                     clearBoundsWithSpaces dirty bounds
 
                     // Calculate button content: "[ label ]" or "[[ label ]]" for focused
-                    let brackets = if isFocused then "[[", "]]" else "[", "]"
-                    let leftBracket, rightBracket = brackets
+                    let leftBracket, rightBracket =
+                        match isFocused, isPressed with
+                        | true, true -> "[*", "*]"
+                        | true, false -> "[[", "]]"
+                        | false, true -> " *", "* "
+                        | false, false -> "[ ", " ]"
+
                     let fullContent = $"{leftBracket} {label} {rightBracket}"
 
                     // Only render if we have space

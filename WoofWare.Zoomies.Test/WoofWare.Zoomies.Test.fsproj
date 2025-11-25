@@ -18,12 +18,14 @@
     <Compile Include="ConsoleHarness.fs" />
     <Compile Include="CtrlCHandler.fs" />
     <Compile Include="MockWorld.fs" />
+    <Compile Include="MockTime.fs" />
     <Compile Include="TestExternalEventSubscription.fs" />
     <Compile Include="TestOrderedSet.fs" />
     <Compile Include="TestRender.fs" />
     <Compile Include="TestFocusCycle.fs" />
     <Compile Include="TestCollapsible.fs" />
     <Compile Include="TestProgressBar.fs" />
+    <Compile Include="TestButton.fs" />
     <Compile Include="TestBatchProcessing.fs" />
     <Compile Include="TestFlexibleContent.fs" />
     <Compile Include="TestWorldFreezer.fs" />

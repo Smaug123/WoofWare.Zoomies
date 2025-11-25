@@ -176,6 +176,7 @@ module App =
 
                                 // Inject the resolved event
                                 let injectedEvent = [| WorldStateChange.ApplicationEvent appEvent |]
+
                                 let processResult =
                                     processWorld.ProcessWorld (
                                         ReadOnlySpan injectedEvent,
@@ -268,7 +269,15 @@ module App =
                 match changes with
                 | ValueNone -> processNoChanges state renderState vdom
                 | ValueSome changes ->
-                    processChanges changes state haveFrameworkHandleFocus renderState processWorld vdom resolveActivation listener
+                    processChanges
+                        changes
+                        state
+                        haveFrameworkHandleFocus
+                        renderState
+                        processWorld
+                        vdom
+                        resolveActivation
+                        listener
 
             if listener.TerminalResizeGeneration <> resizeGeneration then
                 // Our knowledge of the current terminal's contents could be arbitrarily corrupted:
@@ -297,6 +306,7 @@ module App =
     let run'<'state, 'appEvent when 'state : equality>
         (terminate : CancellationToken)
         (console : IConsole)
+        (getUtcNow : unit -> DateTime)
         (ctrlC : CtrlCHandler)
         (worldFreezer : unit -> WorldFreezer<'appEvent>)
         (initialState : 'state)
@@ -316,7 +326,7 @@ module App =
         let _thread =
             fun () ->
                 // TODO: react to changes in dimension
-                use renderState = RenderState.make console debugWriter
+                use renderState = RenderState.make console getUtcNow debugWriter
 
                 RenderState.enterAlternateScreen renderState
                 RenderState.registerMouseMode renderState
@@ -358,7 +368,14 @@ module App =
 
                         while cancels = 0 && not terminate.IsCancellationRequested do
                             currentState <-
-                                pumpOnce listener' currentState haveFrameworkHandleFocus renderState processWorld vdom resolveActivation
+                                pumpOnce
+                                    listener'
+                                    currentState
+                                    haveFrameworkHandleFocus
+                                    renderState
+                                    processWorld
+                                    vdom
+                                    resolveActivation
 
                         None
                     with e ->
@@ -428,6 +445,7 @@ module App =
         run'
             CancellationToken.None
             (IConsole.make getEnv)
+            (fun () -> DateTime.UtcNow)
             (CtrlCHandler.make ())
             WorldFreezer.listen
             state

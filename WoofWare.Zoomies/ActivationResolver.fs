@@ -20,7 +20,8 @@ module ActivationResolver =
 
     /// A resolver that never handles any keystrokes (always returns None).
     /// Useful for applications that don't use buttons or other activation-based components.
-    let none<'e, 's> : ActivationResolver<'e, 's> = ActivationResolver (fun _ _ _ -> None)
+    let none<'e, 's> : ActivationResolver<'e, 's> =
+        ActivationResolver (fun _ _ _ -> None)
 
     /// Combine multiple resolvers. First one to return Some wins.
     let combine (resolvers : ActivationResolver<'e, 's> list) : ActivationResolver<'e, 's> =
@@ -41,12 +42,7 @@ module ActivationResolver =
         )
 
     /// Create a resolver for a text input field
-    let textInput
-        (key : NodeKey)
-        (onChar : char -> 'e)
-        (onBackspace : 'e)
-        : ActivationResolver<'e, 's>
-        =
+    let textInput (key : NodeKey) (onChar : char -> 'e) (onBackspace : 'e) : ActivationResolver<'e, 's> =
         ActivationResolver (fun k keystroke _ ->
             if k <> key then
                 None

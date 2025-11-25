@@ -12,18 +12,21 @@ type VdomContext =
             mutable _TerminalBounds : Rectangle
             mutable IsDirty : bool
             _LastActivationTimes : Dictionary<NodeKey, DateTime>
-            GetUtcNow : unit -> DateTime
+            _GetUtcNow : unit -> DateTime
         }
 
 [<RequireQualifiedAccess>]
 module VdomContext =
-    let internal empty (terminalBounds : Rectangle) =
+    [<Literal>]
+    let internal RECENT_ACTIVATION_TIMEOUT_MS = 500.0
+
+    let internal empty (getUtcNow : unit -> DateTime) (terminalBounds : Rectangle) =
         {
             _TerminalBounds = terminalBounds
             _FocusedKey = None
             IsDirty = true
             _LastActivationTimes = Dictionary<NodeKey, DateTime> ()
-            GetUtcNow = (fun () -> DateTime.UtcNow)
+            _GetUtcNow = getUtcNow
         }
 
     let internal setFocusedKey (key : NodeKey option) (v : VdomContext) =
@@ -46,16 +49,20 @@ module VdomContext =
     /// If you're not using the automatic focus handling mechanism, this is always None.
     let focusedKey (v : VdomContext) : NodeKey option = v._FocusedKey
 
+    /// Note that this time does *not* participate in dirtiness tracking. Hopefully we get Bonsai eventually so we can
+    /// do that.
+    let getUtcNow (ctx : VdomContext) = ctx._GetUtcNow ()
+
     /// Returns true if the node with the given key was activated within the
     /// visual feedback window (approximately 500ms).
     let wasRecentlyActivated (key : NodeKey) (ctx : VdomContext) : bool =
         match ctx._LastActivationTimes.TryGetValue key with
-        | true, time -> (ctx.GetUtcNow () - time).TotalMilliseconds < 500.0
+        | true, time -> (getUtcNow ctx - time).TotalMilliseconds < RECENT_ACTIVATION_TIMEOUT_MS
         | false, _ -> false
 
     /// Record that a node was just activated. Internal use only.
     let internal recordActivation (key : NodeKey) (ctx : VdomContext) : unit =
-        ctx._LastActivationTimes.[key] <- ctx.GetUtcNow ()
+        ctx._LastActivationTimes.[key] <- getUtcNow ctx
         ctx.IsDirty <- true
 
     /// Clear activation state for a key. Internal use only.

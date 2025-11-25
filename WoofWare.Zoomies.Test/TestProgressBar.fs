@@ -1,6 +1,5 @@
 namespace WoofWare.Zoomies.Test
 
-open System
 open NUnit.Framework
 open WoofWare.Expect
 open WoofWare.Zoomies
@@ -43,7 +42,7 @@ module TestProgressBar =
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console None
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
             App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
@@ -81,7 +80,7 @@ module TestProgressBar =
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console None
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
             App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
@@ -119,7 +118,7 @@ module TestProgressBar =
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console None
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
             App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
@@ -161,7 +160,7 @@ module TestProgressBar =
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console None
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
             App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
@@ -201,7 +200,7 @@ Loading:[███░░░░░░░] 30%      |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console None
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
             App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
@@ -245,7 +244,7 @@ Loading:[███░░░░░░░] 30%      |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console None
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
             App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
@@ -287,7 +286,7 @@ Progress:[██████░░░░]         |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console None
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
             App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
@@ -325,7 +324,7 @@ Progress:[██████░░░░]         |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console None
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
             App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
             |> ignore
@@ -368,7 +367,7 @@ Progress:[██████░░░░]         |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console None
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
             App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
@@ -406,7 +405,7 @@ Progress:[██████░░░░]         |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console None
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
             App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
