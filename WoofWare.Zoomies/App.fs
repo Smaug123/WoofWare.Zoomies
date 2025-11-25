@@ -166,30 +166,41 @@ module App =
                                 if nextToProcess > startOfBatch then
                                     processBatch ()
 
-                                // Record activation time for visual feedback
-                                VdomContext.recordActivation focusedKey renderState.VdomContext
+                                // Check if processBatch() processed everything up to the activation.
+                                // If not (partial consumption), don't handle activation yet - loop back
+                                // to continue processing unprocessed events before the activation.
+                                if startOfBatch < idxBeforeProcessing then
+                                    // Still have unprocessed events before the activation
+                                    // Continue from where processBatch() left off
+                                    nextToProcess <- startOfBatch
+                                else
+                                    // Everything up to the activation has been processed
+                                    // Now handle the activation
 
-                                // Inject the resolved event
-                                let injectedEvent = [| WorldStateChange.ApplicationEvent appEvent |]
+                                    // Record activation time for visual feedback
+                                    VdomContext.recordActivation focusedKey renderState.VdomContext
 
-                                let processResult =
-                                    processWorld.ProcessWorld (
-                                        ReadOnlySpan injectedEvent,
-                                        renderState.VdomContext,
-                                        currentState
-                                    )
+                                    // Inject the resolved event
+                                    let injectedEvent = [| WorldStateChange.ApplicationEvent appEvent |]
 
-                                currentState <- processResult.NewState
+                                    let processResult =
+                                        processWorld.ProcessWorld (
+                                            ReadOnlySpan injectedEvent,
+                                            renderState.VdomContext,
+                                            currentState
+                                        )
 
-                                // Re-render for visual feedback
-                                Render.oneStep renderState currentState (vdom renderState.VdomContext)
-                                VdomContext.markClean renderState.VdomContext
-                                startState <- currentState
+                                    currentState <- processResult.NewState
 
-                                // Successfully consumed the keystroke; move forward
-                                // Use captured index to avoid arithmetic on sentinel value (Int32.MaxValue)
-                                startOfBatch <- idxBeforeProcessing + 1
-                                nextToProcess <- startOfBatch
+                                    // Re-render for visual feedback
+                                    Render.oneStep renderState currentState (vdom renderState.VdomContext)
+                                    VdomContext.markClean renderState.VdomContext
+                                    startState <- currentState
+
+                                    // Successfully consumed the keystroke; move forward
+                                    // Use captured index to avoid arithmetic on sentinel value (Int32.MaxValue)
+                                    startOfBatch <- idxBeforeProcessing + 1
+                                    nextToProcess <- startOfBatch
 
                             | None ->
                                 // Resolver didn't handle it, include in batch
