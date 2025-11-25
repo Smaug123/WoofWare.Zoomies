@@ -17,8 +17,10 @@ type VdomContext =
 
 [<RequireQualifiedAccess>]
 module VdomContext =
+    /// Number of milliseconds you get after activation of an activatable component like Button, before which the
+    /// framework considers `VdomContext.wasRecentlyActivated` to expire.
     [<Literal>]
-    let internal RECENT_ACTIVATION_TIMEOUT_MS = 500.0
+    let RECENT_ACTIVATION_TIMEOUT_MS = 500.0
 
     let internal empty (getUtcNow : unit -> DateTime) (terminalBounds : Rectangle) =
         {
