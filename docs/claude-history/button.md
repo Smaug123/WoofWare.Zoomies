@@ -147,6 +147,8 @@ let resolver =
 
 ## Phase 2: Activation Tracking Infrastructure
 
+**Note:** The "Internal Event Type" subsection below describes infrastructure that was **not implemented**. The actual implementation uses synchronous pruning instead. See "Implementation Divergence" section at the end.
+
 ### VdomContext Additions
 
 The framework tracks when activations occur for visual feedback:
@@ -206,6 +208,8 @@ type WorldFreezer<'appEvent> =
 ---
 
 ## Phase 3: Event Processing Changes
+
+**Note:** The timeout mechanism described below was the original design but was **not implemented**. See "Implementation Divergence" section at the end for the simpler approach actually used.
 
 ### Modified Event Processing
 
@@ -576,3 +580,39 @@ Note: Global shortcuts should be checked first, before focus-specific handling.
 - **Simple VDOM**: No additional type parameters or class hierarchy changes needed
 
 The tradeoff is non-locality: activation is declared separately from VDOM construction. But this is arguably more honest—rendering and behavior are different concerns, and keys already need to be coordinated for focus checking anyway.
+
+---
+
+## Implementation Divergence
+
+### Activation Visual Feedback Timeout Mechanism
+
+The design doc (Phase 2 and Phase 3 above) originally proposed an **asynchronous timeout mechanism** for clearing activation visual feedback:
+
+**Original Design:**
+- When a button is activated, schedule a `Task.Delay(500)` that posts `FrameworkEvent.ActivationVisualTimeout` to an internal events queue
+- At the start of each render cycle, drain internal events and clear activation state for timed-out keys
+- This required infrastructure: `FrameworkEvent` type, `_InternalEvents` queue, `PostInternalEvent` and `DrainInternalEvents` methods
+
+**Actual Implementation:**
+- When a button is activated, call `VdomContext.recordActivation` which stores the activation timestamp
+- At the start of each render cycle, call `VdomContext.pruneExpiredActivations` which synchronously removes any activations older than 500ms
+- No async tasks, no internal events queue, no framework event types needed
+
+**Rationale for Divergence:**
+
+The synchronous pruning approach is **simpler and equally correct**:
+
+1. **Simpler implementation**: No async task scheduling, no concurrent queue management, no internal event plumbing
+2. **Same user-visible behavior**: Visual feedback clears after ~500ms in both designs
+3. **Acceptable timing imprecision**: If the UI is idle (no renders), activation state persists slightly longer than 500ms—but this doesn't matter because there's nothing rendering the visual feedback anyway
+4. **Easier to reason about**: State cleanup happens at a single well-defined point in the render cycle rather than via async callbacks
+
+**Code removed during cleanup (2025-01-25):**
+- `FrameworkEvent` type and `ActivationVisualTimeout` case
+- `WorldFreezer._InternalEvents` field
+- `WorldFreezer.PostInternalEvent` and `WorldFreezer.DrainInternalEvents` methods
+- Event draining loop in `App.pumpOnce`
+- Unused `listener` parameter in `App.processChanges`
+
+The implementation maintains all the benefits described in this design doc while using a simpler mechanism that better fits the immediate-mode rendering model of the framework.

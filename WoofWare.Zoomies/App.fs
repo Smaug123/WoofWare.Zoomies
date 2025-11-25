@@ -79,7 +79,6 @@ module App =
         (processWorld : WorldProcessor<'appEvent, 'state>)
         (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
         (resolveActivation : ActivationResolver<'appEvent, 'state>)
-        (listener : WorldFreezer<'appEvent>)
         : 'state
         =
         let mutable startState = state
@@ -254,11 +253,6 @@ module App =
             RenderState.refreshTerminalSize renderState
             VdomContext.pruneExpiredActivations renderState.VdomContext
 
-            // Handle internal events first
-            for internalEvt in listener.DrainInternalEvents () do
-                match internalEvt with
-                | FrameworkEvent.ActivationVisualTimeout key -> VdomContext.clearActivation key renderState.VdomContext
-
             listener.RefreshExternal ()
 
             let changes = listener.Changes ()
@@ -275,7 +269,6 @@ module App =
                         processWorld
                         vdom
                         resolveActivation
-                        listener
 
             if listener.TerminalResizeGeneration <> resizeGeneration then
                 // Our knowledge of the current terminal's contents could be arbitrarily corrupted:
