@@ -33,5 +33,5 @@ module MockTime =
                             now <- now + ts
                             now
                         )
-            SetTimeUtc = fun dt -> now <- dt
+            SetTimeUtc = fun dt -> lock lockObj (fun () -> now <- dt)
         }

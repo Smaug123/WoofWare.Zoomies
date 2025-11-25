@@ -1,8 +1,6 @@
 namespace WoofWare.Zoomies.Test
 
 open System
-open System.Collections.Generic
-open System.Threading.Tasks
 open FsUnitTyped
 open NUnit.Framework
 open WoofWare.Zoomies
@@ -12,9 +10,6 @@ open WoofWare.Zoomies.Components
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestActivationWithPartialBatch =
-
-    let getStaticUtcNow () =
-        DateTime (2025, 11, 25, 13, 33, 00, DateTimeKind.Utc)
 
     type AppEvent = | ButtonClicked
 
@@ -40,7 +35,7 @@ module TestActivationWithPartialBatch =
 
                 Vdom.panelSplitAuto (SplitDirection.Horizontal, text, button)
 
-            let console, terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 3)
+            let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 3)
 
             let world = MockWorld.make ()
 
@@ -150,7 +145,7 @@ module TestActivationWithPartialBatch =
 
                 button
 
-            let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
+            let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
             let world = MockWorld.make ()
 
