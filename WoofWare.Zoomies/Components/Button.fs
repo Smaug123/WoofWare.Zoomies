@@ -18,14 +18,13 @@ type Button =
     /// </param>
     /// <remarks>
     /// This component automatically handles focus and pressed visual states by consulting the VdomContext.
-    /// You must also provide an ActivationResolver to handle button activation events; the Vdom is only concerned with
-    /// layout, not action.
+    /// You must also provide an ActivationResolver to `App.run` to handle button activation events; the Vdom is only
+    /// concerned with layout, not action.
     /// </remarks>
     static member make
         (ctx : VdomContext, key : NodeKey, label : string, ?isFirstToFocus : bool, ?isInitiallyFocused : bool)
         =
         let isFocused = VdomContext.focusedKey ctx = Some key
-        // TODO: I think we're clearing the field to dirty the vdom before we compute the vdom!
         let isPressed = VdomContext.wasRecentlyActivated key ctx
 
         let button = Vdom.button isFocused isPressed label |> Vdom.withKey key
