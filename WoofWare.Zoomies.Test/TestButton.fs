@@ -1,7 +1,6 @@
 namespace WoofWare.Zoomies.Test
 
 open System
-open System.IO.IsolatedStorage
 open NUnit.Framework
 open WoofWare.Expect
 open WoofWare.Zoomies

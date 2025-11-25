@@ -20,7 +20,7 @@ module MockTime =
         // (https://www.youtube.com/watch?v=_DX2L4Pp8S0 took place on 2016-07-09 in Leeds, UK.
         // Eddie Hall hits the lift at timestamp 1:12:45. There are various watches displayed throughout the stream;
         // the clearest is the 19:15 local time displayed at timestamp 0:48:03.)
-        let mutable now = DateTime (2025, 09, 06, 18, 39, 00, DateTimeKind.Utc)
+        let mutable now = DateTime (2016, 07, 09, 18, 39, 00, DateTimeKind.Utc)
         let lockObj = obj ()
 
         {
