@@ -675,7 +675,7 @@ module Render =
 
             // Convert to RenderedNode
             match vdom with
-            | Vdom.Unkeyed (unkeyedVdom, _) ->
+            | Vdom.Unkeyed (unkeyedVdom, _, _) ->
                 arrangedToRendered
                     keyToNode
                     focusableKeys

@@ -9,6 +9,7 @@ type Checkbox =
 
     static member make' (isChecked : bool, isFocused : bool) : Vdom<DesiredBounds, Unkeyed> =
         Toggle.make' (Checkbox.untoggledGlyph, Checkbox.toggledGlyph, isChecked, isFocused)
+        |> Vdom.withTag "checkbox"
 
     /// <summary>Creates a checkbox component with automatic focus state.</summary>
     /// <param name="ctx">The VdomContext for checking focus state.</param>
@@ -40,3 +41,4 @@ type Checkbox =
             ?isFirstToFocus = isFirstToFocus,
             ?isInitiallyFocused = isInitiallyFocused
         )
+        |> Vdom.withTag "checkbox"

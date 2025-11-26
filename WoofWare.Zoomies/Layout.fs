@@ -1063,7 +1063,7 @@ module internal Layout =
 
         let measured =
             match vdom with
-            | Vdom.Unkeyed (unkeyedVdom, _) -> measureUnkeyed constraints unkeyedVdom
+            | Vdom.Unkeyed (unkeyedVdom, _, _) -> measureUnkeyed constraints unkeyedVdom
             | Vdom.Keyed _ -> failwith "Top-level vdom must be unkeyed"
 
         // Phase 2: Arrange with terminal bounds

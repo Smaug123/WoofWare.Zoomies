@@ -123,6 +123,7 @@ module ProgressBar =
                 renderBarWithWidth barWidth
 
             Vdom.flexibleContent measure render
+        |> Vdom.withTag "progress-bar"
 
     /// <summary>Creates a progress bar component.</summary>
     /// <param name="progress">Current progress value (should be between 0.0 and 1.0; invalid values show an empty bar with "n/a%" text).</param>
