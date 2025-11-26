@@ -48,6 +48,7 @@ type internal UnkeyedVdom<'bounds> =
     | PanelSplit of SplitDirection * SplitBehaviour * child1 : KeylessVdom<'bounds> * child2 : KeylessVdom<'bounds>
     | TextContent of string * focused : bool
     | ToggleWithGlyph of uncheckedGlyph : char * checkedGlyph : char * isChecked : bool * isFocused : bool
+    | Button of label : string * isFocused : bool * isPressed : bool
     | Focusable of isFirstToFocus : bool * isInitiallyFocused : bool * KeyedVdom<'bounds>
     | Empty
     | FlexibleContent of
@@ -454,6 +455,23 @@ type Vdom =
         : Vdom<DesiredBounds, Unkeyed>
         =
         Vdom.Unkeyed (UnkeyedVdom.ToggleWithGlyph (uncheckedGlyph, checkedGlyph, isChecked, isFocused), Teq.refl)
+
+    /// <summary>Creates a button with the given visual state.</summary>
+    /// <param name="isFocused">
+    /// Specifies that this button should render as if it has keyboard focus.
+    /// This has nothing to do with the WoofWare.Zoomies automatic focus tracking system; it's purely a display concern.
+    /// See <c>Vdom.withFocusTracking</c> for details.
+    /// </param>
+    /// <param name="isPressed">
+    /// Specifies that this button should render as if it is currently pressed.
+    /// This is typically managed automatically by calling <c>VdomContext.wasRecentlyActivated</c> with the button's key.
+    /// </param>
+    /// <param name="label">The text to display on the button.</param>
+    /// <remarks>
+    /// This is purely visual; use ActivationResolver passed into App.run to handle activation events.
+    /// </remarks>
+    static member button (isFocused : bool) (isPressed : bool) (label : string) : Vdom<DesiredBounds, Unkeyed> =
+        Vdom.Unkeyed (UnkeyedVdom.Button (label, isFocused, isPressed), Teq.refl)
 
     /// Creates a bordered wrapper around a component, drawing a border around its content.
     static member bordered (inner : Vdom<_, Keyed>) : Vdom<DesiredBounds, Unkeyed> =

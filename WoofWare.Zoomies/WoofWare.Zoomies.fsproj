@@ -33,6 +33,7 @@
     <Compile Include="ConsoleModifiers.fs" />
     <Compile Include="LayoutTypes.fs" />
     <Compile Include="Vdom.fs" />
+    <Compile Include="ActivationResolver.fs" />
     <Compile Include="CtrlCHandler.fs" />
     <Compile Include="ConsoleColor.fs" />
     <Compile Include="Terminal.fs" />
@@ -43,6 +44,7 @@
     <Compile Include="Layout.fs" />
     <Compile Include="Render.fs" />
     <Compile Include="App.fs" />
+    <Compile Include="Components\Button.fs" />
     <Compile Include="Components\Collapsible.fs" />
     <Compile Include="Components\LabelledCheckbox.fs" />
     <Compile Include="Components\ProgressBar.fs" />

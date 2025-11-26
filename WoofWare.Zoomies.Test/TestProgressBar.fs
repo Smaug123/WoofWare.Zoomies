@@ -1,6 +1,5 @@
 namespace WoofWare.Zoomies.Test
 
-open System
 open NUnit.Framework
 open WoofWare.Expect
 open WoofWare.Zoomies
@@ -43,9 +42,9 @@ module TestProgressBar =
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console None
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -81,9 +80,9 @@ module TestProgressBar =
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console None
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -119,9 +118,9 @@ module TestProgressBar =
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console None
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -161,9 +160,9 @@ module TestProgressBar =
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console None
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -201,9 +200,9 @@ Loading:[███░░░░░░░] 30%      |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console None
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -245,9 +244,9 @@ Loading:[███░░░░░░░] 30%      |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console None
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -287,9 +286,9 @@ Progress:[██████░░░░]         |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console None
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -325,9 +324,9 @@ Progress:[██████░░░░]         |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console None
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
             |> ignore
 
             expect {
@@ -368,9 +367,9 @@ Progress:[██████░░░░]         |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console None
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot
@@ -406,9 +405,9 @@ Progress:[██████░░░░]         |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console None
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
             expect {
                 snapshot

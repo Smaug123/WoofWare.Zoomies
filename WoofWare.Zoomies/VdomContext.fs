@@ -1,5 +1,8 @@
 namespace WoofWare.Zoomies
 
+open System
+open System.Collections.Generic
+
 /// Context provided to vdom construction, containing information about the layout of the previous render cycle.
 /// This is mutable (although you aren't given the tools to mutate it), so don't persist it.
 type VdomContext =
@@ -8,15 +11,24 @@ type VdomContext =
             mutable _FocusedKey : NodeKey option
             mutable _TerminalBounds : Rectangle
             mutable IsDirty : bool
+            _LastActivationTimes : Dictionary<NodeKey, DateTime>
+            _GetUtcNow : unit -> DateTime
         }
 
 [<RequireQualifiedAccess>]
 module VdomContext =
-    let internal empty (terminalBounds : Rectangle) =
+    /// Number of milliseconds you get after activation of an activatable component like Button, before which the
+    /// framework considers `VdomContext.wasRecentlyActivated` to expire.
+    [<Literal>]
+    let RECENT_ACTIVATION_TIMEOUT_MS = 500.0
+
+    let internal empty (getUtcNow : unit -> DateTime) (terminalBounds : Rectangle) =
         {
             _TerminalBounds = terminalBounds
             _FocusedKey = None
             IsDirty = true
+            _LastActivationTimes = Dictionary<NodeKey, DateTime> ()
+            _GetUtcNow = getUtcNow
         }
 
     let internal setFocusedKey (key : NodeKey option) (v : VdomContext) =
@@ -33,8 +45,51 @@ module VdomContext =
 
     let internal markDirty (v : VdomContext) = v.IsDirty <- true
 
+    let internal isDirty (v : VdomContext) = v.IsDirty
+
     /// Get the dimensions of the terminal (on the previous render).
     let terminalBounds (v : VdomContext) : Rectangle = v._TerminalBounds
     /// Get the NodeKey of the Vdom element, if any, which was focused in the last render.
     /// If you're not using the automatic focus handling mechanism, this is always None.
     let focusedKey (v : VdomContext) : NodeKey option = v._FocusedKey
+
+    /// Note that this time does *not* participate in dirtiness tracking. Hopefully we get Bonsai eventually so we can
+    /// do that.
+    let getUtcNow (ctx : VdomContext) = ctx._GetUtcNow ()
+
+    /// Returns true if the node with the given key was activated within the
+    /// visual feedback window (approximately 500ms).
+    let wasRecentlyActivated (key : NodeKey) (ctx : VdomContext) : bool =
+        match ctx._LastActivationTimes.TryGetValue key with
+        | true, time -> (getUtcNow ctx - time).TotalMilliseconds < RECENT_ACTIVATION_TIMEOUT_MS
+        | false, _ -> false
+
+    /// Record that a node was just activated.
+    let internal recordActivation (key : NodeKey) (ctx : VdomContext) : unit =
+        ctx._LastActivationTimes.[key] <- getUtcNow ctx
+        ctx.IsDirty <- true
+
+    /// Clear activation state for a key.
+    let internal clearActivation (key : NodeKey) (ctx : VdomContext) : unit =
+        if ctx._LastActivationTimes.Remove key then
+            ctx.IsDirty <- true
+
+    /// Remove any activation records that have expired, marking the context dirty if anything changes.
+    let internal pruneExpiredActivations (ctx : VdomContext) : unit =
+        let now = getUtcNow ctx
+
+        // The docs are very explicit.
+        // https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2.getenumerator?view=net-6.0)
+        // > .NET Core 3.0+ only: The only mutating methods which do not invalidate enumerators are Remove and Clear.
+        // https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2.remove?view=net-6.0
+        // > .NET Core 3.0+ only: this mutating method may be safely called without invalidating active enumerators on the Dictionary<TKey,TValue> instance. This does not imply thread safety.
+        // We also explicitly test this safety property in TestVdomContext.fs.
+        let mutable removed = false
+
+        for KeyValue (key, time) in ctx._LastActivationTimes do
+            if (now - time).TotalMilliseconds >= RECENT_ACTIVATION_TIMEOUT_MS then
+                ctx._LastActivationTimes.Remove key |> ignore<bool>
+                removed <- true
+
+        if removed then
+            ctx.IsDirty <- true

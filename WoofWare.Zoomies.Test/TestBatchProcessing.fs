@@ -77,7 +77,7 @@ module TestBatchProcessing =
 
             let vdom (_vdomContext : VdomContext) (_state : ImmutableArray<char>) = Vdom.textContent false ""
 
-            let renderState = RenderState.make console None
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
             let mutable currentState = initialState
 
             // Keep pumping until all events are processed
@@ -93,6 +93,7 @@ module TestBatchProcessing =
                         renderState
                         processWorld
                         vdom
+                        ActivationResolver.none
 
                 iterations <- iterations + 1
 
@@ -277,12 +278,19 @@ module TestBatchProcessing =
 
                 Vdom.panelSplitAbsolute (SplitDirection.Vertical, -3, checkbox0, checkbox1)
 
-            let renderState = RenderState.make console None
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
             let mutable currentState = initialState
 
             // Initial render
             currentState <-
-                App.pumpOnce worldFreezer currentState (fun s -> s.UseFrameworkFocus) renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    currentState
+                    (fun s -> s.UseFrameworkFocus)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             vdomRenderCount |> shouldEqual 1
 
@@ -292,7 +300,14 @@ module TestBatchProcessing =
             world.SendKey (ConsoleKeyInfo ('b', ConsoleKey.NoName, false, false, false))
 
             currentState <-
-                App.pumpOnce worldFreezer currentState (fun s -> s.UseFrameworkFocus) renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    currentState
+                    (fun s -> s.UseFrameworkFocus)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             vdomRenderCount |> shouldEqual 2
 
@@ -305,7 +320,14 @@ module TestBatchProcessing =
             world.SendKey (ConsoleKeyInfo ('X', ConsoleKey.NoName, false, false, false))
 
             currentState <-
-                App.pumpOnce worldFreezer currentState (fun s -> s.UseFrameworkFocus) renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    currentState
+                    (fun s -> s.UseFrameworkFocus)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             vdomRenderCount |> shouldEqual 3
 
@@ -317,7 +339,14 @@ module TestBatchProcessing =
             world.SendKey (ConsoleKeyInfo ('Z', ConsoleKey.NoName, false, false, false))
 
             currentState <-
-                App.pumpOnce worldFreezer currentState (fun s -> s.UseFrameworkFocus) renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    currentState
+                    (fun s -> s.UseFrameworkFocus)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             vdomRenderCount |> shouldEqual 4
 
@@ -331,7 +360,14 @@ module TestBatchProcessing =
             world.SendKey (ConsoleKeyInfo ('c', ConsoleKey.NoName, false, false, false))
 
             currentState <-
-                App.pumpOnce worldFreezer currentState (fun s -> s.UseFrameworkFocus) renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    currentState
+                    (fun s -> s.UseFrameworkFocus)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             vdomRenderCount |> shouldEqual 5
 
@@ -345,7 +381,14 @@ module TestBatchProcessing =
             world.SendKey (ConsoleKeyInfo ('Y', ConsoleKey.NoName, false, false, false))
 
             currentState <-
-                App.pumpOnce worldFreezer currentState (fun s -> s.UseFrameworkFocus) renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    currentState
+                    (fun s -> s.UseFrameworkFocus)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             vdomRenderCount |> shouldEqual 6
 
@@ -359,7 +402,14 @@ module TestBatchProcessing =
             world.SendKey (ConsoleKeyInfo ('d', ConsoleKey.NoName, false, false, false))
 
             currentState <-
-                App.pumpOnce worldFreezer currentState (fun s -> s.UseFrameworkFocus) renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    currentState
+                    (fun s -> s.UseFrameworkFocus)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             vdomRenderCount |> shouldEqual 7
 
@@ -425,11 +475,19 @@ module TestBatchProcessing =
                     vdomRenderCount <- vdomRenderCount + 1
                     Vdom.textContent false ""
 
-                let renderState = RenderState.make console None
+                let renderState = RenderState.make console MockTime.getStaticUtcNow None
                 let mutable currentState = []
 
                 // Initial render
-                currentState <- App.pumpOnce worldFreezer currentState (fun _ -> false) renderState processWorld vdom
+                currentState <-
+                    App.pumpOnce
+                        worldFreezer
+                        currentState
+                        (fun _ -> false)
+                        renderState
+                        processWorld
+                        vdom
+                        ActivationResolver.none
 
                 let initialRenderCount = vdomRenderCount
 
@@ -439,7 +497,15 @@ module TestBatchProcessing =
                 for i in 0 .. totalKeystrokes - 1 do
                     world.SendKey (ConsoleKeyInfo (char (int 'a' + i), ConsoleKey.NoName, false, false, false))
 
-                currentState <- App.pumpOnce worldFreezer currentState (fun _ -> false) renderState processWorld vdom
+                currentState <-
+                    App.pumpOnce
+                        worldFreezer
+                        currentState
+                        (fun _ -> false)
+                        renderState
+                        processWorld
+                        vdom
+                        ActivationResolver.none
 
                 // Verify all events were processed in order
                 let expectedChars = [ 'a' .. char (int 'a' + totalKeystrokes - 1) ]

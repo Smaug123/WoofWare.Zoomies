@@ -1,6 +1,5 @@
 namespace WoofWare.Zoomies.Test
 
-open System
 open FsUnitTyped
 open NUnit.Framework
 open WoofWare.Expect
@@ -104,7 +103,7 @@ module TestFlexibleContent =
     [<Test>]
     let ``FlexibleContent renders at width 80`` () =
         let console, harness = ConsoleHarness.make' (fun () -> 80) (fun () -> 5)
-        let renderState = RenderState.make console None
+        let renderState = RenderState.make console MockTime.getStaticUtcNow None
         let vdom = progressBar 0.6
 
         Render.oneStep renderState () (fun _ -> vdom)
@@ -125,7 +124,7 @@ module TestFlexibleContent =
     [<Test>]
     let ``FlexibleContent renders at width 20`` () =
         let console, harness = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
-        let renderState = RenderState.make console None
+        let renderState = RenderState.make console MockTime.getStaticUtcNow None
         let vdom = progressBar 0.6
 
         Render.oneStep renderState () (fun _ -> vdom)
@@ -154,7 +153,7 @@ module TestFlexibleContent =
                 Execute = terminalOps.Add
             }
 
-        let renderState = RenderState.make console None
+        let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
         let vdom = progressBar 0.6
 
@@ -183,7 +182,7 @@ module TestFlexibleContent =
                 Execute = terminalOps.Add
             }
 
-        let renderState = RenderState.make console None
+        let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
         let vdom = responsiveLayout "Left" "Right"
 
@@ -229,7 +228,7 @@ module TestFlexibleContent =
                 Execute = terminalOps.Add
             }
 
-        let renderState = RenderState.make console None
+        let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
         // Should not crash even though measurement requests more than available
         Render.oneStep renderState () (fun _ -> vdom)
@@ -297,7 +296,7 @@ module TestFlexibleContent =
             Vdom.flexibleContent outerMeasure outerRender
 
         let console, harness = ConsoleHarness.make' (fun () -> 50) (fun () -> 5)
-        let renderState = RenderState.make console None
+        let renderState = RenderState.make console MockTime.getStaticUtcNow None
         let vdom = nestedFlexible 0.6
 
         Render.oneStep renderState () (fun _ -> vdom)
@@ -372,7 +371,7 @@ Progress:                                         |
             Vdom.flexibleContent outerMeasure outerRender
 
         let console, harness = ConsoleHarness.make' (fun () -> 25) (fun () -> 5)
-        let renderState = RenderState.make console None
+        let renderState = RenderState.make console MockTime.getStaticUtcNow None
         let vdom = nestedFlexible 0.6
 
         Render.oneStep renderState () (fun _ -> vdom)

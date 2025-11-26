@@ -621,6 +621,15 @@ module internal Layout =
                 Measured = measureCheckbox constraints
                 Children = []
             }
+        | UnkeyedVdom.Button (label, _isFocused, _isPressed) ->
+            // Button renders as "[[ label ]]" or with that same width in all cases.
+            let buttonText = $"[[ {label} ]]"
+
+            {
+                Vdom = KeylessVdom.Unkeyed vdom
+                Measured = measureText buttonText constraints
+                Children = []
+            }
         | UnkeyedVdom.Empty ->
             {
                 Vdom = KeylessVdom.Unkeyed vdom
@@ -713,6 +722,13 @@ module internal Layout =
                                 UnkeyedVdom.ToggleWithGlyph (uncheckedGlyph, checkedGlyph, isChecked, isFocused)
                             )
                         )
+                    VDomSource = measured.Vdom
+                    Bounds = bounds
+                    Children = []
+                }
+            | UnkeyedVdom.Button (label, isFocused, isPressed) ->
+                {
+                    Vdom = KeylessVdom.Keyed (KeyedVdom.WithKey (key, UnkeyedVdom.Button (label, isFocused, isPressed)))
                     VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = []
@@ -818,6 +834,13 @@ module internal Layout =
                         KeylessVdom.Unkeyed (
                             UnkeyedVdom.ToggleWithGlyph (uncheckedGlyph, checkedGlyph, isChecked, isFocused)
                         )
+                    VDomSource = measured.Vdom
+                    Bounds = bounds
+                    Children = []
+                }
+            | UnkeyedVdom.Button (label, isFocused, isPressed) ->
+                {
+                    Vdom = KeylessVdom.Unkeyed (UnkeyedVdom.Button (label, isFocused, isPressed))
                     VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = []

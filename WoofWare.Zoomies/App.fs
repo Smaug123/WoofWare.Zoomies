@@ -78,6 +78,7 @@ module App =
         (renderState : RenderState)
         (processWorld : WorldProcessor<'appEvent, 'state>)
         (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
+        (resolveActivation : ActivationResolver<'appEvent, 'state>)
         : 'state
         =
         let mutable startState = state
@@ -151,6 +152,64 @@ module App =
                             // Split artificially at this boundary so that we have a completely fresh vdom just before
                             // the tab.
                             processBatch ()
+
+                    | WorldStateChange.Keystroke k ->
+                        // Check if the resolver handles this keystroke
+                        match VdomContext.focusedKey renderState.VdomContext with
+                        | Some focusedKey ->
+                            match resolveActivation.Invoke (focusedKey, k, currentState) with
+                            | Some appEvent ->
+                                // Activation! Process batch up to here, then inject event
+                                // Capture index before processBatch() sets nextToProcess to Int32.MaxValue
+                                let idxBeforeProcessing = nextToProcess
+
+                                if nextToProcess > startOfBatch then
+                                    processBatch ()
+
+                                // Check if processBatch() processed everything up to the activation.
+                                // If not (partial consumption), don't handle activation yet - loop back
+                                // to continue processing unprocessed events before the activation.
+                                if startOfBatch < idxBeforeProcessing then
+                                    // Still have unprocessed events before the activation
+                                    // Continue from where processBatch() left off
+                                    nextToProcess <- startOfBatch
+                                else
+                                    // Everything up to the activation has been processed
+                                    // Now handle the activation
+
+                                    // Record activation time for visual feedback
+                                    VdomContext.recordActivation focusedKey renderState.VdomContext
+
+                                    // Inject the resolved event
+                                    let injectedEvent = [| WorldStateChange.ApplicationEvent appEvent |]
+
+                                    let processResult =
+                                        processWorld.ProcessWorld (
+                                            ReadOnlySpan injectedEvent,
+                                            renderState.VdomContext,
+                                            currentState
+                                        )
+
+                                    currentState <- processResult.NewState
+
+                                    // Re-render for visual feedback
+                                    Render.oneStep renderState currentState (vdom renderState.VdomContext)
+                                    VdomContext.markClean renderState.VdomContext
+                                    startState <- currentState
+
+                                    // Successfully consumed the keystroke; move forward
+                                    // Use captured index to avoid arithmetic on sentinel value (Int32.MaxValue)
+                                    startOfBatch <- idxBeforeProcessing + 1
+                                    nextToProcess <- startOfBatch
+
+                            | None ->
+                                // Resolver didn't handle it, include in batch
+                                nextToProcess <- nextToProcess + 1
+
+                        | None ->
+                            // Nothing focused, include in batch
+                            nextToProcess <- nextToProcess + 1
+
                     | _ -> nextToProcess <- nextToProcess + 1
 
                 // And finally, process any sequences which *don't* end in a tab.
@@ -197,11 +256,13 @@ module App =
         (renderState : RenderState)
         (processWorld : WorldProcessor<'appEvent, 'state>)
         (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
+        (resolveActivation : ActivationResolver<'appEvent, 'state>)
         : 'state
         =
         let go state =
             let resizeGeneration = listener.TerminalResizeGeneration
             RenderState.refreshTerminalSize renderState
+            VdomContext.pruneExpiredActivations renderState.VdomContext
 
             listener.RefreshExternal ()
 
@@ -211,7 +272,14 @@ module App =
                 match changes with
                 | ValueNone -> processNoChanges state renderState vdom
                 | ValueSome changes ->
-                    processChanges changes state haveFrameworkHandleFocus renderState processWorld vdom
+                    processChanges
+                        changes
+                        state
+                        haveFrameworkHandleFocus
+                        renderState
+                        processWorld
+                        vdom
+                        resolveActivation
 
             if listener.TerminalResizeGeneration <> resizeGeneration then
                 // Our knowledge of the current terminal's contents could be arbitrarily corrupted:
@@ -240,12 +308,14 @@ module App =
     let run'<'state, 'appEvent when 'state : equality>
         (terminate : CancellationToken)
         (console : IConsole)
+        (getUtcNow : unit -> DateTime)
         (ctrlC : CtrlCHandler)
         (worldFreezer : unit -> WorldFreezer<'appEvent>)
         (initialState : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
         (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'state>)
         (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
+        (resolveActivation : ActivationResolver<'appEvent, 'state>)
         (debugWriter : StreamWriter option)
         : Task
         =
@@ -258,7 +328,7 @@ module App =
         let _thread =
             fun () ->
                 // TODO: react to changes in dimension
-                use renderState = RenderState.make console debugWriter
+                use renderState = RenderState.make console getUtcNow debugWriter
 
                 RenderState.enterAlternateScreen renderState
                 RenderState.registerMouseMode renderState
@@ -300,7 +370,14 @@ module App =
 
                         while cancels = 0 && not terminate.IsCancellationRequested do
                             currentState <-
-                                pumpOnce listener' currentState haveFrameworkHandleFocus renderState processWorld vdom
+                                pumpOnce
+                                    listener'
+                                    currentState
+                                    haveFrameworkHandleFocus
+                                    renderState
+                                    processWorld
+                                    vdom
+                                    resolveActivation
 
                         None
                     with e ->
@@ -342,6 +419,7 @@ module App =
         (haveFrameworkHandleFocus : 'state -> bool)
         (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'state>)
         (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
+        (resolveActivation : ActivationResolver<'appEvent, 'state>)
         : Task
         =
         // Check if debug logging is enabled
@@ -369,10 +447,12 @@ module App =
         run'
             CancellationToken.None
             (IConsole.make getEnv)
+            (fun () -> DateTime.UtcNow)
             (CtrlCHandler.make ())
             WorldFreezer.listen
             state
             haveFrameworkHandleFocus
             processWorld
             vdom
+            resolveActivation
             debugWriter

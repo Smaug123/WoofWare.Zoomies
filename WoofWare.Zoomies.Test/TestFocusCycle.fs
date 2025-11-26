@@ -109,11 +109,18 @@ module TestFocusCycle =
                             }
                 }
 
-            let renderState = RenderState.make console None
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
             let mutable currentState = state
 
             currentState <-
-                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    currentState
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             expect {
                 snapshot
@@ -128,7 +135,14 @@ module TestFocusCycle =
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
             currentState <-
-                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    currentState
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             expect {
                 snapshot
@@ -143,7 +157,14 @@ module TestFocusCycle =
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             currentState <-
-                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    currentState
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             expect {
                 snapshot
@@ -157,7 +178,14 @@ module TestFocusCycle =
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
             currentState <-
-                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    currentState
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             expect {
                 snapshot
@@ -171,7 +199,14 @@ module TestFocusCycle =
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             currentState <-
-                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    currentState
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             expect {
                 snapshot
@@ -185,7 +220,14 @@ module TestFocusCycle =
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
             currentState <-
-                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    currentState
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             expect {
                 snapshot
@@ -199,7 +241,14 @@ module TestFocusCycle =
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             currentState <-
-                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    currentState
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             expect {
                 snapshot
@@ -213,7 +262,14 @@ module TestFocusCycle =
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
             currentState <-
-                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    currentState
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             expect {
                 snapshot
@@ -227,7 +283,14 @@ module TestFocusCycle =
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             currentState <-
-                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    currentState
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             expect {
                 snapshot
@@ -241,7 +304,14 @@ module TestFocusCycle =
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
             currentState <-
-                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    currentState
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             expect {
                 snapshot
@@ -255,7 +325,14 @@ module TestFocusCycle =
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             currentState <-
-                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    currentState
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             expect {
                 snapshot
@@ -321,11 +398,18 @@ module TestFocusCycle =
                             }
                 }
 
-            let renderState = RenderState.make console None
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
             let mutable currentState = state
 
             currentState <-
-                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    currentState
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             expect {
                 snapshot
@@ -340,7 +424,14 @@ module TestFocusCycle =
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             currentState <-
-                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    currentState
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             expect {
                 snapshot
@@ -355,7 +446,14 @@ module TestFocusCycle =
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             currentState <-
-                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    currentState
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             expect {
                 snapshot
@@ -370,7 +468,14 @@ module TestFocusCycle =
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, true, false, false))
 
             currentState <-
-                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    currentState
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             expect {
                 snapshot
@@ -385,7 +490,14 @@ module TestFocusCycle =
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, true, false, false))
 
             currentState <-
-                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    currentState
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             expect {
                 snapshot
@@ -400,7 +512,14 @@ module TestFocusCycle =
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
             currentState <-
-                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    currentState
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             expect {
                 snapshot
@@ -415,7 +534,14 @@ module TestFocusCycle =
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, true, false, false))
 
             currentState <-
-                App.pumpOnce worldFreezer currentState haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    currentState
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             expect {
                 snapshot
@@ -485,11 +611,18 @@ module TestFocusCycle =
                         ProcessWorldResult.make renderCheckbox1
                 }
 
-            let renderState = RenderState.make console None
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
             let mutable renderCheckbox1 = true
 
             renderCheckbox1 <-
-                App.pumpOnce worldFreezer renderCheckbox1 haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    renderCheckbox1
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             expect {
                 snapshot
@@ -504,7 +637,14 @@ module TestFocusCycle =
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             renderCheckbox1 <-
-                App.pumpOnce worldFreezer renderCheckbox1 haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    renderCheckbox1
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             expect {
                 snapshot
@@ -519,7 +659,14 @@ module TestFocusCycle =
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
             renderCheckbox1 <-
-                App.pumpOnce worldFreezer renderCheckbox1 haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    renderCheckbox1
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             // Focus should remain on the element with shared-key, even though it's a different element
             expect {
@@ -593,10 +740,17 @@ module TestFocusCycle =
                 }
 
             let mutable renderFocusable = 0
-            let renderState = RenderState.make console None
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
             renderFocusable <-
-                App.pumpOnce worldFreezer renderFocusable haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    renderFocusable
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             expect {
                 snapshot
@@ -611,7 +765,14 @@ module TestFocusCycle =
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             renderFocusable <-
-                App.pumpOnce worldFreezer renderFocusable haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    renderFocusable
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             expect {
                 snapshot
@@ -626,7 +787,14 @@ module TestFocusCycle =
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
             renderFocusable <-
-                App.pumpOnce worldFreezer renderFocusable haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    renderFocusable
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             // The element is no longer in the focusable list.
             // Vdom construction sees that on the previous tick, that element was focused, so it displays as focused.
@@ -643,7 +811,14 @@ more       [☐]  |
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
             renderFocusable <-
-                App.pumpOnce worldFreezer renderFocusable haveFrameworkHandleFocus renderState processWorld vdom
+                App.pumpOnce
+                    worldFreezer
+                    renderFocusable
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
 
             expect {
                 snapshot

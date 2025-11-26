@@ -148,7 +148,7 @@ module RenderState =
 
     let internal vdomContext (rs : RenderState) = rs.VdomContext
 
-    let internal make (c : IConsole) (debugWriter : IO.StreamWriter option) =
+    let internal make (c : IConsole) (getUtcNow : unit -> DateTime) (debugWriter : IO.StreamWriter option) =
         let bounds = getBounds c
 
         let changeBuffer = Array2D.zeroCreate bounds.Height bounds.Width
@@ -168,7 +168,7 @@ module RenderState =
             FocusableKeys = OrderedSet ()
             FirstToFocusKey = ref None
             InitiallyFocusedKey = ref None
-            VdomContext = VdomContext.empty bounds
+            VdomContext = VdomContext.empty getUtcNow bounds
             DebugWriter = debugWriter
         }
 
@@ -209,6 +209,12 @@ module Render =
                     | UnkeyedVdom.ToggleWithGlyph (ug1, cg1, checked1, focus1),
                       UnkeyedVdom.ToggleWithGlyph (ug2, cg2, checked2, focus2) when
                         ug1 = ug2 && cg1 = cg2 && checked1 = checked2 && focus1 = focus2
+                        ->
+                        // Repopulate keyToNode for reused keyed node
+                        keyToNode.[key1] <- prev
+                        Some prev
+                    | UnkeyedVdom.Button (label1, focus1, pressed1), UnkeyedVdom.Button (label2, focus2, pressed2) when
+                        label1 = label2 && focus1 = focus2 && pressed1 = pressed2
                         ->
                         // Repopulate keyToNode for reused keyed node
                         keyToNode.[key1] <- prev
@@ -309,6 +315,11 @@ module Render =
                 | KeylessVdom.Unkeyed (UnkeyedVdom.ToggleWithGlyph (ug1, cg1, checked1, focus1)),
                   KeylessVdom.Unkeyed (UnkeyedVdom.ToggleWithGlyph (ug2, cg2, checked2, focus2)) when
                     ug1 = ug2 && cg1 = cg2 && checked1 = checked2 && focus1 = focus2
+                    ->
+                    Some prev
+                | KeylessVdom.Unkeyed (UnkeyedVdom.Button (label1, focus1, pressed1)),
+                  KeylessVdom.Unkeyed (UnkeyedVdom.Button (label2, focus2, pressed2)) when
+                    label1 = label2 && focus1 = focus2 && pressed1 = pressed2
                     ->
                     Some prev
                 | KeylessVdom.Unkeyed UnkeyedVdom.Empty, KeylessVdom.Unkeyed UnkeyedVdom.Empty ->
@@ -495,6 +506,7 @@ module Render =
                     ]
                 | UnkeyedVdom.TextContent _
                 | UnkeyedVdom.ToggleWithGlyph _
+                | UnkeyedVdom.Button _
                 | UnkeyedVdom.Empty -> []
             | KeylessVdom.Unkeyed unkeyedVdom ->
                 match unkeyedVdom with
@@ -583,6 +595,7 @@ module Render =
                     ]
                 | UnkeyedVdom.TextContent _
                 | UnkeyedVdom.ToggleWithGlyph _
+                | UnkeyedVdom.Button _
                 | UnkeyedVdom.Empty -> []
 
         let result =
@@ -628,6 +641,8 @@ module Render =
         | KeylessVdom.Unkeyed (UnkeyedVdom.TextContent _) -> fprintf writer "TextContent"
         | KeylessVdom.Unkeyed (UnkeyedVdom.ToggleWithGlyph (_, _, isChecked, isFocused)) ->
             fprintf writer $"ToggleWithGlyph(checked=%b{isChecked}, focused=%b{isFocused})"
+        | KeylessVdom.Unkeyed (UnkeyedVdom.Button (label, isFocused, isPressed)) ->
+            fprintf writer $"Button(label=\"%s{label}\", focused=%b{isFocused}, pressed=%b{isPressed})"
         | KeylessVdom.Unkeyed UnkeyedVdom.Empty -> fprintf writer "Empty"
         | KeylessVdom.Unkeyed (UnkeyedVdom.Bordered _) -> fprintf writer "Bordered"
         | KeylessVdom.Unkeyed (UnkeyedVdom.PanelSplit (direction, behaviour, _, _)) ->
@@ -718,360 +733,206 @@ module Render =
 
         let bounds = node.Bounds
 
-        match node.VDomSource with
-        | KeylessVdom.Keyed (KeyedVdom.WithKey (_, unkeyedVdom)) ->
-            // Keyed nodes just wrap their child
-            match unkeyedVdom with
-            | UnkeyedVdom.PanelSplit _ ->
-                // Keyed PanelSplit: clear background if bounds changed
-                let previousNode =
-                    match previousNode with
-                    | Some prev when
-                        prev.Bounds = bounds
-                        && match prev.VDomSource with
-                           | KeylessVdom.Keyed (KeyedVdom.WithKey (_, UnkeyedVdom.PanelSplit _)) -> true
-                           | _ -> false
-                        ->
-                        // Container unchanged
-                        previousNode
-                    | _ ->
-                        // Container changed: clear and invalidate children
-                        clearBoundsWithSpaces dirty bounds
-                        None
+        // Extract the UnkeyedVdomNode from either Keyed or Unkeyed wrapper
+        let unkeyedVdom =
+            match node.VDomSource with
+            | KeylessVdom.Keyed (KeyedVdom.WithKey (_, vdom)) -> vdom
+            | KeylessVdom.Unkeyed vdom -> vdom
 
-                // Extract child previous state (None if we cleared)
-                let prevChild1, prevChild2 =
-                    match previousNode with
-                    | Some prev when prev.OverlaidChildren.Length >= 2 ->
-                        Some prev.OverlaidChildren.[0], Some prev.OverlaidChildren.[1]
-                    | _ -> None, None
+        // Helper to check if previous node matches the current node type for container optimization
+        let previousMatchesContainer nodeType =
+            match previousNode with
+            | Some prev when prev.Bounds = bounds ->
+                match prev.VDomSource with
+                | KeylessVdom.Keyed (KeyedVdom.WithKey (_, prevVdom))
+                | KeylessVdom.Unkeyed prevVdom ->
+                    match prevVdom, nodeType with
+                    | UnkeyedVdom.PanelSplit _, UnkeyedVdom.PanelSplit _ -> true
+                    | UnkeyedVdom.Bordered _, UnkeyedVdom.Bordered _ -> true
+                    | _ -> false
+            | _ -> false
 
-                renderToBuffer dirty prevChild1 node.OverlaidChildren.[0]
-                renderToBuffer dirty prevChild2 node.OverlaidChildren.[1]
-            | UnkeyedVdom.Bordered _ ->
-                // Only paint background and border if this is a new node or bounds changed
-                let previousNode =
-                    match previousNode with
-                    | Some prev when
-                        prev.Bounds = bounds
-                        && match prev.VDomSource with
-                           | KeylessVdom.Keyed (KeyedVdom.WithKey (_, UnkeyedVdom.Bordered _)) -> true
-                           | _ -> false
-                        ->
-                        // Container unchanged
-                        previousNode
-                    | _ ->
-                        // New container or bounds changed, paint background and border
-                        clearBoundsWithSpaces dirty bounds
-
-                        // Only draw border if bounds are large enough (need at least 2x2)
-                        if bounds.Width >= 2 && bounds.Height >= 2 then
-                            setAtRelativeOffset dirty bounds 0 0 (ValueSome (TerminalCell.OfChar '┌'))
-                            setAtRelativeOffset dirty bounds 0 (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '└'))
-                            setAtRelativeOffset dirty bounds (bounds.Width - 1) 0 (ValueSome (TerminalCell.OfChar '┐'))
-
-                            setAtRelativeOffset
-                                dirty
-                                bounds
-                                (bounds.Width - 1)
-                                (bounds.Height - 1)
-                                (ValueSome (TerminalCell.OfChar '┘'))
-
-                            for i = 1 to bounds.Width - 2 do
-                                setAtRelativeOffset dirty bounds i 0 (ValueSome (TerminalCell.OfChar '─'))
-
-                                setAtRelativeOffset
-                                    dirty
-                                    bounds
-                                    i
-                                    (bounds.Height - 1)
-                                    (ValueSome (TerminalCell.OfChar '─'))
-
-                            for i = 1 to bounds.Height - 2 do
-                                setAtRelativeOffset dirty bounds 0 i (ValueSome (TerminalCell.OfChar '│'))
-
-                                setAtRelativeOffset
-                                    dirty
-                                    bounds
-                                    (bounds.Width - 1)
-                                    i
-                                    (ValueSome (TerminalCell.OfChar '│'))
-
-                        None // Invalidate children
-
-                // Extract child previous state (None if we cleared)
-                let prevChild =
-                    match previousNode with
-                    | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
-                    | _ -> None
-
-                renderToBuffer dirty prevChild node.OverlaidChildren.[0]
-            | UnkeyedVdom.FlexibleContent _ ->
-                // FlexibleContent is a transparent container - just render the child
-                let prevChild =
-                    match previousNode with
-                    | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
-                    | _ -> None
-
-                renderToBuffer dirty prevChild node.OverlaidChildren.[0]
-            | _ when node.OverlaidChildren.Length > 0 ->
-                // Container node (Focusable) - render single child
-                let prevChild =
-                    match previousNode with
-                    | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
-                    | _ -> None
-
-                renderToBuffer dirty prevChild node.OverlaidChildren.[0]
-            | _ ->
-                // Leaf node (TextContent/ToggleWithGlyph) - render directly
-                // Note: Focusable should have a child, but if we get here, treat it as transparent
-                match unkeyedVdom with
-                | UnkeyedVdom.TextContent (content, focus) ->
-                    // TODO: can do better here if we can compute a more efficient diff
-                    // TODO: work out how to display this differently when it has focus
+        match unkeyedVdom with
+        | UnkeyedVdom.PanelSplit _ ->
+            // Only paint background if this is a new node or bounds changed
+            let previousNode =
+                if previousMatchesContainer unkeyedVdom then
+                    previousNode
+                else
+                    // Container changed: clear and invalidate children
                     clearBoundsWithSpaces dirty bounds
+                    None
 
-                    // Only render text if we have space (width and height both > 0)
-                    if bounds.Width > 0 && bounds.Height > 0 then
-                        // dumb implementation! could do much better
-                        let mutable index = 0
-                        let mutable currX = 0
-                        let mutable currY = 0
-
-                        while index < content.Length do
-                            setAtRelativeOffset
-                                dirty
-                                bounds
-                                currX
-                                currY
-                                (ValueSome (TerminalCell.OfChar (content.Chars index)))
-
-                            currX <- currX + 1
-
-                            if currX = bounds.Width then
-                                currX <- 0
-                                currY <- currY + 1
-
-                                if currY >= bounds.Height then
-                                    index <- content.Length
-
-                            index <- index + 1
-
-                | UnkeyedVdom.ToggleWithGlyph (uncheckedGlyph, checkedGlyph, isChecked, focus) ->
-                    clearBoundsWithSpaces dirty bounds
-
-                    let content = if isChecked then checkedGlyph else uncheckedGlyph
-
-                    // Only render focus brackets if width and height are sufficient (need at least 3 cells for "[ ]")
-                    if focus && bounds.Width >= 3 && bounds.Height > 0 then
-                        setAtRelativeOffset
-                            dirty
-                            bounds
-                            (bounds.Width / 2 - 1)
-                            (bounds.Height / 2)
-                            (ValueSome (TerminalCell.OfChar '['))
-
-                        setAtRelativeOffset
-                            dirty
-                            bounds
-                            (bounds.Width / 2 + 1)
-                            (bounds.Height / 2)
-                            (ValueSome (TerminalCell.OfChar ']'))
-
-                    // Always render content if we have any space
-                    if bounds.Width > 0 && bounds.Height > 0 then
-                        setAtRelativeOffset
-                            dirty
-                            bounds
-                            (bounds.Width / 2)
-                            (bounds.Height / 2)
-                            (ValueSome (TerminalCell.OfChar content))
-                | UnkeyedVdom.Focusable _ ->
-                    // Focusable wrapper with no children - this means it's registered
-                    // via keyToNode, but the actual rendering is done via the child
-                    // Do nothing here
-                    ()
-                | UnkeyedVdom.Empty ->
-                    // Empty nodes render nothing, but need to clear if replacing a previous node
-                    match previousNode with
-                    | Some _ -> clearBoundsWithSpaces dirty bounds
-                    | None -> ()
-                | UnkeyedVdom.Bordered _ -> failwith "Keyed Bordered node should have a child in OverlaidChildren"
-                | UnkeyedVdom.PanelSplit _ -> failwith "Keyed PanelSplit node should have children in OverlaidChildren"
-                | UnkeyedVdom.FlexibleContent _ ->
-                    failwith "Keyed FlexibleContent node should have a child in OverlaidChildren"
-        | KeylessVdom.Unkeyed vdom ->
-            match vdom with
-            | UnkeyedVdom.TextContent (content, focus) ->
-                // TODO: can do better here if we can compute a more efficient diff
-                // TODO: work out how to display this differently when it has focus
-                clearBoundsWithSpaces dirty bounds
-
-                // Only render text if we have space (width and height both > 0)
-                if bounds.Width > 0 && bounds.Height > 0 then
-                    // dumb implementation! could do much better
-                    let mutable index = 0
-                    let mutable currX = 0
-                    let mutable currY = 0
-
-                    while index < content.Length do
-                        setAtRelativeOffset
-                            dirty
-                            bounds
-                            currX
-                            currY
-                            (ValueSome (TerminalCell.OfChar (content.Chars index)))
-
-                        currX <- currX + 1
-
-                        if currX = bounds.Width then
-                            currX <- 0
-                            currY <- currY + 1
-
-                            if currY >= bounds.Height then
-                                index <- content.Length
-
-                        index <- index + 1
-
-            | UnkeyedVdom.ToggleWithGlyph (uncheckedGlyph, checkedGlyph, isChecked, focus) ->
-                clearBoundsWithSpaces dirty bounds
-
-                let content = if isChecked then checkedGlyph else uncheckedGlyph
-
-                // Only render focus brackets if width and height are sufficient (need at least 3 cells for "[ ]")
-                if focus && bounds.Width >= 3 && bounds.Height > 0 then
-                    setAtRelativeOffset
-                        dirty
-                        bounds
-                        (bounds.Width / 2 - 1)
-                        (bounds.Height / 2)
-                        (ValueSome (TerminalCell.OfChar '['))
-
-                    setAtRelativeOffset
-                        dirty
-                        bounds
-                        (bounds.Width / 2 + 1)
-                        (bounds.Height / 2)
-                        (ValueSome (TerminalCell.OfChar ']'))
-
-                // Always render content if we have any space
-                if bounds.Width > 0 && bounds.Height > 0 then
-                    setAtRelativeOffset
-                        dirty
-                        bounds
-                        (bounds.Width / 2)
-                        (bounds.Height / 2)
-                        (ValueSome (TerminalCell.OfChar content))
-
-            | UnkeyedVdom.Empty ->
-                // Empty nodes render nothing, but need to clear if replacing a previous node
+            // Extract child previous state (None if we cleared)
+            let prevChild1, prevChild2 =
                 match previousNode with
-                | Some _ -> clearBoundsWithSpaces dirty bounds
-                | None -> ()
+                | Some prev when prev.OverlaidChildren.Length >= 2 ->
+                    Some prev.OverlaidChildren.[0], Some prev.OverlaidChildren.[1]
+                | _ -> None, None
 
-            | UnkeyedVdom.PanelSplit _ ->
-                // Only paint background if this is a new node or bounds changed
-                let previousNode =
-                    match previousNode with
-                    | Some prev when
-                        prev.Bounds = bounds
-                        && match prev.VDomSource with
-                           | KeylessVdom.Unkeyed (UnkeyedVdom.PanelSplit _) -> true
-                           | _ -> false
-                        ->
-                        // Container unchanged
-                        previousNode
-                    | _ ->
-                        // New container or bounds changed: clear and invalidate children
-                        clearBoundsWithSpaces dirty bounds
-                        None
+            renderToBuffer dirty prevChild1 node.OverlaidChildren.[0]
+            renderToBuffer dirty prevChild2 node.OverlaidChildren.[1]
 
-                // Extract child previous state (None if we cleared)
-                let prevChild1, prevChild2 =
-                    match previousNode with
-                    | Some prev when prev.OverlaidChildren.Length >= 2 ->
-                        Some prev.OverlaidChildren.[0], Some prev.OverlaidChildren.[1]
-                    | _ -> None, None
+        | UnkeyedVdom.Bordered _ ->
+            // Only paint background and border if this is a new node or bounds changed
+            let previousNode =
+                if previousMatchesContainer unkeyedVdom then
+                    previousNode
+                else
+                    // New container or bounds changed, paint background and border
+                    clearBoundsWithSpaces dirty bounds
 
-                renderToBuffer dirty prevChild1 node.OverlaidChildren.[0]
-                renderToBuffer dirty prevChild2 node.OverlaidChildren.[1]
+                    // Only draw border if bounds are large enough (need at least 2x2)
+                    if bounds.Width >= 2 && bounds.Height >= 2 then
+                        setAtRelativeOffset dirty bounds 0 0 (ValueSome (TerminalCell.OfChar '┌'))
+                        setAtRelativeOffset dirty bounds 0 (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '└'))
+                        setAtRelativeOffset dirty bounds (bounds.Width - 1) 0 (ValueSome (TerminalCell.OfChar '┐'))
 
-            | UnkeyedVdom.Bordered _ ->
-                // Only paint background and border if this is a new node or bounds changed
-                let previousNode =
-                    match previousNode with
-                    | Some prev when
-                        prev.Bounds = bounds
-                        && match prev.VDomSource with
-                           | KeylessVdom.Unkeyed (UnkeyedVdom.Bordered _) -> true
-                           | _ -> false
-                        ->
-                        // Container unchanged
-                        previousNode
-                    | _ ->
-                        // New container or bounds changed, paint background and border
-                        clearBoundsWithSpaces dirty bounds
+                        setAtRelativeOffset
+                            dirty
+                            bounds
+                            (bounds.Width - 1)
+                            (bounds.Height - 1)
+                            (ValueSome (TerminalCell.OfChar '┘'))
 
-                        // Only draw border if bounds are large enough (need at least 2x2)
-                        if bounds.Width >= 2 && bounds.Height >= 2 then
-                            setAtRelativeOffset dirty bounds 0 0 (ValueSome (TerminalCell.OfChar '┌'))
-                            setAtRelativeOffset dirty bounds 0 (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '└'))
-                            setAtRelativeOffset dirty bounds (bounds.Width - 1) 0 (ValueSome (TerminalCell.OfChar '┐'))
+                        for i = 1 to bounds.Width - 2 do
+                            setAtRelativeOffset dirty bounds i 0 (ValueSome (TerminalCell.OfChar '─'))
 
-                            setAtRelativeOffset
-                                dirty
-                                bounds
-                                (bounds.Width - 1)
-                                (bounds.Height - 1)
-                                (ValueSome (TerminalCell.OfChar '┘'))
+                            setAtRelativeOffset dirty bounds i (bounds.Height - 1) (ValueSome (TerminalCell.OfChar '─'))
 
-                            for i = 1 to bounds.Width - 2 do
-                                setAtRelativeOffset dirty bounds i 0 (ValueSome (TerminalCell.OfChar '─'))
+                        for i = 1 to bounds.Height - 2 do
+                            setAtRelativeOffset dirty bounds 0 i (ValueSome (TerminalCell.OfChar '│'))
 
-                                setAtRelativeOffset
-                                    dirty
-                                    bounds
-                                    i
-                                    (bounds.Height - 1)
-                                    (ValueSome (TerminalCell.OfChar '─'))
+                            setAtRelativeOffset dirty bounds (bounds.Width - 1) i (ValueSome (TerminalCell.OfChar '│'))
 
-                            for i = 1 to bounds.Height - 2 do
-                                setAtRelativeOffset dirty bounds 0 i (ValueSome (TerminalCell.OfChar '│'))
+                    None // Invalidate children
 
-                                setAtRelativeOffset
-                                    dirty
-                                    bounds
-                                    (bounds.Width - 1)
-                                    i
-                                    (ValueSome (TerminalCell.OfChar '│'))
+            // Extract child previous state (None if we cleared)
+            let prevChild =
+                match previousNode with
+                | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
+                | _ -> None
 
-                        None // Invalidate children
+            renderToBuffer dirty prevChild node.OverlaidChildren.[0]
 
-                // Extract child previous state (None if we cleared)
-                let prevChild =
-                    match previousNode with
-                    | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
-                    | _ -> None
+        | UnkeyedVdom.FlexibleContent _ ->
+            // FlexibleContent is a transparent container - just render the child
+            let prevChild =
+                match previousNode with
+                | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
+                | _ -> None
 
-                renderToBuffer dirty prevChild node.OverlaidChildren.[0]
+            renderToBuffer dirty prevChild node.OverlaidChildren.[0]
 
-            | UnkeyedVdom.Focusable _ ->
-                // Focusable just wraps its child, render the child
-                let prevChild =
-                    match previousNode with
-                    | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
-                    | _ -> None
+        | UnkeyedVdom.Focusable _ ->
+            // Focusable just wraps its child, render the child
+            let prevChild =
+                match previousNode with
+                | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
+                | _ -> None
 
-                renderToBuffer dirty prevChild node.OverlaidChildren.[0]
+            renderToBuffer dirty prevChild node.OverlaidChildren.[0]
 
-            | UnkeyedVdom.FlexibleContent _ ->
-                // FlexibleContent is a transparent container - just render the child
-                let prevChild =
-                    match previousNode with
-                    | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
-                    | _ -> None
+        | UnkeyedVdom.TextContent (content, focus) ->
+            // TODO: can do better here if we can compute a more efficient diff
+            // TODO: work out how to display this differently when it has focus
+            clearBoundsWithSpaces dirty bounds
 
-                renderToBuffer dirty prevChild node.OverlaidChildren.[0]
+            // Only render text if we have space (width and height both > 0)
+            if bounds.Width > 0 && bounds.Height > 0 then
+                // dumb implementation! could do much better
+                let mutable index = 0
+                let mutable currX = 0
+                let mutable currY = 0
+
+                while index < content.Length do
+                    setAtRelativeOffset dirty bounds currX currY (ValueSome (TerminalCell.OfChar (content.Chars index)))
+
+                    currX <- currX + 1
+
+                    if currX = bounds.Width then
+                        currX <- 0
+                        currY <- currY + 1
+
+                        if currY >= bounds.Height then
+                            index <- content.Length
+
+                    index <- index + 1
+
+        | UnkeyedVdom.ToggleWithGlyph (uncheckedGlyph, checkedGlyph, isChecked, focus) ->
+            clearBoundsWithSpaces dirty bounds
+
+            let content = if isChecked then checkedGlyph else uncheckedGlyph
+
+            // Only render focus brackets if width and height are sufficient (need at least 3 cells for "[ ]")
+            if focus && bounds.Width >= 3 && bounds.Height > 0 then
+                setAtRelativeOffset
+                    dirty
+                    bounds
+                    (bounds.Width / 2 - 1)
+                    (bounds.Height / 2)
+                    (ValueSome (TerminalCell.OfChar '['))
+
+                setAtRelativeOffset
+                    dirty
+                    bounds
+                    (bounds.Width / 2 + 1)
+                    (bounds.Height / 2)
+                    (ValueSome (TerminalCell.OfChar ']'))
+
+            // Always render content if we have any space
+            if bounds.Width > 0 && bounds.Height > 0 then
+                setAtRelativeOffset
+                    dirty
+                    bounds
+                    (bounds.Width / 2)
+                    (bounds.Height / 2)
+                    (ValueSome (TerminalCell.OfChar content))
+
+        | UnkeyedVdom.Button (label, isFocused, isPressed) ->
+            clearBoundsWithSpaces dirty bounds
+
+            // Calculate button content: brackets vary based on both focus and pressed state
+            let leftBracket, rightBracket =
+                match isFocused, isPressed with
+                | true, true -> "[*", "*]"
+                | true, false -> "[[", "]]"
+                | false, true -> " *", "* "
+                | false, false -> "[ ", " ]"
+
+            let fullContent = $"{leftBracket} {label} {rightBracket}"
+
+            // Only render if we have space
+            if bounds.Width > 0 && bounds.Height > 0 then
+                // Center the button text vertically
+                let centerY = bounds.Height / 2
+                let contentLen = fullContent.Length
+
+                // Simple truncation/centering for now
+                let startX = max 0 ((bounds.Width - contentLen) / 2)
+                let mutable x = startX
+
+                for ch in fullContent do
+                    if x < bounds.Width then
+                        let cell =
+                            if isPressed then
+                                // Inverted colors for pressed state
+                                {
+                                    Char = ch
+                                    BackgroundColor = ValueSome ConsoleColor.White
+                                    TextColor = ValueSome ConsoleColor.Black
+                                }
+                            else
+                                TerminalCell.OfChar ch
+
+                        setAtRelativeOffset dirty bounds x centerY (ValueSome cell)
+                        x <- x + 1
+
+        | UnkeyedVdom.Empty ->
+            // Empty nodes render nothing, but need to clear if replacing a previous node
+            match previousNode with
+            | Some _ -> clearBoundsWithSpaces dirty bounds
+            | None -> ()
 
     let writeBuffer (dirty : TerminalCell voption[,]) : TerminalOp seq =
         // TODO this is super dumb
