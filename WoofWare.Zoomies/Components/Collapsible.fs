@@ -49,12 +49,8 @@ module Collapsible =
         (child : Vdom<DesiredBounds, Keyed>)
         : Vdom<DesiredBounds, Unkeyed>
         =
-        let isFocused = VdomContext.focusedKey ctx = Some key
-
         let toggle =
-            Vdom.toggleWithGlyph '▶' '▼' state.IsExpanded isFocused
-            |> Vdom.withKey key
-            |> Vdom.withFocusTracking
+            Toggle.make (ctx, key, '▶', '▼', state.IsExpanded)
             |> fun v -> Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 1, v, Vdom.empty)
 
         let spacer = Vdom.textContent false " "

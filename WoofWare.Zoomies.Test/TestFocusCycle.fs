@@ -40,16 +40,11 @@ module TestFocusCycle =
             | _ -> failwith "bad"
 
     let vdom (vdomContext : VdomContext) (state : State) =
-        let currentFocus = VdomContext.focusedKey vdomContext
-
         List.init
             4
             (fun i ->
                 let key = NodeKey.make $"checkbox%i{i}"
-
-                Vdom.checkbox (currentFocus = Some key) state.Checkboxes.[i]
-                |> Vdom.withKey key
-                |> Vdom.withFocusTracking
+                Components.Checkbox.make (vdomContext, key, state.Checkboxes.[i])
             )
         |> List.reduce (fun x y -> Vdom.panelSplitAbsolute (SplitDirection.Vertical, -3, x, y))
 
@@ -571,27 +566,18 @@ module TestFocusCycle =
             let haveFrameworkHandleFocus _ = true
 
             let vdom (vdomContext : VdomContext) (renderCheckbox1 : bool) =
-                let currentFocus = VdomContext.focusedKey vdomContext
                 let sharedKey = NodeKey.make "shared-key"
 
                 if renderCheckbox1 then
                     // First frame: checkbox at shared-key
-                    let checkbox1 =
-                        Vdom.checkbox (currentFocus = Some sharedKey) false
-                        |> Vdom.withKey sharedKey
-                        |> Vdom.withFocusTracking
-
-                    let checkbox2 = Vdom.checkbox false false
+                    let checkbox1 = Components.Checkbox.make (vdomContext, sharedKey, false)
+                    let checkbox2 = Vdom.styledText "☐" CellStyle.none
 
                     Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, checkbox1, checkbox2)
                 else
                     // Second frame: different checkbox at shared-key
-                    let checkbox1 = Vdom.checkbox false false
-
-                    let checkbox2 =
-                        Vdom.checkbox (currentFocus = Some sharedKey) false
-                        |> Vdom.withKey sharedKey
-                        |> Vdom.withFocusTracking
+                    let checkbox1 = Vdom.styledText "☐" CellStyle.none
+                    let checkbox2 = Components.Checkbox.make (vdomContext, sharedKey, false)
 
                     Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, checkbox1, checkbox2)
 
@@ -693,14 +679,14 @@ module TestFocusCycle =
                 match tick with
                 | 0 ->
                     // First frame: focusable checkbox at shared-key
-                    Vdom.checkbox (currentFocus = Some sharedKey) false
-                    |> Vdom.withKey sharedKey
-                    |> Vdom.withFocusTracking
+                    Components.Checkbox.make (vdomContext, sharedKey, false)
                 | 1 ->
                     // Second frame: non-focusable element.
                     // The previous render had focus on the key `sharedKey`.
-                    let nonFocusable =
-                        Vdom.checkbox (currentFocus = Some sharedKey) false |> Vdom.withKey sharedKey
+                    // Even though it's not focusable, it should show focus visuals if the context says it's focused.
+                    let isFocused = currentFocus = Some sharedKey
+                    let content = if isFocused then "[☐]" else "☐"
+                    let nonFocusable = Vdom.styledText content CellStyle.none |> Vdom.withKey sharedKey
 
                     Vdom.panelSplitProportion (
                         SplitDirection.Vertical,

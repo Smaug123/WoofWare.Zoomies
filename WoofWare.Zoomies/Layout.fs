@@ -113,22 +113,6 @@ module internal Layout =
                     Some (wordWrapCount text safeWidth)
         }
 
-    /// Measure a toggle with glyphs node
-    let private measureCheckbox (constraints : MeasureConstraints) : MeasuredSize =
-        // Toggle with glyph and optional focus brackets - ideally 3 chars wide
-        let idealWidth = 3
-        // Respect MaxWidth constraint when reporting MinWidth and PreferredWidth
-        let constrainedWidth = min idealWidth constraints.MaxWidth
-
-        {
-            MinWidth = constrainedWidth
-            PreferredWidth = constrainedWidth
-            MaxWidth = Some constrainedWidth // Fixed size component (but respects parent constraints)
-            MinHeightForWidth = fun _ -> 1
-            PreferredHeightForWidth = fun _ -> 1
-            MaxHeightForWidth = fun _ -> Some 1
-        }
-
     /// Measure a bordered container
     let rec private measureBordered
         (child : KeylessVdom<DesiredBounds>)

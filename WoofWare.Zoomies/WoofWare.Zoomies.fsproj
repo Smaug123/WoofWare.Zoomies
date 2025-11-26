@@ -46,6 +46,8 @@
     <Compile Include="Render.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Components\Button.fs" />
+    <Compile Include="Components\Toggle.fs" />
+    <Compile Include="Components\Checkbox.fs" />
     <Compile Include="Components\Collapsible.fs" />
     <Compile Include="Components\LabelledCheckbox.fs" />
     <Compile Include="Components\ProgressBar.fs" />

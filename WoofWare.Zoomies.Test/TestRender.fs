@@ -46,15 +46,14 @@ module TestRender =
         let topHalf = Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, left, right)
 
         let toggle1Key = NodeKey.make "toggle1"
-        let currentFocus = VdomContext.focusedKey vdomContext
 
         let bottomHalf =
-            Components.LabelledCheckbox.make
-                (currentFocus = Some toggle1Key)
+            Components.LabelledCheckbox.make (
+                vdomContext,
+                "Press Space to toggle",
+                toggle1Key,
                 state.IsToggle1Checked
-                "Press Space to toggle"
-            |> Vdom.withKey toggle1Key
-            |> Vdom.withFocusTracking
+            )
 
         let vdom =
             Vdom.panelSplitAbsolute (SplitDirection.Horizontal, -3, topHalf, bottomHalf)
@@ -67,12 +66,12 @@ module TestRender =
                     SplitDirection.Vertical,
                     0.5,
                     Vdom.textContent false "only displayed when checked",
-                    Components.LabelledCheckbox.make
-                        (currentFocus = Some toggle2Key)
+                    Components.LabelledCheckbox.make (
+                        vdomContext,
+                        "this one is focusable!",
+                        toggle2Key,
                         state.IsToggle2Checked
-                        "this one is focusable!"
-                    |> Vdom.withKey toggle2Key
-                    |> Vdom.withFocusTracking
+                    )
                 )
 
             Vdom.panelSplitProportion (SplitDirection.Horizontal, 0.7, vdom, inner)
@@ -386,10 +385,7 @@ only displayed when checked                this one is focusable!               
                     |> Vdom.withKey textKey
                     |> Vdom.withFocusTracking
 
-                let checkbox =
-                    Vdom.checkbox (currentFocus = Some checkboxKey) false
-                    |> Vdom.withKey checkboxKey
-                    |> Vdom.withFocusTracking
+                let checkbox = Components.Checkbox.make (vdomContext, checkboxKey, false)
 
                 Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 3, text, checkbox)
 
@@ -546,25 +542,15 @@ This is focusable text                                                          
                     world.ReadKey
 
             let vdom (vdomContext : VdomContext) (_ : FakeUnit) =
-                let currentFocus = VdomContext.focusedKey vdomContext
                 let checkbox1Key = NodeKey.make "checkbox1"
                 let checkbox2Key = NodeKey.make "checkbox2"
                 let checkbox3Key = NodeKey.make "checkbox3"
 
-                let checkbox1 =
-                    Vdom.checkbox (currentFocus = Some checkbox1Key) false
-                    |> Vdom.withKey checkbox1Key
-                    |> Vdom.withFocusTracking
+                let checkbox1 = Components.Checkbox.make (vdomContext, checkbox1Key, false)
 
-                let checkbox2 =
-                    Vdom.checkbox (currentFocus = Some checkbox2Key) false
-                    |> Vdom.withKey checkbox2Key
-                    |> fun v -> Vdom.withFocusTracking (v, isFirstToFocus = true)
+                let checkbox2 = Components.Checkbox.make (vdomContext, checkbox2Key, false, isFirstToFocus = true)
 
-                let checkbox3 =
-                    Vdom.checkbox (currentFocus = Some checkbox3Key) false
-                    |> Vdom.withKey checkbox3Key
-                    |> Vdom.withFocusTracking
+                let checkbox3 = Components.Checkbox.make (vdomContext, checkbox3Key, false)
 
                 Vdom.panelSplitProportion (
                     SplitDirection.Vertical,
@@ -722,25 +708,15 @@ This is focusable text                                                          
                     world.ReadKey
 
             let vdom (vdomContext : VdomContext) (_ : FakeUnit) =
-                let currentFocus = VdomContext.focusedKey vdomContext
                 let checkbox1Key = NodeKey.make "checkbox1"
                 let checkbox2Key = NodeKey.make "checkbox2"
                 let checkbox3Key = NodeKey.make "checkbox3"
 
-                let checkbox1 =
-                    Vdom.checkbox (currentFocus = Some checkbox1Key) false
-                    |> Vdom.withKey checkbox1Key
-                    |> Vdom.withFocusTracking
+                let checkbox1 = Components.Checkbox.make (vdomContext, checkbox1Key, false)
 
-                let checkbox2 =
-                    Vdom.checkbox (currentFocus = Some checkbox2Key) false
-                    |> Vdom.withKey checkbox2Key
-                    |> fun v -> Vdom.withFocusTracking (v, isInitiallyFocused = true)
+                let checkbox2 = Components.Checkbox.make (vdomContext, checkbox2Key, false, isInitiallyFocused = true)
 
-                let checkbox3 =
-                    Vdom.checkbox (currentFocus = Some checkbox3Key) false
-                    |> Vdom.withKey checkbox3Key
-                    |> Vdom.withFocusTracking
+                let checkbox3 = Components.Checkbox.make (vdomContext, checkbox3Key, false)
 
                 Vdom.panelSplitProportion (
                     SplitDirection.Vertical,
@@ -1244,13 +1220,9 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
             // Create a vdom where the checkbox has focus and is allocated bounds with Height=0
             // We use an absolute split to force the checkbox into a zero-height allocation
             let vdom (vdomContext : VdomContext) (_ : FakeUnit) =
-                let currentFocus = VdomContext.focusedKey vdomContext
                 let topContent = Vdom.textContent false "top"
 
-                let checkbox =
-                    Vdom.checkbox (currentFocus = Some checkboxKey) false
-                    |> Vdom.withKey checkboxKey
-                    |> Vdom.withFocusTracking
+                let checkbox = Components.Checkbox.make (vdomContext, checkboxKey, false)
 
                 // Give the checkbox 0 rows (split at row 5 in a 5-row terminal)
                 Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 5, topContent, checkbox)

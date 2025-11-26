@@ -5,6 +5,7 @@ open System.IO
 open System.Runtime.ExceptionServices
 open System.Threading.Tasks
 open WoofWare.Zoomies
+open WoofWare.Zoomies.Components
 
 type AppEvent =
     | FileLoaded of filename : string * content : string * generation : int
@@ -128,14 +129,8 @@ module FileBrowser =
             let label = $"[{state.File1Path}] / [{state.File2Path}]"
 
             let checkboxKey = NodeKey.make "checkbox"
-            let currentFocus = VdomContext.focusedKey vdomContext
 
-            let checkbox =
-                Vdom.checkbox (currentFocus = Some checkboxKey) (not state.ShowingFile1)
-                |> Vdom.withKey checkboxKey
-                |> Vdom.withFocusTracking
-
-            Vdom.panelSplitAuto (SplitDirection.Vertical, checkbox, Vdom.textContent false label)
+            LabelledCheckbox.make (vdomContext, label, checkboxKey, not state.ShowingFile1)
             |> Vdom.bordered
 
         let bottomPane =

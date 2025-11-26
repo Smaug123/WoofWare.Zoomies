@@ -437,40 +437,6 @@ type Vdom =
             Teq.refl
         )
 
-    /// <summary>Creates a checkbox component with the specified state.</summary>
-    /// <param name="isFocused">
-    /// Specifies that this checkbox should render as if it has keyboard focus.
-    /// This has nothing to do with the WoofWare.Zoomies automatic focus tracking system; it's purely a display concern.
-    /// See <c>Vdom.withFocusTracking</c> for details.
-    /// </param>
-    /// <param name="isChecked">Specifies that this checkbox is currently checked. Derive the value of this parameter
-    /// from your application state.</param>
-    static member checkbox (isFocused : bool) (isChecked : bool) : Vdom<DesiredBounds, Unkeyed> =
-        let glyph = if isChecked then '☑' else '☐'
-        let content = if isFocused then $"[{glyph}]" else string glyph
-        Vdom.styledText content CellStyle.none
-
-    /// <summary>Creates a toggle component with custom glyphs.</summary>
-    /// <param name="uncheckedGlyph">The character to display when the toggle is in the unchecked/collapsed state.</param>
-    /// <param name="checkedGlyph">The character to display when the toggle is in the checked/expanded state.</param>
-    /// <param name="isChecked">Specifies that this toggle is currently checked. Derive the value of this parameter
-    /// from your application state.</param>
-    /// <param name="isFocused">
-    /// Specifies that this toggle should render as if it has keyboard focus.
-    /// This has nothing to do with the WoofWare.Zoomies automatic focus tracking system; it's purely a display concern.
-    /// See <c>Vdom.withFocusTracking</c> for details.
-    /// </param>
-    static member toggleWithGlyph
-        (uncheckedGlyph : char)
-        (checkedGlyph : char)
-        (isChecked : bool)
-        (isFocused : bool)
-        : Vdom<DesiredBounds, Unkeyed>
-        =
-        let glyph = if isChecked then checkedGlyph else uncheckedGlyph
-        let content = if isFocused then $"[{glyph}]" else string glyph
-        Vdom.styledText content CellStyle.none
-
     /// <summary>Creates a button with the given visual state.</summary>
     /// <param name="isFocused">
     /// Specifies that this button should render as if it has keyboard focus.
