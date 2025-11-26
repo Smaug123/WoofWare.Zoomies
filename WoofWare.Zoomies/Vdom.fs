@@ -46,7 +46,7 @@ type DesiredBounds = unit
 type internal UnkeyedVdom<'bounds> =
     | Bordered of KeylessVdom<'bounds>
     | PanelSplit of SplitDirection * SplitBehaviour * child1 : KeylessVdom<'bounds> * child2 : KeylessVdom<'bounds>
-    | TextContent of string * focused : bool
+    | TextContent of content : string * style : CellStyle * focused : bool
     | ToggleWithGlyph of uncheckedGlyph : char * checkedGlyph : char * isChecked : bool * isFocused : bool
     | Button of label : string * isFocused : bool * isPressed : bool
     | Focusable of isFirstToFocus : bool * isInitiallyFocused : bool * KeyedVdom<'bounds>
@@ -87,7 +87,13 @@ type Vdom =
     /// </remarks>
     static member textContent (isFocused : bool) (s : string) : Vdom<DesiredBounds, Unkeyed> =
         // TODO: create text areas which do smart truncation etc for you
-        Vdom.Unkeyed (UnkeyedVdom.TextContent (s, isFocused), Teq.refl)
+        Vdom.Unkeyed (UnkeyedVdom.TextContent (s, CellStyle.none, isFocused), Teq.refl)
+
+    /// <summary>Creates a text content component with explicit styling.</summary>
+    /// <param name="content">The text to display.</param>
+    /// <param name="style">The cell styling to apply to the text.</param>
+    static member styledText (content : string) (style : CellStyle) : Vdom<DesiredBounds, Unkeyed> =
+        Vdom.Unkeyed (UnkeyedVdom.TextContent (content, style, false), Teq.refl)
 
     /// <summary>Creates an empty zero-sized element.</summary>
     /// <remarks>

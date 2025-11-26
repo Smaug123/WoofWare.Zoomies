@@ -609,7 +609,7 @@ module internal Layout =
         : MeasuredNode<DesiredBounds>
         =
         match vdom with
-        | UnkeyedVdom.TextContent (text, _focused) ->
+        | UnkeyedVdom.TextContent (text, _style, _focused) ->
             {
                 Vdom = KeylessVdom.Unkeyed vdom
                 Measured = measureText text constraints
@@ -706,9 +706,9 @@ module internal Layout =
         match measured.Vdom with
         | KeylessVdom.Keyed (KeyedVdom.WithKey (key, unkeyedVdom)) ->
             match unkeyedVdom with
-            | UnkeyedVdom.TextContent (text, focused) ->
+            | UnkeyedVdom.TextContent (text, style, focused) ->
                 {
-                    Vdom = KeylessVdom.Keyed (KeyedVdom.WithKey (key, UnkeyedVdom.TextContent (text, focused)))
+                    Vdom = KeylessVdom.Keyed (KeyedVdom.WithKey (key, UnkeyedVdom.TextContent (text, style, focused)))
                     VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = []
@@ -821,9 +821,9 @@ module internal Layout =
                 }
         | KeylessVdom.Unkeyed unkeyedVdom ->
             match unkeyedVdom with
-            | UnkeyedVdom.TextContent (text, focused) ->
+            | UnkeyedVdom.TextContent (text, style, focused) ->
                 {
-                    Vdom = KeylessVdom.Unkeyed (UnkeyedVdom.TextContent (text, focused))
+                    Vdom = KeylessVdom.Unkeyed (UnkeyedVdom.TextContent (text, style, focused))
                     VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = []

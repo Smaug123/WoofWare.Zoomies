@@ -200,8 +200,8 @@ module Render =
                 | KeylessVdom.Keyed (KeyedVdom.WithKey (key1, vdom1)),
                   KeylessVdom.Keyed (KeyedVdom.WithKey (key2, vdom2)) when key1 = key2 ->
                     match vdom1, vdom2 with
-                    | UnkeyedVdom.TextContent (text1, focus1), UnkeyedVdom.TextContent (text2, focus2) when
-                        text1 = text2 && focus1 = focus2
+                    | UnkeyedVdom.TextContent (text1, style1, focus1), UnkeyedVdom.TextContent (text2, style2, focus2) when
+                        text1 = text2 && style1 = style2 && focus1 = focus2
                         ->
                         // Repopulate keyToNode for reused keyed node
                         keyToNode.[key1] <- prev
@@ -309,8 +309,10 @@ module Render =
                             None
                     | _ -> None
                 // Unkeyed leaf nodes
-                | KeylessVdom.Unkeyed (UnkeyedVdom.TextContent (text1, focus1)),
-                  KeylessVdom.Unkeyed (UnkeyedVdom.TextContent (text2, focus2)) when text1 = text2 && focus1 = focus2 ->
+                | KeylessVdom.Unkeyed (UnkeyedVdom.TextContent (text1, style1, focus1)),
+                  KeylessVdom.Unkeyed (UnkeyedVdom.TextContent (text2, style2, focus2)) when
+                    text1 = text2 && style1 = style2 && focus1 = focus2
+                    ->
                     Some prev
                 | KeylessVdom.Unkeyed (UnkeyedVdom.ToggleWithGlyph (ug1, cg1, checked1, focus1)),
                   KeylessVdom.Unkeyed (UnkeyedVdom.ToggleWithGlyph (ug2, cg2, checked2, focus2)) when
@@ -833,7 +835,7 @@ module Render =
 
             renderToBuffer dirty prevChild node.OverlaidChildren.[0]
 
-        | UnkeyedVdom.TextContent (content, focus) ->
+        | UnkeyedVdom.TextContent (content, style, focus) ->
             // TODO: can do better here if we can compute a more efficient diff
             // TODO: work out how to display this differently when it has focus
             clearBoundsWithSpaces dirty bounds
@@ -846,7 +848,14 @@ module Render =
                 let mutable currY = 0
 
                 while index < content.Length do
-                    setAtRelativeOffset dirty bounds currX currY (ValueSome (TerminalCell.OfChar (content.Chars index)))
+                    let cell =
+                        {
+                            Char = content.Chars index
+                            BackgroundColor = style.Background
+                            TextColor = style.Foreground
+                        }
+
+                    setAtRelativeOffset dirty bounds currX currY (ValueSome cell)
 
                     currX <- currX + 1
 

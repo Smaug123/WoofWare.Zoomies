@@ -32,10 +32,11 @@
     <Compile Include="OrderedSet.fs" />
     <Compile Include="ConsoleModifiers.fs" />
     <Compile Include="LayoutTypes.fs" />
+    <Compile Include="ConsoleColor.fs" />
+    <Compile Include="CellStyle.fs" />
     <Compile Include="Vdom.fs" />
     <Compile Include="ActivationResolver.fs" />
     <Compile Include="CtrlCHandler.fs" />
-    <Compile Include="ConsoleColor.fs" />
     <Compile Include="Terminal.fs" />
     <Compile Include="Console.fs" />
     <Compile Include="IStopwatch.fs" />
