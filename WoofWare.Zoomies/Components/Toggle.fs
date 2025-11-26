@@ -64,4 +64,3 @@ type Toggle =
             |> Vdom.withKey key
 
         Vdom.withFocusTracking (toggle, ?isFirstToFocus = isFirstToFocus, ?isInitiallyFocused = isInitiallyFocused)
-        |> Vdom.withTag "toggle"

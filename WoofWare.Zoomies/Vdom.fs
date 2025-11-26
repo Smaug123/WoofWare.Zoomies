@@ -90,6 +90,7 @@ type internal UnkeyedVdom<'bounds> =
     | FlexibleContent of
         measure : (MeasureConstraints -> MeasuredSize) *
         render : (Rectangle -> KeylessVdom<DesiredBounds>)
+    | Tag of tag : string * inner : KeylessVdom<'bounds>
 
 and internal KeyedVdom<'bounds> = | WithKey of NodeKey * UnkeyedVdom<'bounds>
 
@@ -579,12 +580,19 @@ type Vdom =
     ///
     /// If VdomTagging.Enabled is false, this is a no-op returning the input unchanged.
     static member withTag (tag : string) (vdom : Vdom<'bounds, 'keyed>) : Vdom<'bounds, 'keyed> =
-        if VdomTagging.Enabled then
-            match vdom with
-            | Vdom.Keyed (inner, teq, tags) -> Vdom.Keyed (inner, teq, VdomTags.add tag tags)
-            | Vdom.Unkeyed (inner, teq, tags) -> Vdom.Unkeyed (inner, teq, VdomTags.add tag tags)
-        else
+        if not VdomTagging.Enabled then
             vdom
+        else
+            match vdom with
+            | Vdom.Unkeyed (inner, teq, tags) ->
+                let wrappedInner = UnkeyedVdom.Tag (tag, KeylessVdom.Unkeyed inner)
+                Vdom.Unkeyed (wrappedInner, teq, tags)
+            | Vdom.Keyed (inner, teq, tags) ->
+                // Extract the inner content, wrap it in a Tag, then re-key it
+                let (KeyedVdom.WithKey (key, innerUnkeyed)) = inner
+                let wrappedInner = UnkeyedVdom.Tag (tag, KeylessVdom.Unkeyed innerUnkeyed)
+                let rekeyedInner = KeyedVdom.WithKey (key, wrappedInner)
+                Vdom.Keyed (rekeyedInner, teq, tags)
 
     /// Read the tags attached to this node.
     static member tags (vdom : Vdom<'bounds, 'keyed>) : VdomTags =
@@ -693,6 +701,9 @@ type Vdom =
                 sb.AppendFormat ("Focusable{0}: ", flagsStr) |> ignore
                 dumpKeyedVdomInline inner
             | UnkeyedVdom.FlexibleContent _ -> sb.Append "FlexibleContent <...>" |> ignore
+            | UnkeyedVdom.Tag (tag, inner) ->
+                sb.AppendFormat ("[{0}] ", tag) |> ignore
+                dumpKeylessVdomInline inner
 
         and dumpKeylessVdomInline (vdom : KeylessVdom<'bounds>) : unit =
             match vdom with

@@ -50,4 +50,3 @@ type Button =
         let button = Button.make' (label, isFocused, isPressed) |> Vdom.withKey key
 
         Vdom.withFocusTracking (button, ?isFirstToFocus = isFirstToFocus, ?isInitiallyFocused = isInitiallyFocused)
-        |> Vdom.withTag "button"

@@ -41,4 +41,5 @@ type Checkbox =
             ?isFirstToFocus = isFirstToFocus,
             ?isInitiallyFocused = isInitiallyFocused
         )
+        // `make` doesn't call through to `make'`, so need to tag separately
         |> Vdom.withTag "checkbox"
