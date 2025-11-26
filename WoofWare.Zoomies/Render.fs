@@ -668,12 +668,8 @@ module Render =
                 // For focusable wrappers, don't register the wrapper key.
                 // The child's key is already registered by the recursive call.
                 ()
-            | UnkeyedVdom.Tag (_, _) ->
-                // For tag wrappers, don't register the wrapper - it's transparent
-                // The child's key (if any) is already registered by the recursive call.
-                ()
             | _ ->
-                // For other keyed nodes, register the key to this node
+                // For all other keyed nodes (including Tag wrappers), register the key to this node
                 keyToNode.[key] <- result
         | KeylessVdom.Unkeyed (UnkeyedVdom.Focusable (_, _, KeyedVdom.WithKey (key, _))) ->
             // Register the focusable child's key

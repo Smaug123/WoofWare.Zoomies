@@ -1,6 +1,5 @@
 namespace WoofWare.Zoomies
 
-open System.Collections.Immutable
 open TypeEquality
 
 /// Global configuration for the tagging system.
