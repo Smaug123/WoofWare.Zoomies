@@ -1,5 +1,7 @@
 # VDOM Tagging System
 
+*This document was largely superseded when I actually thought about the problem. Now we instead use an explicit node in the vdom to hold a tag.*
+
 ## Overview
 
 This document describes a lightweight tagging mechanism for VDOM nodes, enabling semantic inspection and debugging without affecting rendering. Tags are string annotations that describe what a VDOM node *represents* (e.g., "button", "checkbox", "login-form") as opposed to what it *is* structurally (Text, PanelSplit, etc.).
