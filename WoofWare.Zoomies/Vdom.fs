@@ -47,8 +47,6 @@ type internal UnkeyedVdom<'bounds> =
     | Bordered of KeylessVdom<'bounds>
     | PanelSplit of SplitDirection * SplitBehaviour * child1 : KeylessVdom<'bounds> * child2 : KeylessVdom<'bounds>
     | TextContent of content : string * style : CellStyle * focused : bool
-    | ToggleWithGlyph of uncheckedGlyph : char * checkedGlyph : char * isChecked : bool * isFocused : bool
-    | Button of label : string * isFocused : bool * isPressed : bool
     | Focusable of isFirstToFocus : bool * isInitiallyFocused : bool * KeyedVdom<'bounds>
     | Empty
     | FlexibleContent of
@@ -441,7 +439,9 @@ type Vdom =
     /// <param name="isChecked">Specifies that this checkbox is currently checked. Derive the value of this parameter
     /// from your application state.</param>
     static member checkbox (isFocused : bool) (isChecked : bool) : Vdom<DesiredBounds, Unkeyed> =
-        Vdom.Unkeyed (UnkeyedVdom.ToggleWithGlyph ('☐', '☑', isChecked, isFocused), Teq.refl)
+        let glyph = if isChecked then '☑' else '☐'
+        let content = if isFocused then $"[{glyph}]" else string glyph
+        Vdom.styledText content CellStyle.none
 
     /// <summary>Creates a toggle component with custom glyphs.</summary>
     /// <param name="uncheckedGlyph">The character to display when the toggle is in the unchecked/collapsed state.</param>
@@ -460,7 +460,9 @@ type Vdom =
         (isFocused : bool)
         : Vdom<DesiredBounds, Unkeyed>
         =
-        Vdom.Unkeyed (UnkeyedVdom.ToggleWithGlyph (uncheckedGlyph, checkedGlyph, isChecked, isFocused), Teq.refl)
+        let glyph = if isChecked then checkedGlyph else uncheckedGlyph
+        let content = if isFocused then $"[{glyph}]" else string glyph
+        Vdom.styledText content CellStyle.none
 
     /// <summary>Creates a button with the given visual state.</summary>
     /// <param name="isFocused">
@@ -477,7 +479,15 @@ type Vdom =
     /// This is purely visual; use ActivationResolver passed into App.run to handle activation events.
     /// </remarks>
     static member button (isFocused : bool) (isPressed : bool) (label : string) : Vdom<DesiredBounds, Unkeyed> =
-        Vdom.Unkeyed (UnkeyedVdom.Button (label, isFocused, isPressed), Teq.refl)
+        let leftBracket, rightBracket =
+            match isFocused, isPressed with
+            | true, true -> "[*", "*]"
+            | true, false -> "[[", "]]"
+            | false, true -> " *", "* "
+            | false, false -> "[ ", " ]"
+        let content = $"{leftBracket} {label} {rightBracket}"
+        let style = if isPressed then CellStyle.inverted else CellStyle.none
+        Vdom.styledText content style
 
     /// Creates a bordered wrapper around a component, drawing a border around its content.
     static member bordered (inner : Vdom<_, Keyed>) : Vdom<DesiredBounds, Unkeyed> =

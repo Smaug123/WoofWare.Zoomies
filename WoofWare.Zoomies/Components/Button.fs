@@ -27,5 +27,16 @@ type Button =
         let isFocused = VdomContext.focusedKey ctx = Some key
         let isPressed = VdomContext.wasRecentlyActivated key ctx
 
-        let button = Vdom.button isFocused isPressed label |> Vdom.withKey key
+        // Calculate button content: brackets vary based on both focus and pressed state
+        let leftBracket, rightBracket =
+            match isFocused, isPressed with
+            | true, true -> "[*", "*]"
+            | true, false -> "[[", "]]"
+            | false, true -> " *", "* "
+            | false, false -> "[ ", " ]"
+
+        let content = $"{leftBracket} {label} {rightBracket}"
+        let style = if isPressed then CellStyle.inverted else CellStyle.none
+
+        let button = Vdom.styledText content style |> Vdom.withKey key
         Vdom.withFocusTracking (button, ?isFirstToFocus = isFirstToFocus, ?isInitiallyFocused = isInitiallyFocused)
