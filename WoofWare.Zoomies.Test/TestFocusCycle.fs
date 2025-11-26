@@ -688,13 +688,10 @@ module TestFocusCycle =
                 | 1 ->
                     // Second frame: non-focusable element.
                     // The previous render had focus on the key `sharedKey`.
-                    // Even though it's not focusable, it should show focus visuals if the context says it's focused.
                     let isFocused = currentFocus = Some sharedKey
-                    let content = if isFocused then "[☐]" else " ☐ "
 
                     let nonFocusable =
-                        Vdom.styledText (content, CellStyle.none, ContentAlignment.Centered)
-                        |> Vdom.withKey sharedKey
+                        Components.Checkbox.make' (false, isFocused) |> Vdom.withKey sharedKey
 
                     Vdom.panelSplitProportion (
                         SplitDirection.Vertical,

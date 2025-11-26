@@ -4,8 +4,8 @@ open WoofWare.Zoomies
 
 [<RequireQualifiedAccess>]
 type Checkbox =
-    static member private toggledGlyph = '☐'
-    static member private untoggledGlyph = '☑'
+    static member private toggledGlyph = '☑'
+    static member private untoggledGlyph = '☐'
 
     static member make' (isChecked : bool, isFocused : bool) : Vdom<DesiredBounds, Unkeyed> =
         Toggle.make' (Checkbox.untoggledGlyph, Checkbox.toggledGlyph, isChecked, isFocused)
