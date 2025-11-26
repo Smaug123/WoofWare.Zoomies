@@ -3,14 +3,29 @@ namespace WoofWare.Zoomies.Components
 open WoofWare.Zoomies
 
 [<RequireQualifiedAccess>]
-module LabelledCheckbox =
+type LabelledCheckbox =
 
     /// Creates a checkbox with a text label positioned to its right.
-    let make (isFocused : bool) (isChecked : bool) (label : string) : Vdom<DesiredBounds, Unkeyed> =
+    static member make
+        (
+            ctx : VdomContext,
+            label : string,
+            key : NodeKey,
+            isChecked : bool,
+            ?isFirstToFocus : bool,
+            ?isInitiallyFocused : bool
+        )
+        =
         // TODO: centre this text horizontally so it's next to the checkbox
         Vdom.panelSplitAbsolute (
             SplitDirection.Vertical,
             3,
-            Vdom.checkbox isFocused isChecked,
+            Checkbox.make (
+                ctx,
+                key,
+                isChecked,
+                ?isFirstToFocus = isFirstToFocus,
+                ?isInitiallyFocused = isInitiallyFocused
+            ),
             Vdom.textContent false label
         )

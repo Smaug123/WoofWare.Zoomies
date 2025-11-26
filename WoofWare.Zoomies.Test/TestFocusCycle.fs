@@ -40,16 +40,11 @@ module TestFocusCycle =
             | _ -> failwith "bad"
 
     let vdom (vdomContext : VdomContext) (state : State) =
-        let currentFocus = VdomContext.focusedKey vdomContext
-
         List.init
             4
             (fun i ->
                 let key = NodeKey.make $"checkbox%i{i}"
-
-                Vdom.checkbox (currentFocus = Some key) state.Checkboxes.[i]
-                |> Vdom.withKey key
-                |> Vdom.withFocusTracking
+                Components.Checkbox.make (vdomContext, key, state.Checkboxes.[i])
             )
         |> List.reduce (fun x y -> Vdom.panelSplitAbsolute (SplitDirection.Vertical, -3, x, y))
 
@@ -571,27 +566,23 @@ module TestFocusCycle =
             let haveFrameworkHandleFocus _ = true
 
             let vdom (vdomContext : VdomContext) (renderCheckbox1 : bool) =
-                let currentFocus = VdomContext.focusedKey vdomContext
                 let sharedKey = NodeKey.make "shared-key"
+                let unsharedKey = NodeKey.make "unshared-key"
 
                 if renderCheckbox1 then
                     // First frame: checkbox at shared-key
-                    let checkbox1 =
-                        Vdom.checkbox (currentFocus = Some sharedKey) false
-                        |> Vdom.withKey sharedKey
-                        |> Vdom.withFocusTracking
+                    let checkbox1 = Components.Checkbox.make (vdomContext, sharedKey, isChecked = false)
 
-                    let checkbox2 = Vdom.checkbox false false
+                    let checkbox2 =
+                        Components.Checkbox.make (vdomContext, unsharedKey, isChecked = false)
 
                     Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, checkbox1, checkbox2)
                 else
                     // Second frame: different checkbox at shared-key
-                    let checkbox1 = Vdom.checkbox false false
+                    let checkbox1 =
+                        Components.Checkbox.make (vdomContext, unsharedKey, isChecked = false)
 
-                    let checkbox2 =
-                        Vdom.checkbox (currentFocus = Some sharedKey) false
-                        |> Vdom.withKey sharedKey
-                        |> Vdom.withFocusTracking
+                    let checkbox2 = Components.Checkbox.make (vdomContext, sharedKey, isChecked = false)
 
                     Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, checkbox1, checkbox2)
 
@@ -627,7 +618,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-    ☐       ☐   |
+   ☐       ☐    |
 "
 
                 return ConsoleHarness.toString terminal
@@ -649,7 +640,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-   [☐]      ☐   |
+  [☐]      ☐    |
 "
 
                 return ConsoleHarness.toString terminal
@@ -672,7 +663,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-    ☐      [☐]  |
+   ☐      [☐]   |
 "
 
                 return ConsoleHarness.toString terminal
@@ -693,14 +684,14 @@ module TestFocusCycle =
                 match tick with
                 | 0 ->
                     // First frame: focusable checkbox at shared-key
-                    Vdom.checkbox (currentFocus = Some sharedKey) false
-                    |> Vdom.withKey sharedKey
-                    |> Vdom.withFocusTracking
+                    Components.Checkbox.make (vdomContext, sharedKey, false)
                 | 1 ->
                     // Second frame: non-focusable element.
                     // The previous render had focus on the key `sharedKey`.
+                    let isFocused = currentFocus = Some sharedKey
+
                     let nonFocusable =
-                        Vdom.checkbox (currentFocus = Some sharedKey) false |> Vdom.withKey sharedKey
+                        Components.Checkbox.make' (false, isFocused) |> Vdom.withKey sharedKey
 
                     Vdom.panelSplitProportion (
                         SplitDirection.Vertical,
@@ -755,7 +746,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-        ☐       |
+       ☐        |
 "
 
                 return ConsoleHarness.toString terminal
@@ -777,7 +768,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-       [☐]      |
+      [☐]       |
 "
 
                 return ConsoleHarness.toString terminal
@@ -801,7 +792,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-more       [☐]  |
+more      [☐]   |
 "
 
                 return ConsoleHarness.toString terminal

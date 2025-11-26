@@ -200,21 +200,9 @@ module Render =
                 | KeylessVdom.Keyed (KeyedVdom.WithKey (key1, vdom1)),
                   KeylessVdom.Keyed (KeyedVdom.WithKey (key2, vdom2)) when key1 = key2 ->
                     match vdom1, vdom2 with
-                    | UnkeyedVdom.TextContent (text1, focus1), UnkeyedVdom.TextContent (text2, focus2) when
-                        text1 = text2 && focus1 = focus2
-                        ->
-                        // Repopulate keyToNode for reused keyed node
-                        keyToNode.[key1] <- prev
-                        Some prev
-                    | UnkeyedVdom.ToggleWithGlyph (ug1, cg1, checked1, focus1),
-                      UnkeyedVdom.ToggleWithGlyph (ug2, cg2, checked2, focus2) when
-                        ug1 = ug2 && cg1 = cg2 && checked1 = checked2 && focus1 = focus2
-                        ->
-                        // Repopulate keyToNode for reused keyed node
-                        keyToNode.[key1] <- prev
-                        Some prev
-                    | UnkeyedVdom.Button (label1, focus1, pressed1), UnkeyedVdom.Button (label2, focus2, pressed2) when
-                        label1 = label2 && focus1 = focus2 && pressed1 = pressed2
+                    | UnkeyedVdom.TextContent (text1, style1, align1, focus1),
+                      UnkeyedVdom.TextContent (text2, style2, align2, focus2) when
+                        text1 = text2 && style1 = style2 && align1 = align2 && focus1 = focus2
                         ->
                         // Repopulate keyToNode for reused keyed node
                         keyToNode.[key1] <- prev
@@ -309,17 +297,9 @@ module Render =
                             None
                     | _ -> None
                 // Unkeyed leaf nodes
-                | KeylessVdom.Unkeyed (UnkeyedVdom.TextContent (text1, focus1)),
-                  KeylessVdom.Unkeyed (UnkeyedVdom.TextContent (text2, focus2)) when text1 = text2 && focus1 = focus2 ->
-                    Some prev
-                | KeylessVdom.Unkeyed (UnkeyedVdom.ToggleWithGlyph (ug1, cg1, checked1, focus1)),
-                  KeylessVdom.Unkeyed (UnkeyedVdom.ToggleWithGlyph (ug2, cg2, checked2, focus2)) when
-                    ug1 = ug2 && cg1 = cg2 && checked1 = checked2 && focus1 = focus2
-                    ->
-                    Some prev
-                | KeylessVdom.Unkeyed (UnkeyedVdom.Button (label1, focus1, pressed1)),
-                  KeylessVdom.Unkeyed (UnkeyedVdom.Button (label2, focus2, pressed2)) when
-                    label1 = label2 && focus1 = focus2 && pressed1 = pressed2
+                | KeylessVdom.Unkeyed (UnkeyedVdom.TextContent (text1, style1, align1, focus1)),
+                  KeylessVdom.Unkeyed (UnkeyedVdom.TextContent (text2, style2, align2, focus2)) when
+                    text1 = text2 && style1 = style2 && align1 = align2 && focus1 = focus2
                     ->
                     Some prev
                 | KeylessVdom.Unkeyed UnkeyedVdom.Empty, KeylessVdom.Unkeyed UnkeyedVdom.Empty ->
@@ -505,8 +485,6 @@ module Render =
                             arranged.Children.[0].VDomSource
                     ]
                 | UnkeyedVdom.TextContent _
-                | UnkeyedVdom.ToggleWithGlyph _
-                | UnkeyedVdom.Button _
                 | UnkeyedVdom.Empty -> []
             | KeylessVdom.Unkeyed unkeyedVdom ->
                 match unkeyedVdom with
@@ -594,8 +572,6 @@ module Render =
                             arranged.Children.[0].VDomSource
                     ]
                 | UnkeyedVdom.TextContent _
-                | UnkeyedVdom.ToggleWithGlyph _
-                | UnkeyedVdom.Button _
                 | UnkeyedVdom.Empty -> []
 
         let result =
@@ -639,10 +615,6 @@ module Render =
 
         match node.Vdom with
         | KeylessVdom.Unkeyed (UnkeyedVdom.TextContent _) -> fprintf writer "TextContent"
-        | KeylessVdom.Unkeyed (UnkeyedVdom.ToggleWithGlyph (_, _, isChecked, isFocused)) ->
-            fprintf writer $"ToggleWithGlyph(checked=%b{isChecked}, focused=%b{isFocused})"
-        | KeylessVdom.Unkeyed (UnkeyedVdom.Button (label, isFocused, isPressed)) ->
-            fprintf writer $"Button(label=\"%s{label}\", focused=%b{isFocused}, pressed=%b{isPressed})"
         | KeylessVdom.Unkeyed UnkeyedVdom.Empty -> fprintf writer "Empty"
         | KeylessVdom.Unkeyed (UnkeyedVdom.Bordered _) -> fprintf writer "Bordered"
         | KeylessVdom.Unkeyed (UnkeyedVdom.PanelSplit (direction, behaviour, _, _)) ->
@@ -833,100 +805,58 @@ module Render =
 
             renderToBuffer dirty prevChild node.OverlaidChildren.[0]
 
-        | UnkeyedVdom.TextContent (content, focus) ->
+        | UnkeyedVdom.TextContent (content, style, alignment, focus) ->
             // TODO: can do better here if we can compute a more efficient diff
             // TODO: work out how to display this differently when it has focus
             clearBoundsWithSpaces dirty bounds
 
             // Only render text if we have space (width and height both > 0)
             if bounds.Width > 0 && bounds.Height > 0 then
-                // dumb implementation! could do much better
-                let mutable index = 0
-                let mutable currX = 0
-                let mutable currY = 0
+                match alignment with
+                | ContentAlignment.Centered ->
+                    // Center the text horizontally and vertically within bounds
+                    let centerY = bounds.Height / 2
+                    let contentLen = content.Length
+                    let startX = max 0 ((bounds.Width - contentLen) / 2)
+                    let mutable x = startX
 
-                while index < content.Length do
-                    setAtRelativeOffset dirty bounds currX currY (ValueSome (TerminalCell.OfChar (content.Chars index)))
-
-                    currX <- currX + 1
-
-                    if currX = bounds.Width then
-                        currX <- 0
-                        currY <- currY + 1
-
-                        if currY >= bounds.Height then
-                            index <- content.Length
-
-                    index <- index + 1
-
-        | UnkeyedVdom.ToggleWithGlyph (uncheckedGlyph, checkedGlyph, isChecked, focus) ->
-            clearBoundsWithSpaces dirty bounds
-
-            let content = if isChecked then checkedGlyph else uncheckedGlyph
-
-            // Only render focus brackets if width and height are sufficient (need at least 3 cells for "[ ]")
-            if focus && bounds.Width >= 3 && bounds.Height > 0 then
-                setAtRelativeOffset
-                    dirty
-                    bounds
-                    (bounds.Width / 2 - 1)
-                    (bounds.Height / 2)
-                    (ValueSome (TerminalCell.OfChar '['))
-
-                setAtRelativeOffset
-                    dirty
-                    bounds
-                    (bounds.Width / 2 + 1)
-                    (bounds.Height / 2)
-                    (ValueSome (TerminalCell.OfChar ']'))
-
-            // Always render content if we have any space
-            if bounds.Width > 0 && bounds.Height > 0 then
-                setAtRelativeOffset
-                    dirty
-                    bounds
-                    (bounds.Width / 2)
-                    (bounds.Height / 2)
-                    (ValueSome (TerminalCell.OfChar content))
-
-        | UnkeyedVdom.Button (label, isFocused, isPressed) ->
-            clearBoundsWithSpaces dirty bounds
-
-            // Calculate button content: brackets vary based on both focus and pressed state
-            let leftBracket, rightBracket =
-                match isFocused, isPressed with
-                | true, true -> "[*", "*]"
-                | true, false -> "[[", "]]"
-                | false, true -> " *", "* "
-                | false, false -> "[ ", " ]"
-
-            let fullContent = $"{leftBracket} {label} {rightBracket}"
-
-            // Only render if we have space
-            if bounds.Width > 0 && bounds.Height > 0 then
-                // Center the button text vertically
-                let centerY = bounds.Height / 2
-                let contentLen = fullContent.Length
-
-                // Simple truncation/centering for now
-                let startX = max 0 ((bounds.Width - contentLen) / 2)
-                let mutable x = startX
-
-                for ch in fullContent do
-                    if x < bounds.Width then
-                        let cell =
-                            if isPressed then
-                                // Inverted colors for pressed state
+                    for ch in content do
+                        if x < bounds.Width then
+                            let cell =
                                 {
                                     Char = ch
-                                    BackgroundColor = ValueSome ConsoleColor.White
-                                    TextColor = ValueSome ConsoleColor.Black
+                                    BackgroundColor = style.Background
+                                    TextColor = style.Foreground
                                 }
-                            else
-                                TerminalCell.OfChar ch
 
-                        setAtRelativeOffset dirty bounds x centerY (ValueSome cell)
-                        x <- x + 1
+                            setAtRelativeOffset dirty bounds x centerY (ValueSome cell)
+                            x <- x + 1
+                | ContentAlignment.TopLeft ->
+                    // Render from top-left, wrapping to next line
+                    let mutable index = 0
+                    let mutable currX = 0
+                    let mutable currY = 0
+
+                    while index < content.Length do
+                        let cell =
+                            {
+                                Char = content.Chars index
+                                BackgroundColor = style.Background
+                                TextColor = style.Foreground
+                            }
+
+                        setAtRelativeOffset dirty bounds currX currY (ValueSome cell)
+
+                        currX <- currX + 1
+
+                        if currX = bounds.Width then
+                            currX <- 0
+                            currY <- currY + 1
+
+                            if currY >= bounds.Height then
+                                index <- content.Length
+
+                        index <- index + 1
 
         | UnkeyedVdom.Empty ->
             // Empty nodes render nothing, but need to clear if replacing a previous node

@@ -113,22 +113,6 @@ module internal Layout =
                     Some (wordWrapCount text safeWidth)
         }
 
-    /// Measure a toggle with glyphs node
-    let private measureCheckbox (constraints : MeasureConstraints) : MeasuredSize =
-        // Toggle with glyph and optional focus brackets - ideally 3 chars wide
-        let idealWidth = 3
-        // Respect MaxWidth constraint when reporting MinWidth and PreferredWidth
-        let constrainedWidth = min idealWidth constraints.MaxWidth
-
-        {
-            MinWidth = constrainedWidth
-            PreferredWidth = constrainedWidth
-            MaxWidth = Some constrainedWidth // Fixed size component (but respects parent constraints)
-            MinHeightForWidth = fun _ -> 1
-            PreferredHeightForWidth = fun _ -> 1
-            MaxHeightForWidth = fun _ -> Some 1
-        }
-
     /// Measure a bordered container
     let rec private measureBordered
         (child : KeylessVdom<DesiredBounds>)
@@ -609,25 +593,10 @@ module internal Layout =
         : MeasuredNode<DesiredBounds>
         =
         match vdom with
-        | UnkeyedVdom.TextContent (text, _focused) ->
+        | UnkeyedVdom.TextContent (text, _style, _alignment, _focused) ->
             {
                 Vdom = KeylessVdom.Unkeyed vdom
                 Measured = measureText text constraints
-                Children = []
-            }
-        | UnkeyedVdom.ToggleWithGlyph (_uncheckedGlyph, _checkedGlyph, _isChecked, _isFocused) ->
-            {
-                Vdom = KeylessVdom.Unkeyed vdom
-                Measured = measureCheckbox constraints
-                Children = []
-            }
-        | UnkeyedVdom.Button (label, _isFocused, _isPressed) ->
-            // Button renders as "[[ label ]]" or with that same width in all cases.
-            let buttonText = $"[[ {label} ]]"
-
-            {
-                Vdom = KeylessVdom.Unkeyed vdom
-                Measured = measureText buttonText constraints
                 Children = []
             }
         | UnkeyedVdom.Empty ->
@@ -706,29 +675,12 @@ module internal Layout =
         match measured.Vdom with
         | KeylessVdom.Keyed (KeyedVdom.WithKey (key, unkeyedVdom)) ->
             match unkeyedVdom with
-            | UnkeyedVdom.TextContent (text, focused) ->
-                {
-                    Vdom = KeylessVdom.Keyed (KeyedVdom.WithKey (key, UnkeyedVdom.TextContent (text, focused)))
-                    VDomSource = measured.Vdom
-                    Bounds = bounds
-                    Children = []
-                }
-            | UnkeyedVdom.ToggleWithGlyph (uncheckedGlyph, checkedGlyph, isChecked, isFocused) ->
+            | UnkeyedVdom.TextContent (text, style, alignment, focused) ->
                 {
                     Vdom =
                         KeylessVdom.Keyed (
-                            KeyedVdom.WithKey (
-                                key,
-                                UnkeyedVdom.ToggleWithGlyph (uncheckedGlyph, checkedGlyph, isChecked, isFocused)
-                            )
+                            KeyedVdom.WithKey (key, UnkeyedVdom.TextContent (text, style, alignment, focused))
                         )
-                    VDomSource = measured.Vdom
-                    Bounds = bounds
-                    Children = []
-                }
-            | UnkeyedVdom.Button (label, isFocused, isPressed) ->
-                {
-                    Vdom = KeylessVdom.Keyed (KeyedVdom.WithKey (key, UnkeyedVdom.Button (label, isFocused, isPressed)))
                     VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = []
@@ -821,26 +773,9 @@ module internal Layout =
                 }
         | KeylessVdom.Unkeyed unkeyedVdom ->
             match unkeyedVdom with
-            | UnkeyedVdom.TextContent (text, focused) ->
+            | UnkeyedVdom.TextContent (text, style, alignment, focused) ->
                 {
-                    Vdom = KeylessVdom.Unkeyed (UnkeyedVdom.TextContent (text, focused))
-                    VDomSource = measured.Vdom
-                    Bounds = bounds
-                    Children = []
-                }
-            | UnkeyedVdom.ToggleWithGlyph (uncheckedGlyph, checkedGlyph, isChecked, isFocused) ->
-                {
-                    Vdom =
-                        KeylessVdom.Unkeyed (
-                            UnkeyedVdom.ToggleWithGlyph (uncheckedGlyph, checkedGlyph, isChecked, isFocused)
-                        )
-                    VDomSource = measured.Vdom
-                    Bounds = bounds
-                    Children = []
-                }
-            | UnkeyedVdom.Button (label, isFocused, isPressed) ->
-                {
-                    Vdom = KeylessVdom.Unkeyed (UnkeyedVdom.Button (label, isFocused, isPressed))
+                    Vdom = KeylessVdom.Unkeyed (UnkeyedVdom.TextContent (text, style, alignment, focused))
                     VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = []

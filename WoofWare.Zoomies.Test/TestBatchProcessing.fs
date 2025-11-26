@@ -264,17 +264,12 @@ module TestBatchProcessing =
 
             let vdom (vdomContext : VdomContext) (_state : ModeSwitchingState) =
                 vdomRenderCount <- vdomRenderCount + 1
-                let currentFocus = VdomContext.focusedKey vdomContext
 
                 let checkbox0 =
-                    Vdom.checkbox (currentFocus = Some (NodeKey.make "checkbox0")) false
-                    |> Vdom.withKey (NodeKey.make "checkbox0")
-                    |> Vdom.withFocusTracking
+                    Components.Checkbox.make (vdomContext, NodeKey.make "checkbox0", false)
 
                 let checkbox1 =
-                    Vdom.checkbox (currentFocus = Some (NodeKey.make "checkbox1")) false
-                    |> Vdom.withKey (NodeKey.make "checkbox1")
-                    |> Vdom.withFocusTracking
+                    Components.Checkbox.make (vdomContext, NodeKey.make "checkbox1", false)
 
                 Vdom.panelSplitAbsolute (SplitDirection.Vertical, -3, checkbox0, checkbox1)
 

@@ -43,12 +43,17 @@ type Border = | Yes
 
 type DesiredBounds = unit
 
+/// Specifies how content should be aligned within its bounds.
+type ContentAlignment =
+    /// Content is centered both horizontally and vertically.
+    | Centered
+    /// Content starts at the top-left corner and wraps.
+    | TopLeft
+
 type internal UnkeyedVdom<'bounds> =
     | Bordered of KeylessVdom<'bounds>
     | PanelSplit of SplitDirection * SplitBehaviour * child1 : KeylessVdom<'bounds> * child2 : KeylessVdom<'bounds>
-    | TextContent of string * focused : bool
-    | ToggleWithGlyph of uncheckedGlyph : char * checkedGlyph : char * isChecked : bool * isFocused : bool
-    | Button of label : string * isFocused : bool * isPressed : bool
+    | TextContent of content : string * style : CellStyle * alignment : ContentAlignment * focused : bool
     | Focusable of isFirstToFocus : bool * isInitiallyFocused : bool * KeyedVdom<'bounds>
     | Empty
     | FlexibleContent of
@@ -87,7 +92,20 @@ type Vdom =
     /// </remarks>
     static member textContent (isFocused : bool) (s : string) : Vdom<DesiredBounds, Unkeyed> =
         // TODO: create text areas which do smart truncation etc for you
-        Vdom.Unkeyed (UnkeyedVdom.TextContent (s, isFocused), Teq.refl)
+        Vdom.Unkeyed (UnkeyedVdom.TextContent (s, CellStyle.none, ContentAlignment.TopLeft, isFocused), Teq.refl)
+
+    /// <summary>Creates a text content component with explicit styling.</summary>
+    /// <param name="content">The text to display.</param>
+    /// <param name="style">The cell styling to apply to the text.</param>
+    /// <param name="alignment">Where within the panel to place the text.</param>
+    static member styledText
+        (content : string, style : CellStyle, ?alignment : ContentAlignment)
+        : Vdom<DesiredBounds, Unkeyed>
+        =
+        Vdom.Unkeyed (
+            UnkeyedVdom.TextContent (content, style, defaultArg alignment ContentAlignment.TopLeft, false),
+            Teq.refl
+        )
 
     /// <summary>Creates an empty zero-sized element.</summary>
     /// <remarks>
@@ -425,53 +443,6 @@ type Vdom =
             UnkeyedVdom.PanelSplit (d, SplitBehaviour.Auto, KeylessVdom.Unkeyed c1, KeylessVdom.Unkeyed c2),
             Teq.refl
         )
-
-    /// <summary>Creates a checkbox component with the specified state.</summary>
-    /// <param name="isFocused">
-    /// Specifies that this checkbox should render as if it has keyboard focus.
-    /// This has nothing to do with the WoofWare.Zoomies automatic focus tracking system; it's purely a display concern.
-    /// See <c>Vdom.withFocusTracking</c> for details.
-    /// </param>
-    /// <param name="isChecked">Specifies that this checkbox is currently checked. Derive the value of this parameter
-    /// from your application state.</param>
-    static member checkbox (isFocused : bool) (isChecked : bool) : Vdom<DesiredBounds, Unkeyed> =
-        Vdom.Unkeyed (UnkeyedVdom.ToggleWithGlyph ('☐', '☑', isChecked, isFocused), Teq.refl)
-
-    /// <summary>Creates a toggle component with custom glyphs.</summary>
-    /// <param name="uncheckedGlyph">The character to display when the toggle is in the unchecked/collapsed state.</param>
-    /// <param name="checkedGlyph">The character to display when the toggle is in the checked/expanded state.</param>
-    /// <param name="isChecked">Specifies that this toggle is currently checked. Derive the value of this parameter
-    /// from your application state.</param>
-    /// <param name="isFocused">
-    /// Specifies that this toggle should render as if it has keyboard focus.
-    /// This has nothing to do with the WoofWare.Zoomies automatic focus tracking system; it's purely a display concern.
-    /// See <c>Vdom.withFocusTracking</c> for details.
-    /// </param>
-    static member toggleWithGlyph
-        (uncheckedGlyph : char)
-        (checkedGlyph : char)
-        (isChecked : bool)
-        (isFocused : bool)
-        : Vdom<DesiredBounds, Unkeyed>
-        =
-        Vdom.Unkeyed (UnkeyedVdom.ToggleWithGlyph (uncheckedGlyph, checkedGlyph, isChecked, isFocused), Teq.refl)
-
-    /// <summary>Creates a button with the given visual state.</summary>
-    /// <param name="isFocused">
-    /// Specifies that this button should render as if it has keyboard focus.
-    /// This has nothing to do with the WoofWare.Zoomies automatic focus tracking system; it's purely a display concern.
-    /// See <c>Vdom.withFocusTracking</c> for details.
-    /// </param>
-    /// <param name="isPressed">
-    /// Specifies that this button should render as if it is currently pressed.
-    /// This is typically managed automatically by calling <c>VdomContext.wasRecentlyActivated</c> with the button's key.
-    /// </param>
-    /// <param name="label">The text to display on the button.</param>
-    /// <remarks>
-    /// This is purely visual; use ActivationResolver passed into App.run to handle activation events.
-    /// </remarks>
-    static member button (isFocused : bool) (isPressed : bool) (label : string) : Vdom<DesiredBounds, Unkeyed> =
-        Vdom.Unkeyed (UnkeyedVdom.Button (label, isFocused, isPressed), Teq.refl)
 
     /// Creates a bordered wrapper around a component, drawing a border around its content.
     static member bordered (inner : Vdom<_, Keyed>) : Vdom<DesiredBounds, Unkeyed> =
