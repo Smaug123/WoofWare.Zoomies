@@ -274,6 +274,27 @@ module Render =
                         // Focusable nodes have complex focus registration logic
                         // Skip early cutoff and use normal path to avoid issues
                         None
+                    | UnkeyedVdom.Tag _, UnkeyedVdom.Tag _ when prev.OverlaidChildren.Length > 0 ->
+                        // Tag is a transparent container - check if the child changed
+                        let prevChild = prev.OverlaidChildren.[0]
+
+                        let newChild =
+                            arrangedToRendered
+                                keyToNode
+                                focusableKeys
+                                firstToFocusKey
+                                initiallyFocusedKey
+                                (Some prevChild)
+                                arranged.Children.[0]
+                                arranged.Children.[0].VDomSource
+
+                        if Object.referenceEquals newChild prevChild then
+                            // Child unchanged, repopulate keyToNode and reuse parent
+                            keyToNode.[key1] <- prev
+                            Some prev
+                        else
+                            // Child changed, will create new parent below
+                            None
                     | UnkeyedVdom.FlexibleContent _, UnkeyedVdom.FlexibleContent _ when prev.OverlaidChildren.Length > 0 ->
                         // FlexibleContent is a transparent container - check if the child changed
                         let prevChild = prev.OverlaidChildren.[0]
@@ -369,6 +390,28 @@ module Render =
                     // Focusable nodes have complex focus registration logic
                     // Skip early cutoff and use normal path to avoid issues
                     None
+                | KeylessVdom.Unkeyed (UnkeyedVdom.Tag _), KeylessVdom.Unkeyed (UnkeyedVdom.Tag _) when
+                    prev.OverlaidChildren.Length > 0
+                    ->
+                    // Tag is a transparent container - check if the child changed
+                    let prevChild = prev.OverlaidChildren.[0]
+
+                    let newChild =
+                        arrangedToRendered
+                            keyToNode
+                            focusableKeys
+                            firstToFocusKey
+                            initiallyFocusedKey
+                            (Some prevChild)
+                            arranged.Children.[0]
+                            arranged.Children.[0].VDomSource
+
+                    if Object.referenceEquals newChild prevChild then
+                        // Child unchanged, reuse parent
+                        Some prev
+                    else
+                        // Child changed, will create new parent below
+                        None
                 | KeylessVdom.Unkeyed (UnkeyedVdom.FlexibleContent _),
                   KeylessVdom.Unkeyed (UnkeyedVdom.FlexibleContent _) when prev.OverlaidChildren.Length > 0 ->
                     // FlexibleContent is a transparent container - check if the child changed
@@ -467,6 +510,23 @@ module Render =
                             arranged.Children.[0]
                             (KeylessVdom.Keyed (KeyedVdom.WithKey (key, childVdom)))
                     ]
+                | UnkeyedVdom.Tag (_, _) ->
+                    // Tag is a transparent container - render the single child
+                    let prevChild =
+                        match previousRender with
+                        | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
+                        | _ -> None
+
+                    [
+                        arrangedToRendered
+                            keyToNode
+                            focusableKeys
+                            firstToFocusKey
+                            initiallyFocusedKey
+                            prevChild
+                            arranged.Children.[0]
+                            arranged.Children.[0].VDomSource
+                    ]
                 | UnkeyedVdom.FlexibleContent _ ->
                     // FlexibleContent is a transparent container - render the single child
                     let prevChild =
@@ -554,6 +614,23 @@ module Render =
                             arranged.Children.[0]
                             (KeylessVdom.Keyed (KeyedVdom.WithKey (key, childVdom)))
                     ]
+                | UnkeyedVdom.Tag (_, _) ->
+                    // Tag is a transparent container - render the single child
+                    let prevChild =
+                        match previousRender with
+                        | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
+                        | _ -> None
+
+                    [
+                        arrangedToRendered
+                            keyToNode
+                            focusableKeys
+                            firstToFocusKey
+                            initiallyFocusedKey
+                            prevChild
+                            arranged.Children.[0]
+                            arranged.Children.[0].VDomSource
+                    ]
                 | UnkeyedVdom.FlexibleContent _ ->
                     // FlexibleContent is a transparent container - render the single child
                     let prevChild =
@@ -592,7 +669,7 @@ module Render =
                 // The child's key is already registered by the recursive call.
                 ()
             | _ ->
-                // For other keyed nodes, register the key to this node
+                // For all other keyed nodes (including Tag wrappers), register the key to this node
                 keyToNode.[key] <- result
         | KeylessVdom.Unkeyed (UnkeyedVdom.Focusable (_, _, KeyedVdom.WithKey (key, _))) ->
             // Register the focusable child's key
@@ -633,6 +710,7 @@ module Render =
             fprintf writer $"PanelSplit(%s{dirStr}, %s{behavStr})"
         | KeylessVdom.Unkeyed (UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, _)) ->
             fprintf writer $"Focusable(isFirstToFocus=%b{isFirstToFocus}, isInitiallyFocused=%b{isInitiallyFocused})"
+        | KeylessVdom.Unkeyed (UnkeyedVdom.Tag (tag, _)) -> fprintf writer $"Tag(\"%s{tag}\")"
         | KeylessVdom.Unkeyed (UnkeyedVdom.FlexibleContent _) -> fprintf writer "FlexibleContent"
         | KeylessVdom.Keyed _ -> fprintf writer "Keyed"
 
@@ -780,6 +858,15 @@ module Render =
                     None // Invalidate children
 
             // Extract child previous state (None if we cleared)
+            let prevChild =
+                match previousNode with
+                | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
+                | _ -> None
+
+            renderToBuffer dirty prevChild node.OverlaidChildren.[0]
+
+        | UnkeyedVdom.Tag (_, _) ->
+            // Tag is a transparent container - just render the child
             let prevChild =
                 match previousNode with
                 | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]

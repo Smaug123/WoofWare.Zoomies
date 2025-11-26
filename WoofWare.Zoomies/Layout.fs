@@ -635,6 +635,15 @@ module internal Layout =
                 Measured = childMeasured.Measured
                 Children = [ childMeasured ]
             }
+        | UnkeyedVdom.Tag (_, inner) ->
+            // Tag is transparent for measurement purposes
+            let childMeasured = measureEither constraints inner
+
+            {
+                Vdom = KeylessVdom.Unkeyed vdom
+                Measured = childMeasured.Measured
+                Children = [ childMeasured ]
+            }
         | UnkeyedVdom.FlexibleContent (measure, _) ->
             // Call the user's measure function
             let measured = measure constraints
@@ -749,6 +758,20 @@ module internal Layout =
                     Bounds = bounds
                     Children = [ childArranged ]
                 }
+            | UnkeyedVdom.Tag (tag, _) ->
+                // Tag is transparent - arrange the child and wrap it back
+                let childArranged = arrange measured.Children.[0] bounds
+
+                // Reconstruct the tagged Vdom from the arranged child
+                let taggedVdom =
+                    KeylessVdom.Keyed (KeyedVdom.WithKey (key, UnkeyedVdom.Tag (tag, childArranged.Vdom)))
+
+                {
+                    Vdom = taggedVdom
+                    VDomSource = measured.Vdom
+                    Bounds = bounds
+                    Children = [ childArranged ]
+                }
             | UnkeyedVdom.FlexibleContent (measure, render) ->
                 // Call the render function with allocated bounds
                 let renderedVdom = render bounds
@@ -831,6 +854,19 @@ module internal Layout =
 
                 {
                     Vdom = focusableVdom
+                    VDomSource = measured.Vdom
+                    Bounds = bounds
+                    Children = [ childArranged ]
+                }
+            | UnkeyedVdom.Tag (tag, _) ->
+                // Tag is transparent - arrange the child and wrap it back
+                let childArranged = arrange measured.Children.[0] bounds
+
+                // Reconstruct the tagged Vdom from the arranged child
+                let taggedVdom = KeylessVdom.Unkeyed (UnkeyedVdom.Tag (tag, childArranged.Vdom))
+
+                {
+                    Vdom = taggedVdom
                     VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = [ childArranged ]

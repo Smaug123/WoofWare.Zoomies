@@ -29,3 +29,4 @@ type LabelledCheckbox =
             ),
             Vdom.textContent false label
         )
+        |> Vdom.withTag "labelled-checkbox"

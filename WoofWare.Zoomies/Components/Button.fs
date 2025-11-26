@@ -22,6 +22,7 @@ type Button =
         let style = if isPressed then CellStyle.inverted else CellStyle.none
 
         Vdom.styledText (content, style, ContentAlignment.Centered)
+        |> Vdom.withTag "button"
 
     /// <summary>Creates a button with automatic focus and activation visual state.</summary>
     /// <param name="ctx">The VdomContext for checking focus and activation state.</param>
@@ -47,4 +48,5 @@ type Button =
         let isPressed = VdomContext.wasRecentlyActivated key ctx
 
         let button = Button.make' (label, isFocused, isPressed) |> Vdom.withKey key
+
         Vdom.withFocusTracking (button, ?isFirstToFocus = isFirstToFocus, ?isInitiallyFocused = isInitiallyFocused)

@@ -2,6 +2,13 @@ namespace WoofWare.Zoomies
 
 open TypeEquality
 
+/// Global configuration for the tagging system.
+[<RequireQualifiedAccess>]
+module VdomTagging =
+    /// When false, Vdom.withTag is a no-op and no allocations occur.
+    /// Defaults to false. Set to true before constructing VDOMs to enable tagging.
+    let mutable Enabled : bool = false
+
 /// Opaque identifier for stable node identity across frames
 type NodeKey = private | NodeKey of string
 
@@ -59,6 +66,7 @@ type internal UnkeyedVdom<'bounds> =
     | FlexibleContent of
         measure : (MeasureConstraints -> MeasuredSize) *
         render : (Rectangle -> KeylessVdom<DesiredBounds>)
+    | Tag of tag : string * inner : KeylessVdom<'bounds>
 
 and internal KeyedVdom<'bounds> = | WithKey of NodeKey * UnkeyedVdom<'bounds>
 
@@ -523,6 +531,115 @@ type Vdom =
             | Vdom.Unkeyed (vdom, _) -> KeylessVdom.Unkeyed vdom
 
         Vdom.Unkeyed (UnkeyedVdom.FlexibleContent (measure, renderInternal), Teq.refl)
+
+    /// Attach a semantic tag to this node. Tags are metadata only and do not
+    /// affect rendering or layout.
+    ///
+    /// If VdomTagging.Enabled is false, this is a no-op returning the input unchanged.
+    static member withTag (tag : string) (vdom : Vdom<'bounds, 'keyed>) : Vdom<'bounds, 'keyed> =
+        if not VdomTagging.Enabled then
+            vdom
+        else
+            match vdom with
+            | Vdom.Unkeyed (inner, teq) ->
+                let wrappedInner = UnkeyedVdom.Tag (tag, KeylessVdom.Unkeyed inner)
+                Vdom.Unkeyed (wrappedInner, teq)
+            | Vdom.Keyed (inner, teq) ->
+                // Extract the inner content, wrap it in a Tag, then re-key it
+                let (KeyedVdom.WithKey (key, innerUnkeyed)) = inner
+                let wrappedInner = UnkeyedVdom.Tag (tag, KeylessVdom.Unkeyed innerUnkeyed)
+                let rekeyedInner = KeyedVdom.WithKey (key, wrappedInner)
+                Vdom.Keyed (rekeyedInner, teq)
+
+    /// Produce a human-readable tree representation of the VDOM structure,
+    /// including tags and keys.
+    static member debugDump (vdom : Vdom<'bounds, 'keyed>) : string =
+        let sb = System.Text.StringBuilder ()
+
+        let rec dumpKeylessVdom (indent : string) (vdom : KeylessVdom<'bounds>) : unit =
+            match vdom with
+            | KeylessVdom.Keyed keyed -> dumpKeyedVdom indent keyed
+            | KeylessVdom.Unkeyed unkeyed -> dumpUnkeyedVdom indent unkeyed
+
+        and dumpKeyedVdom (indent : string) (KeyedVdom.WithKey (key, inner)) : unit =
+            sb.AppendLine (sprintf "%sKey: %s" indent (NodeKey.toString key)) |> ignore
+            dumpUnkeyedVdom (indent + "  ") inner
+
+        and dumpUnkeyedVdom (indent : string) (vdom : UnkeyedVdom<'bounds>) : unit =
+            match vdom with
+            | UnkeyedVdom.Empty -> sb.AppendLine (sprintf "%sEmpty" indent) |> ignore
+            | UnkeyedVdom.TextContent (content, style, alignment, focused) ->
+                let truncated =
+                    if content.Length > 50 then
+                        content.Substring (0, 47) + "..."
+                    else
+                        content
+
+                let focusedStr = if focused then " (focused)" else ""
+
+                let alignmentStr =
+                    match alignment with
+                    | ContentAlignment.Centered -> "centered"
+                    | ContentAlignment.TopLeft -> "top-left"
+
+                sb.AppendLine (
+                    sprintf
+                        "%sText: \"%s\" [%s]%s"
+                        indent
+                        (truncated.Replace("\n", "\\n").Replace ("\r", "\\r"))
+                        alignmentStr
+                        focusedStr
+                )
+                |> ignore
+            | UnkeyedVdom.Bordered inner ->
+                sb.AppendLine (sprintf "%sBordered:" indent) |> ignore
+                dumpKeylessVdom (indent + "  ") inner
+            | UnkeyedVdom.PanelSplit (direction, behaviour, c1, c2) ->
+                let dirStr =
+                    match direction with
+                    | Vertical -> "Vertical"
+                    | Horizontal -> "Horizontal"
+
+                let behavStr =
+                    match behaviour with
+                    | SplitBehaviour.Proportion p -> sprintf "Proportion %.2f" p
+                    | SplitBehaviour.Absolute n -> sprintf "Absolute %d" n
+                    | SplitBehaviour.Auto -> "Auto"
+
+                sb.AppendLine (sprintf "%sPanelSplit: %s %s" indent dirStr behavStr) |> ignore
+                sb.AppendLine (sprintf "%s  First:" indent) |> ignore
+                dumpKeylessVdom (indent + "    ") c1
+                sb.AppendLine (sprintf "%s  Second:" indent) |> ignore
+                dumpKeylessVdom (indent + "    ") c2
+            | UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, inner) ->
+                let flags = ResizeArray<string> ()
+
+                if isFirstToFocus then
+                    flags.Add "firstToFocus"
+
+                if isInitiallyFocused then
+                    flags.Add "initiallyFocused"
+
+                let flagsStr =
+                    if flags.Count > 0 then
+                        sprintf " [%s]" (String.concat ", " flags)
+                    else
+                        ""
+
+                sb.AppendLine (sprintf "%sFocusable%s:" indent flagsStr) |> ignore
+                dumpKeyedVdom (indent + "  ") inner
+            | UnkeyedVdom.FlexibleContent _ -> sb.AppendLine (sprintf "%sFlexibleContent <function>" indent) |> ignore
+            | UnkeyedVdom.Tag (tag, inner) ->
+                sb.AppendLine (sprintf "%sTag: %s" indent tag) |> ignore
+                dumpKeylessVdom (indent + "  ") inner
+
+        match vdom with
+        | Vdom.Keyed (keyed, _) ->
+            dumpKeyedVdom "" keyed
+            sb.ToString ()
+        | Vdom.Unkeyed (unkeyed, _) ->
+            dumpUnkeyedVdom "" unkeyed
+            sb.ToString ()
 
 [<Sealed>]
 type private KeylessVdom =

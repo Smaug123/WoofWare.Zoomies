@@ -68,3 +68,4 @@ module Collapsible =
             Vdom.panelSplitAuto (SplitDirection.Horizontal, headerContent, child)
         else
             Vdom.panelSplitAuto (SplitDirection.Horizontal, headerContent, Vdom.empty)
+        |> Vdom.withTag "collapsible"

@@ -23,6 +23,7 @@ type Toggle =
                 " " + glyph.ToString () + " "
 
         Vdom.styledText (content, CellStyle.none, ContentAlignment.Centered)
+        |> Vdom.withTag "toggle"
 
     /// <summary>Creates a toggle component with custom glyphs.</summary>
     /// <param name="ctx">The VdomContext for checking focus state.</param>
