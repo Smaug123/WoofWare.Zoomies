@@ -627,7 +627,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-    ☐       ☐   |
+   ☐       ☐    |
 "
 
                 return ConsoleHarness.toString terminal
@@ -649,7 +649,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-   [☐]      ☐   |
+  [☐]      ☐    |
 "
 
                 return ConsoleHarness.toString terminal
@@ -672,7 +672,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-    ☐      [☐]  |
+   ☐      [☐]   |
 "
 
                 return ConsoleHarness.toString terminal
@@ -755,7 +755,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-        ☐       |
+       ☐        |
 "
 
                 return ConsoleHarness.toString terminal
@@ -801,7 +801,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-more       [☐]  |
+more      [☐]   |
 "
 
                 return ConsoleHarness.toString terminal
