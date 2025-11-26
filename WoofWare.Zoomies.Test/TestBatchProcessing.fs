@@ -265,8 +265,11 @@ module TestBatchProcessing =
             let vdom (vdomContext : VdomContext) (_state : ModeSwitchingState) =
                 vdomRenderCount <- vdomRenderCount + 1
 
-                let checkbox0 = Components.Checkbox.make (vdomContext, NodeKey.make "checkbox0", false)
-                let checkbox1 = Components.Checkbox.make (vdomContext, NodeKey.make "checkbox1", false)
+                let checkbox0 =
+                    Components.Checkbox.make (vdomContext, NodeKey.make "checkbox0", false)
+
+                let checkbox1 =
+                    Components.Checkbox.make (vdomContext, NodeKey.make "checkbox1", false)
 
                 Vdom.panelSplitAbsolute (SplitDirection.Vertical, -3, checkbox0, checkbox1)
 

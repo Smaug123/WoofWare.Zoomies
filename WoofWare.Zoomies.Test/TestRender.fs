@@ -48,12 +48,7 @@ module TestRender =
         let toggle1Key = NodeKey.make "toggle1"
 
         let bottomHalf =
-            Components.LabelledCheckbox.make (
-                vdomContext,
-                "Press Space to toggle",
-                toggle1Key,
-                state.IsToggle1Checked
-            )
+            Components.LabelledCheckbox.make (vdomContext, "Press Space to toggle", toggle1Key, state.IsToggle1Checked)
 
         let vdom =
             Vdom.panelSplitAbsolute (SplitDirection.Horizontal, -3, topHalf, bottomHalf)
@@ -548,7 +543,8 @@ This is focusable text                                                          
 
                 let checkbox1 = Components.Checkbox.make (vdomContext, checkbox1Key, false)
 
-                let checkbox2 = Components.Checkbox.make (vdomContext, checkbox2Key, false, isFirstToFocus = true)
+                let checkbox2 =
+                    Components.Checkbox.make (vdomContext, checkbox2Key, false, isFirstToFocus = true)
 
                 let checkbox3 = Components.Checkbox.make (vdomContext, checkbox3Key, false)
 
@@ -714,7 +710,8 @@ This is focusable text                                                          
 
                 let checkbox1 = Components.Checkbox.make (vdomContext, checkbox1Key, false)
 
-                let checkbox2 = Components.Checkbox.make (vdomContext, checkbox2Key, false, isInitiallyFocused = true)
+                let checkbox2 =
+                    Components.Checkbox.make (vdomContext, checkbox2Key, false, isInitiallyFocused = true)
 
                 let checkbox3 = Components.Checkbox.make (vdomContext, checkbox3Key, false)
 

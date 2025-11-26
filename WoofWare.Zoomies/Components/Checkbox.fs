@@ -4,6 +4,12 @@ open WoofWare.Zoomies
 
 [<RequireQualifiedAccess>]
 type Checkbox =
+    static member private toggledGlyph = '☐'
+    static member private untoggledGlyph = '☑'
+
+    static member make' (isChecked : bool, isFocused : bool) : Vdom<DesiredBounds, Unkeyed> =
+        Toggle.make' (Checkbox.untoggledGlyph, Checkbox.toggledGlyph, isChecked, isFocused)
+
     /// <summary>Creates a checkbox component with automatic focus state.</summary>
     /// <param name="ctx">The VdomContext for checking focus state.</param>
     /// <param name="key">The NodeKey identifying this checkbox.</param>
@@ -25,4 +31,12 @@ type Checkbox =
         (ctx : VdomContext, key : NodeKey, isChecked : bool, ?isFirstToFocus : bool, ?isInitiallyFocused : bool)
         : Vdom<DesiredBounds, Unkeyed>
         =
-        Toggle.make (ctx, key, '☐', '☑', isChecked, ?isFirstToFocus = isFirstToFocus, ?isInitiallyFocused = isInitiallyFocused)
+        Toggle.make (
+            ctx,
+            key,
+            Checkbox.untoggledGlyph,
+            Checkbox.toggledGlyph,
+            isChecked,
+            ?isFirstToFocus = isFirstToFocus,
+            ?isInitiallyFocused = isInitiallyFocused
+        )

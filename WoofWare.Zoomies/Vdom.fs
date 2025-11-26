@@ -97,8 +97,15 @@ type Vdom =
     /// <summary>Creates a text content component with explicit styling.</summary>
     /// <param name="content">The text to display.</param>
     /// <param name="style">The cell styling to apply to the text.</param>
-    static member styledText (content : string) (style : CellStyle) : Vdom<DesiredBounds, Unkeyed> =
-        Vdom.Unkeyed (UnkeyedVdom.TextContent (content, style, ContentAlignment.Centered, false), Teq.refl)
+    /// <param name="alignment">Where within the panel to place the text.</param>
+    static member styledText
+        (content : string, style : CellStyle, ?alignment : ContentAlignment)
+        : Vdom<DesiredBounds, Unkeyed>
+        =
+        Vdom.Unkeyed (
+            UnkeyedVdom.TextContent (content, style, defaultArg alignment ContentAlignment.TopLeft, false),
+            Teq.refl
+        )
 
     /// <summary>Creates an empty zero-sized element.</summary>
     /// <remarks>
@@ -436,32 +443,6 @@ type Vdom =
             UnkeyedVdom.PanelSplit (d, SplitBehaviour.Auto, KeylessVdom.Unkeyed c1, KeylessVdom.Unkeyed c2),
             Teq.refl
         )
-
-    /// <summary>Creates a button with the given visual state.</summary>
-    /// <param name="isFocused">
-    /// Specifies that this button should render as if it has keyboard focus.
-    /// This has nothing to do with the WoofWare.Zoomies automatic focus tracking system; it's purely a display concern.
-    /// See <c>Vdom.withFocusTracking</c> for details.
-    /// </param>
-    /// <param name="isPressed">
-    /// Specifies that this button should render as if it is currently pressed.
-    /// This is typically managed automatically by calling <c>VdomContext.wasRecentlyActivated</c> with the button's key.
-    /// </param>
-    /// <param name="label">The text to display on the button.</param>
-    /// <remarks>
-    /// This is purely visual; use ActivationResolver passed into App.run to handle activation events.
-    /// </remarks>
-    static member button (isFocused : bool) (isPressed : bool) (label : string) : Vdom<DesiredBounds, Unkeyed> =
-        let leftBracket, rightBracket =
-            match isFocused, isPressed with
-            | true, true -> "[*", "*]"
-            | true, false -> "[[", "]]"
-            | false, true -> " *", "* "
-            | false, false -> "[ ", " ]"
-
-        let content = $"{leftBracket} {label} {rightBracket}"
-        let style = if isPressed then CellStyle.inverted else CellStyle.none
-        Vdom.styledText content style
 
     /// Creates a bordered wrapper around a component, drawing a border around its content.
     static member bordered (inner : Vdom<_, Keyed>) : Vdom<DesiredBounds, Unkeyed> =

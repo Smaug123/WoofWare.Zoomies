@@ -567,17 +567,22 @@ module TestFocusCycle =
 
             let vdom (vdomContext : VdomContext) (renderCheckbox1 : bool) =
                 let sharedKey = NodeKey.make "shared-key"
+                let unsharedKey = NodeKey.make "unshared-key"
 
                 if renderCheckbox1 then
                     // First frame: checkbox at shared-key
-                    let checkbox1 = Components.Checkbox.make (vdomContext, sharedKey, false)
-                    let checkbox2 = Vdom.styledText "☐" CellStyle.none
+                    let checkbox1 = Components.Checkbox.make (vdomContext, sharedKey, isChecked = false)
+
+                    let checkbox2 =
+                        Components.Checkbox.make (vdomContext, unsharedKey, isChecked = false)
 
                     Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, checkbox1, checkbox2)
                 else
                     // Second frame: different checkbox at shared-key
-                    let checkbox1 = Vdom.styledText "☐" CellStyle.none
-                    let checkbox2 = Components.Checkbox.make (vdomContext, sharedKey, false)
+                    let checkbox1 =
+                        Components.Checkbox.make (vdomContext, unsharedKey, isChecked = false)
+
+                    let checkbox2 = Components.Checkbox.make (vdomContext, sharedKey, isChecked = false)
 
                     Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, checkbox1, checkbox2)
 
@@ -685,8 +690,11 @@ module TestFocusCycle =
                     // The previous render had focus on the key `sharedKey`.
                     // Even though it's not focusable, it should show focus visuals if the context says it's focused.
                     let isFocused = currentFocus = Some sharedKey
-                    let content = if isFocused then "[☐]" else "☐"
-                    let nonFocusable = Vdom.styledText content CellStyle.none |> Vdom.withKey sharedKey
+                    let content = if isFocused then "[☐]" else " ☐ "
+
+                    let nonFocusable =
+                        Vdom.styledText (content, CellStyle.none, ContentAlignment.Centered)
+                        |> Vdom.withKey sharedKey
 
                     Vdom.panelSplitProportion (
                         SplitDirection.Vertical,
