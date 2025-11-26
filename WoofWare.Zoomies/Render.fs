@@ -200,8 +200,9 @@ module Render =
                 | KeylessVdom.Keyed (KeyedVdom.WithKey (key1, vdom1)),
                   KeylessVdom.Keyed (KeyedVdom.WithKey (key2, vdom2)) when key1 = key2 ->
                     match vdom1, vdom2 with
-                    | UnkeyedVdom.TextContent (text1, style1, focus1), UnkeyedVdom.TextContent (text2, style2, focus2) when
-                        text1 = text2 && style1 = style2 && focus1 = focus2
+                    | UnkeyedVdom.TextContent (text1, style1, align1, focus1),
+                      UnkeyedVdom.TextContent (text2, style2, align2, focus2) when
+                        text1 = text2 && style1 = style2 && align1 = align2 && focus1 = focus2
                         ->
                         // Repopulate keyToNode for reused keyed node
                         keyToNode.[key1] <- prev
@@ -296,9 +297,9 @@ module Render =
                             None
                     | _ -> None
                 // Unkeyed leaf nodes
-                | KeylessVdom.Unkeyed (UnkeyedVdom.TextContent (text1, style1, focus1)),
-                  KeylessVdom.Unkeyed (UnkeyedVdom.TextContent (text2, style2, focus2)) when
-                    text1 = text2 && style1 = style2 && focus1 = focus2
+                | KeylessVdom.Unkeyed (UnkeyedVdom.TextContent (text1, style1, align1, focus1)),
+                  KeylessVdom.Unkeyed (UnkeyedVdom.TextContent (text2, style2, align2, focus2)) when
+                    text1 = text2 && style1 = style2 && align1 = align2 && focus1 = focus2
                     ->
                     Some prev
                 | KeylessVdom.Unkeyed UnkeyedVdom.Empty, KeylessVdom.Unkeyed UnkeyedVdom.Empty ->
@@ -804,38 +805,58 @@ module Render =
 
             renderToBuffer dirty prevChild node.OverlaidChildren.[0]
 
-        | UnkeyedVdom.TextContent (content, style, focus) ->
+        | UnkeyedVdom.TextContent (content, style, alignment, focus) ->
             // TODO: can do better here if we can compute a more efficient diff
             // TODO: work out how to display this differently when it has focus
             clearBoundsWithSpaces dirty bounds
 
             // Only render text if we have space (width and height both > 0)
             if bounds.Width > 0 && bounds.Height > 0 then
-                // dumb implementation! could do much better
-                let mutable index = 0
-                let mutable currX = 0
-                let mutable currY = 0
+                match alignment with
+                | ContentAlignment.Centered ->
+                    // Center the text horizontally and vertically within bounds
+                    let centerY = bounds.Height / 2
+                    let contentLen = content.Length
+                    let startX = max 0 ((bounds.Width - contentLen) / 2)
+                    let mutable x = startX
 
-                while index < content.Length do
-                    let cell =
-                        {
-                            Char = content.Chars index
-                            BackgroundColor = style.Background
-                            TextColor = style.Foreground
-                        }
+                    for ch in content do
+                        if x < bounds.Width then
+                            let cell =
+                                {
+                                    Char = ch
+                                    BackgroundColor = style.Background
+                                    TextColor = style.Foreground
+                                }
 
-                    setAtRelativeOffset dirty bounds currX currY (ValueSome cell)
+                            setAtRelativeOffset dirty bounds x centerY (ValueSome cell)
+                            x <- x + 1
+                | ContentAlignment.TopLeft ->
+                    // Render from top-left, wrapping to next line
+                    let mutable index = 0
+                    let mutable currX = 0
+                    let mutable currY = 0
 
-                    currX <- currX + 1
+                    while index < content.Length do
+                        let cell =
+                            {
+                                Char = content.Chars index
+                                BackgroundColor = style.Background
+                                TextColor = style.Foreground
+                            }
 
-                    if currX = bounds.Width then
-                        currX <- 0
-                        currY <- currY + 1
+                        setAtRelativeOffset dirty bounds currX currY (ValueSome cell)
 
-                        if currY >= bounds.Height then
-                            index <- content.Length
+                        currX <- currX + 1
 
-                    index <- index + 1
+                        if currX = bounds.Width then
+                            currX <- 0
+                            currY <- currY + 1
+
+                            if currY >= bounds.Height then
+                                index <- content.Length
+
+                        index <- index + 1
 
         | UnkeyedVdom.Empty ->
             // Empty nodes render nothing, but need to clear if replacing a previous node

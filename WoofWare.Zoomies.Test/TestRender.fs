@@ -428,7 +428,7 @@ This is focusable text                                                          
                                                                                 |
                                                                                 |
                                                                                 |
-                                        ☐                                       |
+                                       ☐                                        |
                                                                                 |
                                                                                 |
                                                                                 |
@@ -459,7 +459,7 @@ This is focusable text                                                          
                                                                                 |
                                                                                 |
                                                                                 |
-                                        ☐                                       |
+                                       ☐                                        |
                                                                                 |
                                                                                 |
                                                                                 |
@@ -490,7 +490,7 @@ This is focusable text                                                          
                                                                                 |
                                                                                 |
                                                                                 |
-                                       [☐]                                      |
+                                      [☐]                                       |
                                                                                 |
                                                                                 |
                                                                                 |
@@ -521,7 +521,7 @@ This is focusable text                                                          
                                                                                 |
                                                                                 |
                                                                                 |
-                                        ☐                                       |
+                                       ☐                                        |
                                                                                 |
                                                                                 |
                                                                                 |
@@ -603,7 +603,7 @@ This is focusable text                                                          
                 snapshot
                     @"
                                                                                 |
-             ☐                         ☐                          ☐             |
+            ☐                          ☐                          ☐             |
                                                                                 |
 "
 
@@ -627,7 +627,7 @@ This is focusable text                                                          
                 snapshot
                     @"
                                                                                 |
-             ☐                        [☐]                         ☐             |
+            ☐                         [☐]                         ☐             |
                                                                                 |
 "
 
@@ -651,7 +651,7 @@ This is focusable text                                                          
                 snapshot
                     @"
                                                                                 |
-             ☐                         ☐                         [☐]            |
+            ☐                          ☐                         [☐]            |
                                                                                 |
 "
 
@@ -675,7 +675,7 @@ This is focusable text                                                          
                 snapshot
                     @"
                                                                                 |
-            [☐]                        ☐                          ☐             |
+           [☐]                         ☐                          ☐             |
                                                                                 |
 "
 
@@ -699,7 +699,7 @@ This is focusable text                                                          
                 snapshot
                     @"
                                                                                 |
-             ☐                        [☐]                         ☐             |
+            ☐                         [☐]                         ☐             |
                                                                                 |
 "
 
@@ -780,7 +780,7 @@ This is focusable text                                                          
                 snapshot
                     @"
                                                                                 |
-             ☐                        [☐]                         ☐             |
+            ☐                         [☐]                         ☐             |
                                                                                 |
 "
 
@@ -804,7 +804,7 @@ This is focusable text                                                          
                 snapshot
                     @"
                                                                                 |
-             ☐                         ☐                         [☐]            |
+            ☐                          ☐                         [☐]            |
                                                                                 |
 "
 
@@ -828,7 +828,7 @@ This is focusable text                                                          
                 snapshot
                     @"
                                                                                 |
-            [☐]                        ☐                          ☐             |
+           [☐]                         ☐                          ☐             |
                                                                                 |
 "
 
@@ -852,7 +852,7 @@ This is focusable text                                                          
                 snapshot
                     @"
                                                                                 |
-             ☐                         ☐                         [☐]            |
+            ☐                          ☐                         [☐]            |
                                                                                 |
 "
 
@@ -876,7 +876,7 @@ This is focusable text                                                          
                 snapshot
                     @"
                                                                                 |
-             ☐                        [☐]                         ☐             |
+            ☐                         [☐]                         ☐             |
                                                                                 |
 "
 

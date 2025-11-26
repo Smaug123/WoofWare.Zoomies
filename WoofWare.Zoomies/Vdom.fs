@@ -43,10 +43,17 @@ type Border = | Yes
 
 type DesiredBounds = unit
 
+/// Specifies how content should be aligned within its bounds.
+type ContentAlignment =
+    /// Content is centered both horizontally and vertically.
+    | Centered
+    /// Content starts at the top-left corner and wraps.
+    | TopLeft
+
 type internal UnkeyedVdom<'bounds> =
     | Bordered of KeylessVdom<'bounds>
     | PanelSplit of SplitDirection * SplitBehaviour * child1 : KeylessVdom<'bounds> * child2 : KeylessVdom<'bounds>
-    | TextContent of content : string * style : CellStyle * focused : bool
+    | TextContent of content : string * style : CellStyle * alignment : ContentAlignment * focused : bool
     | Focusable of isFirstToFocus : bool * isInitiallyFocused : bool * KeyedVdom<'bounds>
     | Empty
     | FlexibleContent of
@@ -85,13 +92,13 @@ type Vdom =
     /// </remarks>
     static member textContent (isFocused : bool) (s : string) : Vdom<DesiredBounds, Unkeyed> =
         // TODO: create text areas which do smart truncation etc for you
-        Vdom.Unkeyed (UnkeyedVdom.TextContent (s, CellStyle.none, isFocused), Teq.refl)
+        Vdom.Unkeyed (UnkeyedVdom.TextContent (s, CellStyle.none, ContentAlignment.TopLeft, isFocused), Teq.refl)
 
     /// <summary>Creates a text content component with explicit styling.</summary>
     /// <param name="content">The text to display.</param>
     /// <param name="style">The cell styling to apply to the text.</param>
     static member styledText (content : string) (style : CellStyle) : Vdom<DesiredBounds, Unkeyed> =
-        Vdom.Unkeyed (UnkeyedVdom.TextContent (content, style, false), Teq.refl)
+        Vdom.Unkeyed (UnkeyedVdom.TextContent (content, style, ContentAlignment.Centered, false), Teq.refl)
 
     /// <summary>Creates an empty zero-sized element.</summary>
     /// <remarks>
@@ -485,6 +492,7 @@ type Vdom =
             | true, false -> "[[", "]]"
             | false, true -> " *", "* "
             | false, false -> "[ ", " ]"
+
         let content = $"{leftBracket} {label} {rightBracket}"
         let style = if isPressed then CellStyle.inverted else CellStyle.none
         Vdom.styledText content style

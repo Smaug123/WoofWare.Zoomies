@@ -777,7 +777,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-       [☐]      |
+      [☐]       |
 "
 
                 return ConsoleHarness.toString terminal
