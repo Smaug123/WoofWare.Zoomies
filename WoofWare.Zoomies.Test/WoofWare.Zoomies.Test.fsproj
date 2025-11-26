@@ -19,6 +19,7 @@
     <Compile Include="CtrlCHandler.fs" />
     <Compile Include="MockWorld.fs" />
     <Compile Include="MockTime.fs" />
+    <Compile Include="TestVdomContext.fs" />
     <Compile Include="TestExternalEventSubscription.fs" />
     <Compile Include="TestOrderedSet.fs" />
     <Compile Include="TestRender.fs" />

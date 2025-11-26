@@ -45,6 +45,8 @@ module VdomContext =
 
     let internal markDirty (v : VdomContext) = v.IsDirty <- true
 
+    let internal isDirty (v : VdomContext) = v.IsDirty
+
     /// Get the dimensions of the terminal (on the previous render).
     let terminalBounds (v : VdomContext) : Rectangle = v._TerminalBounds
     /// Get the NodeKey of the Vdom element, if any, which was focused in the last render.
@@ -62,12 +64,12 @@ module VdomContext =
         | true, time -> (getUtcNow ctx - time).TotalMilliseconds < RECENT_ACTIVATION_TIMEOUT_MS
         | false, _ -> false
 
-    /// Record that a node was just activated. Internal use only.
+    /// Record that a node was just activated.
     let internal recordActivation (key : NodeKey) (ctx : VdomContext) : unit =
         ctx._LastActivationTimes.[key] <- getUtcNow ctx
         ctx.IsDirty <- true
 
-    /// Clear activation state for a key. Internal use only.
+    /// Clear activation state for a key.
     let internal clearActivation (key : NodeKey) (ctx : VdomContext) : unit =
         if ctx._LastActivationTimes.Remove key then
             ctx.IsDirty <- true
@@ -76,20 +78,18 @@ module VdomContext =
     let internal pruneExpiredActivations (ctx : VdomContext) : unit =
         let now = getUtcNow ctx
 
+        // The docs are very explicit.
+        // https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2.getenumerator?view=net-6.0)
+        // > .NET Core 3.0+ only: The only mutating methods which do not invalidate enumerators are Remove and Clear.
+        // https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2.remove?view=net-6.0
+        // > .NET Core 3.0+ only: this mutating method may be safely called without invalidating active enumerators on the Dictionary<TKey,TValue> instance. This does not imply thread safety.
+        // We also explicitly test this safety property in TestVdomContext.fs.
         let mutable removed = false
-        // Avoid mutating the dictionary while iterating by snapshotting the keys first.
-        let expired =
-            ctx._LastActivationTimes
-            |> Seq.choose (fun (KeyValue (key, time)) ->
-                if (now - time).TotalMilliseconds >= RECENT_ACTIVATION_TIMEOUT_MS then
-                    Some key
-                else
-                    None
-            )
-            |> Array.ofSeq
 
-        for key in expired do
-            removed <- ctx._LastActivationTimes.Remove key || removed
+        for KeyValue (key, time) in ctx._LastActivationTimes do
+            if (now - time).TotalMilliseconds >= RECENT_ACTIVATION_TIMEOUT_MS then
+                ctx._LastActivationTimes.Remove key |> ignore<bool>
+                removed <- true
 
         if removed then
             ctx.IsDirty <- true

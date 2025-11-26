@@ -464,12 +464,11 @@ type Vdom =
     /// </param>
     /// <param name="isPressed">
     /// Specifies that this button should render as if it is currently pressed.
-    /// This is typically managed automatically by combining <c>VdomContext.wasRecentlyActivated</c> with the button's key.
+    /// This is typically managed automatically by calling <c>VdomContext.wasRecentlyActivated</c> with the button's key.
     /// </param>
     /// <param name="label">The text to display on the button.</param>
     /// <remarks>
-    /// This is purely visual—use ActivationResolver to handle activation events.
-    /// See the button design documentation for details on wiring activation behavior.
+    /// This is purely visual; use ActivationResolver passed into App.run to handle activation events.
     /// </remarks>
     static member button (isFocused : bool) (isPressed : bool) (label : string) : Vdom<DesiredBounds, Unkeyed> =
         Vdom.Unkeyed (UnkeyedVdom.Button (label, isFocused, isPressed), Teq.refl)
