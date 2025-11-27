@@ -189,15 +189,14 @@ type TextBox =
         // This maintains constant width across focus states (zero layout jitter)
         let displayText, style =
             if cursorPos >= 0 && cursorPos <= content.Length then
-                let before = content.Substring(0, cursorPos)
-                let after = content.Substring(cursorPos)
-
                 if isFocused then
+                    let before = content.Substring(0, cursorPos)
+                    let after = content.Substring(cursorPos)
                     // Show cursor as | with inverted style for clear focus indication
                     ($"{before}|{after}", CellStyle.inverted)
                 else
-                    // Reserve cursor space with regular space (maintains width)
-                    ($"{before} {after}", CellStyle.none)
+                    // Reserve cursor space at the end (maintains width without visual oddity)
+                    ($"{content} ", CellStyle.none)
             else
                 // Invalid cursor position: just show content
                 (content, CellStyle.none)
@@ -237,15 +236,16 @@ type TextBox =
 
 **Problem**: Inline cursor markers change text width, causing layout jitter when focus toggles.
 
-**Solution**: Reserved-width rendering
-- **Focused**: `"Hello|World"` with inverted style (11 chars)
-- **Unfocused**: `"Hello World"` with normal style (11 chars)
+**Solution**: Reserved-width rendering with space at the end
+- **Focused**: `"He|llo"` with inverted style (6 chars: 5 content + 1 cursor)
+- **Unfocused**: `"Hello "` with normal style (6 chars: 5 content + 1 trailing space)
 
-The space is always present; when focused it becomes `|`, when unfocused it's a regular space.
+When unfocused, the reserved space moves to the end of the string rather than staying at the cursor position. This avoids the visual oddity of having a space in the middle of the text (e.g., "He llo" looks broken).
 
 **Why this works:**
-- Zero layout jitter: width is constant
-- Clear focus indication: inverted style + cursor visible
+- Zero layout jitter: width is constant (content.Length + 1 in both states)
+- Clear focus indication: inverted style + cursor visible when focused
+- No visual oddity when unfocused: trailing space is invisible
 - TextContent measures by string length (Layout.fs:596), so constant string length = stable layout
 - Matches Button/Toggle pattern of constant width across states
 
@@ -415,14 +415,15 @@ let ``cursor rendering maintains constant width across focus states`` () =
         // Setup: TextBox with "Hello", cursor at 2
 
         // Focused state:
-        //   - Rendered output: "He|lo " (6 chars including reserved space)
+        //   - Rendered output: "He|llo" (6 chars: 5 content + 1 cursor)
         //   - Style: inverted
 
         // Unfocused state:
-        //   - Rendered output: "He lo " (6 chars, same width)
+        //   - Rendered output: "Hello " (6 chars: 5 content + 1 trailing space)
         //   - Style: none
 
         // Assert: Both states have same measured width (zero layout jitter)
+        // Assert: Unfocused state shows text without space in the middle (no visual oddity)
     }
 ```
 
@@ -598,7 +599,7 @@ If the application provides an invalid cursor position, the component should gra
 - Empty content: `content = ""`
 - Cursor at start: `cursorPos = 0`
 - Render focused: `"|"` with inverted style (1 character)
-- Render unfocused: `" "` with normal style (1 character)
+- Render unfocused: `" "` with normal style (1 character: trailing space)
 - Both states have the same width (reserved-width cursor maintains constant layout)
 
 ### Special characters
