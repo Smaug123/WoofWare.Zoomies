@@ -51,6 +51,7 @@
     <Compile Include="Components\Collapsible.fs" />
     <Compile Include="Components\LabelledCheckbox.fs" />
     <Compile Include="Components\ProgressBar.fs" />
+    <Compile Include="Components\Table.fs" />
     <None Include="..\README.md">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>

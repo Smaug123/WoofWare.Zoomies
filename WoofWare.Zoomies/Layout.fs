@@ -3,10 +3,10 @@ namespace WoofWare.Zoomies
 open System
 
 [<RequireQualifiedAccess>]
-module internal Layout =
+module Layout =
     /// A node annotated with its measurement result
     [<NoEquality ; NoComparison>]
-    type MeasuredNode<'bounds> =
+    type internal MeasuredNode<'bounds> =
         {
             Vdom : KeylessVdom<'bounds>
             Measured : MeasuredSize
@@ -16,7 +16,7 @@ module internal Layout =
 
     /// Result of the arrange phase
     [<NoEquality ; NoComparison>]
-    type ArrangedNode =
+    type internal ArrangedNode =
         {
             /// The VDOM node being arranged
             Vdom : KeylessVdom<Rectangle>
@@ -678,6 +678,24 @@ module internal Layout =
                 Measured = clampedMeasured
                 Children = [] // No children yet - we don't know what they are until arrange
             }
+
+    /// <summary>Measures a VDOM node to determine its size requirements given constraints.</summary>
+    /// <remarks>
+    /// This helper exposes the framework's measurement logic to components that need to inspect
+    /// child measurements (e.g., to compute aggregate constraints or build custom layouts).
+    /// It is primarily intended for use within FlexibleContent measure callbacks.
+    /// </remarks>
+    /// <param name="vdom">The VDOM node to measure.</param>
+    /// <param name="constraints">The constraints within which to measure the node.</param>
+    /// <returns>The measured size information for the node.</returns>
+    let measure (vdom : Vdom<DesiredBounds, 'keyed>) (constraints : MeasureConstraints) : MeasuredSize =
+        let keylessVdom =
+            match vdom with
+            | Vdom.Keyed (inner, _) -> KeylessVdom.Keyed inner
+            | Vdom.Unkeyed (inner, _) -> KeylessVdom.Unkeyed inner
+
+        let measured = measureEither constraints keylessVdom
+        measured.Measured
 
     /// Arrange a measured tree into concrete bounds
     let rec internal arrange (measured : MeasuredNode<DesiredBounds>) (bounds : Rectangle) : ArrangedNode =

@@ -14,3 +14,4 @@ result
 **/Generated*.fs
 *.sarif
 .analyzerpackages/
+.DS_Store
