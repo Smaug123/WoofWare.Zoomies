@@ -513,16 +513,51 @@ type Vdom =
     /// <param name="measure">Function that specifies size requirements given measurement constraints.</param>
     /// <param name="render">Function that produces the actual VDOM content given the allocated bounds.</param>
     /// <remarks>
+    /// <para>
     /// This allows components to make region-dependent rendering decisions, such as rendering a progress bar
     /// with different levels of detail depending on available width.
+    /// </para>
     ///
-    /// The measure function is called during the measurement phase with constraints from the parent.
-    /// It should return accurate size requirements.
+    /// <para>
+    /// WoofWare.Zoomies displays a VDOM in two phases: a "measurement" phase, and an "arrange" phase. During
+    /// measurement, the various components of the VDOM indicate to WoofWare.Zoomies that they have some preferences
+    /// about their size (e.g. perhaps the progress bar needs some minimum size to display a label, but it can be
+    /// arbitrarily wide; or perhaps a checkbox really wants to be exactly three cells wide). The final result of the
+    /// measurement phase is an assignment of a region of the screen to every VDOM node (and the framework tries to
+    /// ensure, but does not guarantee, that every component gets what it requested).
+    /// </para>
     ///
-    /// The render function is called during the arrange phase with the actual allocated bounds.
-    /// It produces the final VDOM content for those bounds.
+    /// <para>
+    /// After the measurement phase is the arrange phase, where each component gets told the region of the screen it
+    /// was granted, and chooses how it's going to render. (Maybe it has to make difficult decisions at this point:
+    /// a progress bar may have to somehow choose how to render in a space which is only one cell wide!)
+    /// </para>
     ///
-    /// Note: The render function may return another FlexibleContent, allowing nested flexible rendering.
+    /// <para>
+    /// <c>Vdom.flexibleContent</c> is unusual in that it causes multiple rounds of the render algorithm.
+    /// Indeed, the <c>render</c> within a <c>flexibleContent</c> returns a <c>Vdom</c>, which must itself be measured
+    /// and arranged.
+    /// There is no attempt to flow the constraints from that internal VDOM back up into the parent, though:
+    /// once <c>measure</c> has been called and the constraints of the parent solved, the inner VDOM is locked into
+    /// a specific rectangle on the screen.
+    /// All the inner VDOM measurement and rendering takes place entirely within that specific rectangle.
+    /// </para>
+    ///
+    /// <para>
+    /// The <c>measure</c> function is called during the measurement phase with constraints from the parent.
+    /// The parent decides how much space it wants for layout, and passes that information down to the child through a
+    /// <c>MeasureConstraints</c>. Then the child indicates (via the return value of <c>measure</c>) its own size
+    /// requirements.
+    /// </para>
+    ///
+    /// <para>
+    /// The <c>render</c> function is called during the subsequent arrange phase with the actual allocated bounds.
+    /// It produces the final VDOM content that will be rendered into the allocated space.
+    /// </para>
+    ///
+    /// <para>
+    /// The render function may return another <c>FlexibleContent</c>, allowing nested flexible rendering.
+    /// </para>
     /// </remarks>
     static member flexibleContent
         (measure : MeasureConstraints -> MeasuredSize)

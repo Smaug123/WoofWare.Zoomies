@@ -332,10 +332,6 @@ module Table =
         // Cache cell measurements so render can reuse them
         let mutable cachedCellMeasurements : MeasuredSize list list option = None
 
-        // Helper to measure a cell with explicit types to avoid FS3559
-        let measureCell (cell : Vdom<DesiredBounds, Unkeyed>) (constraints : MeasureConstraints) : MeasuredSize =
-            Vdom.measure cell constraints
-
         let measure (constraints : MeasureConstraints) : MeasuredSize =
             if List.isEmpty cells then
                 // Empty table: zero-sized
@@ -353,7 +349,7 @@ module Table =
                 // Measure all cells to determine column widths
                 let cellMeasurements : MeasuredSize list list =
                     cells
-                    |> List.map (fun row -> row |> List.map (fun cell -> measureCell cell constraints))
+                    |> List.map (fun row -> row |> List.map (fun cell -> VdomBounds.measure cell constraints))
 
                 // Cache for render phase
                 cachedCellMeasurements <- Some cellMeasurements
@@ -456,7 +452,7 @@ module Table =
                             }
 
                         cells
-                        |> List.map (fun row -> row |> List.map (fun cell -> measureCell cell maxConstraints))
+                        |> List.map (fun row -> row |> List.map (fun cell -> VdomBounds.measure cell maxConstraints))
                         : MeasuredSize list list
 
                 // 1. Allocate column widths from available width

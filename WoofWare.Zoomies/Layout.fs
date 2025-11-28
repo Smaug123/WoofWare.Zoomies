@@ -16,7 +16,7 @@ module internal Layout =
 
     /// Result of the arrange phase
     [<NoEquality ; NoComparison>]
-    type internal ArrangedNode =
+    type ArrangedNode =
         {
             /// The VDOM node being arranged
             Vdom : KeylessVdom<Rectangle>

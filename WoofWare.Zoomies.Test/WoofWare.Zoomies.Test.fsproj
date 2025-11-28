@@ -4,7 +4,7 @@
     <TargetFramework>net9.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <OutputType>Exe</OutputType>
-    <WoofWareMyriadPluginVersion>8.1.1</WoofWareMyriadPluginVersion>
+    <WoofWareMyriadPluginVersion>9.1.4</WoofWareMyriadPluginVersion>
   </PropertyGroup>
 
   <ItemGroup>
