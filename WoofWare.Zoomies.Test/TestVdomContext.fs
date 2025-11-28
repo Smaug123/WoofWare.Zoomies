@@ -2,7 +2,7 @@ namespace WoofWare.Zoomies.Test
 
 open System
 open NUnit.Framework
-open FsUnit
+open FsUnitTyped
 open WoofWare.Zoomies
 
 [<TestFixture>]
@@ -51,10 +51,10 @@ module TestVdomContext =
         // - key4 was activated 0ms ago (just now)
 
         // All should still be considered recently activated
-        VdomContext.wasRecentlyActivated key1 ctx |> should equal true
-        VdomContext.wasRecentlyActivated key2 ctx |> should equal true
-        VdomContext.wasRecentlyActivated key3 ctx |> should equal true
-        VdomContext.wasRecentlyActivated key4 ctx |> should equal true
+        VdomContext.wasRecentlyActivated key1 ctx |> shouldEqual true
+        VdomContext.wasRecentlyActivated key2 ctx |> shouldEqual true
+        VdomContext.wasRecentlyActivated key3 ctx |> shouldEqual true
+        VdomContext.wasRecentlyActivated key4 ctx |> shouldEqual true
 
         // Advance time by 100ms more
         // Now:
@@ -68,10 +68,10 @@ module TestVdomContext =
         VdomContext.pruneExpiredActivations ctx
 
         // Verify key1 is gone and others remain
-        VdomContext.wasRecentlyActivated key1 ctx |> should equal false
-        VdomContext.wasRecentlyActivated key2 ctx |> should equal true
-        VdomContext.wasRecentlyActivated key3 ctx |> should equal true
-        VdomContext.wasRecentlyActivated key4 ctx |> should equal true
+        VdomContext.wasRecentlyActivated key1 ctx |> shouldEqual false
+        VdomContext.wasRecentlyActivated key2 ctx |> shouldEqual true
+        VdomContext.wasRecentlyActivated key3 ctx |> shouldEqual true
+        VdomContext.wasRecentlyActivated key4 ctx |> shouldEqual true
 
         // Advance time by another 100ms
         // Now:
@@ -83,10 +83,10 @@ module TestVdomContext =
         VdomContext.pruneExpiredActivations ctx
 
         // Verify key2 is now gone too
-        VdomContext.wasRecentlyActivated key1 ctx |> should equal false
-        VdomContext.wasRecentlyActivated key2 ctx |> should equal false
-        VdomContext.wasRecentlyActivated key3 ctx |> should equal true
-        VdomContext.wasRecentlyActivated key4 ctx |> should equal true
+        VdomContext.wasRecentlyActivated key1 ctx |> shouldEqual false
+        VdomContext.wasRecentlyActivated key2 ctx |> shouldEqual false
+        VdomContext.wasRecentlyActivated key3 ctx |> shouldEqual true
+        VdomContext.wasRecentlyActivated key4 ctx |> shouldEqual true
 
     [<Test>]
     let ``pruneExpiredActivations handles removing multiple entries in one pass`` () =
@@ -101,7 +101,7 @@ module TestVdomContext =
 
         // All should be recently activated
         for key in keys do
-            VdomContext.wasRecentlyActivated key ctx |> should equal true
+            VdomContext.wasRecentlyActivated key ctx |> shouldEqual true
 
         // Advance time past expiration threshold
         clock.Advance (TimeSpan.FromMilliseconds 600.0) |> ignore<DateTime>
@@ -112,7 +112,7 @@ module TestVdomContext =
 
         // All should now be expired
         for key in keys do
-            VdomContext.wasRecentlyActivated key ctx |> should equal false
+            VdomContext.wasRecentlyActivated key ctx |> shouldEqual false
 
     [<Test>]
     let ``pruneExpiredActivations marks context dirty only when removals occur`` () =
@@ -126,22 +126,22 @@ module TestVdomContext =
 
         // Mark clean
         VdomContext.markClean ctx
-        VdomContext.isDirty ctx |> should equal false
+        VdomContext.isDirty ctx |> shouldEqual false
 
         // Prune when nothing has expired - should not mark dirty
         VdomContext.pruneExpiredActivations ctx
-        VdomContext.isDirty ctx |> should equal false
+        VdomContext.isDirty ctx |> shouldEqual false
 
         // Advance time past expiration
         clock.Advance (TimeSpan.FromMilliseconds 600.0) |> ignore<DateTime>
 
         // Prune when something has expired - should mark dirty
         VdomContext.pruneExpiredActivations ctx
-        VdomContext.isDirty ctx |> should equal true
+        VdomContext.isDirty ctx |> shouldEqual true
 
         // Mark clean again
         VdomContext.markClean ctx
 
         // Prune when nothing remains - should not mark dirty
         VdomContext.pruneExpiredActivations ctx
-        VdomContext.isDirty ctx |> should equal false
+        VdomContext.isDirty ctx |> shouldEqual false
