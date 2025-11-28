@@ -58,7 +58,7 @@ module Table =
         | ProportionRow p when p <= 0.0 || System.Double.IsNaN p || System.Double.IsInfinity p -> AutoRow
         | other -> other
 
-    /// Allocate column widths from available width
+    /// Allocate column widths from available width, respecting per-column minima
     let private allocateColumnWidths
         (availableWidth : int)
         (columnSpecs : ColumnSpec list)
@@ -70,91 +70,112 @@ module Table =
         else
             let numCols = List.length columnSpecs
 
-            // Compute preferred width for each column
-            let columnPreferredWidths =
+            let columnInfo =
                 columnSpecs
                 |> List.mapi (fun colIdx spec ->
-                    match spec with
-                    | FixedColumn w -> (spec, w, true) // (spec, width, isFixed)
-                    | AutoColumn ->
-                        let preferredWidth =
-                            cellMeasurements
-                            |> List.map (fun row -> (List.item colIdx row).PreferredWidth)
-                            |> List.max
+                    let cellMeasForCol = cellMeasurements |> List.map (fun row -> List.item colIdx row)
 
-                        (spec, preferredWidth, false)
-                    | ProportionColumn _ -> (spec, 0, false) // Defer
-                )
-
-            // Separate into fixed, auto, and proportion
-            let fixedCols =
-                columnPreferredWidths
-                |> List.filter (fun (spec, _, _) ->
-                    match spec with
-                    | FixedColumn _ -> true
-                    | _ -> false
-                )
-
-            let autoCols =
-                columnPreferredWidths
-                |> List.filter (fun (spec, _, _) ->
-                    match spec with
-                    | AutoColumn -> true
-                    | _ -> false
-                )
-
-            let proportionCols =
-                columnPreferredWidths
-                |> List.filter (fun (spec, _, _) ->
-                    match spec with
-                    | ProportionColumn _ -> true
-                    | _ -> false
-                )
-
-            let fixedTotal = fixedCols |> List.sumBy (fun (_, w, _) -> w)
-            let autoTotal = autoCols |> List.sumBy (fun (_, w, _) -> w)
-
-            // Check if we're over-constrained
-            if fixedTotal + autoTotal > availableWidth then
-                // Shrink-to-fit: scale down auto columns (fixed columns stay fixed)
-                let spaceForAuto = max 0 (availableWidth - fixedTotal)
-
-                let autoScaleFactor =
-                    if autoTotal > 0 then
-                        float spaceForAuto / float autoTotal
-                    else
-                        0.0
-
-                columnPreferredWidths
-                |> List.map (fun (spec, width, _) ->
-                    match spec with
-                    | FixedColumn _ -> width
-                    | AutoColumn -> int (float width * autoScaleFactor)
-                    | ProportionColumn _ -> 0 // No space left for proportions
-                )
-            else
-                // We have space for fixed + auto + proportions
-                let remainingWidth = availableWidth - fixedTotal - autoTotal
-
-                let proportionTotal =
-                    proportionCols
-                    |> List.sumBy (fun (spec, _, _) ->
+                    let minWidth =
                         match spec with
-                        | ProportionColumn p -> p
-                        | _ -> 0.0
+                        | FixedColumn w -> w
+                        | AutoColumn
+                        | ProportionColumn _ -> cellMeasForCol |> List.map (fun m -> m.MinWidth) |> List.max
+
+                    let preferredWidth =
+                        match spec with
+                        | FixedColumn w -> w
+                        | AutoColumn
+                        | ProportionColumn _ -> cellMeasForCol |> List.map (fun m -> m.PreferredWidth) |> List.max
+
+                    (spec, colIdx, minWidth, preferredWidth)
+                )
+
+            let totalMin = columnInfo |> List.sumBy (fun (_, _, minW, _) -> minW)
+
+            if availableWidth <= 0 then
+                List.replicate numCols 0
+            elif totalMin >= availableWidth then
+                // Not enough room for all minima: scale them proportionally
+                let totalMinF = float totalMin
+
+                let scaled =
+                    columnInfo
+                    |> List.map (fun (_, _, minW, _) -> int (float minW * float availableWidth / totalMinF))
+                    |> List.toArray
+
+                let mutable allocated = scaled |> Array.sum
+                let mutable idx = 0
+
+                while allocated < availableWidth && idx < numCols do
+                    scaled[idx] <- scaled[idx] + 1
+                    allocated <- allocated + 1
+                    idx <- idx + 1
+
+                scaled |> Array.toList
+            else
+                let widths = columnInfo |> List.map (fun (_, _, minW, _) -> minW) |> List.toArray
+
+                let mutable remaining = availableWidth - totalMin
+
+                // Grow auto columns toward preferred
+                let autoColumns =
+                    columnInfo
+                    |> List.choose (fun (spec, idx, minW, prefW) ->
+                        match spec with
+                        | AutoColumn -> Some (idx, max 0 (prefW - minW))
+                        | _ -> None
                     )
 
-                columnPreferredWidths
-                |> List.map (fun (spec, width, _) ->
-                    match spec with
-                    | FixedColumn _ -> width
-                    | AutoColumn -> width
-                    | ProportionColumn p ->
-                        if proportionTotal > 0.0 then
-                            int (float remainingWidth * p / proportionTotal)
-                        else
-                            remainingWidth / List.length proportionCols // Divide equally
-                )
+                let autoGrowthTotal = autoColumns |> List.sumBy snd
+
+                if autoGrowthTotal > 0 && remaining > 0 then
+                    let autoAllocated = min remaining autoGrowthTotal
+
+                    for (idx, capacity) in autoColumns do
+                        let extra = int (float autoAllocated * (float capacity / float autoGrowthTotal))
+
+                        widths[idx] <- widths[idx] + extra
+
+                    let spent = widths |> Array.sum |> (fun s -> s - totalMin)
+                    let mutable toDistribute = autoAllocated - spent
+                    let mutable autoIdx = 0
+
+                    while toDistribute > 0 && autoIdx < autoColumns.Length do
+                        let colIndex, _ = autoColumns[autoIdx]
+                        widths[colIndex] <- widths[colIndex] + 1
+                        toDistribute <- toDistribute - 1
+                        autoIdx <- autoIdx + 1
+
+                    remaining <- remaining - autoAllocated
+
+                // Give remaining space to proportion columns according to their weights
+                let proportionColumns =
+                    columnInfo
+                    |> List.choose (fun (spec, idx, _, _) ->
+                        match spec with
+                        | ProportionColumn p -> Some (idx, p)
+                        | _ -> None
+                    )
+
+                let proportionTotal = proportionColumns |> List.sumBy (fun (_, p) -> p)
+
+                if proportionTotal > 0.0 && remaining > 0 then
+                    let mutable leftover = remaining
+
+                    for (idx, p) in proportionColumns do
+                        let extra = int (float remaining * (p / proportionTotal))
+                        widths[idx] <- widths[idx] + extra
+                        leftover <- leftover - extra
+
+                    let mutable propIdx = 0
+
+                    while leftover > 0 && propIdx < proportionColumns.Length do
+                        let colIndex, _ = proportionColumns[propIdx]
+                        widths[colIndex] <- widths[colIndex] + 1
+                        leftover <- leftover - 1
+                        propIdx <- propIdx + 1
+
+                widths |> Array.toList
 
     /// Allocate row heights from available height (similar to columns, but heights depend on column widths)
     let private allocateRowHeights
@@ -167,91 +188,115 @@ module Table =
         if List.isEmpty rowSpecs then
             []
         else
-            // For auto rows, compute how tall each cell needs to be given the allocated column widths
-            let rowPreferredHeights =
+            let rowInfo =
                 rowSpecs
                 |> List.mapi (fun rowIdx spec ->
-                    match spec with
-                    | FixedRow h -> (spec, h, true)
-                    | AutoRow ->
-                        // Compute max preferred height across all cells in this row
-                        let preferredHeight =
-                            List.zip (List.item rowIdx cellMeasurements) columnWidths
-                            |> List.map (fun (cellMeas, colWidth) -> cellMeas.PreferredHeightForWidth colWidth)
+                    let cellsInRow = List.item rowIdx cellMeasurements
+
+                    let minHeight =
+                        match spec with
+                        | FixedRow h -> h
+                        | AutoRow
+                        | ProportionRow _ ->
+                            List.zip cellsInRow columnWidths
+                            |> List.map (fun (cell, colWidth) -> cell.MinHeightForWidth colWidth)
                             |> List.max
 
-                        (spec, preferredHeight, false)
-                    | ProportionRow _ -> (spec, 0, false)
-                )
-
-            let fixedRows =
-                rowPreferredHeights
-                |> List.filter (fun (spec, _, _) ->
-                    match spec with
-                    | FixedRow _ -> true
-                    | _ -> false
-                )
-
-            let autoRows =
-                rowPreferredHeights
-                |> List.filter (fun (spec, _, _) ->
-                    match spec with
-                    | AutoRow -> true
-                    | _ -> false
-                )
-
-            let proportionRows =
-                rowPreferredHeights
-                |> List.filter (fun (spec, _, _) ->
-                    match spec with
-                    | ProportionRow _ -> true
-                    | _ -> false
-                )
-
-            let fixedTotal = fixedRows |> List.sumBy (fun (_, h, _) -> h)
-            let autoTotal = autoRows |> List.sumBy (fun (_, h, _) -> h)
-
-            // Check if we're over-constrained
-            if fixedTotal + autoTotal > availableHeight then
-                // Shrink-to-fit: scale down auto rows
-                let spaceForAuto = max 0 (availableHeight - fixedTotal)
-
-                let autoScaleFactor =
-                    if autoTotal > 0 then
-                        float spaceForAuto / float autoTotal
-                    else
-                        0.0
-
-                rowPreferredHeights
-                |> List.map (fun (spec, height, _) ->
-                    match spec with
-                    | FixedRow _ -> height
-                    | AutoRow -> max 1 (int (float height * autoScaleFactor)) // At least 1 line
-                    | ProportionRow _ -> 0
-                )
-            else
-                // We have space for all
-                let remainingHeight = availableHeight - fixedTotal - autoTotal
-
-                let proportionTotal =
-                    proportionRows
-                    |> List.sumBy (fun (spec, _, _) ->
+                    let preferredHeight =
                         match spec with
-                        | ProportionRow p -> p
-                        | _ -> 0.0
+                        | FixedRow h -> h
+                        | AutoRow
+                        | ProportionRow _ ->
+                            List.zip cellsInRow columnWidths
+                            |> List.map (fun (cell, colWidth) -> cell.PreferredHeightForWidth colWidth)
+                            |> List.max
+
+                    (spec, rowIdx, minHeight, preferredHeight)
+                )
+
+            let totalMin = rowInfo |> List.sumBy (fun (_, _, minH, _) -> minH)
+
+            if availableHeight <= 0 then
+                List.replicate rowSpecs.Length 0
+            elif totalMin >= availableHeight then
+                let totalMinF = float totalMin
+
+                let scaled =
+                    rowInfo
+                    |> List.map (fun (_, _, minH, _) -> int (float minH * float availableHeight / totalMinF))
+                    |> List.toArray
+
+                let mutable allocated = scaled |> Array.sum
+                let mutable idx = 0
+
+                while allocated < availableHeight && idx < rowSpecs.Length do
+                    scaled[idx] <- scaled[idx] + 1
+                    allocated <- allocated + 1
+                    idx <- idx + 1
+
+                scaled |> Array.toList
+            else
+                let heights = rowInfo |> List.map (fun (_, _, minH, _) -> minH) |> List.toArray
+
+                let mutable remaining = availableHeight - totalMin
+
+                let autoRows =
+                    rowInfo
+                    |> List.choose (fun (spec, idx, minH, prefH) ->
+                        match spec with
+                        | AutoRow -> Some (idx, max 0 (prefH - minH))
+                        | _ -> None
                     )
 
-                rowPreferredHeights
-                |> List.map (fun (spec, height, _) ->
-                    match spec with
-                    | FixedRow _ -> height
-                    | AutoRow -> height
-                    | ProportionRow p ->
-                        if proportionTotal > 0.0 then
-                            int (float remainingHeight * p / proportionTotal)
-                        else
-                            remainingHeight / List.length proportionRows
-                )
+                let autoGrowthTotal = autoRows |> List.sumBy snd
+
+                if autoGrowthTotal > 0 && remaining > 0 then
+                    let autoAllocated = min remaining autoGrowthTotal
+
+                    for (idx, capacity) in autoRows do
+                        let extra = int (float autoAllocated * (float capacity / float autoGrowthTotal))
+
+                        heights[idx] <- heights[idx] + extra
+
+                    let spent = heights |> Array.sum |> (fun s -> s - totalMin)
+                    let mutable toDistribute = autoAllocated - spent
+                    let mutable autoIdx = 0
+
+                    while toDistribute > 0 && autoIdx < autoRows.Length do
+                        let rowIndex, _ = autoRows[autoIdx]
+                        heights[rowIndex] <- heights[rowIndex] + 1
+                        toDistribute <- toDistribute - 1
+                        autoIdx <- autoIdx + 1
+
+                    remaining <- remaining - autoAllocated
+
+                let proportionRows =
+                    rowInfo
+                    |> List.choose (fun (spec, idx, _, _) ->
+                        match spec with
+                        | ProportionRow p -> Some (idx, p)
+                        | _ -> None
+                    )
+
+                let proportionTotal = proportionRows |> List.sumBy (fun (_, p) -> p)
+
+                if proportionTotal > 0.0 && remaining > 0 then
+                    let mutable leftover = remaining
+
+                    for (idx, p) in proportionRows do
+                        let extra = int (float remaining * (p / proportionTotal))
+                        heights[idx] <- heights[idx] + extra
+                        leftover <- leftover - extra
+
+                    let mutable propIdx = 0
+
+                    while leftover > 0 && propIdx < proportionRows.Length do
+                        let rowIndex, _ = proportionRows[propIdx]
+                        heights[rowIndex] <- heights[rowIndex] + 1
+                        leftover <- leftover - 1
+                        propIdx <- propIdx + 1
+
+                heights |> Array.toList
 
     /// Creates a table with specified cells and sizing.
     /// Gracefully handles ragged rows (pads with Vdom.empty) and spec mismatches (defaults to Auto).

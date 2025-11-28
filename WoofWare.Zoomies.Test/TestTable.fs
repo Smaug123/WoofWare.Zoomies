@@ -239,8 +239,8 @@ A    B                        |
             expect {
                 snapshot
                     @"
-Left          Right |
-A             B     |
+Left        Right   |
+A           B       |
                     |
                     |
                     |
@@ -639,10 +639,10 @@ X    Y                        |
             expect {
                 snapshot
                     @"
-VeryLonVeryLong|
-gColumnColumnNa|
-Name1  me2     |
-Data1  Data2   |
+VeryLongVeryLon|
+ColumnNagColumn|
+me1     Name2  |
+Data1   Data2  |
                |
 "
 
@@ -1004,9 +1004,9 @@ X      Y       Z              |
             expect {
                 snapshot
                     @"
-VeryLoVeryLoVeryLong|
-ngColungColuColumn3 |
-mn1   mn2           |
+VeryLonVeryLonVeryLo|
+gColumngColumnngColu|
+1      2      mn3   |
                     |
                     |
 "
@@ -1220,7 +1220,9 @@ module TestTableMeasurements =
             // Create a table with:
             // - AutoColumn with VERY LARGE preferred width but SMALL min width (wrappable text)
             // - ProportionColumn with non-zero minimum width
-            let autoCell = Vdom.textContent false "Some long text with many words that wraps nicely" // Preferred ~50, MinWidth ~6 ("nicely")
+            let autoCell =
+                Vdom.textContent false "Some long text with many words that wraps nicely" // Preferred ~50, MinWidth ~6 ("nicely")
+
             let propCell = Vdom.textContent false "PropCol" // Preferred 7, MinWidth 7 (single word)
 
             let table =
