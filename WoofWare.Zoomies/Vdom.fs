@@ -10,16 +10,42 @@ module VdomTagging =
     let mutable Enabled : bool = false
 
 /// Opaque identifier for stable node identity across frames
-type NodeKey = private | NodeKey of string
+type NodeKey =
+    private
+    | Custom of string
+    | Table of NodeKey * row : int * toRow : int option * col : int option * toCol : int option
 
 [<RequireQualifiedAccess>]
 module NodeKey =
     /// Wraps an arbitrary user-chosen string node identifier into a key that WoofWare.Zoomies can use to identify
     /// nodes.
-    let make (s : string) : NodeKey = NodeKey s
+    let make (s : string) : NodeKey = NodeKey.Custom s
 
-    /// Gets the original string that was used to construct this key.
-    let toString (NodeKey s) : string = s
+    /// Indicate a sub-key
+    let makeTableCellKey (table : NodeKey) (row : int) (toRow : int option) (col : int option) (toCol : int option) =
+        NodeKey.Table (table, row, toRow, col, toCol)
+
+    /// Gets a string that represents this key for human display.
+    let rec toHumanReadableString (s : NodeKey) : string =
+        match s with
+        | NodeKey.Custom s -> s
+        | NodeKey.Table (nodeKey, row, toRow, col, toCol) ->
+            let toRow =
+                match toRow with
+                | None -> ""
+                | Some toRow -> $"to%i{toRow}"
+
+            let toCol =
+                match toCol with
+                | None -> ""
+                | Some toCol -> $"to%i{toCol}"
+
+            let col =
+                match col with
+                | None -> ""
+                | Some col -> $"_%i{col}%s{toCol}"
+
+            $"%s{toHumanReadableString nodeKey}_%i{row}%s{toRow}%s{col}"
 
 /// Phantom type to track whether a node has a key
 type Keyed = private | Keyed
@@ -607,7 +633,9 @@ type Vdom =
             | KeylessVdom.Unkeyed unkeyed -> dumpUnkeyedVdom indent unkeyed
 
         and dumpKeyedVdom (indent : string) (KeyedVdom.WithKey (key, inner)) : unit =
-            sb.AppendLine (sprintf "%sKey: %s" indent (NodeKey.toString key)) |> ignore
+            sb.AppendLine (sprintf "%sKey: %s" indent (NodeKey.toHumanReadableString key))
+            |> ignore
+
             dumpUnkeyedVdom (indent + "  ") inner
 
         and dumpUnkeyedVdom (indent : string) (vdom : UnkeyedVdom<'bounds>) : unit =

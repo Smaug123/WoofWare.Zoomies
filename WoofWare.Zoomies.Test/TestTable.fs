@@ -24,7 +24,7 @@ module TestTable =
     let ``empty table`` () =
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
-                Table.makeAuto ([] : Vdom<DesiredBounds, Unkeyed> list list)
+                Table.makeAuto (NodeKey.make "t_") ([] : Vdom<DesiredBounds, Unkeyed> list list)
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
 
@@ -67,6 +67,7 @@ module TestTable =
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
                 Table.makeAuto
+                    (NodeKey.make "t_")
                     [
                         [ Vdom.textContent false "A1" ; Vdom.textContent false "B1" ]
                         [ Vdom.textContent false "A2" ; Vdom.textContent false "B2" ]
@@ -113,6 +114,7 @@ A2B2                |
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
                 Table.makeAuto
+                    (NodeKey.make "t_")
                     [
                         [ Vdom.textContent false "Name" ; Vdom.textContent false "Age" ]
                         [ Vdom.textContent false "Alice" ; Vdom.textContent false "30" ]
@@ -160,6 +162,7 @@ Bob  25                       |
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
                 Table.make
+                    (NodeKey.make "t_")
                     [
                         [ Vdom.textContent false "A" ; Vdom.textContent false "B" ]
                         [ Vdom.textContent false "1" ; Vdom.textContent false "2" ]
@@ -208,6 +211,7 @@ A    B                        |
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
                 Table.make
+                    (NodeKey.make "t_")
                     [
                         [ Vdom.textContent false "Left" ; Vdom.textContent false "Right" ]
                         [ Vdom.textContent false "A" ; Vdom.textContent false "B" ]
@@ -256,6 +260,7 @@ A           B       |
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
                 Table.makeAuto
+                    (NodeKey.make "t_")
                     [
                         [
                             Vdom.textContent false "A"
@@ -306,7 +311,7 @@ XY                  |
     let ``single cell table`` () =
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
-                Table.makeAuto [ [ Vdom.textContent false "Single" ] ]
+                Table.makeAuto (NodeKey.make "t_") [ [ Vdom.textContent false "Single" ] ]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
 
@@ -349,6 +354,7 @@ Single              |
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
                 Table.make
+                    (NodeKey.make "t_")
                     [
                         [ Vdom.textContent false "Row1" ]
                         [ Vdom.textContent false "Row2" ]
@@ -403,6 +409,7 @@ Row3                |
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
                 Table.make
+                    (NodeKey.make "t_")
                     [
                         [ Vdom.textContent false "Top" ]
                         [ Vdom.textContent false "Middle" ]
@@ -457,6 +464,7 @@ Bottom              |
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
                 Table.make
+                    (NodeKey.make "t_")
                     [
                         [ Vdom.textContent false "Fixed2" ]
                         [ Vdom.textContent false "Auto" ]
@@ -512,7 +520,9 @@ Prop                |
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
                 // Table internally assigns keys to cells based on (row, col) position
                 // This test verifies that tables handle cell content correctly
-                Table.makeAuto [ [ Vdom.textContent false "Cell1" ] ; [ Vdom.textContent false "Cell2" ] ]
+                Table.makeAuto
+                    (NodeKey.make "t_")
+                    [ [ Vdom.textContent false "Cell1" ] ; [ Vdom.textContent false "Cell2" ] ]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
 
@@ -556,6 +566,7 @@ Cell2               |
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
                 Table.make
+                    (NodeKey.make "t_")
                     [
                         [
                             Vdom.textContent false "Short"
@@ -607,6 +618,7 @@ X    Y                        |
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
                 Table.makeAuto
+                    (NodeKey.make "t_")
                     [
                         [
                             Vdom.textContent false "VeryLongColumnName1"
@@ -657,6 +669,7 @@ Data1   Data2  |
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
                 Table.make
+                    (NodeKey.make "t_")
                     [
                         [ Vdom.textContent false "A" ; Vdom.textContent false "B" ]
                         [ Vdom.textContent false "1" ; Vdom.textContent false "2" ]
@@ -705,6 +718,7 @@ AB                  |
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
                 Table.make
+                    (NodeKey.make "t_")
                     [
                         [
                             Vdom.textContent false "Col1"
@@ -760,6 +774,7 @@ Col1Col2C3                    |
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
                 Table.make
+                    (NodeKey.make "t_")
                     [
                         [
                             Vdom.textContent false "A"
@@ -816,6 +831,7 @@ A    B C                      |
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
                 Table.make
+                    (NodeKey.make "t_")
                     [ [ Vdom.textContent false "X" ; Vdom.textContent false "Y" ] ]
                     [ FixedColumn 3 ; FixedColumn 4 ; FixedColumn 10 ; AutoColumn ] // 4 specs for 2 columns
                     []
@@ -862,6 +878,7 @@ X  Y                |
             // This shouldn't happen in practice after sanitization, but test the allocation logic
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
                 Table.make
+                    (NodeKey.make "t_")
                     [
                         [
                             Vdom.textContent false "A"
@@ -914,6 +931,7 @@ ABC                           |
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
                 Table.make
+                    (NodeKey.make "t_")
                     [
                         [
                             Vdom.textContent false "AutoCol"
@@ -970,6 +988,7 @@ X      Y       Z              |
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
                 Table.make
+                    (NodeKey.make "t_")
                     [
                         [
                             Vdom.textContent false "VeryLongColumn1"
@@ -1022,6 +1041,7 @@ gColumngColumnngColu|
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
                 Table.make
+                    (NodeKey.make "t_")
                     [
                         [ Vdom.textContent false "Row1" ]
                         [ Vdom.textContent false "Row2" ]
@@ -1076,21 +1096,14 @@ module TestTableMeasurements =
         }
 
     let private findAllocatedWidth
-        (targetKey : string)
+        (targetKey : NodeKey)
         (bounds : Rectangle)
         (vdom : Vdom<DesiredBounds, 'keyed>)
         : int option
         =
         let matchKey (key : NodeKey) (child : Folded) : Folded =
-            let target = NodeKey.toString key
-
             {
-                Run =
-                    fun rect ->
-                        if target = targetKey then
-                            Some rect.Width
-                        else
-                            child.Run rect
+                Run = fun rect -> if key = targetKey then Some rect.Width else child.Run rect
             }
 
         let cata : VdomCata<Folded> =
@@ -1195,7 +1208,7 @@ module TestTableMeasurements =
         let cell2 = Vdom.textContent false "VeryLongWord" // MinWidth = 12
         let cell3 = Vdom.textContent false "A B C" // MinWidth = 1
 
-        let table = Table.makeAuto [ [ cell1 ; cell2 ; cell3 ] ]
+        let table = Table.makeAuto (NodeKey.make "t_") [ [ cell1 ; cell2 ; cell3 ] ]
 
         let constraints =
             {
@@ -1213,7 +1226,8 @@ module TestTableMeasurements =
         let cell1 = Vdom.textContent false "Short" // MinWidth = 5
         let cell2 = Vdom.textContent false "X" // MinWidth = 1
 
-        let table = Table.make [ [ cell1 ; cell2 ] ] [ FixedColumn 10 ; AutoColumn ] []
+        let table =
+            Table.make (NodeKey.make "t_") [ [ cell1 ; cell2 ] ] [ FixedColumn 10 ; AutoColumn ] []
 
         let constraints =
             {
@@ -1232,7 +1246,7 @@ module TestTableMeasurements =
         let cell2 = Vdom.textContent false "World" // MinWidth = 5
 
         let table =
-            Table.make [ [ cell1 ; cell2 ] ] [ ProportionColumn 0.5 ; ProportionColumn 0.5 ] []
+            Table.make (NodeKey.make "t_") [ [ cell1 ; cell2 ] ] [ ProportionColumn 0.5 ; ProportionColumn 0.5 ] []
 
         let constraints =
             {
@@ -1251,7 +1265,7 @@ module TestTableMeasurements =
         let cell =
             Vdom.textContent false "This is a long text that will wrap when constrained"
 
-        let table = Table.makeAuto [ [ cell ] ]
+        let table = Table.makeAuto (NodeKey.make "t_") [ [ cell ] ]
 
         let constraints =
             {
@@ -1274,7 +1288,7 @@ module TestTableMeasurements =
         let cell =
             Vdom.textContent false "This is text that wraps differently based on width"
 
-        let table = Table.makeAuto [ [ cell ] ]
+        let table = Table.makeAuto (NodeKey.make "t_") [ [ cell ] ]
 
         let constraints =
             {
@@ -1302,7 +1316,8 @@ module TestTableMeasurements =
         let cell3 = Vdom.textContent false "A"
         let cell4 = Vdom.textContent false "B"
 
-        let table = Table.makeAuto [ [ cell1 ; cell2 ] ; [ cell3 ; cell4 ] ]
+        let table =
+            Table.makeAuto (NodeKey.make "t_") [ [ cell1 ; cell2 ] ; [ cell3 ; cell4 ] ]
 
         let constraints =
             {
@@ -1346,7 +1361,7 @@ module TestTableMeasurements =
             let propCell = Vdom.textContent false "PropCol" // Preferred 7, MinWidth 7 (single word)
 
             let table =
-                Table.make [ [ autoCell ; propCell ] ] [ AutoColumn ; ProportionColumn 1.0 ] []
+                Table.make (NodeKey.make "t_") [ [ autoCell ; propCell ] ] [ AutoColumn ; ProportionColumn 1.0 ] []
 
             let constraints =
                 {
@@ -1374,7 +1389,7 @@ module TestTableMeasurements =
                     world.ReadKey
 
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
-                Table.make [ [ autoCell ; propCell ] ] [ AutoColumn ; ProportionColumn 1.0 ] []
+                Table.make (NodeKey.make "t_") [ [ autoCell ; propCell ] ] [ AutoColumn ; ProportionColumn 1.0 ] []
 
             let processWorld =
                 { new WorldProcessor<unit, State> with
@@ -1397,7 +1412,6 @@ module TestTableMeasurements =
 
             // The proportion column should display its content without being truncated
             // If it gets 0 width or less than MinWidth, "PropCol" won't appear completely
-            // This assertion will FAIL with the current bug - the proportion column gets 0 width
             output |> shouldContainText "PropCol"
         }
 
@@ -1405,6 +1419,7 @@ module TestTableMeasurements =
     let ``last column keeps its allocated width even with slack`` () =
         let table =
             Table.make
+                (NodeKey.make "t")
                 [ [ Vdom.textContent false "L" ; Vdom.textContent false "R" ] ]
                 [ FixedColumn 3 ; FixedColumn 4 ]
                 []
@@ -1426,14 +1441,15 @@ module TestTableMeasurements =
                 Height = 3
             }
 
-        let lastWidth = findAllocatedWidth "cell_0_1" bounds table
+        let lastWidth =
+            findAllocatedWidth (NodeKey.makeTableCellKey (NodeKey.make "t") 0 None (Some 1) None) bounds table
 
         lastWidth |> shouldEqual (Some 4)
 
     [<Test>]
     let ``single cell row uses its computed column width`` () =
         let cell = Vdom.textContent false "Hello"
-        let table = Table.makeAuto [ [ cell ] ]
+        let table = Table.makeAuto (NodeKey.make "t") [ [ cell ] ]
 
         let constraints =
             {
@@ -1454,7 +1470,8 @@ module TestTableMeasurements =
                 Height = 3
             }
 
-        let width = findAllocatedWidth "cell_0_0" bounds table
+        let width =
+            findAllocatedWidth (NodeKey.makeTableCellKey (NodeKey.make "t") 0 None (Some 0) None) bounds table
 
         width |> shouldEqual (Some expectedWidth)
 
@@ -1475,7 +1492,8 @@ module TestTablePerformance =
                         ]
                 ]
 
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> = Table.makeAuto cells
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+                Table.makeAuto (NodeKey.make "t_") cells
 
             let console, terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 30)
 
@@ -1517,7 +1535,8 @@ module TestTablePerformance =
                         ]
                 ]
 
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> = Table.makeAuto cells
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+                Table.makeAuto (NodeKey.make "t_") cells
 
             let console, terminal = ConsoleHarness.make' (fun () -> 200) (fun () -> 50)
 
@@ -1557,7 +1576,8 @@ module TestTablePerformance =
                         ]
                 ]
 
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> = Table.makeAuto cells
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+                Table.makeAuto (NodeKey.make "t_") cells
 
             let console, terminal = ConsoleHarness.make' (fun () -> 400) (fun () -> 20)
 
@@ -1668,7 +1688,7 @@ module TestVdomMeasure =
         measured.PreferredWidth |> shouldEqual 9
 
     [<Test>]
-    let ``VdomBounds.measurehandles empty vdom`` () =
+    let ``VdomBounds.measure handles empty vdom`` () =
         let vdom = Vdom.empty
 
         let constraints =

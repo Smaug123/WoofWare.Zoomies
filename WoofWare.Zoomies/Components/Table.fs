@@ -308,7 +308,11 @@ module Table =
     /// Gracefully handles ragged rows (pads with Vdom.empty) and spec mismatches (defaults to Auto).
     /// Accepts both keyed and unkeyed cells - the table assigns each cell a unique key based on (row, col) position
     /// for stable focus tracking. Original keys are discarded and replaced with position-based keys.
+    ///
+    /// The keyPrefix parameter namespaces all internal keys to prevent collisions when multiple tables
+    /// are rendered in the same VDOM tree. If rendering multiple tables, ensure each has a unique keyPrefix.
     let make
+        (keyPrefix : NodeKey)
         (cells : Vdom<DesiredBounds, 'keyed> list list)
         (columnSpecs : ColumnSpec list)
         (rowSpecs : RowSpec list)
@@ -487,13 +491,16 @@ module Table =
                 // 3. Build nested PanelSplit structure
                 // First, assign unique keys to all cells based on (row, col) position
                 // This ensures all cells are uniformly Keyed for panelSplitAbsolute
+
                 let keyedCells =
                     cells
                     |> List.mapi (fun rowIdx row ->
                         row
                         |> List.mapi (fun colIdx cell ->
-                            // Wrap the UnkeyedVdom with a position-based key
-                            Vdom.withKey (NodeKey.make $"cell_{rowIdx}_{colIdx}") (Vdom.Unkeyed (cell, Teq.refl))
+                            // Wrap the UnkeyedVdom with a namespaced position-based key
+                            Vdom.withKey
+                                (NodeKey.makeTableCellKey keyPrefix rowIdx None (Some colIdx) None)
+                                (Vdom.Unkeyed (cell, Teq.refl))
                         )
                     )
 
@@ -538,10 +545,15 @@ module Table =
                                          Vdom.panelSplitAbsolute (SplitDirection.Vertical, width, cell, empty))
                                     else
                                         // Split: give 'cell' exactly 'width' chars, rest goes to accumulator
-                                        // Key the accumulator with a unique key indicating "columns colIdx to end of row rowIdx"
+                                        // Key the accumulator with a unique namespaced key indicating "columns colIdx to end of row rowIdx"
                                         let accumKeyed =
                                             Vdom.withKey
-                                                (NodeKey.make $"row{rowIdx}_cols{colIdx}to{numCols - 1}")
+                                                (NodeKey.makeTableCellKey
+                                                    keyPrefix
+                                                    rowIdx
+                                                    None
+                                                    (Some colIdx)
+                                                    (Some (numCols - 1)))
                                                 accum
 
                                         (colIdx - 1,
@@ -570,10 +582,14 @@ module Table =
                                 if isFirst then
                                     (rowIdx - 1, false, row)
                                 else
-                                    // Key both the current row and the accumulator with unique keys
-                                    let rowKeyed = Vdom.withKey (NodeKey.make $"row{rowIdx}") row
+                                    // Key both the current row and the accumulator with unique namespaced keys
+                                    let rowKeyed =
+                                        Vdom.withKey (NodeKey.makeTableCellKey keyPrefix rowIdx None None None) row
 
-                                    let accumKeyed = Vdom.withKey (NodeKey.make $"rows{rowIdx}to{numRows - 1}") accum
+                                    let accumKeyed =
+                                        Vdom.withKey
+                                            (NodeKey.makeTableCellKey keyPrefix rowIdx (Some (numRows - 1)) None None)
+                                            accum
 
                                     (rowIdx - 1,
                                      false,
@@ -590,4 +606,8 @@ module Table =
     /// Creates an auto-sized table (all columns and rows size to content).
     /// Gracefully handles ragged rows (pads with Vdom.empty).
     /// Accepts both keyed and unkeyed cells - the table assigns position-based keys internally.
-    let makeAuto (cells : Vdom<DesiredBounds, 'keyed> list list) : Vdom<DesiredBounds, Unkeyed> = make cells [] []
+    ///
+    /// The keyPrefix parameter namespaces all internal keys to prevent collisions when multiple tables
+    /// are rendered in the same VDOM tree. If rendering multiple tables, ensure each has a unique keyPrefix.
+    let makeAuto (keyPrefix : NodeKey) (cells : Vdom<DesiredBounds, 'keyed> list list) : Vdom<DesiredBounds, Unkeyed> =
+        make keyPrefix cells [] []

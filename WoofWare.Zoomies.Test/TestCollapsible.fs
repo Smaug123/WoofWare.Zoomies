@@ -2,6 +2,7 @@ namespace WoofWare.Zoomies.Test
 
 open System
 open NUnit.Framework
+open FsUnitTyped
 open WoofWare.Expect
 open WoofWare.Zoomies
 open WoofWare.Zoomies.Components
@@ -399,18 +400,15 @@ Line 2 of content                                           |
                                     match VdomContext.focusedKey renderState with
                                     | None -> ()
                                     | Some focused ->
-                                        let key = NodeKey.toString focused
+                                        NodeKey.toHumanReadableString focused |> shouldEqual "collapsible"
 
-                                        if key = "collapsible" then
-                                            newState <-
-                                                {
-                                                    CollapsibleState =
-                                                        {
-                                                            IsExpanded = not state.CollapsibleState.IsExpanded
-                                                        }
-                                                }
-                                        else
-                                            failwith "unexpected key"
+                                        newState <-
+                                            {
+                                                CollapsibleState =
+                                                    {
+                                                        IsExpanded = not state.CollapsibleState.IsExpanded
+                                                    }
+                                            }
                                 else
                                     failwith "unexpected key char"
                             | WorldStateChange.MouseEvent _ -> failwith "no mouse events"
