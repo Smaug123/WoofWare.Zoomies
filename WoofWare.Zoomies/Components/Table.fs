@@ -497,9 +497,9 @@ module Table =
                             | width :: _ -> width
                             | [] -> 0
 
-                        // Use negative absolute split so the single cell keeps its allocated width even if there's
+                        // Use absolute split so the single cell keeps its allocated width even if there's
                         // extra space beyond the sum of column widths.
-                        Vdom.panelSplitAbsolute (SplitDirection.Vertical, -width, empty, single)
+                        Vdom.panelSplitAbsolute (SplitDirection.Vertical, width, single, empty)
                     | _ ->
                         // Build right-to-left using indexed fold: cell0 | (cell1 | (cell2 | ...))
                         // Each intermediate split gets a unique key based on its column span
@@ -512,10 +512,10 @@ module Table =
                                     (width : int)
                                     (colIdx, isFirst, accum : Vdom<DesiredBounds, Unkeyed>) ->
                                     if isFirst then
-                                        // Last cell in fold (first cell in row), reserve its width explicitly
+                                        // Last cell in fold (rightmost cell in row), reserve its width explicitly
                                         (colIdx - 1,
                                          false,
-                                         Vdom.panelSplitAbsolute (SplitDirection.Vertical, -width, empty, cell))
+                                         Vdom.panelSplitAbsolute (SplitDirection.Vertical, width, cell, empty))
                                     else
                                         // Split: give 'cell' exactly 'width' chars, rest goes to accumulator
                                         // Key the accumulator with a unique key indicating "columns colIdx to end of row rowIdx"

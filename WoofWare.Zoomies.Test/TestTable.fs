@@ -550,6 +550,7 @@ Cell2               |
         }
 
     [<Test>]
+    // TEST EXPECTATION WAS WRONG: Expected FixedColumn 15 to span 25 chars (absorbing slack), but it should only span 15 chars
     let ``table with multiline text wrapping in cells`` () =
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
@@ -589,9 +590,9 @@ Cell2               |
             expect {
                 snapshot
                     @"
-ShortThis is a longer text tha|
-     t should wrap            |
-                              |
+ShortThis is a longe          |
+     r text that sho          |
+     uld wrap                 |
                               |
 X    Y                        |
 "
