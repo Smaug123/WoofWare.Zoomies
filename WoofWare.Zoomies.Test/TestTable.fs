@@ -1429,7 +1429,7 @@ module TestVdomMeasure =
         measured.PreferredHeightForWidth 11 |> shouldEqual 1
 
     [<Test>]
-    let ``Vdom.measurehandles text wrapping`` () =
+    let ``Vdom.measure handles text wrapping`` () =
         let vdom = Vdom.textContent false "Hello World Test"
 
         let constraints =
@@ -1508,7 +1508,7 @@ module TestVdomMeasure =
         measured.PreferredHeightForWidth 10 |> shouldEqual 0
 
     [<Test>]
-    let ``Vdom.measurerespects max width constraint`` () =
+    let ``Vdom.measure respects max width constraint`` () =
         let vdom =
             Vdom.textContent false "This is a very long text that exceeds constraints"
 
@@ -1525,7 +1525,7 @@ module TestVdomMeasure =
         (measured.MinWidth <= 20) |> shouldEqual true
 
     [<Test>]
-    let ``Vdom.measureworks with FlexibleContent`` () =
+    let ``Vdom.measure works with FlexibleContent`` () =
         let customMeasure (constraints : MeasureConstraints) : MeasuredSize =
             {
                 MinWidth = 5
