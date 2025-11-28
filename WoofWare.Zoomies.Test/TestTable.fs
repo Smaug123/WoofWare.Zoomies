@@ -652,9 +652,9 @@ Data1  Data2   |
 
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
-module TestLayoutMeasure =
+module TestVdomMeasure =
     [<Test>]
-    let ``Layout.measure returns correct measurements for text content`` () =
+    let ``Vdom.measure returns correct measurements for text content`` () =
         let vdom = Vdom.textContent false "Hello World"
 
         let constraints =
@@ -663,7 +663,7 @@ module TestLayoutMeasure =
                 MaxHeight = 100
             }
 
-        let measured = Layout.measure vdom constraints
+        let measured = Vdom.measure vdom constraints
 
         measured.MinWidth |> shouldEqual 5 // "World" is the longest word
         measured.PreferredWidth |> shouldEqual 11 // "Hello World" full length
@@ -671,7 +671,7 @@ module TestLayoutMeasure =
         measured.PreferredHeightForWidth 11 |> shouldEqual 1
 
     [<Test>]
-    let ``Layout.measure handles text wrapping`` () =
+    let ``Vdom.measurehandles text wrapping`` () =
         let vdom = Vdom.textContent false "Hello World Test"
 
         let constraints =
@@ -680,7 +680,7 @@ module TestLayoutMeasure =
                 MaxHeight = 100
             }
 
-        let measured = Layout.measure vdom constraints
+        let measured = Vdom.measure vdom constraints
 
         measured.MinWidth |> shouldEqual 5 // "Hello" or "World" is longest word
         measured.PreferredWidth |> shouldEqual 16 // Full text length
@@ -691,7 +691,7 @@ module TestLayoutMeasure =
         (heightAt10 > 1) |> shouldEqual true
 
     [<Test>]
-    let ``Layout.measure handles bordered content`` () =
+    let ``Vdom.measurehandles bordered content`` () =
         let innerVdom = Vdom.textContent false "Test"
         let vdom = Vdom.bordered innerVdom
 
@@ -701,7 +701,7 @@ module TestLayoutMeasure =
                 MaxHeight = 100
             }
 
-        let measured = Layout.measure vdom constraints
+        let measured = Vdom.measure vdom constraints
 
         // Border adds 2 to width (1 on each side)
         measured.MinWidth |> shouldEqual 6 // 4 + 2 for border
@@ -711,7 +711,7 @@ module TestLayoutMeasure =
         measured.MinHeightForWidth 10 |> shouldEqual 3 // 1 + 2 for border
 
     [<Test>]
-    let ``Layout.measure handles panel splits`` () =
+    let ``Vdom.measurehandles panel splits`` () =
         let left = Vdom.textContent false "Left"
         let right = Vdom.textContent false "Right"
 
@@ -726,14 +726,14 @@ module TestLayoutMeasure =
                 MaxHeight = 100
             }
 
-        let measured = Layout.measure vdom constraints
+        let measured = Vdom.measure vdom constraints
 
         // Auto split: MinWidth is sum of both
         measured.MinWidth |> shouldEqual 9 // 4 + 5 = 9
         measured.PreferredWidth |> shouldEqual 9
 
     [<Test>]
-    let ``Layout.measure handles empty vdom`` () =
+    let ``Vdom.measurehandles empty vdom`` () =
         let vdom = Vdom.empty
 
         let constraints =
@@ -742,7 +742,7 @@ module TestLayoutMeasure =
                 MaxHeight = 100
             }
 
-        let measured = Layout.measure vdom constraints
+        let measured = Vdom.measure vdom constraints
 
         measured.MinWidth |> shouldEqual 0
         measured.PreferredWidth |> shouldEqual 0
@@ -750,7 +750,7 @@ module TestLayoutMeasure =
         measured.PreferredHeightForWidth 10 |> shouldEqual 0
 
     [<Test>]
-    let ``Layout.measure respects max width constraint`` () =
+    let ``Vdom.measurerespects max width constraint`` () =
         let vdom =
             Vdom.textContent false "This is a very long text that exceeds constraints"
 
@@ -760,14 +760,14 @@ module TestLayoutMeasure =
                 MaxHeight = 100
             }
 
-        let measured = Layout.measure vdom constraints
+        let measured = Vdom.measure vdom constraints
 
         // Should be clamped to max width
         (measured.PreferredWidth <= 20) |> shouldEqual true
         (measured.MinWidth <= 20) |> shouldEqual true
 
     [<Test>]
-    let ``Layout.measure works with FlexibleContent`` () =
+    let ``Vdom.measureworks with FlexibleContent`` () =
         let customMeasure (constraints : MeasureConstraints) : MeasuredSize =
             {
                 MinWidth = 5
@@ -788,7 +788,7 @@ module TestLayoutMeasure =
                 MaxHeight = 100
             }
 
-        let measured = Layout.measure vdom constraints
+        let measured = Vdom.measure vdom constraints
 
         measured.MinWidth |> shouldEqual 5
         measured.PreferredWidth |> shouldEqual 10

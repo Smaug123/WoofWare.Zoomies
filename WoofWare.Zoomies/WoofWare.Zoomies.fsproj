@@ -43,6 +43,7 @@
     <Compile Include="WorldFreezer.fs" />
     <Compile Include="VdomContext.fs" />
     <Compile Include="Layout.fs" />
+    <Compile Include="VdomExtensions.fs" />
     <Compile Include="Render.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Components\Button.fs" />
