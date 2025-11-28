@@ -524,7 +524,7 @@ Prop                |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = true
+            let haveFrameworkHandleFocus _ = false
 
             let processWorld =
                 { new WorldProcessor<unit, State> with
@@ -648,6 +648,694 @@ Data1  Data2   |
 
                 return ConsoleHarness.toString terminal
             }
+        }
+
+    [<Test>]
+    let ``negative proportions are sanitized to Auto`` () =
+        task {
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+                Table.make
+                    [
+                        [ Vdom.textContent false "A" ; Vdom.textContent false "B" ]
+                        [ Vdom.textContent false "1" ; Vdom.textContent false "2" ]
+                    ]
+                    [ ProportionColumn -0.5 ; ProportionColumn 1.0 ]
+                    []
+
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = false
+
+            let processWorld =
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+
+            expect {
+                snapshot
+                    @"
+AB                  |
+12                  |
+                    |
+                    |
+                    |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``NaN and Infinity proportions are sanitized to Auto`` () =
+        task {
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+                Table.make
+                    [
+                        [
+                            Vdom.textContent false "Col1"
+                            Vdom.textContent false "Col2"
+                            Vdom.textContent false "C3"
+                        ]
+                    ]
+                    [
+                        ProportionColumn System.Double.NaN
+                        ProportionColumn System.Double.PositiveInfinity
+                        AutoColumn
+                    ]
+                    [ ProportionRow System.Double.NegativeInfinity ]
+
+            let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = false
+
+            let processWorld =
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+
+            expect {
+                snapshot
+                    @"
+Col1Col2C3                    |
+                              |
+                              |
+                              |
+                              |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``fewer column specs than columns pads with Auto`` () =
+        task {
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+                Table.make
+                    [
+                        [
+                            Vdom.textContent false "A"
+                            Vdom.textContent false "B"
+                            Vdom.textContent false "C"
+                        ]
+                        [
+                            Vdom.textContent false "1"
+                            Vdom.textContent false "22"
+                            Vdom.textContent false "3"
+                        ]
+                    ]
+                    [ FixedColumn 5 ] // Only 1 spec for 3 columns
+                    []
+
+            let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = false
+
+            let processWorld =
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+
+            expect {
+                snapshot
+                    @"
+A    B C                      |
+1    223                      |
+                              |
+                              |
+                              |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``more column specs than columns truncates extras`` () =
+        task {
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+                Table.make
+                    [ [ Vdom.textContent false "X" ; Vdom.textContent false "Y" ] ]
+                    [ FixedColumn 3 ; FixedColumn 4 ; FixedColumn 10 ; AutoColumn ] // 4 specs for 2 columns
+                    []
+
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = false
+
+            let processWorld =
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+
+            expect {
+                snapshot
+                    @"
+X  Y                |
+                    |
+                    |
+                    |
+                    |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``zero proportion total divides space equally`` () =
+        task {
+            // This shouldn't happen in practice after sanitization, but test the allocation logic
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+                Table.make
+                    [
+                        [
+                            Vdom.textContent false "A"
+                            Vdom.textContent false "B"
+                            Vdom.textContent false "C"
+                        ]
+                    ]
+                    [ ProportionColumn 0.0 ; ProportionColumn 0.0 ; ProportionColumn 0.0 ]
+                    []
+
+            let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = false
+
+            let processWorld =
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+
+            // After sanitization all become Auto, so should size to content
+            expect {
+                snapshot
+                    @"
+ABC                           |
+                              |
+                              |
+                              |
+                              |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``mixed column specs Auto Fixed and Proportion`` () =
+        task {
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+                Table.make
+                    [
+                        [
+                            Vdom.textContent false "AutoCol"
+                            Vdom.textContent false "Fix"
+                            Vdom.textContent false "Prop"
+                        ]
+                        [
+                            Vdom.textContent false "X"
+                            Vdom.textContent false "Y"
+                            Vdom.textContent false "Z"
+                        ]
+                    ]
+                    [ AutoColumn ; FixedColumn 8 ; ProportionColumn 1.0 ]
+                    []
+
+            let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = false
+
+            let processWorld =
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+
+            expect {
+                snapshot
+                    @"
+AutoColFix     Prop           |
+X      Y       Z              |
+                              |
+                              |
+                              |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``over-constrained columns trigger shrink-to-fit`` () =
+        task {
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+                Table.make
+                    [
+                        [
+                            Vdom.textContent false "VeryLongColumn1"
+                            Vdom.textContent false "VeryLongColumn2"
+                            Vdom.textContent false "VeryLongColumn3"
+                        ]
+                    ]
+                    [ AutoColumn ; AutoColumn ; AutoColumn ]
+                    []
+
+            // Terminal only 20 chars wide, but content wants 45 chars
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = false
+
+            let processWorld =
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+
+            expect {
+                snapshot
+                    @"
+VeryLoVeryLoVeryLong|
+ngColungColuColumn3 |
+mn1   mn2           |
+                    |
+                    |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``over-constrained rows trigger shrink-to-fit`` () =
+        task {
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+                Table.make
+                    [
+                        [ Vdom.textContent false "Row1" ]
+                        [ Vdom.textContent false "Row2" ]
+                        [ Vdom.textContent false "Row3" ]
+                        [ Vdom.textContent false "Row4" ]
+                        [ Vdom.textContent false "Row5" ]
+                    ]
+                    []
+                    [ AutoRow ; AutoRow ; AutoRow ; AutoRow ; AutoRow ]
+
+            // Terminal only 3 lines high, but content wants 5 lines
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 3)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = false
+
+            let processWorld =
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+
+            expect {
+                snapshot
+                    @"
+Row1                |
+Row2                |
+Row3                |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+[<TestFixture>]
+[<Parallelizable(ParallelScope.All)>]
+module TestTableMeasurements =
+    [<Test>]
+    let ``table MinWidth equals sum of column minimums`` () =
+        // Create cells with known MinWidth values
+        let cell1 = Vdom.textContent false "Short" // MinWidth = 5 (longest word)
+        let cell2 = Vdom.textContent false "VeryLongWord" // MinWidth = 12
+        let cell3 = Vdom.textContent false "A B C" // MinWidth = 1
+
+        let table = Table.makeAuto [ [ cell1 ; cell2 ; cell3 ] ]
+
+        let constraints =
+            {
+                MaxWidth = 1000
+                MaxHeight = 1000
+            }
+
+        let measured = Vdom.measure table constraints
+
+        // Sum of column minimums: 5 + 12 + 1 = 18
+        measured.MinWidth |> shouldEqual 18
+
+    [<Test>]
+    let ``table MinWidth with FixedColumn uses fixed width`` () =
+        let cell1 = Vdom.textContent false "Short" // MinWidth = 5
+        let cell2 = Vdom.textContent false "X" // MinWidth = 1
+
+        let table = Table.make [ [ cell1 ; cell2 ] ] [ FixedColumn 10 ; AutoColumn ] []
+
+        let constraints =
+            {
+                MaxWidth = 1000
+                MaxHeight = 1000
+            }
+
+        let measured = Vdom.measure table constraints
+
+        // FixedColumn contributes its fixed size to MinWidth: 10 + 1 = 11
+        measured.MinWidth |> shouldEqual 11
+
+    [<Test>]
+    let ``table MinWidth with ProportionColumn uses cell minimum`` () =
+        let cell1 = Vdom.textContent false "Hello" // MinWidth = 5
+        let cell2 = Vdom.textContent false "World" // MinWidth = 5
+
+        let table =
+            Table.make [ [ cell1 ; cell2 ] ] [ ProportionColumn 0.5 ; ProportionColumn 0.5 ] []
+
+        let constraints =
+            {
+                MaxWidth = 1000
+                MaxHeight = 1000
+            }
+
+        let measured = Vdom.measure table constraints
+
+        // Even proportion columns must report child minima: 5 + 5 = 10
+        measured.MinWidth |> shouldEqual 10
+
+    [<Test>]
+    let ``table MinHeightForWidth uses cell MinHeightForWidth`` () =
+        // Create a cell with text that wraps
+        let cell =
+            Vdom.textContent false "This is a long text that will wrap when constrained"
+
+        let table = Table.makeAuto [ [ cell ] ]
+
+        let constraints =
+            {
+                MaxWidth = 1000
+                MaxHeight = 1000
+            }
+
+        let measured = Vdom.measure table constraints
+
+        // Get the cell's MinHeightForWidth at a specific width
+        let cellMeasured = Vdom.measure cell constraints
+        let cellMinHeight = cellMeasured.MinHeightForWidth 10
+
+        // Table's MinHeightForWidth should match
+        let tableMinHeight = measured.MinHeightForWidth 10
+        tableMinHeight |> shouldEqual cellMinHeight
+
+    [<Test>]
+    let ``table PreferredHeightForWidth uses cell PreferredHeightForWidth`` () =
+        let cell =
+            Vdom.textContent false "This is text that wraps differently based on width"
+
+        let table = Table.makeAuto [ [ cell ] ]
+
+        let constraints =
+            {
+                MaxWidth = 1000
+                MaxHeight = 1000
+            }
+
+        let measured = Vdom.measure table constraints
+
+        let cellMeasured = Vdom.measure cell constraints
+        let cellPreferredHeight = cellMeasured.PreferredHeightForWidth 15
+
+        let tablePreferredHeight = measured.PreferredHeightForWidth 15
+        tablePreferredHeight |> shouldEqual cellPreferredHeight
+
+    [<Test>]
+    let ``table with multiple rows uses max height per row`` () =
+        // Row 1: two cells with different heights when wrapped
+        let cell1 = Vdom.textContent false "Short"
+
+        let cell2 =
+            Vdom.textContent false "This is a much longer text that will wrap to multiple lines"
+
+        // Row 2: both short
+        let cell3 = Vdom.textContent false "A"
+        let cell4 = Vdom.textContent false "B"
+
+        let table = Table.makeAuto [ [ cell1 ; cell2 ] ; [ cell3 ; cell4 ] ]
+
+        let constraints =
+            {
+                MaxWidth = 1000
+                MaxHeight = 1000
+            }
+
+        let measured = Vdom.measure table constraints
+
+        // At width 20 per column, measure individual cells
+        let cell1Meas = Vdom.measure cell1 constraints
+        let cell2Meas = Vdom.measure cell2 constraints
+        let cell3Meas = Vdom.measure cell3 constraints
+        let cell4Meas = Vdom.measure cell4 constraints
+
+        // Row 1 height = max(cell1 height at allocated width, cell2 height at allocated width)
+        // Row 2 height = max(cell3 height, cell4 height)
+        let row1Height =
+            max (cell1Meas.PreferredHeightForWidth 5) (cell2Meas.PreferredHeightForWidth 59)
+
+        let row2Height =
+            max (cell3Meas.PreferredHeightForWidth 5) (cell4Meas.PreferredHeightForWidth 59)
+
+        let expectedTotalHeight = row1Height + row2Height
+        let tableHeight = measured.PreferredHeightForWidth 64 // 5 + 59 = 64 total width
+
+        tableHeight |> shouldEqual expectedTotalHeight
+
+[<TestFixture>]
+[<Parallelizable(ParallelScope.All)>]
+module TestTablePerformance =
+    type State = unit
+
+    [<Test>]
+    let ``10x10 table renders without errors`` () =
+        task {
+            let cells =
+                [
+                    for row in 0..9 do
+                        [
+                            for col in 0..9 do
+                                Vdom.textContent false $"R{row}C{col}"
+                        ]
+                ]
+
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> = Table.makeAuto cells
+
+            let console, terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 30)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = false
+
+            let processWorld =
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            // Just verify it renders without throwing
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+
+            // Verify first row rendered
+            let output = ConsoleHarness.toString terminal
+            output |> shouldContainText "R0C0"
+        }
+
+    [<Test>]
+    let ``50x20 table renders without errors`` () =
+        task {
+            let cells =
+                [
+                    for row in 0..19 do
+                        [
+                            for col in 0..49 do
+                                Vdom.textContent false $"{col}"
+                        ]
+                ]
+
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> = Table.makeAuto cells
+
+            let console, terminal = ConsoleHarness.make' (fun () -> 200) (fun () -> 50)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = false
+
+            let processWorld =
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+
+            let output = ConsoleHarness.toString terminal
+            output |> shouldContainText "0"
+        }
+
+    [<Test>]
+    let ``100x5 table renders without errors`` () =
+        task {
+            let cells =
+                [
+                    for row in 0..4 do
+                        [
+                            for col in 0..99 do
+                                Vdom.textContent false $"C{col}"
+                        ]
+                ]
+
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> = Table.makeAuto cells
+
+            let console, terminal = ConsoleHarness.make' (fun () -> 400) (fun () -> 20)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = false
+
+            let processWorld =
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+
+            let output = ConsoleHarness.toString terminal
+            output |> shouldContainText "C0"
         }
 
 [<TestFixture>]
