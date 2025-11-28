@@ -1211,6 +1211,74 @@ module TestTableMeasurements =
 
         tableHeight |> shouldEqual expectedTotalHeight
 
+    [<Test>]
+    let ``proportion column gets at least its minimum width when table allocated MinWidth`` () =
+        task {
+            // This test exposes a bug: proportion columns can be allocated 0 width
+            // even when the parent honors the table's MinWidth
+
+            // Create a table with:
+            // - AutoColumn with VERY LARGE preferred width but SMALL min width (wrappable text)
+            // - ProportionColumn with non-zero minimum width
+            let autoCell = Vdom.textContent false "Some long text with many words that wraps nicely" // Preferred ~50, MinWidth ~6 ("nicely")
+            let propCell = Vdom.textContent false "PropCol" // Preferred 7, MinWidth 7 (single word)
+
+            let table =
+                Table.make [ [ autoCell ; propCell ] ] [ AutoColumn ; ProportionColumn 1.0 ] []
+
+            let constraints =
+                {
+                    MaxWidth = 1000
+                    MaxHeight = 1000
+                }
+
+            let measured = Vdom.measure table constraints
+
+            // Table should report MinWidth = sum of column mins (~6 + 7 = ~13)
+            let tableMinWidth = measured.MinWidth
+            // MinWidth should be approximately 13 (longest word in each column)
+            (tableMinWidth >= 10 && tableMinWidth <= 15) |> shouldEqual true
+
+            // Now render the table at exactly its MinWidth
+            // When allocated exactly MinWidth, BOTH columns should get at least their minimums
+            let console, terminal = ConsoleHarness.make' (fun () -> tableMinWidth) (fun () -> 5)
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+                Table.make [ [ autoCell ; propCell ] ] [ AutoColumn ; ProportionColumn 1.0 ] []
+
+            let processWorld =
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                Unchecked.defaultof<State>
+                (fun _ -> false)
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+            |> ignore
+
+            let output = ConsoleHarness.toString terminal
+
+            // The proportion column should display its content without being truncated
+            // If it gets 0 width or less than MinWidth, "PropCol" won't appear completely
+            // This assertion will FAIL with the current bug - the proportion column gets 0 width
+            output |> shouldContainText "PropCol"
+        }
+
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestTablePerformance =

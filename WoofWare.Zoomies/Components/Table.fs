@@ -429,9 +429,7 @@ module Table =
                     cells
                     |> List.mapi (fun rowIdx row ->
                         row
-                        |> List.mapi (fun colIdx cell ->
-                            Vdom.withKey (NodeKey.make $"cell_{%d { rowIdx }}_{%d { colIdx }}") cell
-                        )
+                        |> List.mapi (fun colIdx cell -> Vdom.withKey (NodeKey.make $"cell_{rowIdx}_{colIdx}") cell)
                     )
 
                 // Bind empty once to use as sentinel (Vdom.empty creates fresh value each call)
@@ -471,8 +469,7 @@ module Table =
                                         // Key the accumulator with a unique key indicating "columns colIdx to end of row rowIdx"
                                         let accumKeyed =
                                             Vdom.withKey
-                                                (NodeKey.make
-                                                    $"row{%d { rowIdx }}_cols{%d { colIdx }}to{%d { numCols - 1 }}")
+                                                (NodeKey.make $"row{rowIdx}_cols{colIdx}to{numCols - 1}")
                                                 accum
 
                                         (colIdx - 1,
@@ -502,10 +499,9 @@ module Table =
                                     (rowIdx - 1, false, row)
                                 else
                                     // Key both the current row and the accumulator with unique keys
-                                    let rowKeyed = Vdom.withKey (NodeKey.make $"row{%d { rowIdx }}") row
+                                    let rowKeyed = Vdom.withKey (NodeKey.make $"row{rowIdx}") row
 
-                                    let accumKeyed =
-                                        Vdom.withKey (NodeKey.make $"rows{%d { rowIdx }}to{%d { numRows - 1 }}") accum
+                                    let accumKeyed = Vdom.withKey (NodeKey.make $"rows{rowIdx}to{numRows - 1}") accum
 
                                     (rowIdx - 1,
                                      false,
