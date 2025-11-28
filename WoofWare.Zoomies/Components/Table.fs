@@ -1,6 +1,7 @@
 namespace WoofWare.Zoomies.Components
 
 open WoofWare.Zoomies
+open TypeEquality
 
 /// Sizing specification for a table column
 type ColumnSpec =
@@ -24,11 +25,15 @@ type RowSpec =
 
 [<RequireQualifiedAccess>]
 module Table =
+    /// Extract the inner UnkeyedVdom from a Vdom<'bounds, 'keyed>, discarding any existing key.
+    /// This allows us to accept both keyed and unkeyed cells and assign new keys based on position.
+    let private toUnkeyedVdom (vdom : Vdom<DesiredBounds, 'keyed>) : UnkeyedVdom<DesiredBounds> =
+        match vdom with
+        | Vdom.Keyed (KeyedVdom.WithKey (_, inner), _) -> inner
+        | Vdom.Unkeyed (inner, _) -> inner
+
     /// Normalize cells to have uniform column count by padding short rows with Vdom.empty
-    let private normalizeCells
-        (cells : Vdom<DesiredBounds, Unkeyed> list list)
-        : Vdom<DesiredBounds, Unkeyed> list list
-        =
+    let private normalizeCells (cells : Vdom<DesiredBounds, 'keyed> list list) : UnkeyedVdom<DesiredBounds> list list =
         if List.isEmpty cells then
             []
         else
@@ -36,8 +41,9 @@ module Table =
 
             cells
             |> List.map (fun row ->
-                let padding = List.replicate (maxCols - List.length row) Vdom.empty
-                row @ padding
+                let cellsUnkeyed = row |> List.map toUnkeyedVdom
+                let padding = List.replicate (maxCols - List.length row) UnkeyedVdom.Empty
+                cellsUnkeyed @ padding
             )
 
     /// Normalize specs to match expected count, using default for missing specs and truncating extras
@@ -301,15 +307,15 @@ module Table =
     /// Creates a table with specified cells and sizing.
     /// Gracefully handles ragged rows (pads with Vdom.empty) and spec mismatches (defaults to Auto).
     /// Accepts both keyed and unkeyed cells - the table assigns each cell a unique key based on (row, col) position
-    /// for stable focus tracking. Original keys are preserved within each cell.
+    /// for stable focus tracking. Original keys are discarded and replaced with position-based keys.
     let make
-        (cells : Vdom<DesiredBounds, Unkeyed> list list)
+        (cells : Vdom<DesiredBounds, 'keyed> list list)
         (columnSpecs : ColumnSpec list)
         (rowSpecs : RowSpec list)
         : Vdom<DesiredBounds, Unkeyed>
         =
-        // Normalize inputs (graceful error handling)
-        let cells = normalizeCells cells
+        // Normalize inputs (graceful error handling) - strips any existing keys from cells
+        let cells : UnkeyedVdom<DesiredBounds> list list = normalizeCells cells
 
         let numCols =
             if List.isEmpty cells then
@@ -349,7 +355,15 @@ module Table =
                 // Measure all cells to determine column widths
                 let cellMeasurements : MeasuredSize list list =
                     cells
-                    |> List.map (fun row -> row |> List.map (fun cell -> VdomBounds.measure cell constraints))
+                    |> List.map (fun row ->
+                        row
+                        |> List.map (fun cell ->
+                            // Measure the unkeyed cell directly
+                            let keylessVdom = KeylessVdom.Unkeyed cell
+                            let measured = Layout.measureEither constraints keylessVdom
+                            measured.Measured
+                        )
+                    )
 
                 // Cache for render phase
                 cachedCellMeasurements <- Some cellMeasurements
@@ -452,7 +466,14 @@ module Table =
                             }
 
                         cells
-                        |> List.map (fun row -> row |> List.map (fun cell -> VdomBounds.measure cell maxConstraints))
+                        |> List.map (fun row ->
+                            row
+                            |> List.map (fun cell ->
+                                let keylessVdom = KeylessVdom.Unkeyed cell
+                                let measured = Layout.measureEither maxConstraints keylessVdom
+                                measured.Measured
+                            )
+                        )
                         : MeasuredSize list list
 
                 // 1. Allocate column widths from available width
@@ -470,7 +491,10 @@ module Table =
                     cells
                     |> List.mapi (fun rowIdx row ->
                         row
-                        |> List.mapi (fun colIdx cell -> Vdom.withKey (NodeKey.make $"cell_{rowIdx}_{colIdx}") cell)
+                        |> List.mapi (fun colIdx cell ->
+                            // Wrap the UnkeyedVdom with a position-based key
+                            Vdom.withKey (NodeKey.make $"cell_{rowIdx}_{colIdx}") (Vdom.Unkeyed (cell, Teq.refl))
+                        )
                     )
 
                 // Bind empty once to use as sentinel (Vdom.empty creates fresh value each call)
@@ -565,5 +589,5 @@ module Table =
 
     /// Creates an auto-sized table (all columns and rows size to content).
     /// Gracefully handles ragged rows (pads with Vdom.empty).
-    /// Accepts unkeyed cells - the table assigns position-based keys internally.
-    let makeAuto (cells : Vdom<DesiredBounds, Unkeyed> list list) : Vdom<DesiredBounds, Unkeyed> = make cells [] []
+    /// Accepts both keyed and unkeyed cells - the table assigns position-based keys internally.
+    let makeAuto (cells : Vdom<DesiredBounds, 'keyed> list list) : Vdom<DesiredBounds, Unkeyed> = make cells [] []

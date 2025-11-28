@@ -23,7 +23,8 @@ module TestTable =
     [<Test>]
     let ``empty table`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> = Table.makeAuto []
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+                Table.makeAuto ([] : Vdom<DesiredBounds, Unkeyed> list list)
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
 
