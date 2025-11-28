@@ -1509,7 +1509,7 @@ module TestTablePerformance =
         task {
             let cells =
                 [
-                    for row in 0..19 do
+                    for _ in 0..19 do
                         [
                             for col in 0..49 do
                                 Vdom.textContent false $"{col}"
@@ -1549,7 +1549,7 @@ module TestTablePerformance =
         task {
             let cells =
                 [
-                    for row in 0..4 do
+                    for _ in 0..4 do
                         [
                             for col in 0..99 do
                                 Vdom.textContent false $"C{col}"
@@ -1616,7 +1616,7 @@ module TestVdomMeasure =
 
         let measured = Vdom.measure vdom constraints
 
-        measured.MinWidth |> shouldEqual 5 // "Hello" or "World" is longest word
+        measured.MinWidth |> shouldEqual 5 // "Hello" or "World" is the longest word
         measured.PreferredWidth |> shouldEqual 16 // Full text length
 
         // When constrained to 10 chars, should wrap
@@ -1625,7 +1625,7 @@ module TestVdomMeasure =
         (heightAt10 > 1) |> shouldEqual true
 
     [<Test>]
-    let ``Vdom.measurehandles bordered content`` () =
+    let ``Vdom.measure handles bordered content`` () =
         let innerVdom = Vdom.textContent false "Test"
         let vdom = Vdom.bordered innerVdom
 
@@ -1645,7 +1645,7 @@ module TestVdomMeasure =
         measured.MinHeightForWidth 10 |> shouldEqual 3 // 1 + 2 for border
 
     [<Test>]
-    let ``Vdom.measurehandles panel splits`` () =
+    let ``Vdom.measure handles panel splits`` () =
         let left = Vdom.textContent false "Left"
         let right = Vdom.textContent false "Right"
 
@@ -1702,7 +1702,7 @@ module TestVdomMeasure =
 
     [<Test>]
     let ``Vdom.measure works with FlexibleContent`` () =
-        let customMeasure (constraints : MeasureConstraints) : MeasuredSize =
+        let customMeasure (_ : MeasureConstraints) : MeasuredSize =
             {
                 MinWidth = 5
                 PreferredWidth = 10
@@ -1712,7 +1712,7 @@ module TestVdomMeasure =
                 MaxHeightForWidth = fun _ -> Some 5
             }
 
-        let customRender (bounds : Rectangle) : Vdom<DesiredBounds, Unkeyed> = Vdom.textContent false "Custom"
+        let customRender (_ : Rectangle) : Vdom<DesiredBounds, Unkeyed> = Vdom.textContent false "Custom"
 
         let vdom = Vdom.flexibleContent customMeasure customRender
 
