@@ -527,10 +527,10 @@ module Table =
                                         (colIdx - 1,
                                          false,
                                          Vdom.panelSplitAbsolute (SplitDirection.Vertical, width, cell, accumKeyed))
-                                    )
-                                    rowCells
-                                    widths
-                                    (numCols - 1, true, empty) // Start with last column index, isFirst=true
+                                )
+                                rowCells
+                                widths
+                                (numCols - 1, true, empty) // Start with last column index, isFirst=true
 
                         result
 

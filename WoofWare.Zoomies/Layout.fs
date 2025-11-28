@@ -644,9 +644,9 @@ module internal Layout =
                 Measured = childMeasured.Measured
                 Children = [ childMeasured ]
             }
-        | UnkeyedVdom.FlexibleContent (measure, _) ->
+        | UnkeyedVdom.FlexibleContent content ->
             // Call the user's measure function
-            let measured = measure constraints
+            let measured = content.Measure constraints
 
             // Validate and clamp the measurements to respect constraints and maintain invariants:
             // - MinWidth <= PreferredWidth
@@ -772,9 +772,9 @@ module internal Layout =
                     Bounds = bounds
                     Children = [ childArranged ]
                 }
-            | UnkeyedVdom.FlexibleContent (measure, render) ->
+            | UnkeyedVdom.FlexibleContent content ->
                 // Call the render function with allocated bounds
-                let renderedVdom = render bounds
+                let renderedVdom = content.Render bounds
 
                 // Measure the rendered Vdom with constraints = allocated bounds
                 let renderConstraints =
@@ -789,7 +789,7 @@ module internal Layout =
                 let arrangedRendered = arrange measuredRendered bounds
 
                 {
-                    Vdom = KeylessVdom.Keyed (KeyedVdom.WithKey (key, UnkeyedVdom.FlexibleContent (measure, render)))
+                    Vdom = KeylessVdom.Keyed (KeyedVdom.WithKey (key, UnkeyedVdom.FlexibleContent content))
                     VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = [ arrangedRendered ]
@@ -871,9 +871,9 @@ module internal Layout =
                     Bounds = bounds
                     Children = [ childArranged ]
                 }
-            | UnkeyedVdom.FlexibleContent (measure, render) ->
+            | UnkeyedVdom.FlexibleContent content ->
                 // Call the render function with allocated bounds
-                let renderedVdom = render bounds
+                let renderedVdom = content.Render bounds
 
                 // Measure the rendered Vdom with constraints = allocated bounds
                 let renderConstraints =
@@ -888,7 +888,7 @@ module internal Layout =
                 let arrangedRendered = arrange measuredRendered bounds
 
                 {
-                    Vdom = KeylessVdom.Unkeyed (UnkeyedVdom.FlexibleContent (measure, render))
+                    Vdom = KeylessVdom.Unkeyed (UnkeyedVdom.FlexibleContent content)
                     VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = [ arrangedRendered ]

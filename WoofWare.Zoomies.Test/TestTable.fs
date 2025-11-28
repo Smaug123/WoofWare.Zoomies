@@ -1068,49 +1068,123 @@ Row3                |
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestTableMeasurements =
-    let private renderKeyless (table : Vdom<DesiredBounds, Unkeyed>) (bounds : Rectangle) : KeylessVdom<DesiredBounds> =
-        match table with
-        | Vdom.Unkeyed (UnkeyedVdom.Tag (_, KeylessVdom.Unkeyed (UnkeyedVdom.FlexibleContent (_, render))), _) -> render bounds
-        | Vdom.Unkeyed (UnkeyedVdom.FlexibleContent (_, render), _) -> render bounds
-        | _ -> failwith "Unexpected table shape"
+    type private Folded =
+        {
+            Run : Rectangle -> int option
+        }
 
-    let rec private findAllocatedWidth
+    let private findAllocatedWidth
         (targetKey : string)
-        (width : int)
-        (height : int)
-        (vdom : KeylessVdom<DesiredBounds>)
+        (bounds : Rectangle)
+        (vdom : Vdom<DesiredBounds, 'keyed>)
         : int option
         =
-        match vdom with
-        | KeylessVdom.Keyed (KeyedVdom.WithKey (key, inner)) ->
-            if NodeKey.toString key = targetKey then
-                Some width
-            else
-                findAllocatedWidth targetKey width height (KeylessVdom.Unkeyed inner)
-        | KeylessVdom.Unkeyed unkeyed ->
-            match unkeyed with
-            | UnkeyedVdom.Tag (_, inner) -> findAllocatedWidth targetKey width height inner
-            | UnkeyedVdom.PanelSplit (SplitDirection.Vertical, SplitBehaviour.Absolute p, c1, c2) ->
-                let allocated = abs p
-                let firstWidth, secondWidth =
-                    if p >= 0 then
-                        allocated, width - allocated
-                    else
-                        width - allocated, allocated
+        let matchKey (key : NodeKey) (child : Folded) : Folded =
+            let target = NodeKey.toString key
 
-                findAllocatedWidth targetKey firstWidth height c1
-                |> Option.orElse (findAllocatedWidth targetKey secondWidth height c2)
-            | UnkeyedVdom.PanelSplit (SplitDirection.Horizontal, SplitBehaviour.Absolute p, c1, c2) ->
-                let allocated = abs p
-                let firstHeight, secondHeight =
-                    if p >= 0 then
-                        allocated, height - allocated
-                    else
-                        height - allocated, allocated
+            {
+                Run =
+                    fun rect ->
+                        if target = targetKey then
+                            Some rect.Width
+                        else
+                            child.Run rect
+            }
 
-                findAllocatedWidth targetKey width firstHeight c1
-                |> Option.orElse (findAllocatedWidth targetKey width secondHeight c2)
-            | _ -> None
+        let cata : VdomCata<Folded> =
+            {
+                KeylessVdom =
+                    { new KeylessVdomCataCase<Folded, Folded, Folded> with
+                        member _.Keyed v = v
+                        member _.Unkeyed v = v
+                    }
+                KeyedVdom =
+                    { new KeyedVdomCataCase<Folded, Folded, Folded> with
+                        member _.WithKey key child = matchKey key child
+                    }
+                UnkeyedVdom =
+                    { new UnkeyedVdomCataCase<Folded, Folded, Folded> with
+                        member _.Bordered child = child
+
+                        member _.PanelSplit direction behaviour child1 child2 =
+                            match direction, behaviour with
+                            | SplitDirection.Vertical, SplitBehaviour.Absolute p ->
+                                {
+                                    Run =
+                                        fun rect ->
+                                            let allocated = abs p
+
+                                            let leftWidth, rightWidth =
+                                                if p >= 0 then
+                                                    allocated, max 0 (rect.Width - allocated)
+                                                else
+                                                    max 0 (rect.Width - allocated), allocated
+
+                                            let leftBounds =
+                                                { rect with
+                                                    Width = leftWidth
+                                                }
+
+                                            let rightBounds =
+                                                { rect with
+                                                    Width = rightWidth
+                                                }
+
+                                            child1.Run leftBounds |> Option.orElse (child2.Run rightBounds)
+                                }
+                            | SplitDirection.Horizontal, SplitBehaviour.Absolute p ->
+                                {
+                                    Run =
+                                        fun rect ->
+                                            let allocated = abs p
+
+                                            let topHeight, bottomHeight =
+                                                if p >= 0 then
+                                                    allocated, max 0 (rect.Height - allocated)
+                                                else
+                                                    max 0 (rect.Height - allocated), allocated
+
+                                            let topBounds =
+                                                { rect with
+                                                    Height = topHeight
+                                                }
+
+                                            let bottomBounds =
+                                                { rect with
+                                                    TopLeftY = rect.TopLeftY + topHeight
+                                                    Height = bottomHeight
+                                                }
+
+                                            child1.Run topBounds |> Option.orElse (child2.Run bottomBounds)
+                                }
+                            | _ ->
+                                // Non-absolute splits share the same bounds for our key search
+                                {
+                                    Run = fun rect -> child1.Run rect |> Option.orElse (child2.Run rect)
+                                }
+
+                        member _.TextContent _content _style _alignment _focused =
+                            {
+                                Run = fun _ -> None
+                            }
+
+                        member _.Focusable _isFirstToFocus _isInitiallyFocused child = child
+
+                        member _.Empty =
+                            {
+                                Run = fun _ -> None
+                            }
+
+                        member _.FlexibleContent _measure render =
+                            {
+                                Run = fun rect -> (render rect).Run rect
+                            }
+
+                        member _.Tag _tag inner = inner
+                    }
+            }
+
+        VdomCata.run cata vdom |> fun folded -> folded.Run bounds
 
     [<Test>]
     let ``table MinWidth equals sum of column minimums`` () =
@@ -1350,8 +1424,7 @@ module TestTableMeasurements =
                 Height = 3
             }
 
-        let rendered = renderKeyless table bounds
-        let lastWidth = findAllocatedWidth "cell_0_1" bounds.Width bounds.Height rendered
+        let lastWidth = findAllocatedWidth "cell_0_1" bounds table
 
         lastWidth |> shouldEqual (Some 4)
 
@@ -1379,8 +1452,7 @@ module TestTableMeasurements =
                 Height = 3
             }
 
-        let rendered = renderKeyless table bounds
-        let width = findAllocatedWidth "cell_0_0" bounds.Width bounds.Height rendered
+        let width = findAllocatedWidth "cell_0_0" bounds table
 
         width |> shouldEqual (Some expectedWidth)
 
