@@ -1068,6 +1068,50 @@ Row3                |
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestTableMeasurements =
+    let private renderKeyless (table : Vdom<DesiredBounds, Unkeyed>) (bounds : Rectangle) : KeylessVdom<DesiredBounds> =
+        match table with
+        | Vdom.Unkeyed (UnkeyedVdom.Tag (_, KeylessVdom.Unkeyed (UnkeyedVdom.FlexibleContent (_, render))), _) -> render bounds
+        | Vdom.Unkeyed (UnkeyedVdom.FlexibleContent (_, render), _) -> render bounds
+        | _ -> failwith "Unexpected table shape"
+
+    let rec private findAllocatedWidth
+        (targetKey : string)
+        (width : int)
+        (height : int)
+        (vdom : KeylessVdom<DesiredBounds>)
+        : int option
+        =
+        match vdom with
+        | KeylessVdom.Keyed (KeyedVdom.WithKey (key, inner)) ->
+            if NodeKey.toString key = targetKey then
+                Some width
+            else
+                findAllocatedWidth targetKey width height (KeylessVdom.Unkeyed inner)
+        | KeylessVdom.Unkeyed unkeyed ->
+            match unkeyed with
+            | UnkeyedVdom.Tag (_, inner) -> findAllocatedWidth targetKey width height inner
+            | UnkeyedVdom.PanelSplit (SplitDirection.Vertical, SplitBehaviour.Absolute p, c1, c2) ->
+                let allocated = abs p
+                let firstWidth, secondWidth =
+                    if p >= 0 then
+                        allocated, width - allocated
+                    else
+                        width - allocated, allocated
+
+                findAllocatedWidth targetKey firstWidth height c1
+                |> Option.orElse (findAllocatedWidth targetKey secondWidth height c2)
+            | UnkeyedVdom.PanelSplit (SplitDirection.Horizontal, SplitBehaviour.Absolute p, c1, c2) ->
+                let allocated = abs p
+                let firstHeight, secondHeight =
+                    if p >= 0 then
+                        allocated, height - allocated
+                    else
+                        height - allocated, allocated
+
+                findAllocatedWidth targetKey width firstHeight c1
+                |> Option.orElse (findAllocatedWidth targetKey width secondHeight c2)
+            | _ -> None
+
     [<Test>]
     let ``table MinWidth equals sum of column minimums`` () =
         // Create cells with known MinWidth values
@@ -1280,6 +1324,65 @@ module TestTableMeasurements =
             // This assertion will FAIL with the current bug - the proportion column gets 0 width
             output |> shouldContainText "PropCol"
         }
+
+    [<Test>]
+    let ``last column keeps its allocated width even with slack`` () =
+        let table =
+            Table.make
+                [ [ Vdom.textContent false "L" ; Vdom.textContent false "R" ] ]
+                [ FixedColumn 3 ; FixedColumn 4 ]
+                []
+
+        // Warm the measurement cache so render reuses the precomputed column widths
+        let constraints =
+            {
+                MaxWidth = 1000
+                MaxHeight = 1000
+            }
+
+        Vdom.measure table constraints |> ignore
+
+        let bounds =
+            {
+                TopLeftX = 0
+                TopLeftY = 0
+                Width = 20 // Wider than sum of allocated widths to expose the slack bug
+                Height = 3
+            }
+
+        let rendered = renderKeyless table bounds
+        let lastWidth = findAllocatedWidth "cell_0_1" bounds.Width bounds.Height rendered
+
+        lastWidth |> shouldEqual (Some 4)
+
+    [<Test>]
+    let ``single cell row uses its computed column width`` () =
+        let cell = Vdom.textContent false "Hello"
+        let table = Table.makeAuto [ [ cell ] ]
+
+        let constraints =
+            {
+                MaxWidth = 1000
+                MaxHeight = 1000
+            }
+
+        // The allocated column width should match the cell's preferred width for an Auto column
+        let expectedWidth = (Vdom.measure cell constraints).PreferredWidth
+
+        Vdom.measure table constraints |> ignore
+
+        let bounds =
+            {
+                TopLeftX = 0
+                TopLeftY = 0
+                Width = expectedWidth + 10 // Leave slack to expose the width propagation bug
+                Height = 3
+            }
+
+        let rendered = renderKeyless table bounds
+        let width = findAllocatedWidth "cell_0_0" bounds.Width bounds.Height rendered
+
+        width |> shouldEqual (Some expectedWidth)
 
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]

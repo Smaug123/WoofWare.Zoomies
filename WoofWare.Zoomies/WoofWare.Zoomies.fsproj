@@ -16,12 +16,15 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>fsharp;tui;terminal;immediate;vdom;interface;console</PackageTags>
+    <WoofWareMyriadPluginVersion>9.1.3</WoofWareMyriadPluginVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- similarly, maximise compatibility by keeping FSharp.Core as low as we can -->
-    <PackageReference Update="FSharp.Core" Version="6.0.0" />
-    <PackageReference Include="TypeEquality" Version="0.3.0" />
+    <PackageReference Update="FSharp.Core" Version="6.0.1" />
+    <PackageReference Include="TypeEquality" Version="0.4.2" />
+    <PackageReference Include="WoofWare.Myriad.Plugins" Version="$(WoofWareMyriadPluginVersion)" PrivateAssets="all" />
+    <PackageReference Include="Myriad.Sdk" Version="0.8.3" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
@@ -35,6 +38,12 @@
     <Compile Include="ConsoleColor.fs" />
     <Compile Include="CellStyle.fs" />
     <Compile Include="Vdom.fs" />
+    <Compile Include="GeneratedVdom.fs">
+      <MyriadFile>Vdom.fs</MyriadFile>
+      <MyriadParams>
+        <Vdom>CreateCatamorphism</Vdom>
+      </MyriadParams>
+    </Compile>
     <Compile Include="ActivationResolver.fs" />
     <Compile Include="CtrlCHandler.fs" />
     <Compile Include="Terminal.fs" />
@@ -59,4 +68,7 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <MyriadSdkGenerator Include="$(NuGetPackageRoot)/woofware.myriad.plugins/$(WoofWareMyriadPluginVersion)/lib/net6.0/WoofWare.Myriad.Plugins.dll" />
+  </ItemGroup>
 </Project>

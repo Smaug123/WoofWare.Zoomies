@@ -491,8 +491,15 @@ module Table =
                     match rowCells with
                     | [] -> empty
                     | [ single ] ->
-                        // Single cell: split with empty to convert Keyed to Unkeyed
-                        Vdom.panelSplitAbsolute (SplitDirection.Vertical, 0, empty, single)
+                        // Single cell: reserve its allocated width so it doesn't absorb extra space
+                        let width =
+                            match widths with
+                            | width :: _ -> width
+                            | [] -> 0
+
+                        // Use negative absolute split so the single cell keeps its allocated width even if there's
+                        // extra space beyond the sum of column widths.
+                        Vdom.panelSplitAbsolute (SplitDirection.Vertical, -width, empty, single)
                     | _ ->
                         // Build right-to-left using indexed fold: cell0 | (cell1 | (cell2 | ...))
                         // Each intermediate split gets a unique key based on its column span
@@ -505,10 +512,10 @@ module Table =
                                     (width : int)
                                     (colIdx, isFirst, accum : Vdom<DesiredBounds, Unkeyed>) ->
                                     if isFirst then
-                                        // Last cell in fold (first cell in row), split with empty to get Unkeyed
+                                        // Last cell in fold (first cell in row), reserve its width explicitly
                                         (colIdx - 1,
                                          false,
-                                         Vdom.panelSplitAbsolute (SplitDirection.Vertical, 0, empty, cell))
+                                         Vdom.panelSplitAbsolute (SplitDirection.Vertical, -width, empty, cell))
                                     else
                                         // Split: give 'cell' exactly 'width' chars, rest goes to accumulator
                                         // Key the accumulator with a unique key indicating "columns colIdx to end of row rowIdx"
@@ -520,10 +527,10 @@ module Table =
                                         (colIdx - 1,
                                          false,
                                          Vdom.panelSplitAbsolute (SplitDirection.Vertical, width, cell, accumKeyed))
-                                )
-                                rowCells
-                                widths
-                                (numCols - 1, true, empty) // Start with last column index, isFirst=true
+                                    )
+                                    rowCells
+                                    widths
+                                    (numCols - 1, true, empty) // Start with last column index, isFirst=true
 
                         result
 
