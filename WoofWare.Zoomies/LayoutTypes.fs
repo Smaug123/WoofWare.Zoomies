@@ -100,9 +100,20 @@ type MeasuredSize =
 
                 if minHeight < 0 then
                     failwith $"MinHeightForWidth for width %i{width} was negative: %i{minHeight}"
+                // ... so minHeight >= 0
 
                 let preferredHeight = this.PreferredHeightForWidth width
 
                 if preferredHeight < minHeight then
                     failwith
                         $"PreferredHeightForWidth was smaller than min height for width %i{width}: %i{preferredHeight} vs %i{minHeight}"
+                // ... so preferedHeight >= minHeight (>= 0)
+
+                match this.MaxHeightForWidth width with
+                | None -> ()
+                | Some maxHeight ->
+                    if maxHeight < preferredHeight then
+                        failwith
+                            $"MaxHeightForWidth was smaller than preferred height for width %i{width}: %i{maxHeight} vs %i{preferredHeight}"
+                    // ... so maxHeight >= preferredHeight (>= minHeight >= 0)
+                    ()
