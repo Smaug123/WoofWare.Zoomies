@@ -351,6 +351,8 @@ module Table =
         : Vdom<DesiredBounds, Unkeyed>
 ```
 
+As a performance optimization, we may choose to use jagged arrays (`[][]`) instead, and throughout the implementation.
+
 ### The Measurement Problem
 
 **CRITICAL PREREQUISITE**: Approach 2 requires adding a `Vdom.measure` helper to the framework core.
