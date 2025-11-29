@@ -12,9 +12,9 @@ type Rectangle =
 
 /// <summary>Constraints imposed by the parent VDOM element during the "measure" phase of layout.</summary>
 /// <remarks>
-/// The "measure" phase of layout comes before the "render" phase: in the "measure" phase, the framework decides where
-/// on the screen each component is going to render, finding a single solution to the constraint satisfaction problem.
-/// Then, during the "render" phase, each component decides how to render itself into the space that was granted to it.
+/// The "measure" phase of layout comes first. In the "measure" phase, the framework traverses the VDOM discovering
+/// what size constraints each node expresses. (Then the subsequent "arrange" phase resolves those size
+/// constraints into physical rectangles, and the "render" phase then draws the components into those rectangles.)
 ///
 /// The framework will give you a <c>MeasureConstraints</c>; you interact with the type through the construction
 /// of a <c>Vdom.flexibleContent</c>, where you indicate the space constraints your component would prefer to be granted
@@ -23,34 +23,44 @@ type Rectangle =
 type MeasureConstraints =
     {
         /// Maximum available width.
-        /// Invariant: n >= 0
+        /// The framework guarantees this is nonnegative when it gives it to you.
         MaxWidth : int
         /// Maximum available height.
-        /// Invariant: n >= 0
+        /// The framework guarantees this is nonnegative when it gives it to you.
         MaxHeight : int
     }
 
 /// <summary>Size requirements reported by a node during the "measure" phase of layout.</summary>
 /// <remarks>
-/// The "measure" phase of layout comes before the "render" phase: in the "measure" phase, the framework decides where
-/// on the screen each component is going to render, finding a single solution to the constraint satisfaction problem.
-/// Then, during the "render" phase, each component decides how to render itself into the space that was granted to it.
+/// The "measure" phase of layout comes first. In the "measure" phase, the framework traverses the VDOM discovering
+/// what size constraints each node expresses. (Then the subsequent "arrange" phase resolves those size
+/// constraints into physical rectangles, and the "render" phase then draws the components into those rectangles.)
+///
+/// Note that the subsequent "arrange" phase may decide to allocate a component much less space, or more space, than
+/// it requested during the "measure" phase with its <c>MeasuredSize</c> response!
 /// </remarks>
 type MeasuredSize =
     {
         /// Minimum width needed to render without data loss.
-        /// Must respect any MaxWidth constraint from measurement.
-        /// May be violated by the arrange pass if insufficient space is available.
         ///
-        /// You are responsible for ensuring that this is (inclusively) between 0 and PreferredWidth.
+        /// The arrange pass may violate this preference if there's too little space available.
+        ///
+        /// You are responsible for ensuring that this is (inclusively) between 0 and PreferredWidth. Although the
+        /// measure phase currently takes minima as necessary to ensure the ordering invariant, we strongly recommend
+        /// you maintain the invariants yourself, in case we change how conflicting requirements are resolved in the
+        /// future.
         MinWidth : int
         /// Preferred width if space is available.
         ///
-        /// You are responsible for ensuring that this is at most MaxWidth, if you give a MaxWidth.
+        /// You are responsible for ensuring that this is at most MaxWidth, if you give a MaxWidth, although
+        /// the measure phase currently takes minima as necessary to ensure the ordering invariant.
         PreferredWidth : int
-        /// Maximum useful width (None = unbounded). Arrangement may allocate beyond this.
+        /// Maximum useful width (None = unbounded). The arrange pass may violate this preference if there's
+        /// too much space available.
         MaxWidth : int option
         /// Minimum height needed given some width.
+        ///
+        /// The arrange pass may violate this preference if there's too little space available.
         ///
         /// You are responsible for ensuring that the output height is nonnegative for any of the (nonnegative) width
         /// inputs we give you.
@@ -62,6 +72,8 @@ type MeasuredSize =
         PreferredHeightForWidth : int -> int
 
         /// Maximum useful height given some width (None = unbounded)
+        ///
+        /// The arrange pass may violate this preference if there's too much space available.
         MaxHeightForWidth : int -> int option
     }
 
@@ -84,16 +96,27 @@ type MeasuredSize =
         | None -> ()
         | Some width ->
             if width < 0 then
-                // vacuously passes I guess - could consider throwing here because the user is holding us wrong
-                ()
+                // could vacuously pass I guess, but the user is totally holding the Invariant function wrong
+                failwith $"invariant checked against negative width %i{width}"
             else
                 let minHeight = this.MinHeightForWidth width
 
                 if minHeight < 0 then
                     failwith $"MinHeightForWidth for width %i{width} was negative: %i{minHeight}"
+                // ... so minHeight >= 0
 
                 let preferredHeight = this.PreferredHeightForWidth width
 
                 if preferredHeight < minHeight then
                     failwith
                         $"PreferredHeightForWidth was smaller than min height for width %i{width}: %i{preferredHeight} vs %i{minHeight}"
+                // ... so preferredHeight >= minHeight (>= 0)
+
+                match this.MaxHeightForWidth width with
+                | None -> ()
+                | Some maxHeight ->
+                    if maxHeight < preferredHeight then
+                        failwith
+                            $"MaxHeightForWidth was smaller than preferred height for width %i{width}: %i{maxHeight} vs %i{preferredHeight}"
+                    // ... so maxHeight >= preferredHeight (>= minHeight >= 0)
+                    ()
