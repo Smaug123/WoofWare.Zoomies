@@ -28,7 +28,7 @@
 
 ### Third Review (Keyedness, Proportion Constraints, Empty Sentinel)
 
-10. **Fixed keyedness handling**: Table now accepts both keyed and unkeyed cells (polymorphic `'keyed`), assigns unique keys to each cell based on (row, col) position, then uses uniformly-Keyed cells with `panelSplitAbsolute` (lines 520-573). Original keys are preserved within cells.
+10. **Fixed keyedness handling**: Table now accepts both keyed and unkeyed cells (polymorphic `'keyed`) and preserves them as-is. User-provided keys are retained; unkeyed cells remain unkeyed. The table does not force keys on cells.
 
 11. **Fixed proportion column/row constraints**: Proportion columns and rows now report child minima and preferred sizes rather than 0/1, preventing parent Auto splits from collapsing tables with proportion-only specs (lines 423-449, 462-485).
 
@@ -38,12 +38,10 @@
 
 ### Fourth Review (Key Uniqueness)
 
-14. **Fixed key uniqueness**: All keys now use `NodeKey.make` and are guaranteed unique within the tree (lines 520-594):
-    - Cell keys: `NodeKey.make $"cell_{rowIdx}_{colIdx}"`
-    - Intermediate column splits: `NodeKey.make $"row{rowIdx}_cols{colIdx}to{numCols-1}"` (represents the span of columns in the split)
-    - Row container keys: `NodeKey.make $"row{rowIdx}"`
-    - Intermediate row splits: `NodeKey.make $"rows{rowIdx}to{numRows-1}"` (represents the span of rows in the split)
-    - No duplicate keys exist; each split and cell has a unique identifier for focus tracking and layout caching.
+14. **Fixed key uniqueness**: Intermediate split nodes now use `NodeKey.makeTableCellKey` with a `keyPrefix` parameter to ensure keys are unique within the tree and namespaced to prevent collisions when multiple tables are rendered (lines 520-594):
+    - Intermediate column splits: Keys representing the span of columns in the accumulator
+    - Intermediate row splits: Keys representing the span of rows in the accumulator
+    - Cells are NOT keyed by the table; user-provided keys are preserved as-is
 
 ## Overview
 
@@ -337,8 +335,8 @@ type RowSpec =
 module Table =
     /// Creates a table with specified cells and sizing.
     /// Gracefully handles ragged rows (pads with Vdom.empty) and spec mismatches (defaults to Auto).
-    /// Accepts both keyed and unkeyed cells - the table assigns each cell a unique key based on (row, col) position
-    /// for stable focus tracking. Original keys are preserved within each cell.
+    /// Accepts both keyed and unkeyed cells and preserves them as-is.
+    /// If you want stable focus tracking across table re-renders, provide keyed cells with meaningful keys.
     let make
         (cells : Vdom<DesiredBounds, 'keyed> list list)
         (columnSpecs : ColumnSpec list)
@@ -347,7 +345,7 @@ module Table =
 
     /// Creates an auto-sized table (all columns and rows size to content).
     /// Gracefully handles ragged rows (pads with Vdom.empty).
-    /// Accepts both keyed and unkeyed cells - the table assigns position-based keys.
+    /// Accepts both keyed and unkeyed cells and preserves them as-is.
     let makeAuto
         (cells : Vdom<DesiredBounds, 'keyed> list list)
         : Vdom<DesiredBounds, Unkeyed>
@@ -539,37 +537,33 @@ The render callback builds the nested split structure with calculated column wid
                 allocateRowHeights bounds.Height rowSpecs cellMeasurements allocatedColumnWidths
 
             // 3. Build nested PanelSplit structure
-            // First, assign unique keys to all cells based on (row, col) position
-            // This ensures all cells are uniformly Keyed for panelSplitAbsolute
-            let keyedCells =
-                cells |> List.mapi (fun rowIdx row ->
-                    row |> List.mapi (fun colIdx cell ->
-                        Vdom.withKey (NodeKey.make $"cell_{rowIdx}_{colIdx}") cell
-                    )
-                )
+            // Use cells as-is, preserving any user-provided keys
 
             // Bind empty once to use as sentinel (Vdom.empty creates fresh value each call)
             let empty = Vdom.empty
 
             // Each row: cell0 | cell1 | cell2 | ...
-            // Build with unique keys for intermediate splits based on column span
-            let buildRow (rowIdx : int) (rowCells : Vdom<DesiredBounds, Keyed> list) (widths : int list) : Vdom<DesiredBounds, Unkeyed> =
+            // Build with unique keys for intermediate split accumulators
+            let buildRow (rowIdx : int) (rowCells : Vdom<DesiredBounds, 'keyed> list) (widths : int list) : Vdom<DesiredBounds, Unkeyed> =
                 match rowCells with
                 | [] -> empty
-                | [ single ] -> Vdom.withoutKey single  // Single cell, no split needed
+                | [ single ] ->
+                    // Single cell: reserve its allocated width so it doesn't absorb extra space
+                    let width = if widths.Length = 0 then 0 else widths.[0]
+                    Vdom.panelSplitAbsolute (SplitDirection.Vertical, width, single, empty)
                 | _ ->
                     // Build right-to-left using indexed fold: cell0 | (cell1 | (cell2 | ...))
-                    // Each intermediate split gets a unique key based on its column span
+                    // Each intermediate accumulator gets a unique key
                     let numCols = List.length rowCells
                     let _, _, result =
                         List.foldBack2
                             (fun cell width (colIdx, isFirst, accum) ->
                                 if isFirst then
-                                    // Last cell in fold (first cell in row), no split needed yet
-                                    (colIdx - 1, false, Vdom.withoutKey cell)
+                                    // Last cell in fold (rightmost cell in row), reserve its width explicitly
+                                    (colIdx - 1, false, Vdom.panelSplitAbsolute (SplitDirection.Vertical, width, cell, empty))
                                 else
                                     // Split: give 'cell' exactly 'width' chars, rest goes to accumulator
-                                    // Key the accumulator with a unique key indicating "columns colIdx to end of row rowIdx"
+                                    // Key the accumulator to prevent collisions in the VDOM tree
                                     let accumKeyed = Vdom.withKey (NodeKey.make $"row{rowIdx}_cols{colIdx}to{numCols - 1}") accum
                                     (colIdx - 1, false, Vdom.panelSplitAbsolute(SplitDirection.Vertical, width, cell, accumKeyed))
                             )
@@ -580,7 +574,7 @@ The render callback builds the nested split structure with calculated column wid
 
             let rowVdoms = List.mapi (fun rowIdx row ->
                 buildRow rowIdx row allocatedColumnWidths
-            ) keyedCells
+            ) cells
 
             // Stack rows vertically: row0 / row1 / row2 / ...
             match rowVdoms with
@@ -789,14 +783,14 @@ Focus behaves identically to any other layout component:
 - The table structure itself is not focusable
 - Individual cells can be marked with `withFocusTracking` if they should be focusable
 - Focus cycles through focusable cells in tree-traversal order (the order they appear in the nested split structure)
-- Keying cells enables stable focus across re-renders (framework automatically tracks focus by key)
+- If you want stable focus across re-renders (e.g., focus follows a particular data row even if it moves position), provide keyed cells with stable keys based on data identity
 - **No special semantics**: The component doesn't impose row-major or any other ordering; focus follows the VDOM tree structure as built by the render function
 
 ### Rendering Optimization
 
 - Cache measurement results to avoid re-measuring on every frame
 - Early cutoff: if table structure and allocated bounds unchanged, reuse previous arrangement
-- Per-cell keying allows fine-grained change detection
+- User-provided keying allows fine-grained change detection
 - Only redraw cells that changed
 
 ## Implementation Plan

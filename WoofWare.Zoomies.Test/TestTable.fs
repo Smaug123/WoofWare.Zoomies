@@ -1432,10 +1432,21 @@ module TestTableMeasurements =
 
     [<Test>]
     let ``last column keeps its allocated width even with slack`` () =
+        let keyPrefix = NodeKey.make "t"
+
         let table =
             Table.make
-                (NodeKey.make "t")
-                [| [| Vdom.textContent false "L" ; Vdom.textContent false "R" |] |]
+                keyPrefix
+                [|
+                    [|
+                        Vdom.withKey
+                            (NodeKey.makeTableCellKey keyPrefix 0 None (Some 0) None)
+                            (Vdom.textContent false "L")
+                        Vdom.withKey
+                            (NodeKey.makeTableCellKey keyPrefix 0 None (Some 1) None)
+                            (Vdom.textContent false "R")
+                    |]
+                |]
                 [| FixedColumn 3 ; FixedColumn 4 |]
                 [||]
 
@@ -1457,14 +1468,18 @@ module TestTableMeasurements =
             }
 
         let lastWidth =
-            findAllocatedWidth (NodeKey.makeTableCellKey (NodeKey.make "t") 0 None (Some 1) None) bounds table
+            findAllocatedWidth (NodeKey.makeTableCellKey keyPrefix 0 None (Some 1) None) bounds table
 
         lastWidth |> shouldEqual (Some 4)
 
     [<Test>]
     let ``single cell row uses its computed column width`` () =
-        let cell = Vdom.textContent false "Hello"
-        let table = Table.makeAuto (NodeKey.make "t") [| [| cell |] |]
+        let keyPrefix = NodeKey.make "t"
+
+        let cell =
+            Vdom.withKey (NodeKey.makeTableCellKey keyPrefix 0 None (Some 0) None) (Vdom.textContent false "Hello")
+
+        let table = Table.makeAuto keyPrefix [| [| cell |] |]
 
         let constraints =
             {
@@ -1486,7 +1501,7 @@ module TestTableMeasurements =
             }
 
         let width =
-            findAllocatedWidth (NodeKey.makeTableCellKey (NodeKey.make "t") 0 None (Some 0) None) bounds table
+            findAllocatedWidth (NodeKey.makeTableCellKey keyPrefix 0 None (Some 0) None) bounds table
 
         width |> shouldEqual (Some expectedWidth)
 

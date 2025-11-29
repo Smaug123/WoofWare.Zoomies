@@ -25,32 +25,39 @@ type RowSpec =
 
 [<RequireQualifiedAccess>]
 module Table =
-    /// Extract the inner UnkeyedVdom from a Vdom<'bounds, 'keyed>, discarding any existing key.
-    /// This allows us to accept both keyed and unkeyed cells and assign new keys based on position.
-    let private toUnkeyedVdom (vdom : Vdom<DesiredBounds, 'keyed>) : UnkeyedVdom<DesiredBounds> =
-        match vdom with
-        | Vdom.Keyed (KeyedVdom.WithKey (_, inner), _) -> inner
-        | Vdom.Unkeyed (inner, _) -> inner
-
     /// Normalize cells to have uniform column count by padding short rows with Vdom.empty
     ///
-    /// The result has length equal to the input, but is now a square array where every row is as long as the longest
-    /// row.
-    let private normalizeCells (cells : Vdom<DesiredBounds, 'keyed>[][]) : UnkeyedVdom<DesiredBounds>[,] =
+    /// The result has length equal to the input, but is now a rectangular array where every row is as long as the longest
+    /// row. User-provided keys are preserved. Returns pairs of (actual vdom, keyless for measurement).
+    let private normalizeCells (cells : Vdom<DesiredBounds, 'keyed>[][]) : (obj * KeylessVdom<DesiredBounds>)[,] =
         if cells.Length = 0 then
             Array2D.zeroCreate 0 0
         else
             let numRows = cells.Length
             let maxCols = cells |> Array.maxOf 0 _.Length
 
-            let result = Array2D.create numRows maxCols Vdom.emptyUnkeyed
+            let emptyVdom = Vdom.empty :> obj
+
+            let emptyKeyless =
+                match Vdom.empty with
+                | Vdom.Unkeyed (u, _teq) -> KeylessVdom.Unkeyed u
+                | Vdom.Keyed (k, _teq) -> KeylessVdom.Keyed k
+
+            let result = Array2D.create numRows maxCols (emptyVdom, emptyKeyless)
 
             for rowIdx = 0 to cells.Length - 1 do
                 let row = cells.[rowIdx]
                 assert (row.Length <= maxCols)
 
                 for colIdx = 0 to row.Length - 1 do
-                    Array2D.set result rowIdx colIdx (toUnkeyedVdom row.[colIdx])
+                    let cell = row.[colIdx]
+
+                    let keylessVdom =
+                        match cell with
+                        | Vdom.Keyed (keyed, _teq) -> KeylessVdom.Keyed keyed
+                        | Vdom.Unkeyed (unkeyed, _teq) -> KeylessVdom.Unkeyed unkeyed
+
+                    Array2D.set result rowIdx colIdx (box cell, keylessVdom)
 
             // let's just make it very obvious what our result's dimensions are!
             assert (result.GetLength 0 = numRows)
@@ -344,11 +351,10 @@ module Table =
     /// Creates a table with specified cells and sizing.
     /// Gracefully handles ragged rows (pads with Vdom.empty) and spec mismatches (defaults to Auto for missing or
     /// invalid specs).
-    /// Accepts both keyed and unkeyed cells - the table assigns each cell a unique key based on (row, col) position
-    /// for stable focus tracking, which you can access with `NodeKey.makeTableCellKey`.
-    /// Original keys are discarded and replaced with position-based keys.
+    /// Accepts both keyed and unkeyed cells and preserves them as-is.
+    /// If you want stable focus tracking across table re-renders, provide keyed cells with meaningful keys.
     ///
-    /// The keyPrefix parameter namespaces all internal keys to prevent collisions when multiple tables
+    /// The keyPrefix parameter namespaces internal intermediate split keys to prevent collisions when multiple tables
     /// are rendered in the same VDOM tree. If rendering multiple tables, ensure each has a unique keyPrefix.
     let make
         (keyPrefix : NodeKey)
@@ -394,10 +400,9 @@ module Table =
                 // Measure all cells to determine column widths
                 let cellMeasurements =
                     cells
-                    |> Array2D.map (fun cell ->
-                        // Measure the unkeyed cell directly
-                        let keylessVdom = KeylessVdom.Unkeyed cell
-                        let measured = Layout.measureEither constraints keylessVdom
+                    |> Array2D.map (fun (_vdom, keyless) ->
+                        // Measure the cell using its keyless representation
+                        let measured = Layout.measureEither constraints keyless
                         measured.Measured
                     )
 
@@ -513,9 +518,8 @@ module Table =
                             }
 
                         cells
-                        |> Array2D.map (fun cell ->
-                            let keylessVdom = KeylessVdom.Unkeyed cell
-                            let measured = Layout.measureEither maxConstraints keylessVdom
+                        |> Array2D.map (fun (_vdom, keyless) ->
+                            let measured = Layout.measureEither maxConstraints keyless
                             measured.Measured
                         )
 
@@ -534,29 +538,16 @@ module Table =
                 assert (allocatedRowHeights.Length = numRows)
 
                 // 3. Build nested PanelSplit structure
-                // First, assign unique keys to all cells based on (row, col) position
-                // This ensures all cells are uniformly Keyed for panelSplitAbsolute
-
-                let keyedCells =
-                    cells
-                    |> Array2D.mapi (fun rowIdx colIdx cell ->
-                        // Wrap the UnkeyedVdom with a namespaced position-based key
-                        Vdom.withKey
-                            (NodeKey.makeTableCellKey keyPrefix rowIdx None (Some colIdx) None)
-                            (Vdom.Unkeyed (cell, Teq.refl))
-                    )
-
-                assert (keyedCells.GetLength 0 = numRows)
-                assert (keyedCells.GetLength 1 = numCols)
+                // Use cells as-is, preserving any user-provided keys
 
                 // Bind empty once to use as sentinel (Vdom.empty creates fresh value each call)
                 let empty = Vdom.empty
 
                 // Each row: cell0 | cell1 | cell2 | ...
-                // Build with unique keys for intermediate splits based on column span
+                // Build with unique keys for intermediate split accumulators
                 let buildRow
                     (rowIdx : int)
-                    (rowCells : Vdom<DesiredBounds, Keyed>[])
+                    (rowCells : (obj * KeylessVdom<DesiredBounds>)[])
                     (widths : int[])
                     : Vdom<DesiredBounds, Unkeyed>
                     =
@@ -564,13 +555,19 @@ module Table =
 
                     match rowCells with
                     | [||] -> empty
-                    | [| single |] ->
+                    | [| (cellObj, _keyless) |] ->
                         // Single cell: reserve its allocated width so it doesn't absorb extra space
                         let width = if widths.Length = 0 then 0 else widths.[0]
 
                         // Use absolute split so the single cell keeps its allocated width even if there's
                         // extra space beyond the sum of column widths.
-                        Vdom.panelSplitAbsolute (SplitDirection.Vertical, width, single, empty)
+                        // We need to try both keyed and unkeyed overloads
+                        try
+                            let cell : Vdom<DesiredBounds, Keyed> = unbox cellObj
+                            Vdom.panelSplitAbsolute (SplitDirection.Vertical, width, cell, empty)
+                        with _ ->
+                            let cell : Vdom<DesiredBounds, Unkeyed> = unbox cellObj
+                            Vdom.panelSplitAbsolute (SplitDirection.Vertical, width, cell, empty)
                     | _ ->
                         // Build right-to-left using indexed fold: cell0 | (cell1 | (cell2 | ...))
                         // Each intermediate split gets a unique key based on its column span
@@ -580,14 +577,20 @@ module Table =
                         let _, _, result =
                             Array.foldBack2
                                 (fun
-                                    (cell : Vdom<DesiredBounds, Keyed>)
+                                    (cellObj, _keyless)
                                     (width : int)
                                     (colIdx, isFirst, accum : Vdom<DesiredBounds, Unkeyed>) ->
                                     if isFirst then
                                         // Last cell in fold (rightmost cell in row), reserve its width explicitly
-                                        (colIdx - 1,
-                                         false,
-                                         Vdom.panelSplitAbsolute (SplitDirection.Vertical, width, cell, empty))
+                                        let splitResult =
+                                            try
+                                                let cell : Vdom<DesiredBounds, Keyed> = unbox cellObj
+                                                Vdom.panelSplitAbsolute (SplitDirection.Vertical, width, cell, empty)
+                                            with _ ->
+                                                let cell : Vdom<DesiredBounds, Unkeyed> = unbox cellObj
+                                                Vdom.panelSplitAbsolute (SplitDirection.Vertical, width, cell, empty)
+
+                                        (colIdx - 1, false, splitResult)
                                     else
                                         // Split: give 'cell' exactly 'width' chars, rest goes to accumulator
                                         // Key the accumulator with a unique namespaced key indicating "columns colIdx to end of row rowIdx"
@@ -601,9 +604,27 @@ module Table =
                                                     (Some (numCols - 1)))
                                                 accum
 
-                                        (colIdx - 1,
-                                         false,
-                                         Vdom.panelSplitAbsolute (SplitDirection.Vertical, width, cell, accumKeyed))
+                                        let splitResult =
+                                            try
+                                                let cell : Vdom<DesiredBounds, Keyed> = unbox cellObj
+
+                                                Vdom.panelSplitAbsolute (
+                                                    SplitDirection.Vertical,
+                                                    width,
+                                                    cell,
+                                                    accumKeyed
+                                                )
+                                            with _ ->
+                                                let cell : Vdom<DesiredBounds, Unkeyed> = unbox cellObj
+
+                                                Vdom.panelSplitAbsolute (
+                                                    SplitDirection.Vertical,
+                                                    width,
+                                                    cell,
+                                                    accumKeyed
+                                                )
+
+                                        (colIdx - 1, false, splitResult)
                                 )
                                 rowCells
                                 widths
@@ -612,7 +633,7 @@ module Table =
                         result
 
                 let rowVdoms =
-                    Array.mapiRows (fun rowIdx row -> buildRow rowIdx row allocatedColumnWidths) keyedCells
+                    Array.mapiRows (fun rowIdx row -> buildRow rowIdx row allocatedColumnWidths) cells
 
                 assert (rowVdoms.Length = numRows)
 
@@ -658,9 +679,9 @@ module Table =
 
     /// Creates an auto-sized table (all columns and rows size to content).
     /// Gracefully handles ragged rows (pads with Vdom.empty).
-    /// Accepts both keyed and unkeyed cells - the table assigns position-based keys internally.
+    /// Accepts both keyed and unkeyed cells and preserves them as-is.
     ///
-    /// The keyPrefix parameter namespaces all internal keys to prevent collisions when multiple tables
+    /// The keyPrefix parameter namespaces internal intermediate split keys to prevent collisions when multiple tables
     /// are rendered in the same VDOM tree. If rendering multiple tables, ensure each has a unique keyPrefix.
     let makeAuto<'keyed>
         (keyPrefix : NodeKey)
