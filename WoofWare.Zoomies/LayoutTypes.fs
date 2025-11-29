@@ -42,15 +42,18 @@ type MeasureConstraints =
 type MeasuredSize =
     {
         /// Minimum width needed to render without data loss.
-        /// Must respect any MaxWidth constraint from measurement; we'll clamp it if you get this wrong.
         ///
         /// The arrange pass may violate this preference if there's too little space available.
         ///
-        /// You are responsible for ensuring that this is (inclusively) between 0 and PreferredWidth.
+        /// You are responsible for ensuring that this is (inclusively) between 0 and PreferredWidth. Although the
+        /// measure phase currently takes minima as necessary to ensure the ordering invariant, we strongly recommend
+        /// you maintain the invariants yourself, in case we change how conflicting requirements are resolved in the
+        /// future.
         MinWidth : int
         /// Preferred width if space is available.
         ///
-        /// You are responsible for ensuring that this is at most MaxWidth, if you give a MaxWidth.
+        /// You are responsible for ensuring that this is at most MaxWidth, if you give a MaxWidth, although
+        /// the measure phase currently takes minima as necessary to ensure the ordering invariant.
         PreferredWidth : int
         /// Maximum useful width (None = unbounded). The arrange pass may violate this preference if there's
         /// too much space available.
@@ -107,7 +110,7 @@ type MeasuredSize =
                 if preferredHeight < minHeight then
                     failwith
                         $"PreferredHeightForWidth was smaller than min height for width %i{width}: %i{preferredHeight} vs %i{minHeight}"
-                // ... so preferedHeight >= minHeight (>= 0)
+                // ... so preferredHeight >= minHeight (>= 0)
 
                 match this.MaxHeightForWidth width with
                 | None -> ()
