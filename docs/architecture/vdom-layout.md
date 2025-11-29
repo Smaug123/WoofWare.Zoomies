@@ -13,11 +13,11 @@ There are currently three possible ways you can specify a split: by an absolute 
 ## What happens when layout takes place
 
 1. WoofWare.Zoomies decides to rerender, perhaps because user state has changed or the terminal has been resized.
-1. Zoomies invokes the application author's code, asking it for a Vdom; the author gets to know the terminal size, but not much else.
-1. The author's code tells Zoomies it wants this specific Vdom. In that Vdom, components declare their size preferences declaratively: they can choose a minimum, preferred, and maximum size.
-1. Zoomies traverses the Vdom measuring each component, to collect layout constraints for each.
-1. Zoomies solves the constraints and lays out the component in space.
-1. Zoomies renders the Vdom.
+1. Zoomies invokes the application author's code, asking it for a Vdom; the author gets to know the terminal size at this point, but not much else.
+1. The author's code tells Zoomies it wants this specific Vdom. In that Vdom, components declare their size preferences declaratively: they can choose a minimum, preferred, and maximum size, and they can declare that if they *were* given some amount of width, then they would require some amount of height.
+1. Zoomies traverses the Vdom measuring each component, to collect layout constraints for each: the "measure" phase.
+1. Zoomies solves the constraints and lays out the component in space: the "arrange" phase.
+1. Zoomies renders the Vdom to those rectangles: the "render" phase.
 
 The constraint solving algorithm is intended to be simple and predictable, being purely top-down (since constraints were collected bottom-up during the measurement phase).
 1. Allocate the minimum amount of space to satisfy minimum requirements.
@@ -28,10 +28,10 @@ The constraint solving algorithm is intended to be simple and predictable, being
 The constraint solving algorithm is purely top-down.
 A parent node gets given some space, and then must work out for itself how to partition that space among any of its children; the children have no choice about what space they render into.
 
-That means you may find that you requested a minimum height of `3` cells, but actually you've only been given `1` (if the constraints were impossible to solve so the framework just did the best it could)!
+That means you may find during the "render" phase that your component, which requested a minimum height of `3` cells during the "measure" phase, actually received `1` cell during the "arrange" phase (if the constraints were impossible to solve so the framework just did the best it could)!
 For the same reason, you may also find that your aspect ratio is nothing like what you requested.
 
-In all cases, the render phase (which happens after layout, which itself happens after measurement) will tell the component what bounds it has to render into, and it's up to the component to do something sensible - maybe it decides to clip text, for example.
+In all cases, Zoomies tells the component during the render phase what bounds it has to render into, and it's up to the component to do something sensible - maybe it decides to clip text, for example.
 
 ## Conflict resolution
 
@@ -43,3 +43,13 @@ Satisfying proportion requests takes precedence over minimum size requirements. 
 
 When declaring your size preferences, the fundamental unit of measurement is width; you then specify min/preferred/max height as a function of the width.
 (This lets you announce how much space it would take to re-flow text within a text box, for example, as the width changes.)
+
+## Flexible components
+
+Some components, like the progress bar, don't mind how big they are.
+Such a component only knows what to render once it knows what size it's going to be.
+
+For this use-case, there is `Vdom.flexibleContent`, which contains a `render` function which declares during the "render" phase that an entire declarative VDOM is to appear in the space that the "arrange" phase has allocated to the `flexibleContent` node.
+`Vdom.flexibleContent` also contains a `measure` function which gets invoked during the "measure" phase of the render loop, to express a preference about its size, but once `measure` has completed and the "arrange" phase has decided where this node is going to be rendered to, there's no changing those bounds.
+
+Effectively, an entire new render loop gets started within the `flexibleContent`'s allocated space with the inner VDOM, to determine what will appear there; and we keep going until we've hit the bottom and there are no more `flexibleContent`s nested.

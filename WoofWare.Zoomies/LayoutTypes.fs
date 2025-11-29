@@ -12,9 +12,9 @@ type Rectangle =
 
 /// <summary>Constraints imposed by the parent VDOM element during the "measure" phase of layout.</summary>
 /// <remarks>
-/// The "measure" phase of layout comes before the "render" phase: in the "measure" phase, the framework decides where
-/// on the screen each component is going to render, finding a single solution to the constraint satisfaction problem.
-/// Then, during the "render" phase, each component decides how to render itself into the space that was granted to it.
+/// The "measure" phase of layout comes first. In the "measure" phase, the framework traverses the VDOM discovering
+/// what size constraints each node expresses. (Then the subsequent "arrange" phase resolves those size
+/// constraints into physical rectangles, and the "render" phase then draws the components into those rectangles.)
 ///
 /// The framework will give you a <c>MeasureConstraints</c>; you interact with the type through the construction
 /// of a <c>Vdom.flexibleContent</c>, where you indicate the space constraints your component would prefer to be granted
@@ -32,15 +32,19 @@ type MeasureConstraints =
 
 /// <summary>Size requirements reported by a node during the "measure" phase of layout.</summary>
 /// <remarks>
-/// The "measure" phase of layout comes before the "render" phase: in the "measure" phase, the framework decides where
-/// on the screen each component is going to render, finding a single solution to the constraint satisfaction problem.
-/// Then, during the "render" phase, each component decides how to render itself into the space that was granted to it.
+/// The "measure" phase of layout comes first. In the "measure" phase, the framework traverses the VDOM discovering
+/// what size constraints each node expresses. (Then the subsequent "arrange" phase resolves those size
+/// constraints into physical rectangles, and the "render" phase then draws the components into those rectangles.)
+///
+/// Note that the subsequent "arrange" phase may decide to allocate a component much less space, or more space, than
+/// it requested during the "measure" phase with its <c>MeasuredSize</c> response!
 /// </remarks>
 type MeasuredSize =
     {
         /// Minimum width needed to render without data loss.
-        /// Must respect any MaxWidth constraint from measurement.
-        /// May be violated by the arrange pass if insufficient space is available.
+        /// Must respect any MaxWidth constraint from measurement; we'll clamp it if you get this wrong.
+        ///
+        /// The arrange pass may violate this preference if there's too little space available.
         ///
         /// You are responsible for ensuring that this is (inclusively) between 0 and PreferredWidth.
         MinWidth : int
@@ -48,9 +52,12 @@ type MeasuredSize =
         ///
         /// You are responsible for ensuring that this is at most MaxWidth, if you give a MaxWidth.
         PreferredWidth : int
-        /// Maximum useful width (None = unbounded). Arrangement may allocate beyond this.
+        /// Maximum useful width (None = unbounded). The arrange pass may violate this preference if there's
+        /// too much space available.
         MaxWidth : int option
         /// Minimum height needed given some width.
+        ///
+        /// The arrange pass may violate this preference if there's too little space available.
         ///
         /// You are responsible for ensuring that the output height is nonnegative for any of the (nonnegative) width
         /// inputs we give you.
@@ -62,6 +69,8 @@ type MeasuredSize =
         PreferredHeightForWidth : int -> int
 
         /// Maximum useful height given some width (None = unbounded)
+        ///
+        /// The arrange pass may violate this preference if there's too much space available.
         MaxHeightForWidth : int -> int option
     }
 
