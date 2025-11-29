@@ -23,10 +23,10 @@ type Rectangle =
 type MeasureConstraints =
     {
         /// Maximum available width.
-        /// Invariant: n >= 0
+        /// The framework guarantees this is nonnegative when it gives it to you.
         MaxWidth : int
         /// Maximum available height.
-        /// Invariant: n >= 0
+        /// The framework guarantees this is nonnegative when it gives it to you.
         MaxHeight : int
     }
 
@@ -96,8 +96,8 @@ type MeasuredSize =
         | None -> ()
         | Some width ->
             if width < 0 then
-                // vacuously passes I guess - could consider throwing here because the user is holding us wrong
-                ()
+                // could vacuously pass I guess, but the user is totally holding the Invariant function wrong
+                failwith $"invariant checked against negative width %i{width}"
             else
                 let minHeight = this.MinHeightForWidth width
 

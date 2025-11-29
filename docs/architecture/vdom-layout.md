@@ -20,8 +20,11 @@ There are currently three possible ways you can specify a split: by an absolute 
 1. Zoomies renders the Vdom to those rectangles: the "render" phase.
 
 The constraint solving algorithm is intended to be simple and predictable, being purely top-down (since constraints were collected bottom-up during the measurement phase).
-1. Allocate the minimum amount of space to satisfy minimum requirements.
-1. Distribute excess space proportionally among all children.
+It accommodates three types of behaviour for a component: "proportion", "absolute", and "auto".
+
+* "Proportion" gives some proportion of the available space to a child. This ignores any constraints advertised by child nodes (the motivating example is a log viewer docked to the side of a UI taking up 20% of the width, which we don't want to expand just because the lines it contains are very long).
+* "Absolute" gives a fixed number of cells to a child. This ignores any constraints advertised by child nodes.
+* "Auto" is content-driven layout that considers the constraints advertised by child nodes. When available space is too limited to satisfy all minima simultaneously, it violates minima proportionally among all children. When available space is between minima and preferences, it satisfies minima first, then distributes the excess according to the ratio of child components' preferences. When available space exceeds preferences, it distributes the excess proportionally among all components.
 
 ## What happens when constraints couldn't be satisfied
 
@@ -33,16 +36,10 @@ For the same reason, you may also find that your aspect ratio is nothing like wh
 
 In all cases, Zoomies tells the component during the render phase what bounds it has to render into, and it's up to the component to do something sensible - maybe it decides to clip text, for example.
 
-## Conflict resolution
-
-Conflicts can only occur with "auto" or "absolute" panel splits, not "proportion" splits alone.
-
-Satisfying proportion requests takes precedence over minimum size requirements. The motivating example is a log viewer, docked to the side of the UI, which shouldn't expand to fill the UI just because its content grew.
-
 ## Width and height
 
-When declaring your size preferences, the fundamental unit of measurement is width; you then specify min/preferred/max height as a function of the width.
-(This lets you announce how much space it would take to re-flow text within a text box, for example, as the width changes.)
+When declaring your size preferences, the fundamental unit of measurement is width in "cells" (roughly one character of output, if we ignore extra-wide graphemes like the Basmala "﷽", which as far as I can tell renders horribly in most terminals; general strategy for wide grapheme handling is not yet defined); you then specify min/preferred/max height as a function of the width.
+This lets you announce how much space it would take to re-flow text within a text box, for example, as the width changes.
 
 ## Flexible components
 
