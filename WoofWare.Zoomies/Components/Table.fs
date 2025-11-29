@@ -134,23 +134,72 @@ module Table =
         let totalMin = columnInfo |> Array.sumBy (fun (_, _, minW, _) -> minW)
 
         if totalMin >= availableWidth then
-            // Not enough room for all minima: scale them proportionally
-            let totalMinF = float totalMin
-
-            let scaled =
+            // Over-constrained: prioritize fixed columns, then shrink auto columns
+            // Separate fixed from auto/proportion
+            let fixedWidth =
                 columnInfo
-                |> Array.map (fun (_, _, minW, _) -> int (float minW * float availableWidth / totalMinF))
+                |> Array.sumBy (fun (spec, _, minW, _) ->
+                    match spec with
+                    | FixedColumn w -> w
+                    | _ -> 0
+                )
 
-            let mutable allocated = scaled |> Array.sum
-            let mutable idx = 0
+            if fixedWidth >= availableWidth then
+                // Even fixed columns alone exceed available width: must scale everything proportionally
+                let totalMinF = float totalMin
 
-            while allocated < availableWidth && idx < numCols do
-                scaled[idx] <- scaled[idx] + 1
-                allocated <- allocated + 1
-                idx <- idx + 1
+                let scaled =
+                    columnInfo
+                    |> Array.map (fun (_, _, minW, _) -> int (float minW * float availableWidth / totalMinF))
 
-            assert (scaled.Length = numCols)
-            scaled
+                let mutable allocated = scaled |> Array.sum
+                let mutable idx = 0
+
+                while allocated < availableWidth && idx < numCols do
+                    scaled[idx] <- scaled[idx] + 1
+                    allocated <- allocated + 1
+                    idx <- idx + 1
+
+                assert (scaled.Length = numCols)
+                scaled
+            else
+                // Fixed columns fit: give them exact width, shrink auto/proportion to fit remainder
+                let remainingWidth = availableWidth - fixedWidth
+
+                let autoAndProportionMinTotal =
+                    columnInfo
+                    |> Array.sumBy (fun (spec, _, minW, _) ->
+                        match spec with
+                        | FixedColumn _ -> 0
+                        | _ -> minW
+                    )
+
+                let scaled =
+                    columnInfo
+                    |> Array.map (fun (spec, _, minW, _) ->
+                        match spec with
+                        | FixedColumn w -> w // Fixed columns keep exact width
+                        | _ when autoAndProportionMinTotal = 0 -> 0
+                        | _ ->
+                            // Scale auto/proportion columns proportionally to fit in remaining space
+                            int (float minW * float remainingWidth / float autoAndProportionMinTotal)
+                    )
+
+                let mutable allocated = scaled |> Array.sum
+                let mutable idx = 0
+
+                // Distribute rounding errors to non-fixed columns
+                while allocated < availableWidth && idx < numCols do
+                    match columnInfo[idx] with
+                    | FixedColumn _, _, _, _ -> () // Don't adjust fixed columns
+                    | _ ->
+                        scaled[idx] <- scaled[idx] + 1
+                        allocated <- allocated + 1
+
+                    idx <- idx + 1
+
+                assert (scaled.Length = numCols)
+                scaled
         else
             let widths = columnInfo |> Array.map (fun (_, _, minW, _) -> minW)
 
@@ -269,22 +318,79 @@ module Table =
         let totalMin = rowInfo |> Array.sumBy (fun (_, _, minH, _) -> minH)
 
         if totalMin >= availableHeight then
-            let totalMinF = float totalMin
-
-            let scaled =
+            // Over-constrained: prioritize fixed rows, then shrink auto rows (with 1-line floor)
+            let fixedHeight =
                 rowInfo
-                |> Array.map (fun (_, _, minH, _) -> int (float minH * float availableHeight / totalMinF))
+                |> Array.sumBy (fun (spec, _, minH, _) ->
+                    match spec with
+                    | FixedRow h -> h
+                    | _ -> 0
+                )
 
-            let mutable allocated = scaled |> Array.sum
-            let mutable idx = 0
+            if fixedHeight >= availableHeight then
+                // Even fixed rows alone exceed available height: must scale everything proportionally
+                let totalMinF = float totalMin
 
-            while allocated < availableHeight && idx < rowSpecs.Length do
-                scaled[idx] <- scaled[idx] + 1
-                allocated <- allocated + 1
-                idx <- idx + 1
+                let scaled =
+                    rowInfo
+                    |> Array.map (fun (spec, _, minH, _) ->
+                        match spec with
+                        | AutoRow -> max 1 (int (float minH * float availableHeight / totalMinF)) // 1-line floor for auto
+                        | _ -> int (float minH * float availableHeight / totalMinF)
+                    )
 
-            assert (scaled.Length = numRows)
-            scaled
+                let mutable allocated = scaled |> Array.sum
+                let mutable idx = 0
+
+                while allocated < availableHeight && idx < rowSpecs.Length do
+                    scaled[idx] <- scaled[idx] + 1
+                    allocated <- allocated + 1
+                    idx <- idx + 1
+
+                assert (scaled.Length = numRows)
+                scaled
+            else
+                // Fixed rows fit: give them exact height, shrink auto/proportion to fit remainder
+                let remainingHeight = availableHeight - fixedHeight
+
+                let autoAndProportionMinTotal =
+                    rowInfo
+                    |> Array.sumBy (fun (spec, _, minH, _) ->
+                        match spec with
+                        | FixedRow _ -> 0
+                        | _ -> minH
+                    )
+
+                let scaled =
+                    rowInfo
+                    |> Array.map (fun (spec, _, minH, _) ->
+                        match spec with
+                        | FixedRow h -> h // Fixed rows keep exact height
+                        | AutoRow when autoAndProportionMinTotal = 0 -> 1 // 1-line floor
+                        | AutoRow ->
+                            // Scale auto rows proportionally, with 1-line floor
+                            max 1 (int (float minH * float remainingHeight / float autoAndProportionMinTotal))
+                        | ProportionRow _ when autoAndProportionMinTotal = 0 -> 0
+                        | ProportionRow _ ->
+                            // Scale proportion rows proportionally to fit in remaining space
+                            int (float minH * float remainingHeight / float autoAndProportionMinTotal)
+                    )
+
+                let mutable allocated = scaled |> Array.sum
+                let mutable idx = 0
+
+                // Distribute rounding errors to non-fixed rows
+                while allocated < availableHeight && idx < rowSpecs.Length do
+                    match rowInfo[idx] with
+                    | FixedRow _, _, _, _ -> () // Don't adjust fixed rows
+                    | _ ->
+                        scaled[idx] <- scaled[idx] + 1
+                        allocated <- allocated + 1
+
+                    idx <- idx + 1
+
+                assert (scaled.Length = numRows)
+                scaled
         else
             let heights = rowInfo |> Array.map (fun (_, _, minH, _) -> minH)
 
@@ -398,26 +504,16 @@ module Table =
                     MaxHeightForWidth = fun _ -> Some 0
                 }
             else if numCols = 0 then
-                // Table with rows but no columns: zero width, height based on row specs
+                // Table with rows but no columns: render will return empty, so measurement should be zero
                 cachedCellMeasurements <- Some (Array2D.zeroCreate numRows 0)
-
-                // Compute height from row specs (only FixedRow contributes, Auto/Proportion have no content)
-                let heightFromRowSpecs =
-                    rowSpecs
-                    |> Array.sumBy (fun spec ->
-                        match spec with
-                        | FixedRow h -> h
-                        | AutoRow
-                        | ProportionRow _ -> 0
-                    )
 
                 {
                     MinWidth = 0
                     PreferredWidth = 0
                     MaxWidth = Some 0
-                    MinHeightForWidth = fun _ -> min heightFromRowSpecs constraints.MaxHeight
-                    PreferredHeightForWidth = fun _ -> min heightFromRowSpecs constraints.MaxHeight
-                    MaxHeightForWidth = fun _ -> Some heightFromRowSpecs
+                    MinHeightForWidth = fun _ -> 0
+                    PreferredHeightForWidth = fun _ -> 0
+                    MaxHeightForWidth = fun _ -> Some 0
                 }
             else
                 // Measure all cells to determine column widths
