@@ -628,12 +628,10 @@ module Table =
                     | Some meas -> meas
                     | None ->
                         // Fallback: re-measure if cache is empty (shouldn't happen in normal flow)
-                        assert false
-
                         let maxConstraints =
                             {
-                                MaxWidth = System.Int32.MaxValue
-                                MaxHeight = System.Int32.MaxValue
+                                MaxWidth = bounds.Width
+                                MaxHeight = bounds.Height
                             }
 
                         cells
