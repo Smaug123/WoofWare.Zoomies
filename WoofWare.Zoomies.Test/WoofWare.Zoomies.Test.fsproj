@@ -28,6 +28,7 @@
     <Compile Include="TestCollapsible.fs" />
     <Compile Include="TestProgressBar.fs" />
     <Compile Include="TestButton.fs" />
+    <Compile Include="TestTable.fs" />
     <Compile Include="TestActivationWithPartialBatch.fs" />
     <Compile Include="TestBatchProcessing.fs" />
     <Compile Include="TestFlexibleContent.fs" />

@@ -10,16 +10,42 @@ module VdomTagging =
     let mutable Enabled : bool = false
 
 /// Opaque identifier for stable node identity across frames
-type NodeKey = private | NodeKey of string
+type NodeKey =
+    private
+    | Custom of string
+    | Table of NodeKey * row : int * toRow : int option * col : int option * toCol : int option
 
 [<RequireQualifiedAccess>]
 module NodeKey =
     /// Wraps an arbitrary user-chosen string node identifier into a key that WoofWare.Zoomies can use to identify
     /// nodes.
-    let make (s : string) : NodeKey = NodeKey s
+    let make (s : string) : NodeKey = NodeKey.Custom s
 
-    /// Gets the original string that was used to construct this key.
-    let toString (NodeKey s) : string = s
+    /// Indicate a sub-key
+    let makeTableCellKey (table : NodeKey) (row : int) (toRow : int option) (col : int option) (toCol : int option) =
+        NodeKey.Table (table, row, toRow, col, toCol)
+
+    /// Gets a string that represents this key for human display.
+    let rec toHumanReadableString (s : NodeKey) : string =
+        match s with
+        | NodeKey.Custom s -> s
+        | NodeKey.Table (nodeKey, row, toRow, col, toCol) ->
+            let toRow =
+                match toRow with
+                | None -> ""
+                | Some toRow -> $"to%i{toRow}"
+
+            let toCol =
+                match toCol with
+                | None -> ""
+                | Some toCol -> $"to%i{toCol}"
+
+            let col =
+                match col with
+                | None -> ""
+                | Some col -> $"_%i{col}%s{toCol}"
+
+            $"%s{toHumanReadableString nodeKey}_%i{row}%s{toRow}%s{col}"
 
 /// Phantom type to track whether a node has a key
 type Keyed = private | Keyed
@@ -57,15 +83,19 @@ type ContentAlignment =
     /// Content starts at the top-left corner and wraps.
     | TopLeft
 
-type internal UnkeyedVdom<'bounds> =
+type internal FlexibleContent =
+    {
+        Measure : MeasureConstraints -> MeasuredSize
+        Render : Rectangle -> KeylessVdom<DesiredBounds>
+    }
+
+and internal UnkeyedVdom<'bounds> =
     | Bordered of KeylessVdom<'bounds>
     | PanelSplit of SplitDirection * SplitBehaviour * child1 : KeylessVdom<'bounds> * child2 : KeylessVdom<'bounds>
     | TextContent of content : string * style : CellStyle * alignment : ContentAlignment * focused : bool
     | Focusable of isFirstToFocus : bool * isInitiallyFocused : bool * KeyedVdom<'bounds>
     | Empty
-    | FlexibleContent of
-        measure : (MeasureConstraints -> MeasuredSize) *
-        render : (Rectangle -> KeylessVdom<DesiredBounds>)
+    | FlexibleContent of FlexibleContent
     | Tag of tag : string * inner : KeylessVdom<'bounds>
 
 and internal KeyedVdom<'bounds> = | WithKey of NodeKey * UnkeyedVdom<'bounds>
@@ -88,6 +118,9 @@ module private VdomUtils =
 
 [<Sealed>]
 type Vdom =
+
+    /// A singleton.
+    static member internal emptyUnkeyed : UnkeyedVdom<DesiredBounds> = UnkeyedVdom.Empty
 
     /// <summary>Creates a text content component displaying the given string.</summary>
     /// <param name="isFocused">
@@ -509,16 +542,53 @@ type Vdom =
     /// <param name="measure">Function that specifies size requirements given measurement constraints.</param>
     /// <param name="render">Function that produces the actual VDOM content given the allocated bounds.</param>
     /// <remarks>
+    /// <para>
     /// This allows components to make region-dependent rendering decisions, such as rendering a progress bar
     /// with different levels of detail depending on available width.
+    /// </para>
     ///
-    /// The measure function is called during the measurement phase with constraints from the parent.
-    /// It should return accurate size requirements.
+    /// <para>
+    /// WoofWare.Zoomies displays a VDOM in three phases: a "measurement" phase, an "arrange" phase, and a "render"
+    /// phase. During measurement, the various components of the VDOM indicate to WoofWare.Zoomies that they have some
+    /// preferences about their size (e.g. perhaps the progress bar needs some minimum size to display a label, but it
+    /// can be arbitrarily wide; or perhaps a checkbox really wants to be exactly three cells wide). Once constraints
+    /// are gathered, the "arrange" phase assigns a region of the screen to every VDOM node (and the framework
+    /// tries to ensure, but does not guarantee, that every component gets what it requested). Finally, the "render"
+    /// phase draws each component into its region of the screen.
+    /// </para>
     ///
-    /// The render function is called during the arrange phase with the actual allocated bounds.
-    /// It produces the final VDOM content for those bounds.
+    /// <para>
+    /// During the render phase, each component gets told the region of the screen it was granted, and chooses how
+    /// it's going to render. Maybe it has to make difficult decisions at this point: a progress bar may have to
+    /// somehow choose how to render in a space which is only one cell wide!
+    /// </para>
     ///
-    /// Note: The render function may return another FlexibleContent, allowing nested flexible rendering.
+    /// <para>
+    /// <c>Vdom.flexibleContent</c> is unusual in that it causes multiple rounds of the render algorithm.
+    /// Indeed, the <c>render</c> stored in a <c>flexibleContent</c> returns a <c>Vdom</c>, which must itself be
+    /// measured and arranged.
+    /// There is no attempt to flow the constraints from that internal VDOM back up into the parent, though:
+    /// once <c>measure</c> has been called and the constraints of the parent solved, the inner VDOM is locked into
+    /// a specific rectangle on the screen.
+    /// All the inner VDOM measurement/arrangement/rendering takes place entirely within that specific rectangle.
+    /// </para>
+    ///
+    /// <para>
+    /// The <c>measure</c> function is called during the measurement phase with constraints from the parent.
+    /// The parent decides how much space it wants for layout, and passes that information down to the child through a
+    /// <c>MeasureConstraints</c>. Then the child indicates (via the return value of <c>measure</c>) its own size
+    /// requirements.
+    /// </para>
+    ///
+    /// <para>
+    /// The <c>render</c> function is called during the subsequent render phase with the actual allocated bounds from
+    /// the arrange phase.
+    /// It produces the final VDOM content that will be rendered into the allocated space.
+    /// </para>
+    ///
+    /// <para>
+    /// The render function may return another <c>FlexibleContent</c>, allowing nested flexible rendering.
+    /// </para>
     /// </remarks>
     static member flexibleContent
         (measure : MeasureConstraints -> MeasuredSize)
@@ -530,7 +600,13 @@ type Vdom =
             | Vdom.Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
             | Vdom.Unkeyed (vdom, _) -> KeylessVdom.Unkeyed vdom
 
-        Vdom.Unkeyed (UnkeyedVdom.FlexibleContent (measure, renderInternal), Teq.refl)
+        let content =
+            {
+                Measure = measure
+                Render = renderInternal
+            }
+
+        Vdom.Unkeyed (UnkeyedVdom.FlexibleContent content, Teq.refl)
 
     /// Attach a semantic tag to this node. Tags are metadata only and do not
     /// affect rendering or layout.
@@ -562,7 +638,9 @@ type Vdom =
             | KeylessVdom.Unkeyed unkeyed -> dumpUnkeyedVdom indent unkeyed
 
         and dumpKeyedVdom (indent : string) (KeyedVdom.WithKey (key, inner)) : unit =
-            sb.AppendLine (sprintf "%sKey: %s" indent (NodeKey.toString key)) |> ignore
+            sb.AppendLine (sprintf "%sKey: %s" indent (NodeKey.toHumanReadableString key))
+            |> ignore
+
             dumpUnkeyedVdom (indent + "  ") inner
 
         and dumpUnkeyedVdom (indent : string) (vdom : UnkeyedVdom<'bounds>) : unit =

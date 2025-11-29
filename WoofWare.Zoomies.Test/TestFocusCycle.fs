@@ -83,7 +83,9 @@ module TestFocusCycle =
                                         // pressed space while nothing focused
                                         ()
                                     | Some focused ->
-                                        let key = NodeKey.toString focused
+                                        // a hack just to make the test smaller; in real life you should more explicitly
+                                        // model what checkboxes you have with some sort of map
+                                        let key = NodeKey.toHumanReadableString focused
                                         let prefix = "checkbox"
 
                                         if key.StartsWith (prefix, StringComparison.Ordinal) then
@@ -372,7 +374,9 @@ module TestFocusCycle =
                                     match VdomContext.focusedKey renderState with
                                     | None -> ()
                                     | Some focused ->
-                                        let key = NodeKey.toString focused
+                                        // a hack just to make the test smaller; in real life you should more explicitly
+                                        // model what checkboxes you have with some sort of map
+                                        let key = NodeKey.toHumanReadableString focused
                                         let prefix = "checkbox"
 
                                         if key.StartsWith (prefix, StringComparison.Ordinal) then
