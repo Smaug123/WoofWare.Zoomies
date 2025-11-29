@@ -7,7 +7,7 @@ open TypeEquality
 type ColumnSpec =
     /// Column width determined by widest cell content
     | AutoColumn
-    /// Column has fixed width in characters
+    /// Column has fixed width (measured in cells)
     | FixedColumn of width : int
     /// Column gets proportional share of remaining space after auto/fixed columns
     /// Proportion must be > 0
@@ -17,7 +17,7 @@ type ColumnSpec =
 type RowSpec =
     /// Row height determined by tallest cell (given allocated column widths)
     | AutoRow
-    /// Row has fixed height in lines
+    /// Row has fixed height (measured in cells)
     | FixedRow of height : int
     /// Row gets proportional share of remaining space after auto/fixed rows
     /// Proportion must be > 0
