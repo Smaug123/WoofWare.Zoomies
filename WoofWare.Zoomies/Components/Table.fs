@@ -33,319 +33,354 @@ module Table =
         | Vdom.Unkeyed (inner, _) -> inner
 
     /// Normalize cells to have uniform column count by padding short rows with Vdom.empty
-    let private normalizeCells (cells : Vdom<DesiredBounds, 'keyed> list list) : UnkeyedVdom<DesiredBounds> list list =
-        if List.isEmpty cells then
-            []
+    ///
+    /// The result has length equal to the input, but is now a square array where every row is as long as the longest
+    /// row.
+    let private normalizeCells (cells : Vdom<DesiredBounds, 'keyed>[][]) : UnkeyedVdom<DesiredBounds>[,] =
+        if cells.Length = 0 then
+            Array2D.zeroCreate 0 0
         else
-            let maxCols = cells |> List.map List.length |> List.max
+            let numRows = cells.Length
+            let maxCols = cells |> Array.maxOf 0 _.Length
 
-            cells
-            |> List.map (fun row ->
-                let cellsUnkeyed = row |> List.map toUnkeyedVdom
-                let padding = List.replicate (maxCols - List.length row) UnkeyedVdom.Empty
-                cellsUnkeyed @ padding
-            )
+            let result = Array2D.create numRows maxCols Vdom.emptyUnkeyed
 
-    /// Normalize specs to match expected count, using default for missing specs and truncating extras
-    let private normalizeSpecs<'spec> (specs : 'spec list) (expectedCount : int) (defaultSpec : 'spec) : 'spec list =
-        if List.length specs < expectedCount then
-            specs @ List.replicate (expectedCount - List.length specs) defaultSpec
-        else
-            List.take expectedCount specs
+            for rowIdx = 0 to cells.Length - 1 do
+                let row = cells.[rowIdx]
+                assert (row.Length <= maxCols)
 
-    /// Sanitize proportion values to ensure they are positive
+                for colIdx = 0 to row.Length - 1 do
+                    Array2D.set result rowIdx colIdx (toUnkeyedVdom row.[colIdx])
+
+            // let's just make it very obvious what our result's dimensions are!
+            assert (result.GetLength 0 = numRows)
+            assert (result.GetLength 1 = maxCols)
+            result
+
+    /// Normalize specs to match expected count, using default for missing specs and truncating extras.
+    ///
+    /// The resulting array has length exactly `expectedCount`.
+    let private normalizeSpecs<'spec> (specs : 'spec[]) (expectedCount : int) (defaultSpec : 'spec) : 'spec[] =
+        let result =
+            if Array.length specs < expectedCount then
+                Array.append specs (Array.create (expectedCount - Array.length specs) defaultSpec)
+            else
+                Array.take expectedCount specs
+
+        assert (result.Length = expectedCount)
+        result
+
+    /// Sanitize proportion values to ensure they are positive and real; treat noncompliant specs as Auto
     let private sanitizeColumnSpec (spec : ColumnSpec) : ColumnSpec =
         match spec with
         | ProportionColumn p when p <= 0.0 || System.Double.IsNaN p || System.Double.IsInfinity p -> AutoColumn
         | other -> other
 
+    /// Sanitize proportion values to ensure they are positive and real; treat noncompliant specs as Auto
     let private sanitizeRowSpec (spec : RowSpec) : RowSpec =
         match spec with
         | ProportionRow p when p <= 0.0 || System.Double.IsNaN p || System.Double.IsInfinity p -> AutoRow
         | other -> other
 
-    /// Allocate column widths from available width, respecting per-column minima
+    /// Allocate column widths from available width, respecting per-column minima.
     let private allocateColumnWidths
         (availableWidth : int)
-        (columnSpecs : ColumnSpec list)
-        (cellMeasurements : MeasuredSize list list)
-        : int list
+        (columnSpecs : ColumnSpec[])
+        (cellMeasurements : MeasuredSize[,])
+        : int[]
         =
-        if List.isEmpty columnSpecs then
-            []
+        assert (columnSpecs.Length = cellMeasurements.GetLength 1)
+
+        if Array.isEmpty columnSpecs then
+            [||]
         else
-            let numCols = List.length columnSpecs
 
-            let columnInfo =
-                columnSpecs
-                |> List.mapi (fun colIdx spec ->
-                    let cellMeasForCol = cellMeasurements |> List.map (fun row -> List.item colIdx row)
+        let numCols = Array.length columnSpecs
 
-                    let minWidth =
-                        match spec with
-                        | FixedColumn w -> w
-                        | AutoColumn
-                        | ProportionColumn _ -> cellMeasForCol |> List.map (fun m -> m.MinWidth) |> List.max
+        if availableWidth <= 0 then
+            Array.zeroCreate numCols
+        else
 
-                    let preferredWidth =
-                        match spec with
-                        | FixedColumn w -> w
-                        | AutoColumn
-                        | ProportionColumn _ -> cellMeasForCol |> List.map (fun m -> m.PreferredWidth) |> List.max
+        let columnInfo =
+            columnSpecs
+            |> Array.mapi (fun colIdx spec ->
+                let cellMeasForCol = Array.getColumn colIdx cellMeasurements
 
-                    (spec, colIdx, minWidth, preferredWidth)
+                let minWidth =
+                    match spec with
+                    | FixedColumn w -> w
+                    | AutoColumn
+                    | ProportionColumn _ -> cellMeasForCol |> Array.maxOf 0 _.MinWidth
+
+                let preferredWidth =
+                    match spec with
+                    | FixedColumn w -> w
+                    | AutoColumn
+                    | ProportionColumn _ -> cellMeasForCol |> Array.maxOf 0 _.PreferredWidth
+
+                (spec, colIdx, minWidth, preferredWidth)
+            )
+
+        assert (columnInfo.Length = numCols)
+
+        let totalMin = columnInfo |> Array.sumBy (fun (_, _, minW, _) -> minW)
+
+        if totalMin >= availableWidth then
+            // Not enough room for all minima: scale them proportionally
+            let totalMinF = float totalMin
+
+            let scaled =
+                columnInfo
+                |> Array.map (fun (_, _, minW, _) -> int (float minW * float availableWidth / totalMinF))
+
+            let mutable allocated = scaled |> Array.sum
+            let mutable idx = 0
+
+            while allocated < availableWidth && idx < numCols do
+                scaled[idx] <- scaled[idx] + 1
+                allocated <- allocated + 1
+                idx <- idx + 1
+
+            assert (scaled.Length = numCols)
+            scaled
+        else
+            let widths = columnInfo |> Array.map (fun (_, _, minW, _) -> minW)
+
+            let mutable remaining = availableWidth - totalMin
+
+            // Grow auto columns toward preferred
+            let autoColumns =
+                columnInfo
+                |> Array.choose (fun (spec, idx, minW, prefW) ->
+                    match spec with
+                    | AutoColumn -> Some (idx, max 0 (prefW - minW))
+                    | _ -> None
                 )
 
-            let totalMin = columnInfo |> List.sumBy (fun (_, _, minW, _) -> minW)
+            let autoGrowthTotal = autoColumns |> Array.sumBy snd
 
-            if availableWidth <= 0 then
-                List.replicate numCols 0
-            elif totalMin >= availableWidth then
-                // Not enough room for all minima: scale them proportionally
-                let totalMinF = float totalMin
+            if autoGrowthTotal > 0 && remaining > 0 then
+                let autoAllocated = min remaining autoGrowthTotal
 
-                let scaled =
-                    columnInfo
-                    |> List.map (fun (_, _, minW, _) -> int (float minW * float availableWidth / totalMinF))
-                    |> List.toArray
+                for idx, capacity in autoColumns do
+                    let extra = int (float autoAllocated * (float capacity / float autoGrowthTotal))
 
-                let mutable allocated = scaled |> Array.sum
-                let mutable idx = 0
+                    widths[idx] <- widths[idx] + extra
 
-                while allocated < availableWidth && idx < numCols do
-                    scaled[idx] <- scaled[idx] + 1
-                    allocated <- allocated + 1
-                    idx <- idx + 1
+                let spent = widths |> Array.sum |> (fun s -> s - totalMin)
+                let mutable toDistribute = autoAllocated - spent
+                let mutable autoIdx = 0
 
-                scaled |> Array.toList
-            else
-                let widths = columnInfo |> List.map (fun (_, _, minW, _) -> minW) |> List.toArray
+                while toDistribute > 0 && autoIdx < autoColumns.Length do
+                    let colIndex, _ = autoColumns[autoIdx]
+                    widths[colIndex] <- widths[colIndex] + 1
+                    toDistribute <- toDistribute - 1
+                    autoIdx <- autoIdx + 1
 
-                let mutable remaining = availableWidth - totalMin
+                remaining <- remaining - autoAllocated
 
-                // Grow auto columns toward preferred
-                let autoColumns =
-                    columnInfo
-                    |> List.choose (fun (spec, idx, minW, prefW) ->
-                        match spec with
-                        | AutoColumn -> Some (idx, max 0 (prefW - minW))
-                        | _ -> None
-                    )
+            // Give remaining space to proportion columns according to their weights
+            let proportionColumns =
+                columnInfo
+                |> Array.choose (fun (spec, idx, _, _) ->
+                    match spec with
+                    | ProportionColumn p -> Some (idx, p)
+                    | _ -> None
+                )
 
-                let autoGrowthTotal = autoColumns |> List.sumBy snd
+            let proportionTotal = proportionColumns |> Array.sumBy (fun (_, p) -> p)
 
-                if autoGrowthTotal > 0 && remaining > 0 then
-                    let autoAllocated = min remaining autoGrowthTotal
+            if proportionTotal > 0.0 && remaining > 0 then
+                let mutable leftover = remaining
 
-                    for (idx, capacity) in autoColumns do
-                        let extra = int (float autoAllocated * (float capacity / float autoGrowthTotal))
+                for idx, p in proportionColumns do
+                    let extra = int (float remaining * (p / proportionTotal))
+                    widths[idx] <- widths[idx] + extra
+                    leftover <- leftover - extra
 
-                        widths[idx] <- widths[idx] + extra
+                let mutable propIdx = 0
 
-                    let spent = widths |> Array.sum |> (fun s -> s - totalMin)
-                    let mutable toDistribute = autoAllocated - spent
-                    let mutable autoIdx = 0
+                while leftover > 0 && propIdx < proportionColumns.Length do
+                    let colIndex, _ = proportionColumns[propIdx]
+                    widths[colIndex] <- widths[colIndex] + 1
+                    leftover <- leftover - 1
+                    propIdx <- propIdx + 1
 
-                    while toDistribute > 0 && autoIdx < autoColumns.Length do
-                        let colIndex, _ = autoColumns[autoIdx]
-                        widths[colIndex] <- widths[colIndex] + 1
-                        toDistribute <- toDistribute - 1
-                        autoIdx <- autoIdx + 1
-
-                    remaining <- remaining - autoAllocated
-
-                // Give remaining space to proportion columns according to their weights
-                let proportionColumns =
-                    columnInfo
-                    |> List.choose (fun (spec, idx, _, _) ->
-                        match spec with
-                        | ProportionColumn p -> Some (idx, p)
-                        | _ -> None
-                    )
-
-                let proportionTotal = proportionColumns |> List.sumBy (fun (_, p) -> p)
-
-                if proportionTotal > 0.0 && remaining > 0 then
-                    let mutable leftover = remaining
-
-                    for (idx, p) in proportionColumns do
-                        let extra = int (float remaining * (p / proportionTotal))
-                        widths[idx] <- widths[idx] + extra
-                        leftover <- leftover - extra
-
-                    let mutable propIdx = 0
-
-                    while leftover > 0 && propIdx < proportionColumns.Length do
-                        let colIndex, _ = proportionColumns[propIdx]
-                        widths[colIndex] <- widths[colIndex] + 1
-                        leftover <- leftover - 1
-                        propIdx <- propIdx + 1
-
-                widths |> Array.toList
+            assert (widths.Length = numCols)
+            widths
 
     /// Allocate row heights from available height (similar to columns, but heights depend on column widths)
     let private allocateRowHeights
         (availableHeight : int)
-        (rowSpecs : RowSpec list)
-        (cellMeasurements : MeasuredSize list list)
-        (columnWidths : int list)
-        : int list
+        (rowSpecs : RowSpec[])
+        (cellMeasurements : MeasuredSize[,])
+        (columnWidths : int[])
+        : int[]
         =
-        if List.isEmpty rowSpecs then
-            []
+        assert (rowSpecs.Length = cellMeasurements.GetLength 0)
+        assert (columnWidths.Length = cellMeasurements.GetLength 1)
+
+        if Array.isEmpty rowSpecs then
+            [||]
+        else if
+
+            availableHeight <= 0
+        then
+            Array.zeroCreate rowSpecs.Length
         else
-            let rowInfo =
-                rowSpecs
-                |> List.mapi (fun rowIdx spec ->
-                    let cellsInRow = List.item rowIdx cellMeasurements
 
-                    let minHeight =
-                        match spec with
-                        | FixedRow h -> h
-                        | AutoRow
-                        | ProportionRow _ ->
-                            List.zip cellsInRow columnWidths
-                            |> List.map (fun (cell, colWidth) -> cell.MinHeightForWidth colWidth)
-                            |> List.max
+        let numRows = rowSpecs.Length
 
-                    let preferredHeight =
-                        match spec with
-                        | FixedRow h -> h
-                        | AutoRow
-                        | ProportionRow _ ->
-                            List.zip cellsInRow columnWidths
-                            |> List.map (fun (cell, colWidth) -> cell.PreferredHeightForWidth colWidth)
-                            |> List.max
+        let rowInfo =
+            rowSpecs
+            |> Array.mapi (fun rowIdx spec ->
+                let cellsInRow = Array.getRow rowIdx cellMeasurements
+                assert (cellsInRow.Length = columnWidths.Length)
 
-                    (spec, rowIdx, minHeight, preferredHeight)
+                let minHeight =
+                    match spec with
+                    | FixedRow h -> h
+                    | AutoRow
+                    | ProportionRow _ ->
+                        Array.max2Of 0 (fun cell colWidth -> cell.MinHeightForWidth colWidth) cellsInRow columnWidths
+
+                let preferredHeight =
+                    match spec with
+                    | FixedRow h -> h
+                    | AutoRow
+                    | ProportionRow _ ->
+                        Array.max2Of
+                            0
+                            (fun cell colWidth -> cell.PreferredHeightForWidth colWidth)
+                            cellsInRow
+                            columnWidths
+
+                (spec, rowIdx, minHeight, preferredHeight)
+            )
+
+        let totalMin = rowInfo |> Array.sumBy (fun (_, _, minH, _) -> minH)
+
+        if totalMin >= availableHeight then
+            let totalMinF = float totalMin
+
+            let scaled =
+                rowInfo
+                |> Array.map (fun (_, _, minH, _) -> int (float minH * float availableHeight / totalMinF))
+
+            let mutable allocated = scaled |> Array.sum
+            let mutable idx = 0
+
+            while allocated < availableHeight && idx < rowSpecs.Length do
+                scaled[idx] <- scaled[idx] + 1
+                allocated <- allocated + 1
+                idx <- idx + 1
+
+            assert (scaled.Length = numRows)
+            scaled
+        else
+            let heights = rowInfo |> Array.map (fun (_, _, minH, _) -> minH)
+
+            let mutable remaining = availableHeight - totalMin
+
+            let autoRows =
+                rowInfo
+                |> Array.choose (fun (spec, idx, minH, prefH) ->
+                    match spec with
+                    | AutoRow -> Some (idx, max 0 (prefH - minH))
+                    | _ -> None
                 )
 
-            let totalMin = rowInfo |> List.sumBy (fun (_, _, minH, _) -> minH)
+            let autoGrowthTotal = autoRows |> Array.sumBy snd
 
-            if availableHeight <= 0 then
-                List.replicate rowSpecs.Length 0
-            elif totalMin >= availableHeight then
-                let totalMinF = float totalMin
+            if autoGrowthTotal > 0 && remaining > 0 then
+                let autoAllocated = min remaining autoGrowthTotal
 
-                let scaled =
-                    rowInfo
-                    |> List.map (fun (_, _, minH, _) -> int (float minH * float availableHeight / totalMinF))
-                    |> List.toArray
+                for idx, capacity in autoRows do
+                    let extra = int (float autoAllocated * (float capacity / float autoGrowthTotal))
 
-                let mutable allocated = scaled |> Array.sum
-                let mutable idx = 0
+                    heights[idx] <- heights[idx] + extra
 
-                while allocated < availableHeight && idx < rowSpecs.Length do
-                    scaled[idx] <- scaled[idx] + 1
-                    allocated <- allocated + 1
-                    idx <- idx + 1
+                let spent = heights |> Array.sum |> (fun s -> s - totalMin)
+                let mutable toDistribute = autoAllocated - spent
+                let mutable autoIdx = 0
 
-                scaled |> Array.toList
-            else
-                let heights = rowInfo |> List.map (fun (_, _, minH, _) -> minH) |> List.toArray
+                while toDistribute > 0 && autoIdx < autoRows.Length do
+                    let rowIndex, _ = autoRows[autoIdx]
+                    heights[rowIndex] <- heights[rowIndex] + 1
+                    toDistribute <- toDistribute - 1
+                    autoIdx <- autoIdx + 1
 
-                let mutable remaining = availableHeight - totalMin
+                remaining <- remaining - autoAllocated
 
-                let autoRows =
-                    rowInfo
-                    |> List.choose (fun (spec, idx, minH, prefH) ->
-                        match spec with
-                        | AutoRow -> Some (idx, max 0 (prefH - minH))
-                        | _ -> None
-                    )
+            let proportionRows =
+                rowInfo
+                |> Array.choose (fun (spec, idx, _, _) ->
+                    match spec with
+                    | ProportionRow p -> Some (idx, p)
+                    | _ -> None
+                )
 
-                let autoGrowthTotal = autoRows |> List.sumBy snd
+            let proportionTotal = proportionRows |> Array.sumBy (fun (_, p) -> p)
 
-                if autoGrowthTotal > 0 && remaining > 0 then
-                    let autoAllocated = min remaining autoGrowthTotal
+            if proportionTotal > 0.0 && remaining > 0 then
+                let mutable leftover = remaining
 
-                    for (idx, capacity) in autoRows do
-                        let extra = int (float autoAllocated * (float capacity / float autoGrowthTotal))
+                for idx, p in proportionRows do
+                    let extra = int (float remaining * (p / proportionTotal))
+                    heights[idx] <- heights[idx] + extra
+                    leftover <- leftover - extra
 
-                        heights[idx] <- heights[idx] + extra
+                let mutable propIdx = 0
 
-                    let spent = heights |> Array.sum |> (fun s -> s - totalMin)
-                    let mutable toDistribute = autoAllocated - spent
-                    let mutable autoIdx = 0
+                while leftover > 0 && propIdx < proportionRows.Length do
+                    let rowIndex, _ = proportionRows[propIdx]
+                    heights[rowIndex] <- heights[rowIndex] + 1
+                    leftover <- leftover - 1
+                    propIdx <- propIdx + 1
 
-                    while toDistribute > 0 && autoIdx < autoRows.Length do
-                        let rowIndex, _ = autoRows[autoIdx]
-                        heights[rowIndex] <- heights[rowIndex] + 1
-                        toDistribute <- toDistribute - 1
-                        autoIdx <- autoIdx + 1
-
-                    remaining <- remaining - autoAllocated
-
-                let proportionRows =
-                    rowInfo
-                    |> List.choose (fun (spec, idx, _, _) ->
-                        match spec with
-                        | ProportionRow p -> Some (idx, p)
-                        | _ -> None
-                    )
-
-                let proportionTotal = proportionRows |> List.sumBy (fun (_, p) -> p)
-
-                if proportionTotal > 0.0 && remaining > 0 then
-                    let mutable leftover = remaining
-
-                    for (idx, p) in proportionRows do
-                        let extra = int (float remaining * (p / proportionTotal))
-                        heights[idx] <- heights[idx] + extra
-                        leftover <- leftover - extra
-
-                    let mutable propIdx = 0
-
-                    while leftover > 0 && propIdx < proportionRows.Length do
-                        let rowIndex, _ = proportionRows[propIdx]
-                        heights[rowIndex] <- heights[rowIndex] + 1
-                        leftover <- leftover - 1
-                        propIdx <- propIdx + 1
-
-                heights |> Array.toList
+            assert (heights.Length = numRows)
+            heights
 
     /// Creates a table with specified cells and sizing.
-    /// Gracefully handles ragged rows (pads with Vdom.empty) and spec mismatches (defaults to Auto).
+    /// Gracefully handles ragged rows (pads with Vdom.empty) and spec mismatches (defaults to Auto for missing or
+    /// invalid specs).
     /// Accepts both keyed and unkeyed cells - the table assigns each cell a unique key based on (row, col) position
-    /// for stable focus tracking. Original keys are discarded and replaced with position-based keys.
+    /// for stable focus tracking, which you can access with `NodeKey.makeTableCellKey`.
+    /// Original keys are discarded and replaced with position-based keys.
     ///
     /// The keyPrefix parameter namespaces all internal keys to prevent collisions when multiple tables
     /// are rendered in the same VDOM tree. If rendering multiple tables, ensure each has a unique keyPrefix.
     let make
         (keyPrefix : NodeKey)
-        (cells : Vdom<DesiredBounds, 'keyed> list list)
-        (columnSpecs : ColumnSpec list)
-        (rowSpecs : RowSpec list)
+        (cells : Vdom<DesiredBounds, 'keyed>[][])
+        (columnSpecs : ColumnSpec[])
+        (rowSpecs : RowSpec[])
         : Vdom<DesiredBounds, Unkeyed>
         =
         // Normalize inputs (graceful error handling) - strips any existing keys from cells
-        let cells : UnkeyedVdom<DesiredBounds> list list = normalizeCells cells
+        let cells = normalizeCells cells
 
-        let numCols =
-            if List.isEmpty cells then
-                0
-            else
-                cells |> List.map List.length |> List.max
+        let numCols = if cells.Length = 0 then 0 else cells.GetLength 1
 
-        let numRows = List.length cells
+        let numRows = cells.GetLength 0
 
         let columnSpecs =
             columnSpecs
-            |> List.map sanitizeColumnSpec
+            |> Array.map sanitizeColumnSpec
             |> fun specs -> normalizeSpecs specs numCols AutoColumn
 
         let rowSpecs =
             rowSpecs
-            |> List.map sanitizeRowSpec
+            |> Array.map sanitizeRowSpec
             |> fun specs -> normalizeSpecs specs numRows AutoRow
 
         // Cache cell measurements so render can reuse them
-        let mutable cachedCellMeasurements : MeasuredSize list list option = None
+        let mutable cachedCellMeasurements : MeasuredSize[,] option = None
 
         let measure (constraints : MeasureConstraints) : MeasuredSize =
-            if List.isEmpty cells then
+            if cells.Length = 0 then
                 // Empty table: zero-sized
-                cachedCellMeasurements <- Some []
+                cachedCellMeasurements <- Some (Array2D.zeroCreate 0 0)
 
                 {
                     MinWidth = 0
@@ -357,16 +392,13 @@ module Table =
                 }
             else
                 // Measure all cells to determine column widths
-                let cellMeasurements : MeasuredSize list list =
+                let cellMeasurements =
                     cells
-                    |> List.map (fun row ->
-                        row
-                        |> List.map (fun cell ->
-                            // Measure the unkeyed cell directly
-                            let keylessVdom = KeylessVdom.Unkeyed cell
-                            let measured = Layout.measureEither constraints keylessVdom
-                            measured.Measured
-                        )
+                    |> Array2D.map (fun cell ->
+                        // Measure the unkeyed cell directly
+                        let keylessVdom = KeylessVdom.Unkeyed cell
+                        let measured = Layout.measureEither constraints keylessVdom
+                        measured.Measured
                     )
 
                 // Cache for render phase
@@ -374,35 +406,37 @@ module Table =
 
                 // Compute minimum column widths (respecting cell MinWidth for all column types)
                 let columnMinWidths =
-                    [
+                    [|
                         for colIdx in 0 .. numCols - 1 do
-                            match List.item colIdx columnSpecs with
+                            match Array.item colIdx columnSpecs with
                             | FixedColumn w -> w // Fixed columns have exact size
                             | AutoColumn
                             | ProportionColumn _ ->
                                 // Even proportion columns must report child minima
-                                cellMeasurements
-                                |> List.map (fun row -> (List.item colIdx row).MinWidth)
-                                |> List.max
-                    ]
+                                let column = Array.getColumn colIdx cellMeasurements
+                                column |> Array.maxOf 0 _.MinWidth
+                    |]
+
+                assert (columnMinWidths.Length = numCols)
 
                 // Compute preferred column widths
                 let columnPreferredWidths =
-                    [
+                    [|
                         for colIdx in 0 .. numCols - 1 do
-                            match List.item colIdx columnSpecs with
+                            match Array.item colIdx columnSpecs with
                             | FixedColumn w -> w
                             | AutoColumn
                             | ProportionColumn _ ->
                                 // Include proportion column preferences so table reports accurate preferred size
-                                cellMeasurements
-                                |> List.map (fun row -> (List.item colIdx row).PreferredWidth)
-                                |> List.max
-                    ]
+                                let column = Array.getColumn colIdx cellMeasurements
+                                column |> Array.maxOf 0 _.PreferredWidth
+                    |]
+
+                assert (columnPreferredWidths.Length = numCols)
 
                 // Table's aggregate minimum and preferred width (includes all columns, even proportion)
-                let tableMinWidth = min (List.sum columnMinWidths) constraints.MaxWidth
-                let tablePreferredWidth = min (List.sum columnPreferredWidths) constraints.MaxWidth
+                let tableMinWidth = min (Array.sum columnMinWidths) constraints.MaxWidth
+                let tablePreferredWidth = min (Array.sum columnPreferredWidths) constraints.MaxWidth
 
                 {
                     MinWidth = tableMinWidth
@@ -414,47 +448,54 @@ module Table =
                             let allocatedColWidths =
                                 allocateColumnWidths allocatedWidth columnSpecs cellMeasurements
 
-                            let rowHeights =
-                                cellMeasurements
-                                |> List.mapi (fun rowIdx rowCells ->
-                                    match List.item rowIdx rowSpecs with
-                                    | FixedRow h -> h
-                                    | AutoRow
-                                    | ProportionRow _ ->
-                                        // Even proportion rows must report child minima
-                                        List.zip rowCells allocatedColWidths
-                                        |> List.map (fun (cellMeas, colWidth) -> cellMeas.MinHeightForWidth colWidth // Use MIN height
-                                        )
-                                        |> List.max
-                                )
+                            let mutable sumOfRowHeights = 0
 
-                            min (List.sum rowHeights) constraints.MaxHeight
+                            for rowIdx = 0 to cellMeasurements.GetLength 0 - 1 do
+                                let rowCells = Array.getRow rowIdx cellMeasurements
+
+                                sumOfRowHeights <-
+                                    sumOfRowHeights
+                                    + match Array.item rowIdx rowSpecs with
+                                      | FixedRow h -> h
+                                      | AutoRow
+                                      | ProportionRow _ ->
+                                          // Even proportion rows must report child minima
+                                          Array.max2Of
+                                              0
+                                              (fun cellMeas colWidth -> cellMeas.MinHeightForWidth colWidth)
+                                              rowCells
+                                              allocatedColWidths
+
+                            min sumOfRowHeights constraints.MaxHeight
                     PreferredHeightForWidth =
                         fun allocatedWidth ->
                             let allocatedColWidths =
                                 allocateColumnWidths allocatedWidth columnSpecs cellMeasurements
 
-                            let rowHeights =
-                                cellMeasurements
-                                |> List.mapi (fun rowIdx rowCells ->
-                                    match List.item rowIdx rowSpecs with
-                                    | FixedRow h -> h
-                                    | AutoRow
-                                    | ProportionRow _ ->
-                                        // Proportion rows report child preferred heights
-                                        List.zip rowCells allocatedColWidths
-                                        |> List.map (fun (cellMeas, colWidth) ->
-                                            cellMeas.PreferredHeightForWidth colWidth
-                                        )
-                                        |> List.max
-                                )
+                            let mutable sumOfRowHeights = 0
 
-                            min (List.sum rowHeights) constraints.MaxHeight
+                            for rowIdx = 0 to cellMeasurements.GetLength 0 - 1 do
+                                let rowCells = Array.getRow rowIdx cellMeasurements
+
+                                sumOfRowHeights <-
+                                    sumOfRowHeights
+                                    + match Array.item rowIdx rowSpecs with
+                                      | FixedRow h -> h
+                                      | AutoRow
+                                      | ProportionRow _ ->
+                                          // Proportion rows report child preferred heights
+                                          Array.max2Of
+                                              0
+                                              (fun cellMeas colWidth -> cellMeas.PreferredHeightForWidth colWidth)
+                                              rowCells
+                                              allocatedColWidths
+
+                            min sumOfRowHeights constraints.MaxHeight
                     MaxHeightForWidth = fun _ -> None
                 }
 
         let render (bounds : Rectangle) : Vdom<DesiredBounds, Unkeyed> =
-            if List.isEmpty cells then
+            if cells.Length = 0 then
                 Vdom.empty
             else
                 // Retrieve cached measurements from the measure phase
@@ -463,6 +504,8 @@ module Table =
                     | Some meas -> meas
                     | None ->
                         // Fallback: re-measure if cache is empty (shouldn't happen in normal flow)
+                        assert false
+
                         let maxConstraints =
                             {
                                 MaxWidth = System.Int32.MaxValue
@@ -470,23 +513,25 @@ module Table =
                             }
 
                         cells
-                        |> List.map (fun row ->
-                            row
-                            |> List.map (fun cell ->
-                                let keylessVdom = KeylessVdom.Unkeyed cell
-                                let measured = Layout.measureEither maxConstraints keylessVdom
-                                measured.Measured
-                            )
+                        |> Array2D.map (fun cell ->
+                            let keylessVdom = KeylessVdom.Unkeyed cell
+                            let measured = Layout.measureEither maxConstraints keylessVdom
+                            measured.Measured
                         )
-                        : MeasuredSize list list
 
                 // 1. Allocate column widths from available width
                 let allocatedColumnWidths =
                     allocateColumnWidths bounds.Width columnSpecs cellMeasurements
 
+                assert (allocatedColumnWidths.Length = columnSpecs.Length)
+                assert (allocatedColumnWidths.Length = numCols)
+
                 // 2. Allocate row heights from available height
                 let allocatedRowHeights =
                     allocateRowHeights bounds.Height rowSpecs cellMeasurements allocatedColumnWidths
+
+                assert (allocatedRowHeights.Length = rowSpecs.Length)
+                assert (allocatedRowHeights.Length = numRows)
 
                 // 3. Build nested PanelSplit structure
                 // First, assign unique keys to all cells based on (row, col) position
@@ -494,15 +539,15 @@ module Table =
 
                 let keyedCells =
                     cells
-                    |> List.mapi (fun rowIdx row ->
-                        row
-                        |> List.mapi (fun colIdx cell ->
-                            // Wrap the UnkeyedVdom with a namespaced position-based key
-                            Vdom.withKey
-                                (NodeKey.makeTableCellKey keyPrefix rowIdx None (Some colIdx) None)
-                                (Vdom.Unkeyed (cell, Teq.refl))
-                        )
+                    |> Array2D.mapi (fun rowIdx colIdx cell ->
+                        // Wrap the UnkeyedVdom with a namespaced position-based key
+                        Vdom.withKey
+                            (NodeKey.makeTableCellKey keyPrefix rowIdx None (Some colIdx) None)
+                            (Vdom.Unkeyed (cell, Teq.refl))
                     )
+
+                assert (keyedCells.GetLength 0 = numRows)
+                assert (keyedCells.GetLength 1 = numCols)
 
                 // Bind empty once to use as sentinel (Vdom.empty creates fresh value each call)
                 let empty = Vdom.empty
@@ -511,18 +556,17 @@ module Table =
                 // Build with unique keys for intermediate splits based on column span
                 let buildRow
                     (rowIdx : int)
-                    (rowCells : Vdom<DesiredBounds, Keyed> list)
-                    (widths : int list)
+                    (rowCells : Vdom<DesiredBounds, Keyed>[])
+                    (widths : int[])
                     : Vdom<DesiredBounds, Unkeyed>
                     =
+                    assert (rowCells.Length = widths.Length)
+
                     match rowCells with
-                    | [] -> empty
-                    | [ single ] ->
+                    | [||] -> empty
+                    | [| single |] ->
                         // Single cell: reserve its allocated width so it doesn't absorb extra space
-                        let width =
-                            match widths with
-                            | width :: _ -> width
-                            | [] -> 0
+                        let width = if widths.Length = 0 then 0 else widths.[0]
 
                         // Use absolute split so the single cell keeps its allocated width even if there's
                         // extra space beyond the sum of column widths.
@@ -530,10 +574,11 @@ module Table =
                     | _ ->
                         // Build right-to-left using indexed fold: cell0 | (cell1 | (cell2 | ...))
                         // Each intermediate split gets a unique key based on its column span
-                        let numCols = List.length rowCells
+                        let numCols = Array.length rowCells
+                        assert (numCols = widths.Length)
 
                         let _, _, result =
-                            List.foldBack2
+                            Array.foldBack2
                                 (fun
                                     (cell : Vdom<DesiredBounds, Keyed>)
                                     (width : int)
@@ -567,17 +612,20 @@ module Table =
                         result
 
                 let rowVdoms =
-                    List.mapi (fun rowIdx row -> buildRow rowIdx row allocatedColumnWidths) keyedCells
+                    Array.mapiRows (fun rowIdx row -> buildRow rowIdx row allocatedColumnWidths) keyedCells
+
+                assert (rowVdoms.Length = numRows)
 
                 // Stack rows vertically: row0 / row1 / row2 / ...
                 match rowVdoms with
-                | [] -> empty
-                | [ single ] -> single
+                | [||] -> empty
+                | [| single |] -> single
                 | _ ->
-                    let numRows = List.length rowVdoms
+                    let numRowVdoms = Array.length rowVdoms
+                    assert (numRowVdoms = numRows)
 
                     let _, _, result =
-                        List.foldBack2
+                        Array.foldBack2
                             (fun row height (rowIdx, isFirst, accum) ->
                                 if isFirst then
                                     (rowIdx - 1, false, row)
@@ -588,7 +636,12 @@ module Table =
 
                                     let accumKeyed =
                                         Vdom.withKey
-                                            (NodeKey.makeTableCellKey keyPrefix rowIdx (Some (numRows - 1)) None None)
+                                            (NodeKey.makeTableCellKey
+                                                keyPrefix
+                                                rowIdx
+                                                (Some (numRowVdoms - 1))
+                                                None
+                                                None)
                                             accum
 
                                     (rowIdx - 1,
@@ -597,7 +650,7 @@ module Table =
                             )
                             rowVdoms
                             allocatedRowHeights
-                            (numRows - 1, true, empty)
+                            (numRowVdoms - 1, true, empty)
 
                     result
 
@@ -609,5 +662,9 @@ module Table =
     ///
     /// The keyPrefix parameter namespaces all internal keys to prevent collisions when multiple tables
     /// are rendered in the same VDOM tree. If rendering multiple tables, ensure each has a unique keyPrefix.
-    let makeAuto (keyPrefix : NodeKey) (cells : Vdom<DesiredBounds, 'keyed> list list) : Vdom<DesiredBounds, Unkeyed> =
-        make keyPrefix cells [] []
+    let makeAuto<'keyed>
+        (keyPrefix : NodeKey)
+        (cells : Vdom<DesiredBounds, 'keyed>[][])
+        : Vdom<DesiredBounds, Unkeyed>
+        =
+        make keyPrefix cells [||] [||]

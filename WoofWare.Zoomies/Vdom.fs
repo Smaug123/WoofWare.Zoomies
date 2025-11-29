@@ -119,6 +119,9 @@ module private VdomUtils =
 [<Sealed>]
 type Vdom =
 
+    /// A singleton.
+    static member internal emptyUnkeyed : UnkeyedVdom<DesiredBounds> = UnkeyedVdom.Empty
+
     /// <summary>Creates a text content component displaying the given string.</summary>
     /// <param name="isFocused">
     /// Specifies that this text area should render as if it has keyboard focus.
