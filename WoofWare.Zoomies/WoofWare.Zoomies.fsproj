@@ -16,12 +16,13 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>fsharp;tui;terminal;immediate;vdom;interface;console</PackageTags>
+    <WoofWareMyriadPluginVersion>9.1.4</WoofWareMyriadPluginVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- similarly, maximise compatibility by keeping FSharp.Core as low as we can -->
-    <PackageReference Update="FSharp.Core" Version="6.0.0" />
-    <PackageReference Include="TypeEquality" Version="0.3.0" />
+    <PackageReference Update="FSharp.Core" Version="6.0.1" />
+    <PackageReference Include="TypeEquality" Version="0.4.2" />
   </ItemGroup>
 
   <ItemGroup>
@@ -57,4 +58,11 @@
     </None>
   </ItemGroup>
 
+  <!--
+  <ItemGroup>
+    <MyriadSdkGenerator Include="$(NuGetPackageRoot)/woofware.myriad.plugins/$(WoofWareMyriadPluginVersion)/lib/net6.0/WoofWare.Myriad.Plugins.dll" />
+    <PackageReference Include="WoofWare.Myriad.Plugins" Version="$(WoofWareMyriadPluginVersion)" PrivateAssets="all" />
+    <PackageReference Include="Myriad.Sdk" Version="0.8.3" PrivateAssets="all" />
+  </ItemGroup>
+  -->
 </Project>

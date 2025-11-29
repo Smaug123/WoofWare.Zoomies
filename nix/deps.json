@@ -31,8 +31,8 @@
   },
   {
     "pname": "FSharp.Core",
-    "version": "6.0.0",
-    "hash": "sha256-aQDRgiGC7iTyzNEmvyd2RBCDcLG0I1dbfncHlkbeUMI="
+    "version": "6.0.1",
+    "hash": "sha256-Ehsgt3nCJijpaVuJguC1TPVEKSkJd6PSc07D2ZQSemI="
   },
   {
     "pname": "FSharp.Core",
@@ -286,8 +286,8 @@
   },
   {
     "pname": "TypeEquality",
-    "version": "0.3.0",
-    "hash": "sha256-V50xAOzzyUJrY+MYPRxtnqW5MVeATXCes89wPprv1r4="
+    "version": "0.4.2",
+    "hash": "sha256-YxK6BGHjcuP76j5BbTDi814jxGqOevQSgS00IJcjZSA="
   },
   {
     "pname": "WoofWare.Expect",
@@ -296,13 +296,13 @@
   },
   {
     "pname": "WoofWare.Myriad.Plugins",
-    "version": "8.1.1",
-    "hash": "sha256-Cx7/+5+qc8lhxb0On/OW58PrabadMfbcNP1TvLZGHrY="
+    "version": "9.1.4",
+    "hash": "sha256-FNAgKfAr/VZrZpozyctyvz8XgAucED+OoAT0xIdpcAs="
   },
   {
     "pname": "WoofWare.Myriad.Plugins.Attributes",
-    "version": "3.7.1",
-    "hash": "sha256-Mn0OVvC/AwTYg6+3MCKLkNKGGSdzLfBOaLapxHsUDCw="
+    "version": "3.8.3",
+    "hash": "sha256-aojCj7MadPqE82YJozrxDgZ7RQXICDkUcdBSX4FP0+M="
   },
   {
     "pname": "WoofWare.NUnitTestRunner",
@@ -311,7 +311,7 @@
   },
   {
     "pname": "WoofWare.Whippet.Fantomas",
-    "version": "0.6.3",
-    "hash": "sha256-FkW/HtVp8/HE2k6d7yFpnJcnP3FNNe9kGlkoIWmNgDw="
+    "version": "0.6.4",
+    "hash": "sha256-ScZ7EEcxLvXyam2ZVqDK58QlK3RcePWghzRvtLLLdZI="
   }
 ]
