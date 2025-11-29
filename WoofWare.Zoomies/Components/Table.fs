@@ -77,16 +77,17 @@ module Table =
         assert (result.Length = expectedCount)
         result
 
-    /// Sanitize proportion values to ensure they are positive and real; treat noncompliant specs as Auto
+    /// Sanitize proportion values to ensure they are positive and real; clamp noncompliant values to epsilon
     let private sanitizeColumnSpec (spec : ColumnSpec) : ColumnSpec =
         match spec with
-        | ProportionColumn p when p <= 0.0 || System.Double.IsNaN p || System.Double.IsInfinity p -> AutoColumn
+        | ProportionColumn p when p <= 0.0 || System.Double.IsNaN p || System.Double.IsInfinity p ->
+            ProportionColumn 0.01
         | other -> other
 
-    /// Sanitize proportion values to ensure they are positive and real; treat noncompliant specs as Auto
+    /// Sanitize proportion values to ensure they are positive and real; clamp noncompliant values to epsilon
     let private sanitizeRowSpec (spec : RowSpec) : RowSpec =
         match spec with
-        | ProportionRow p when p <= 0.0 || System.Double.IsNaN p || System.Double.IsInfinity p -> AutoRow
+        | ProportionRow p when p <= 0.0 || System.Double.IsNaN p || System.Double.IsInfinity p -> ProportionRow 0.01
         | other -> other
 
     /// Allocate column widths from available width, respecting per-column minima.
@@ -384,8 +385,8 @@ module Table =
         let mutable cachedCellMeasurements : MeasuredSize[,] option = None
 
         let measure (constraints : MeasureConstraints) : MeasuredSize =
-            if cells.Length = 0 then
-                // Empty table: zero-sized
+            if numRows = 0 then
+                // Empty table (no rows): zero-sized
                 cachedCellMeasurements <- Some (Array2D.zeroCreate 0 0)
 
                 {
@@ -395,6 +396,28 @@ module Table =
                     MinHeightForWidth = fun _ -> 0
                     PreferredHeightForWidth = fun _ -> 0
                     MaxHeightForWidth = fun _ -> Some 0
+                }
+            else if numCols = 0 then
+                // Table with rows but no columns: zero width, height based on row specs
+                cachedCellMeasurements <- Some (Array2D.zeroCreate numRows 0)
+
+                // Compute height from row specs (only FixedRow contributes, Auto/Proportion have no content)
+                let heightFromRowSpecs =
+                    rowSpecs
+                    |> Array.sumBy (fun spec ->
+                        match spec with
+                        | FixedRow h -> h
+                        | AutoRow
+                        | ProportionRow _ -> 0
+                    )
+
+                {
+                    MinWidth = 0
+                    PreferredWidth = 0
+                    MaxWidth = Some 0
+                    MinHeightForWidth = fun _ -> min heightFromRowSpecs constraints.MaxHeight
+                    PreferredHeightForWidth = fun _ -> min heightFromRowSpecs constraints.MaxHeight
+                    MaxHeightForWidth = fun _ -> Some heightFromRowSpecs
                 }
             else
                 // Measure all cells to determine column widths
@@ -500,7 +523,7 @@ module Table =
                 }
 
         let render (bounds : Rectangle) : Vdom<DesiredBounds, Unkeyed> =
-            if cells.Length = 0 then
+            if numRows = 0 || numCols = 0 then
                 Vdom.empty
             else
                 // Retrieve cached measurements from the measure phase
@@ -647,9 +670,12 @@ module Table =
 
                     let _, _, result =
                         Array.foldBack2
-                            (fun row height (rowIdx, isFirst, accum) ->
+                            (fun (row : Vdom<DesiredBounds, Unkeyed>) height (rowIdx, isFirst, accum) ->
                                 if isFirst then
-                                    (rowIdx - 1, false, row)
+                                    // Last row in fold (bottommost row), reserve its height explicitly
+                                    (rowIdx - 1,
+                                     false,
+                                     Vdom.panelSplitAbsolute (SplitDirection.Horizontal, height, row, empty))
                                 else
                                     // Key both the current row and the accumulator with unique namespaced keys
                                     let rowKeyed =

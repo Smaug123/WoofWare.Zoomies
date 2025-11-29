@@ -515,6 +515,56 @@ Prop                |
         }
 
     [<Test>]
+    let ``fixed row heights don't absorb extra space when viewport is taller`` () =
+        task {
+            // This test verifies the fix for the bug where Array.foldBack2 ignored height
+            // for the last row, causing it to absorb all remaining vertical space
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+                Table.make
+                    (NodeKey.make "t_")
+                    [| [| Vdom.textContent false "Row1" |] ; [| Vdom.textContent false "Row2" |] |]
+                    [||]
+                    [| FixedRow 1 ; FixedRow 1 |]
+
+            // Terminal is 5 lines tall, but rows only need 2 lines (1+1)
+            // The bottom row should NOT absorb the extra 3 lines
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = false
+
+            let processWorld =
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+
+            expect {
+                snapshot
+                    @"
+Row1                |
+Row2                |
+                    |
+                    |
+                    |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
     let ``table with simple keyed cells`` () =
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
@@ -668,8 +718,10 @@ Data1   Data2  |
         }
 
     [<Test>]
-    let ``negative proportions are sanitized to Auto`` () =
+    let ``negative proportions are sanitized to epsilon`` () =
         task {
+            // After sanitization: -0.5 becomes 0.01, so the first column gets ~0.01/(0.01+1.0) ≈ 1% of space
+            // With 20 char width and minima of 1 each, column 1 gets ~2 chars, column 2 gets ~18 chars
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
                 Table.make
                     (NodeKey.make "t_")
@@ -705,8 +757,8 @@ Data1   Data2  |
             expect {
                 snapshot
                     @"
-AB                  |
-12                  |
+A B                 |
+1 2                 |
                     |
                     |
                     |
@@ -717,8 +769,12 @@ AB                  |
         }
 
     [<Test>]
-    let ``NaN and Infinity proportions are sanitized to Auto`` () =
+    let ``NaN and Infinity proportions are sanitized to epsilon`` () =
         task {
+            // After sanitization, NaN and Infinity become 0.01
+            // Column 1 (0.01) and Column 2 (0.01) share remaining space equally after AutoColumn
+            // With 30 char width, column 3 (Auto) gets its preferred (2), leaving 28 for columns 1 and 2
+            // Columns 1 and 2 each get ~14 chars (minima 4 each + ~10 extra each)
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
                 Table.make
                     (NodeKey.make "t_")
@@ -761,7 +817,7 @@ AB                  |
             expect {
                 snapshot
                     @"
-Col1Col2C3                    |
+Col1          Col2          C3|
                               |
                               |
                               |
@@ -876,9 +932,10 @@ X  Y                |
         }
 
     [<Test>]
-    let ``zero proportion total divides space equally`` () =
+    let ``zero proportion total becomes equal proportions after sanitization`` () =
         task {
-            // This shouldn't happen in practice after sanitization, but test the allocation logic
+            // After sanitization, 0.0 becomes 0.01 for all columns
+            // With equal proportions, space divides equally: each column gets ~10 chars in a 30-char terminal
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
                 Table.make
                     (NodeKey.make "t_")
@@ -914,11 +971,11 @@ X  Y                |
 
             App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
-            // After sanitization all become Auto, so should size to content
+            // After sanitization all become ProportionColumn 0.01, dividing space equally
             expect {
                 snapshot
                     @"
-ABC                           |
+A         B         C         |
                               |
                               |
                               |
