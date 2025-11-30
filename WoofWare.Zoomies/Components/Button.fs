@@ -9,7 +9,7 @@ type Button =
     /// <param name="label">The text within the button.</param>
     /// <param name="isPressed">True if the button should render as if it were very recently pressed.</param>
     /// <param name="isFocused">True if the button should render as if it currently has focus.</param>
-    static member make' (label : string, isFocused : bool, isPressed : bool) : Vdom<DesiredBounds, Unkeyed> =
+    static member make' (label : string, isFocused : bool, isPressed : bool) : Vdom<DesiredBounds> =
         // Calculate button content: brackets vary based on both focus and pressed state
         let leftBracket, rightBracket =
             match isFocused, isPressed with

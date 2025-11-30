@@ -62,7 +62,7 @@ module App =
     let internal processNoChanges<'state>
         (state : 'state)
         (renderState : RenderState)
-        (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
+        (vdom : VdomContext -> 'state -> Vdom<DesiredBounds>)
         : 'state
         =
         if renderState.VdomContext.IsDirty then
@@ -77,7 +77,7 @@ module App =
         (haveFrameworkHandleFocus : 'state -> bool)
         (renderState : RenderState)
         (processWorld : WorldProcessor<'appEvent, 'state>)
-        (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
+        (vdom : VdomContext -> 'state -> Vdom<DesiredBounds>)
         (resolveActivation : ActivationResolver<'appEvent, 'state>)
         : 'state
         =
@@ -255,7 +255,7 @@ module App =
         (haveFrameworkHandleFocus : 'state -> bool)
         (renderState : RenderState)
         (processWorld : WorldProcessor<'appEvent, 'state>)
-        (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
+        (vdom : VdomContext -> 'state -> Vdom<DesiredBounds>)
         (resolveActivation : ActivationResolver<'appEvent, 'state>)
         : 'state
         =
@@ -314,7 +314,7 @@ module App =
         (initialState : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
         (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'state>)
-        (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
+        (vdom : VdomContext -> 'state -> Vdom<DesiredBounds>)
         (resolveActivation : ActivationResolver<'appEvent, 'state>)
         (debugWriter : StreamWriter option)
         : Task
@@ -418,7 +418,7 @@ module App =
         (state : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
         (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'state>)
-        (vdom : VdomContext -> 'state -> Vdom<DesiredBounds, Unkeyed>)
+        (vdom : VdomContext -> 'state -> Vdom<DesiredBounds>)
         (resolveActivation : ActivationResolver<'appEvent, 'state>)
         : Task
         =

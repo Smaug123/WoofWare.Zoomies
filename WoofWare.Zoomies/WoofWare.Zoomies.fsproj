@@ -22,7 +22,6 @@
   <ItemGroup>
     <!-- similarly, maximise compatibility by keeping FSharp.Core as low as we can -->
     <PackageReference Update="FSharp.Core" Version="6.0.1" />
-    <PackageReference Include="TypeEquality" Version="0.4.2" />
   </ItemGroup>
 
   <ItemGroup>

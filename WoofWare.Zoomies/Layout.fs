@@ -8,7 +8,7 @@ module internal Layout =
     [<NoEquality ; NoComparison>]
     type MeasuredNode<'bounds> =
         {
-            Vdom : KeylessVdom<'bounds>
+            Vdom : Vdom<'bounds>
             Measured : MeasuredSize
             /// Measured children (for container nodes)
             Children : MeasuredNode<'bounds> list
@@ -19,9 +19,9 @@ module internal Layout =
     type ArrangedNode =
         {
             /// The VDOM node being arranged
-            Vdom : KeylessVdom<Rectangle>
+            Vdom : Vdom<Rectangle>
             /// The original DesiredBounds VDOM this was arranged from
-            VDomSource : KeylessVdom<DesiredBounds>
+            VDomSource : Vdom<DesiredBounds>
             /// Final allocated rectangle for this node
             Bounds : Rectangle
             /// Arranged children (for container nodes)
@@ -115,7 +115,7 @@ module internal Layout =
 
     /// Measure a bordered container
     let rec private measureBordered
-        (child : KeylessVdom<DesiredBounds>)
+        (child : Vdom<DesiredBounds>)
         (constraints : MeasureConstraints)
         : MeasuredNode<DesiredBounds>
         =
@@ -154,7 +154,7 @@ module internal Layout =
             }
 
         {
-            Vdom = KeylessVdom.Unkeyed (UnkeyedVdom.Bordered child)
+            Vdom = Vdom.Unkeyed (UnkeyedVdom.Bordered child)
             Measured = containerMeasured
             Children = [ childMeasured ]
         }
@@ -162,8 +162,8 @@ module internal Layout =
     /// Measure a vertical split with fixed proportion
     and private measureVerticalSplitProportion
         (p : float)
-        (child1 : KeylessVdom<DesiredBounds>)
-        (child2 : KeylessVdom<DesiredBounds>)
+        (child1 : Vdom<DesiredBounds>)
+        (child2 : Vdom<DesiredBounds>)
         (constraints : MeasureConstraints)
         : MeasuredNode<DesiredBounds>
         =
@@ -182,7 +182,7 @@ module internal Layout =
 
         {
             Vdom =
-                KeylessVdom.Unkeyed (
+                Vdom.Unkeyed (
                     UnkeyedVdom.PanelSplit (SplitDirection.Vertical, SplitBehaviour.Proportion p, child1, child2)
                 )
             Measured =
@@ -219,8 +219,8 @@ module internal Layout =
     /// Measure a horizontal split with fixed proportion
     and private measureHorizontalSplitProportion
         (p : float)
-        (child1 : KeylessVdom<DesiredBounds>)
-        (child2 : KeylessVdom<DesiredBounds>)
+        (child1 : Vdom<DesiredBounds>)
+        (child2 : Vdom<DesiredBounds>)
         (constraints : MeasureConstraints)
         : MeasuredNode<DesiredBounds>
         =
@@ -233,7 +233,7 @@ module internal Layout =
 
         {
             Vdom =
-                KeylessVdom.Unkeyed (
+                Vdom.Unkeyed (
                     UnkeyedVdom.PanelSplit (SplitDirection.Horizontal, SplitBehaviour.Proportion p, child1, child2)
                 )
             Measured =
@@ -269,8 +269,8 @@ module internal Layout =
 
     /// Measure a vertical split with auto (content-driven) sizing
     and private measureVerticalSplitAuto
-        (child1 : KeylessVdom<DesiredBounds>)
-        (child2 : KeylessVdom<DesiredBounds>)
+        (child1 : Vdom<DesiredBounds>)
+        (child2 : Vdom<DesiredBounds>)
         (constraints : MeasureConstraints)
         : MeasuredNode<DesiredBounds>
         =
@@ -315,10 +315,7 @@ module internal Layout =
                 (w1, totalWidth - w1)
 
         {
-            Vdom =
-                KeylessVdom.Unkeyed (
-                    UnkeyedVdom.PanelSplit (SplitDirection.Vertical, SplitBehaviour.Auto, child1, child2)
-                )
+            Vdom = Vdom.Unkeyed (UnkeyedVdom.PanelSplit (SplitDirection.Vertical, SplitBehaviour.Auto, child1, child2))
             Measured =
                 {
                     MinWidth = m1.MinWidth + m2.MinWidth
@@ -345,8 +342,8 @@ module internal Layout =
 
     /// Measure a horizontal split with auto (content-driven) sizing
     and private measureHorizontalSplitAuto
-        (child1 : KeylessVdom<DesiredBounds>)
-        (child2 : KeylessVdom<DesiredBounds>)
+        (child1 : Vdom<DesiredBounds>)
+        (child2 : Vdom<DesiredBounds>)
         (constraints : MeasureConstraints)
         : MeasuredNode<DesiredBounds>
         =
@@ -358,9 +355,7 @@ module internal Layout =
 
         {
             Vdom =
-                KeylessVdom.Unkeyed (
-                    UnkeyedVdom.PanelSplit (SplitDirection.Horizontal, SplitBehaviour.Auto, child1, child2)
-                )
+                Vdom.Unkeyed (UnkeyedVdom.PanelSplit (SplitDirection.Horizontal, SplitBehaviour.Auto, child1, child2))
             Measured =
                 {
                     MinWidth = max m1.MinWidth m2.MinWidth
@@ -380,8 +375,8 @@ module internal Layout =
     /// Measure a vertical split with absolute first child width
     and private measureVerticalSplitAbsolute
         (n : int)
-        (child1 : KeylessVdom<DesiredBounds>)
-        (child2 : KeylessVdom<DesiredBounds>)
+        (child1 : Vdom<DesiredBounds>)
+        (child2 : Vdom<DesiredBounds>)
         (constraints : MeasureConstraints)
         : MeasuredNode<DesiredBounds>
         =
@@ -431,7 +426,7 @@ module internal Layout =
 
         {
             Vdom =
-                KeylessVdom.Unkeyed (
+                Vdom.Unkeyed (
                     UnkeyedVdom.PanelSplit (SplitDirection.Vertical, SplitBehaviour.Absolute n, child1, child2)
                 )
             Measured =
@@ -489,8 +484,8 @@ module internal Layout =
     /// Measure a horizontal split with absolute first child height
     and private measureHorizontalSplitAbsolute
         (n : int)
-        (child1 : KeylessVdom<DesiredBounds>)
-        (child2 : KeylessVdom<DesiredBounds>)
+        (child1 : Vdom<DesiredBounds>)
+        (child2 : Vdom<DesiredBounds>)
         (constraints : MeasureConstraints)
         : MeasuredNode<DesiredBounds>
         =
@@ -531,7 +526,7 @@ module internal Layout =
 
         {
             Vdom =
-                KeylessVdom.Unkeyed (
+                Vdom.Unkeyed (
                     UnkeyedVdom.PanelSplit (SplitDirection.Horizontal, SplitBehaviour.Absolute n, child1, child2)
                 )
             Measured =
@@ -567,24 +562,24 @@ module internal Layout =
             Children = [ child1Measured ; child2Measured ]
         }
 
-    /// Measure any KeylessVdom node
+    /// Measure any Vdom node
     and private measureEither
         (constraints : MeasureConstraints)
-        (vdom : KeylessVdom<DesiredBounds>)
+        (vdom : Vdom<DesiredBounds>)
         : MeasuredNode<DesiredBounds>
         =
         match vdom with
-        | KeylessVdom.Keyed keyedVdom ->
+        | Vdom.Keyed keyedVdom ->
             match keyedVdom with
-            | KeyedVdom.WithKey (_, unkeyedVdom) ->
+            | KeyedVdom (_, unkeyedVdom) ->
                 let childMeasured = measureUnkeyed constraints unkeyedVdom
 
                 {
-                    Vdom = KeylessVdom.Keyed keyedVdom
+                    Vdom = Vdom.Keyed keyedVdom
                     Measured = childMeasured.Measured
                     Children = [ childMeasured ]
                 }
-        | KeylessVdom.Unkeyed unkeyedVdom -> measureUnkeyed constraints unkeyedVdom
+        | Vdom.Unkeyed unkeyedVdom -> measureUnkeyed constraints unkeyedVdom
 
     /// Measure an unkeyed VDOM node
     and private measureUnkeyed
@@ -595,13 +590,13 @@ module internal Layout =
         match vdom with
         | UnkeyedVdom.TextContent (text, _style, _alignment, _focused) ->
             {
-                Vdom = KeylessVdom.Unkeyed vdom
+                Vdom = Vdom.Unkeyed vdom
                 Measured = measureText text constraints
                 Children = []
             }
         | UnkeyedVdom.Empty ->
             {
-                Vdom = KeylessVdom.Unkeyed vdom
+                Vdom = Vdom.Unkeyed vdom
                 Measured =
                     {
                         MinWidth = 0
@@ -628,10 +623,10 @@ module internal Layout =
             | SplitDirection.Horizontal, SplitBehaviour.Auto -> measureHorizontalSplitAuto child1 child2 constraints
         | UnkeyedVdom.Focusable (_, _, keyedVdom) ->
             // Focusable is transparent for measurement purposes
-            let childMeasured = measureEither constraints (KeylessVdom.Keyed keyedVdom)
+            let childMeasured = measureEither constraints (Vdom.Keyed keyedVdom)
 
             {
-                Vdom = KeylessVdom.Unkeyed vdom
+                Vdom = Vdom.Unkeyed vdom
                 Measured = childMeasured.Measured
                 Children = [ childMeasured ]
             }
@@ -640,7 +635,7 @@ module internal Layout =
             let childMeasured = measureEither constraints inner
 
             {
-                Vdom = KeylessVdom.Unkeyed vdom
+                Vdom = Vdom.Unkeyed vdom
                 Measured = childMeasured.Measured
                 Children = [ childMeasured ]
             }
@@ -674,7 +669,7 @@ module internal Layout =
                 }
 
             {
-                Vdom = KeylessVdom.Unkeyed vdom
+                Vdom = Vdom.Unkeyed vdom
                 Measured = clampedMeasured
                 Children = [] // No children yet - we don't know what they are until arrange
             }
@@ -682,21 +677,18 @@ module internal Layout =
     /// Arrange a measured tree into concrete bounds
     let rec internal arrange (measured : MeasuredNode<DesiredBounds>) (bounds : Rectangle) : ArrangedNode =
         match measured.Vdom with
-        | KeylessVdom.Keyed (KeyedVdom.WithKey (key, unkeyedVdom)) ->
+        | Vdom.Keyed (KeyedVdom (key, unkeyedVdom)) ->
             match unkeyedVdom with
             | UnkeyedVdom.TextContent (text, style, alignment, focused) ->
                 {
-                    Vdom =
-                        KeylessVdom.Keyed (
-                            KeyedVdom.WithKey (key, UnkeyedVdom.TextContent (text, style, alignment, focused))
-                        )
+                    Vdom = Vdom.Keyed (KeyedVdom (key, UnkeyedVdom.TextContent (text, style, alignment, focused)))
                     VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = []
                 }
             | UnkeyedVdom.Empty ->
                 {
-                    Vdom = KeylessVdom.Keyed (KeyedVdom.WithKey (key, UnkeyedVdom.Empty))
+                    Vdom = Vdom.Keyed (KeyedVdom (key, UnkeyedVdom.Empty))
                     VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = []
@@ -716,7 +708,7 @@ module internal Layout =
                 let childVdom = childArranged.Vdom
 
                 {
-                    Vdom = KeylessVdom.Keyed (KeyedVdom.WithKey (key, UnkeyedVdom.Bordered childVdom))
+                    Vdom = Vdom.Keyed (KeyedVdom (key, UnkeyedVdom.Bordered childVdom))
                     VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = [ childArranged ]
@@ -729,10 +721,7 @@ module internal Layout =
                 let child2Vdom = childrenArranged.[1].Vdom
 
                 {
-                    Vdom =
-                        KeylessVdom.Keyed (
-                            KeyedVdom.WithKey (key, UnkeyedVdom.PanelSplit (dir, behaviour, child1Vdom, child2Vdom))
-                        )
+                    Vdom = Vdom.Keyed (KeyedVdom (key, UnkeyedVdom.PanelSplit (dir, behaviour, child1Vdom, child2Vdom)))
                     VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = childrenArranged
@@ -743,14 +732,11 @@ module internal Layout =
 
                 let focusableVdom =
                     match childVdom with
-                    | KeylessVdom.Keyed keyedVdom ->
-                        KeylessVdom.Keyed (
-                            KeyedVdom.WithKey (
-                                key,
-                                UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, keyedVdom)
-                            )
+                    | Vdom.Keyed keyedVdom ->
+                        Vdom.Keyed (
+                            KeyedVdom (key, UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, keyedVdom))
                         )
-                    | KeylessVdom.Unkeyed _ -> failwith "Focusable child must be keyed"
+                    | Vdom.Unkeyed _ -> failwith "Focusable child must be keyed"
 
                 {
                     Vdom = focusableVdom
@@ -764,7 +750,7 @@ module internal Layout =
 
                 // Reconstruct the tagged Vdom from the arranged child
                 let taggedVdom =
-                    KeylessVdom.Keyed (KeyedVdom.WithKey (key, UnkeyedVdom.Tag (tag, childArranged.Vdom)))
+                    Vdom.Keyed (KeyedVdom (key, UnkeyedVdom.Tag (tag, childArranged.Vdom)))
 
                 {
                     Vdom = taggedVdom
@@ -789,23 +775,23 @@ module internal Layout =
                 let arrangedRendered = arrange measuredRendered bounds
 
                 {
-                    Vdom = KeylessVdom.Keyed (KeyedVdom.WithKey (key, UnkeyedVdom.FlexibleContent (measure, render)))
+                    Vdom = Vdom.Keyed (KeyedVdom (key, UnkeyedVdom.FlexibleContent (measure, render)))
                     VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = [ arrangedRendered ]
                 }
-        | KeylessVdom.Unkeyed unkeyedVdom ->
+        | Vdom.Unkeyed unkeyedVdom ->
             match unkeyedVdom with
             | UnkeyedVdom.TextContent (text, style, alignment, focused) ->
                 {
-                    Vdom = KeylessVdom.Unkeyed (UnkeyedVdom.TextContent (text, style, alignment, focused))
+                    Vdom = Vdom.Unkeyed (UnkeyedVdom.TextContent (text, style, alignment, focused))
                     VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = []
                 }
             | UnkeyedVdom.Empty ->
                 {
-                    Vdom = KeylessVdom.Unkeyed UnkeyedVdom.Empty
+                    Vdom = Vdom.Unkeyed UnkeyedVdom.Empty
                     VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = []
@@ -825,7 +811,7 @@ module internal Layout =
                 let childVdom = childArranged.Vdom
 
                 {
-                    Vdom = KeylessVdom.Unkeyed (UnkeyedVdom.Bordered childVdom)
+                    Vdom = Vdom.Unkeyed (UnkeyedVdom.Bordered childVdom)
                     VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = [ childArranged ]
@@ -837,7 +823,7 @@ module internal Layout =
                 let child2Vdom = childrenArranged.[1].Vdom
 
                 {
-                    Vdom = KeylessVdom.Unkeyed (UnkeyedVdom.PanelSplit (dir, behaviour, child1Vdom, child2Vdom))
+                    Vdom = Vdom.Unkeyed (UnkeyedVdom.PanelSplit (dir, behaviour, child1Vdom, child2Vdom))
                     VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = childrenArranged
@@ -848,9 +834,9 @@ module internal Layout =
 
                 let focusableVdom =
                     match childVdom with
-                    | KeylessVdom.Keyed keyedVdom ->
-                        KeylessVdom.Unkeyed (UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, keyedVdom))
-                    | KeylessVdom.Unkeyed _ -> failwith "Focusable child must be keyed"
+                    | Vdom.Keyed keyedVdom ->
+                        Vdom.Unkeyed (UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, keyedVdom))
+                    | Vdom.Unkeyed _ -> failwith "Focusable child must be keyed"
 
                 {
                     Vdom = focusableVdom
@@ -863,7 +849,7 @@ module internal Layout =
                 let childArranged = arrange measured.Children.[0] bounds
 
                 // Reconstruct the tagged Vdom from the arranged child
-                let taggedVdom = KeylessVdom.Unkeyed (UnkeyedVdom.Tag (tag, childArranged.Vdom))
+                let taggedVdom = Vdom.Unkeyed (UnkeyedVdom.Tag (tag, childArranged.Vdom))
 
                 {
                     Vdom = taggedVdom
@@ -888,7 +874,7 @@ module internal Layout =
                 let arrangedRendered = arrange measuredRendered bounds
 
                 {
-                    Vdom = KeylessVdom.Unkeyed (UnkeyedVdom.FlexibleContent (measure, render))
+                    Vdom = Vdom.Unkeyed (UnkeyedVdom.FlexibleContent (measure, render))
                     VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = [ arrangedRendered ]
@@ -1089,7 +1075,7 @@ module internal Layout =
             [ arranged1 ; arranged2 ]
 
     /// Top-level layout function: measure then arrange
-    let internal layout (vdom : Vdom<DesiredBounds, Unkeyed>) (terminalBounds : Rectangle) : ArrangedNode =
+    let internal layout (vdom : Vdom<DesiredBounds>) (terminalBounds : Rectangle) : ArrangedNode =
         // Phase 1: Measure with terminal bounds as constraints
         let constraints =
             {
@@ -1099,7 +1085,7 @@ module internal Layout =
 
         let measured =
             match vdom with
-            | Vdom.Unkeyed (unkeyedVdom, _) -> measureUnkeyed constraints unkeyedVdom
+            | Vdom.Unkeyed unkeyedVdom -> measureUnkeyed constraints unkeyedVdom
             | Vdom.Keyed _ -> failwith "Top-level vdom must be unkeyed"
 
         // Phase 2: Arrange with terminal bounds

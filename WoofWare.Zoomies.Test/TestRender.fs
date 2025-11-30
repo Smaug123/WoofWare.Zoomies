@@ -30,7 +30,7 @@ module TestRender =
     let tearDown () =
         GlobalBuilderConfig.updateAllSnapshots ()
 
-    let vdom (vdomContext : VdomContext) (state : State) : Vdom<DesiredBounds, _> =
+    let vdom (vdomContext : VdomContext) (state : State) : Vdom<DesiredBounds> =
         let left =
             Vdom.textContent
                 false
@@ -1018,9 +1018,9 @@ This is focusable text                                                          
         // Use a wrapper (Bordered) to ensure we have an Unkeyed vdom as required by oneStep
         let cachedKeyedContent = Vdom.textContent false "test content" |> Vdom.withKey key
 
-        let vdom (_ : FakeUnit) : Vdom<DesiredBounds, _> =
+        let vdom (_ : FakeUnit) : Vdom<DesiredBounds> =
             // Wrap the keyed content in a bordered panel (which is Unkeyed)
-            Vdom.bordered cachedKeyedContent
+            Vdom.bordered (Vdom.Keyed cachedKeyedContent)
 
         // First render
         Render.oneStep renderState (FakeUnit.fake ()) vdom
@@ -1063,7 +1063,7 @@ This is focusable text                                                          
                         Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, left, right)
                         |> Vdom.withKey splitKey
                     // Wrap in bordered to make it Unkeyed at the top level
-                    Vdom.bordered split
+                    Vdom.bordered (Vdom.Keyed split)
                 else
                     // Fill the screen with characters to create "artifacts"
                     Vdom.textContent false "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
@@ -1142,7 +1142,7 @@ This is focusable text                                                          
 
                     let keyedBordered = Vdom.bordered content |> Vdom.withKey borderedKey
                     // Wrap in another bordered to make it Unkeyed at the top level
-                    Vdom.bordered keyedBordered
+                    Vdom.bordered (Vdom.Keyed keyedBordered)
                 else
                     // Fill the screen with characters to create "artifacts"
                     Vdom.textContent false "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
@@ -1361,9 +1361,19 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
 
                 // Split with 0.5 proportion so that one side gets 0 width
                 if leftIsKeyed then
-                    Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, Vdom.withKey textKey leftText, rightText)
+                    Vdom.panelSplitProportion (
+                        SplitDirection.Vertical,
+                        0.5,
+                        Vdom.Keyed (Vdom.withKey textKey leftText),
+                        rightText
+                    )
                 else
-                    Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, leftText, Vdom.withKey textKey rightText)
+                    Vdom.panelSplitProportion (
+                        SplitDirection.Vertical,
+                        0.5,
+                        leftText,
+                        Vdom.Keyed (Vdom.withKey textKey rightText)
+                    )
 
             let processWorld =
                 { new WorldProcessor<unit, FakeUnit> with
@@ -1409,7 +1419,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
             let vdom (_ : VdomContext) (_ : FakeUnit) =
                 let leftText = Vdom.textContent false "left" |> Vdom.withKey leftKey
                 let rightText = Vdom.textContent false "right" |> Vdom.withKey rightKey
-                Vdom.panelSplitProportion (SplitDirection.Vertical, 0.1, leftText, rightText)
+                Vdom.panelSplitProportion (SplitDirection.Vertical, 0.1, Vdom.Keyed leftText, Vdom.Keyed rightText)
 
             let processWorld =
                 { new WorldProcessor<unit, FakeUnit> with
@@ -1465,7 +1475,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
             let vdom (_ : VdomContext) (_ : FakeUnit) =
                 let topText = Vdom.textContent false "top" |> Vdom.withKey topKey
                 let bottomText = Vdom.textContent false "bottom" |> Vdom.withKey bottomKey
-                Vdom.panelSplitProportion (SplitDirection.Horizontal, 0.1, topText, bottomText)
+                Vdom.panelSplitProportion (SplitDirection.Horizontal, 0.1, Vdom.Keyed topText, Vdom.Keyed bottomText)
 
             let processWorld =
                 { new WorldProcessor<unit, FakeUnit> with
@@ -2070,7 +2080,7 @@ AAA                 right                                                       
                         Vdom.panelSplitProportion (SplitDirection.Vertical, 0.25, left, right)
 
                 // Wrap in bordered to make it Unkeyed at the top level
-                split |> Vdom.withKey splitKey |> Vdom.bordered
+                split |> Vdom.withKey splitKey |> Vdom.Keyed |> Vdom.bordered
 
             let processWorld =
                 { new WorldProcessor<unit, bool> with
@@ -2256,7 +2266,7 @@ AAA                 right                                                       
                         Vdom.textContent false "AAA" |> Vdom.bordered
 
                 // Wrap in another bordered to make it Unkeyed at the top level
-                bordered |> Vdom.withKey borderedKey |> Vdom.bordered
+                bordered |> Vdom.withKey borderedKey |> Vdom.Keyed |> Vdom.bordered
 
             let processWorld =
                 { new WorldProcessor<unit, bool> with
@@ -2412,15 +2422,15 @@ small               ┌──────────────────┐
         task {
             let console, terminal = ConsoleHarness.make ()
 
-            let vdom (_ : VdomContext) (_ : unit) : Vdom<DesiredBounds, _> =
+            let vdom (_ : VdomContext) (_ : unit) : Vdom<DesiredBounds> =
                 // Use Vdom.empty with panelSplitAbsolute to right-justify content
                 // Negative absolute value gives the right side a fixed width, left side gets the rest
                 // Empty fills the left side, pushing "Right" to the right edge
                 Vdom.panelSplitAbsolute (
                     SplitDirection.Vertical,
                     -5,
-                    Vdom.empty |> Vdom.withKey (NodeKey.make "spacer"),
-                    Vdom.textContent false "Right" |> Vdom.withKey (NodeKey.make "content")
+                    (Vdom.empty |> Vdom.withKey (NodeKey.make "spacer")),
+                    (Vdom.textContent false "Right" |> Vdom.withKey (NodeKey.make "content"))
                 )
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
