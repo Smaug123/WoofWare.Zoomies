@@ -119,16 +119,46 @@ type Vdom =
 
         Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, SplitBehaviour.Proportion p, c1, c2))
 
+    /// <summary>Creates a split panel where two components share space according to a proportion.</summary>
+    /// <remarks>
+    /// The first component <c>c1</c> receives proportion <c>p</c> of the space, and the second component <c>c2</c> receives <c>1 - p</c>.
+    /// </remarks>
+    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
+    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
+    /// <param name="p">Proportion of the space to allocate to the first component (that is, the top or left one). Must be between 0 and 1, exclusive.</param>
+    /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
+    /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
+    /// <exception cref="ArgumentException">The proportion <c>p</c> was not between 0 and 1, exclusive.</exception>
     static member panelSplitProportion
         (d : SplitDirection, p : float, c1 : KeyedVdom<DesiredBounds>, c2 : KeyedVdom<DesiredBounds>)
         =
         Vdom.panelSplitProportion (d, p, Vdom.Keyed c1, Vdom.Keyed c2)
 
+    /// <summary>Creates a split panel where two components share space according to a proportion.</summary>
+    /// <remarks>
+    /// The first component <c>c1</c> receives proportion <c>p</c> of the space, and the second component <c>c2</c> receives <c>1 - p</c>.
+    /// </remarks>
+    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
+    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
+    /// <param name="p">Proportion of the space to allocate to the first component (that is, the top or left one). Must be between 0 and 1, exclusive.</param>
+    /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
+    /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
+    /// <exception cref="ArgumentException">The proportion <c>p</c> was not between 0 and 1, exclusive.</exception>
     static member panelSplitProportion
         (d : SplitDirection, p : float, c1 : Vdom<DesiredBounds>, c2 : KeyedVdom<DesiredBounds>)
         =
         Vdom.panelSplitProportion (d, p, c1, Vdom.Keyed c2)
 
+    /// <summary>Creates a split panel where two components share space according to a proportion.</summary>
+    /// <remarks>
+    /// The first component <c>c1</c> receives proportion <c>p</c> of the space, and the second component <c>c2</c> receives <c>1 - p</c>.
+    /// </remarks>
+    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
+    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
+    /// <param name="p">Proportion of the space to allocate to the first component (that is, the top or left one). Must be between 0 and 1, exclusive.</param>
+    /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
+    /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
+    /// <exception cref="ArgumentException">The proportion <c>p</c> was not between 0 and 1, exclusive.</exception>
     static member panelSplitProportion
         (d : SplitDirection, p : float, c1 : KeyedVdom<DesiredBounds>, c2 : Vdom<DesiredBounds>)
         =
@@ -147,12 +177,42 @@ type Vdom =
     static member panelSplitAbsolute (d, p, c1 : Vdom<DesiredBounds>, c2 : Vdom<DesiredBounds>) : Vdom<DesiredBounds> =
         Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, SplitBehaviour.Absolute p, c1, c2))
 
+    /// <summary>Creates a split panel where one component receives a fixed number of cells.</summary>
+    /// <remarks>
+    /// If <c>p >= 0</c>, the first component <c>c1</c> receives exactly <c>p</c> cells, and the second component <c>c2</c> receives all remaining space.
+    /// If <c>p &lt; 0</c>, the second component <c>c2</c> receives exactly <c>abs(p)</c> cells, and the first component <c>c1</c> receives all remaining space.
+    /// </remarks>
+    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
+    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
+    /// <param name="p">The number of cells to allocate. If positive, allocates to the first component; if negative, allocates abs(p) to the second component.</param>
+    /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
+    /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
     static member panelSplitAbsolute (d, p, c1 : KeyedVdom<DesiredBounds>, c2 : KeyedVdom<DesiredBounds>) =
         Vdom.panelSplitAbsolute (d, p, Vdom.Keyed c1, Vdom.Keyed c2)
 
+    /// <summary>Creates a split panel where one component receives a fixed number of cells.</summary>
+    /// <remarks>
+    /// If <c>p >= 0</c>, the first component <c>c1</c> receives exactly <c>p</c> cells, and the second component <c>c2</c> receives all remaining space.
+    /// If <c>p &lt; 0</c>, the second component <c>c2</c> receives exactly <c>abs(p)</c> cells, and the first component <c>c1</c> receives all remaining space.
+    /// </remarks>
+    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
+    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
+    /// <param name="p">The number of cells to allocate. If positive, allocates to the first component; if negative, allocates abs(p) to the second component.</param>
+    /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
+    /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
     static member panelSplitAbsolute (d, p, c1 : Vdom<DesiredBounds>, c2 : KeyedVdom<DesiredBounds>) =
         Vdom.panelSplitAbsolute (d, p, c1, Vdom.Keyed c2)
 
+    /// <summary>Creates a split panel where one component receives a fixed number of cells.</summary>
+    /// <remarks>
+    /// If <c>p >= 0</c>, the first component <c>c1</c> receives exactly <c>p</c> cells, and the second component <c>c2</c> receives all remaining space.
+    /// If <c>p &lt; 0</c>, the second component <c>c2</c> receives exactly <c>abs(p)</c> cells, and the first component <c>c1</c> receives all remaining space.
+    /// </remarks>
+    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
+    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
+    /// <param name="p">The number of cells to allocate. If positive, allocates to the first component; if negative, allocates abs(p) to the second component.</param>
+    /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
+    /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
     static member panelSplitAbsolute (d, p, c1 : KeyedVdom<DesiredBounds>, c2 : Vdom<DesiredBounds>) =
         Vdom.panelSplitAbsolute (d, p, Vdom.Keyed c1, c2)
 
