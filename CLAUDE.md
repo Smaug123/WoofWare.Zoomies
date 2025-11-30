@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 # Project
 
-This is WoofWare.Zoomies, a reactive immediate-mode TUI framework which will eventually follow the model of Jane Street's Bonsai. It is written in F#, but is currently extremely incomplete.
+This is WoofWare.Zoomies, a reactive immediate-mode TUI framework which will eventually follow the model of Jane Street's Bonsai. It is written in F#, but is currently incomplete.
 
 The intended philosophy of the project is that from a small set of powerful and coherent primitives, it should be possible to build a number of higher-level ergonomic libraries which provide an easy-to-use interface.
 When using the higher-level libraries, the coherence of the underlying primitives should permit the user to drop down seamlessly, as low-level as necessary to achieve any particular customisation.
@@ -20,6 +20,7 @@ It stores state internally for efficiency, but as far as the end-user programmer
 The framework should never throw exceptions when user input is bad.
 Instead, invalid inputs should be handled gracefully by using sensible defaults or rendering fallback content.
 This ensures the application remains stable and provides a better user experience.
+(Throwing on *framework* bugs is fine: I prefer loud failures to silent ones.)
 
 # Commands
 
@@ -65,9 +66,6 @@ The framework uses a virtual DOM approach with these key types:
 - Direction-based panel splitting (Vertical/Horizontal) with proportional or absolute sizing
 - Focus management system for interactive elements
 
-### Nursery Pattern
-Task management using a nursery pattern (`Nursery.fs`) for structured concurrency with proper cancellation and cleanup.
-
 ### World State Management
 - `WorldFreezer<'appEvent>` - Manages application state changes and event processing
 - `WorldProcessor<'appEvent, 'userState>` - Processes world state changes and updates VDOM
@@ -81,18 +79,6 @@ Task management using a nursery pattern (`Nursery.fs`) for structured concurrenc
 ## Writing tests
 
 * When writing tests that exercise the UI, use the system as a user would. For example, don't use spooky external mutable state to control vdom creation; just let the WoofWare.Zoomies framework give you an appropriate user state, and send keystrokes to manipulate the state.
-
-## File Compilation Order
-F# files must be compiled in dependency order. Core files follow a sequence something like this:
-1. `ConsoleModifiers.fs` - Input modifiers
-1. `Nursery.fs` - Task nursery pattern
-1. `Vdom.fs` - Virtual DOM definitions
-1. `CtrlCHandler.fs` - Signal handling
-1. `ConsoleColor.fs`, `Terminal.fs`, `Console.fs` - Terminal abstraction
-1. `IStopwatch.fs` - Timing interface (with Myriad-generated mocks)
-1. `WorldFreezer.fs` - State management
-1. `Render.fs` - Rendering engine
-1. `App.fs` - Application framework
 
 ## Dependency libraries
 

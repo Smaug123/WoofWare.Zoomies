@@ -43,7 +43,7 @@ module ProgressBar =
     /// - With label: "Loading:[███░░░░░░░] 30%"
     /// - No percentage: "[█████░░░░░]"
     /// </remarks>
-    let make' (options : Options) (progress : float) (width : int option) : Vdom<DesiredBounds, Unkeyed> =
+    let make' (options : Options) (progress : float) (width : int option) : Vdom<DesiredBounds> =
         let isValid, progress =
             if progress < 0.0 || progress > 1.0 || System.Double.IsNaN progress then
                 false, 0.0
@@ -52,7 +52,7 @@ module ProgressBar =
 
         let showPercentage = options.ShowPercentage
 
-        let renderBarWithWidth (barWidth : int) : Vdom<DesiredBounds, Unkeyed> =
+        let renderBarWithWidth (barWidth : int) : Vdom<DesiredBounds> =
             let filledCount = int (progress * float barWidth)
             let emptyCount = barWidth - filledCount
 
@@ -72,11 +72,11 @@ module ProgressBar =
                 else
                     barContent
 
-            let barVdom = Vdom.textContent false fullContent
+            let barVdom = Vdom.textContent fullContent
 
             match options.Label with
             | Some labelText ->
-                let labelVdom = Vdom.textContent false labelText
+                let labelVdom = Vdom.textContent labelText
                 let labelWidth = labelText.Length
                 Vdom.panelSplitAbsolute (SplitDirection.Vertical, labelWidth, labelVdom, barVdom)
             | None -> barVdom
@@ -91,7 +91,7 @@ module ProgressBar =
             let minBarWidth = 10
             let preferredBarWidth = 40
 
-            let measure (constraints : MeasureConstraints) =
+            let measure (_constraints : MeasureConstraints) =
                 let labelWidth =
                     match options.Label with
                     | Some label -> label.Length
@@ -139,5 +139,4 @@ module ProgressBar =
     ///
     /// Use <see cref="make'"/> to customize the display with labels and other options.
     /// </remarks>
-    let make (progress : float) (width : int option) : Vdom<DesiredBounds, Unkeyed> =
-        make' Options.Default progress width
+    let make (progress : float) (width : int option) : Vdom<DesiredBounds> = make' Options.Default progress width

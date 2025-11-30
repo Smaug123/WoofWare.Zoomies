@@ -46,15 +46,15 @@ module Collapsible =
         (key : NodeKey)
         (state : State)
         (label : string)
-        (child : Vdom<DesiredBounds, Keyed>)
-        : Vdom<DesiredBounds, Unkeyed>
+        (child : Vdom<DesiredBounds>)
+        : Vdom<DesiredBounds>
         =
         let toggle =
             Toggle.make (ctx, key, '▶', '▼', state.IsExpanded)
             |> fun v -> Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 1, v, Vdom.empty)
 
-        let spacer = Vdom.textContent false " "
-        let labelVdom = Vdom.textContent false label
+        let spacer = Vdom.textContent " "
+        let labelVdom = Vdom.textContent label
 
         let headerContent =
             Vdom.panelSplitAbsolute (

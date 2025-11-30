@@ -9,8 +9,8 @@ type RenderedNode =
         {
             Bounds : Rectangle
             OverlaidChildren : RenderedNode list
-            VDomSource : KeylessVdom<DesiredBounds>
-            Self : KeylessVdom<Rectangle>
+            VDomSource : Vdom<DesiredBounds>
+            Self : Vdom<Rectangle>
             ArrangedSource : Layout.ArrangedNode option
         }
 
@@ -188,7 +188,7 @@ module Render =
         (initiallyFocusedKey : NodeKey option ref)
         (previousRender : RenderedNode option)
         (arranged : Layout.ArrangedNode)
-        (originalVdom : KeylessVdom<DesiredBounds>)
+        (originalVdom : Vdom<DesiredBounds>)
         : RenderedNode
         =
         // Early cutoff: check if we can reuse previousRender based on structural equality
@@ -197,8 +197,7 @@ module Render =
             | Some prev when prev.Bounds = arranged.Bounds ->
                 match originalVdom, prev.VDomSource with
                 // Keyed nodes with same reference - reuse previous
-                | KeylessVdom.Keyed (KeyedVdom.WithKey (key1, vdom1)),
-                  KeylessVdom.Keyed (KeyedVdom.WithKey (key2, vdom2)) when key1 = key2 ->
+                | Vdom.Keyed (KeyedVdom (key1, vdom1)), Vdom.Keyed (KeyedVdom (key2, vdom2)) when key1 = key2 ->
                     match vdom1, vdom2 with
                     | UnkeyedVdom.TextContent (text1, style1, align1, focus1),
                       UnkeyedVdom.TextContent (text2, style2, align2, focus2) when
@@ -318,16 +317,16 @@ module Render =
                             None
                     | _ -> None
                 // Unkeyed leaf nodes
-                | KeylessVdom.Unkeyed (UnkeyedVdom.TextContent (text1, style1, align1, focus1)),
-                  KeylessVdom.Unkeyed (UnkeyedVdom.TextContent (text2, style2, align2, focus2)) when
+                | Vdom.Unkeyed (UnkeyedVdom.TextContent (text1, style1, align1, focus1)),
+                  Vdom.Unkeyed (UnkeyedVdom.TextContent (text2, style2, align2, focus2)) when
                     text1 = text2 && style1 = style2 && align1 = align2 && focus1 = focus2
                     ->
                     Some prev
-                | KeylessVdom.Unkeyed UnkeyedVdom.Empty, KeylessVdom.Unkeyed UnkeyedVdom.Empty ->
+                | Vdom.Unkeyed UnkeyedVdom.Empty, Vdom.Unkeyed UnkeyedVdom.Empty ->
                     // Empty nodes are always equal
                     Some prev
                 // Container nodes need recursive checks
-                | KeylessVdom.Unkeyed (UnkeyedVdom.Bordered child1), KeylessVdom.Unkeyed (UnkeyedVdom.Bordered _) when
+                | Vdom.Unkeyed (UnkeyedVdom.Bordered child1), Vdom.Unkeyed (UnkeyedVdom.Bordered _) when
                     prev.OverlaidChildren.Length > 0
                     ->
                     // Recursively check child
@@ -349,8 +348,8 @@ module Render =
                     else
                         // Child changed, will create new parent below
                         None
-                | KeylessVdom.Unkeyed (UnkeyedVdom.PanelSplit (dir1, behav1, child1a, child1b)),
-                  KeylessVdom.Unkeyed (UnkeyedVdom.PanelSplit (dir2, behav2, _, _)) when
+                | Vdom.Unkeyed (UnkeyedVdom.PanelSplit (dir1, behav1, child1a, child1b)),
+                  Vdom.Unkeyed (UnkeyedVdom.PanelSplit (dir2, behav2, _, _)) when
                     dir1 = dir2 && behav1 = behav2 && prev.OverlaidChildren.Length >= 2
                     ->
                     // Recursively check both children
@@ -386,11 +385,11 @@ module Render =
                     else
                         // At least one child changed, will create new parent below
                         None
-                | KeylessVdom.Unkeyed (UnkeyedVdom.Focusable _), KeylessVdom.Unkeyed (UnkeyedVdom.Focusable _) ->
+                | Vdom.Unkeyed (UnkeyedVdom.Focusable _), Vdom.Unkeyed (UnkeyedVdom.Focusable _) ->
                     // Focusable nodes have complex focus registration logic
                     // Skip early cutoff and use normal path to avoid issues
                     None
-                | KeylessVdom.Unkeyed (UnkeyedVdom.Tag _), KeylessVdom.Unkeyed (UnkeyedVdom.Tag _) when
+                | Vdom.Unkeyed (UnkeyedVdom.Tag _), Vdom.Unkeyed (UnkeyedVdom.Tag _) when
                     prev.OverlaidChildren.Length > 0
                     ->
                     // Tag is a transparent container - check if the child changed
@@ -412,8 +411,9 @@ module Render =
                     else
                         // Child changed, will create new parent below
                         None
-                | KeylessVdom.Unkeyed (UnkeyedVdom.FlexibleContent _),
-                  KeylessVdom.Unkeyed (UnkeyedVdom.FlexibleContent _) when prev.OverlaidChildren.Length > 0 ->
+                | Vdom.Unkeyed (UnkeyedVdom.FlexibleContent _), Vdom.Unkeyed (UnkeyedVdom.FlexibleContent _) when
+                    prev.OverlaidChildren.Length > 0
+                    ->
                     // FlexibleContent is a transparent container - check if the child changed
                     let prevChild = prev.OverlaidChildren.[0]
 
@@ -442,7 +442,7 @@ module Render =
 
         let children =
             match originalVdom with
-            | KeylessVdom.Keyed (KeyedVdom.WithKey (_, unkeyedVdom)) ->
+            | Vdom.Keyed (KeyedVdom (_, unkeyedVdom)) ->
                 match unkeyedVdom with
                 | UnkeyedVdom.Bordered child ->
                     let prevChild =
@@ -485,7 +485,7 @@ module Render =
                             arranged.Children.[1]
                             child2
                     ]
-                | UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, KeyedVdom.WithKey (key, childVdom)) ->
+                | UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, KeyedVdom (key, childVdom)) ->
                     // Try to add the key; if it's already there (from early cutoff), ignore
                     let _ = focusableKeys.Add key
 
@@ -508,7 +508,7 @@ module Render =
                             initiallyFocusedKey
                             prevChild
                             arranged.Children.[0]
-                            (KeylessVdom.Keyed (KeyedVdom.WithKey (key, childVdom)))
+                            (Vdom.Keyed (KeyedVdom (key, childVdom)))
                     ]
                 | UnkeyedVdom.Tag (_, _) ->
                     // Tag is a transparent container - render the single child
@@ -546,7 +546,7 @@ module Render =
                     ]
                 | UnkeyedVdom.TextContent _
                 | UnkeyedVdom.Empty -> []
-            | KeylessVdom.Unkeyed unkeyedVdom ->
+            | Vdom.Unkeyed unkeyedVdom ->
                 match unkeyedVdom with
                 | UnkeyedVdom.Bordered child ->
                     let prevChild =
@@ -589,7 +589,7 @@ module Render =
                             arranged.Children.[1]
                             child2
                     ]
-                | UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, KeyedVdom.WithKey (key, childVdom)) ->
+                | UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, KeyedVdom (key, childVdom)) ->
                     // Try to add the key; if it's already there (from early cutoff), ignore
                     let _ = focusableKeys.Add key
 
@@ -612,7 +612,7 @@ module Render =
                             initiallyFocusedKey
                             prevChild
                             arranged.Children.[0]
-                            (KeylessVdom.Keyed (KeyedVdom.WithKey (key, childVdom)))
+                            (Vdom.Keyed (KeyedVdom (key, childVdom)))
                     ]
                 | UnkeyedVdom.Tag (_, _) ->
                     // Tag is a transparent container - render the single child
@@ -662,16 +662,16 @@ module Render =
 
         // Register keyed nodes
         match originalVdom with
-        | KeylessVdom.Keyed (KeyedVdom.WithKey (key, unkeyedVdom)) ->
+        | Vdom.Keyed (KeyedVdom (key, unkeyedVdom)) ->
             match unkeyedVdom with
-            | UnkeyedVdom.Focusable (_, _, KeyedVdom.WithKey (childKey, _)) ->
+            | UnkeyedVdom.Focusable (_, _, KeyedVdom (childKey, _)) ->
                 // For focusable wrappers, don't register the wrapper key.
                 // The child's key is already registered by the recursive call.
                 ()
             | _ ->
                 // For all other keyed nodes (including Tag wrappers), register the key to this node
                 keyToNode.[key] <- result
-        | KeylessVdom.Unkeyed (UnkeyedVdom.Focusable (_, _, KeyedVdom.WithKey (key, _))) ->
+        | Vdom.Unkeyed (UnkeyedVdom.Focusable (_, _, KeyedVdom (key, _))) ->
             // Register the focusable child's key
             keyToNode.[key] <- children.[0]
         | _ -> ()
@@ -691,10 +691,10 @@ module Render =
             node.Bounds.Height
 
         match node.Vdom with
-        | KeylessVdom.Unkeyed (UnkeyedVdom.TextContent _) -> fprintf writer "TextContent"
-        | KeylessVdom.Unkeyed UnkeyedVdom.Empty -> fprintf writer "Empty"
-        | KeylessVdom.Unkeyed (UnkeyedVdom.Bordered _) -> fprintf writer "Bordered"
-        | KeylessVdom.Unkeyed (UnkeyedVdom.PanelSplit (direction, behaviour, _, _)) ->
+        | Vdom.Unkeyed (UnkeyedVdom.TextContent _) -> fprintf writer "TextContent"
+        | Vdom.Unkeyed UnkeyedVdom.Empty -> fprintf writer "Empty"
+        | Vdom.Unkeyed (UnkeyedVdom.Bordered _) -> fprintf writer "Bordered"
+        | Vdom.Unkeyed (UnkeyedVdom.PanelSplit (direction, behaviour, _, _)) ->
             let dirStr =
                 if direction = SplitDirection.Vertical then
                     "Vertical"
@@ -708,11 +708,11 @@ module Render =
                 | SplitBehaviour.Auto -> "Auto"
 
             fprintf writer $"PanelSplit(%s{dirStr}, %s{behavStr})"
-        | KeylessVdom.Unkeyed (UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, _)) ->
+        | Vdom.Unkeyed (UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, _)) ->
             fprintf writer $"Focusable(isFirstToFocus=%b{isFirstToFocus}, isInitiallyFocused=%b{isInitiallyFocused})"
-        | KeylessVdom.Unkeyed (UnkeyedVdom.Tag (tag, _)) -> fprintf writer $"Tag(\"%s{tag}\")"
-        | KeylessVdom.Unkeyed (UnkeyedVdom.FlexibleContent _) -> fprintf writer "FlexibleContent"
-        | KeylessVdom.Keyed _ -> fprintf writer "Keyed"
+        | Vdom.Unkeyed (UnkeyedVdom.Tag (tag, _)) -> fprintf writer $"Tag(\"%s{tag}\")"
+        | Vdom.Unkeyed (UnkeyedVdom.FlexibleContent _) -> fprintf writer "FlexibleContent"
+        | Vdom.Keyed _ -> fprintf writer "Keyed"
 
         fprintfn writer ""
 
@@ -727,7 +727,7 @@ module Render =
         (initiallyFocusedKey : NodeKey option ref)
         (previousRender : RenderedNode option)
         (bounds : Rectangle)
-        (vdom : Vdom<DesiredBounds, Unkeyed>)
+        (vdom : Vdom<DesiredBounds>)
         (debugWriter : IO.StreamWriter option)
         : RenderedNode
         =
@@ -753,7 +753,7 @@ module Render =
 
             // Convert to RenderedNode
             match vdom with
-            | Vdom.Unkeyed (unkeyedVdom, _) ->
+            | Vdom.Unkeyed unkeyedVdom ->
                 arrangedToRendered
                     keyToNode
                     focusableKeys
@@ -761,7 +761,7 @@ module Render =
                     initiallyFocusedKey
                     previousRender
                     arranged
-                    (KeylessVdom.Unkeyed unkeyedVdom)
+                    (Vdom.Unkeyed unkeyedVdom)
             | Vdom.Keyed _ -> failwith "Top-level vdom must be unkeyed"
 
     /// Clear a rectangular region by filling it with spaces
@@ -786,16 +786,16 @@ module Render =
         // Extract the UnkeyedVdomNode from either Keyed or Unkeyed wrapper
         let unkeyedVdom =
             match node.VDomSource with
-            | KeylessVdom.Keyed (KeyedVdom.WithKey (_, vdom)) -> vdom
-            | KeylessVdom.Unkeyed vdom -> vdom
+            | Vdom.Keyed (KeyedVdom (_, vdom)) -> vdom
+            | Vdom.Unkeyed vdom -> vdom
 
         // Helper to check if previous node matches the current node type for container optimization
         let previousMatchesContainer nodeType =
             match previousNode with
             | Some prev when prev.Bounds = bounds ->
                 match prev.VDomSource with
-                | KeylessVdom.Keyed (KeyedVdom.WithKey (_, prevVdom))
-                | KeylessVdom.Unkeyed prevVdom ->
+                | Vdom.Keyed (KeyedVdom (_, prevVdom))
+                | Vdom.Unkeyed prevVdom ->
                     match prevVdom, nodeType with
                     | UnkeyedVdom.PanelSplit _, UnkeyedVdom.PanelSplit _ -> true
                     | UnkeyedVdom.Bordered _, UnkeyedVdom.Bordered _ -> true
@@ -961,11 +961,7 @@ module Render =
                     | ValueSome cell -> yield! [ TerminalOp.MoveCursor (x, y) ; TerminalOp.WriteChar cell ]
         }
 
-    let oneStep<'state>
-        (renderState : RenderState)
-        (userState : 'state)
-        (compute : 'state -> Vdom<DesiredBounds, Unkeyed>)
-        =
+    let oneStep<'state> (renderState : RenderState) (userState : 'state) (compute : 'state -> Vdom<DesiredBounds>) =
         do
             let bounds = VdomContext.terminalBounds renderState.VdomContext
             let terminalHeight = bounds.Height

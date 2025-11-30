@@ -75,7 +75,7 @@ module TestBatchProcessing =
                             |> ProcessWorldResult.withRerender (toProcess - 1)
                 }
 
-            let vdom (_vdomContext : VdomContext) (_state : ImmutableArray<char>) = Vdom.textContent false ""
+            let vdom (_vdomContext : VdomContext) (_state : ImmutableArray<char>) = Vdom.textContent ""
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
             let mutable currentState = initialState
@@ -468,7 +468,7 @@ module TestBatchProcessing =
 
                 let vdom (_vdomContext : VdomContext) (_state : char list) =
                     vdomRenderCount <- vdomRenderCount + 1
-                    Vdom.textContent false ""
+                    Vdom.textContent ""
 
                 let renderState = RenderState.make console MockTime.getStaticUtcNow None
                 let mutable currentState = []

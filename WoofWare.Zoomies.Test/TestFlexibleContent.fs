@@ -28,7 +28,7 @@ module TestFlexibleContent =
         GlobalBuilderConfig.updateAllSnapshots ()
 
     /// A simple progress bar that renders differently based on width
-    let progressBar (fraction : float) : Vdom<DesiredBounds, Unkeyed> =
+    let progressBar (fraction : float) : Vdom<DesiredBounds> =
         let measure (constraints : MeasureConstraints) =
             constraints.MaxWidth |> shouldBeGreaterThan 19
 
@@ -57,12 +57,12 @@ module TestFlexibleContent =
                 + String.replicate (emptyCells - (if filledCells < (barWidth - 2) then 1 else 0)) " "
                 + "]"
 
-            Vdom.textContent false bar
+            Vdom.textContent bar
 
         Vdom.flexibleContent measure render
 
     /// A responsive layout that switches between horizontal and vertical
-    let responsiveLayout (content1 : string) (content2 : string) : Vdom<DesiredBounds, Unkeyed> =
+    let responsiveLayout (content1 : string) (content2 : string) : Vdom<DesiredBounds> =
         let measure (constraints : MeasureConstraints) =
             constraints.MaxWidth |> shouldBeGreaterThan 19
 
@@ -86,16 +86,16 @@ module TestFlexibleContent =
                 Vdom.panelSplitProportion (
                     SplitDirection.Horizontal,
                     0.5,
-                    Vdom.textContent false content1,
-                    Vdom.textContent false content2
+                    Vdom.textContent content1,
+                    Vdom.textContent content2
                 )
             else
                 // Horizontal side-by-side layout
                 Vdom.panelSplitProportion (
                     SplitDirection.Vertical,
                     0.5,
-                    Vdom.textContent false content1,
-                    Vdom.textContent false content2
+                    Vdom.textContent content1,
+                    Vdom.textContent content2
                 )
 
         Vdom.flexibleContent measure render
@@ -215,7 +215,7 @@ module TestFlexibleContent =
             }
 
         let render (bounds : Rectangle) =
-            Vdom.textContent false $"Width: %d{bounds.Width}"
+            Vdom.textContent $"Width: %d{bounds.Width}"
 
         let vdom = Vdom.flexibleContent measure render
 
@@ -239,7 +239,7 @@ module TestFlexibleContent =
     let ``FlexibleContent can be nested`` () =
         // Outer FlexibleContent decides whether to show a simple or detailed view
         // Inner FlexibleContent renders a progress bar that adapts to its allocated space
-        let nestedFlexible (fraction : float) : Vdom<DesiredBounds, Unkeyed> =
+        let nestedFlexible (fraction : float) : Vdom<DesiredBounds> =
             let outerMeasure (constraints : MeasureConstraints) =
                 {
                     MinWidth = 15
@@ -277,7 +277,7 @@ module TestFlexibleContent =
                         + String.replicate (emptyCells - (if filledCells < (barWidth - 2) then 1 else 0)) " "
                         + "]"
 
-                    Vdom.textContent false bar
+                    Vdom.textContent bar
 
                 let innerFlexible = Vdom.flexibleContent innerMeasure innerRender
 
@@ -286,7 +286,7 @@ module TestFlexibleContent =
                     Vdom.panelSplitProportion (
                         SplitDirection.Horizontal,
                         0.33,
-                        Vdom.textContent false "Progress:",
+                        Vdom.textContent "Progress:",
                         innerFlexible
                     )
                 else
@@ -317,7 +317,7 @@ Progress:                                         |
     [<Test>]
     let ``Nested FlexibleContent renders differently at narrow width`` () =
         // Same nested structure as above but at narrow width
-        let nestedFlexible (fraction : float) : Vdom<DesiredBounds, Unkeyed> =
+        let nestedFlexible (fraction : float) : Vdom<DesiredBounds> =
             let outerMeasure (constraints : MeasureConstraints) =
                 {
                     MinWidth = 15
@@ -354,7 +354,7 @@ Progress:                                         |
                         + String.replicate (emptyCells - (if filledCells < (barWidth - 2) then 1 else 0)) " "
                         + "]"
 
-                    Vdom.textContent false bar
+                    Vdom.textContent bar
 
                 let innerFlexible = Vdom.flexibleContent innerMeasure innerRender
 
@@ -362,7 +362,7 @@ Progress:                                         |
                     Vdom.panelSplitProportion (
                         SplitDirection.Horizontal,
                         0.33,
-                        Vdom.textContent false "Progress:",
+                        Vdom.textContent "Progress:",
                         innerFlexible
                     )
                 else

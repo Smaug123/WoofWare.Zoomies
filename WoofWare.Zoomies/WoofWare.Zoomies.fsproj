@@ -16,17 +16,18 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>fsharp;tui;terminal;immediate;vdom;interface;console</PackageTags>
+    <WoofWareMyriadPluginVersion>9.1.4</WoofWareMyriadPluginVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- similarly, maximise compatibility by keeping FSharp.Core as low as we can -->
-    <PackageReference Update="FSharp.Core" Version="6.0.0" />
-    <PackageReference Include="TypeEquality" Version="0.3.0" />
+    <PackageReference Update="FSharp.Core" Version="6.0.1" />
   </ItemGroup>
 
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Object.fs" />
+    <Compile Include="Array.fs" />
     <Compile Include="FakeUnit.fs" />
     <Compile Include="Exception.fs" />
     <Compile Include="OrderedSet.fs" />
@@ -35,6 +36,12 @@
     <Compile Include="ConsoleColor.fs" />
     <Compile Include="CellStyle.fs" />
     <Compile Include="Vdom.fs" />
+    <Compile Include="GeneratedVdom.fs">
+      <MyriadFile>Vdom.fs</MyriadFile>
+      <MyriadParams>
+        <UnkeyedVdom>CreateCatamorphism(VdomCata')</UnkeyedVdom>
+      </MyriadParams>
+    </Compile>
     <Compile Include="ActivationResolver.fs" />
     <Compile Include="CtrlCHandler.fs" />
     <Compile Include="Terminal.fs" />
@@ -43,6 +50,7 @@
     <Compile Include="WorldFreezer.fs" />
     <Compile Include="VdomContext.fs" />
     <Compile Include="Layout.fs" />
+    <Compile Include="VdomBounds.fs" />
     <Compile Include="Render.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Components\Button.fs" />
@@ -51,10 +59,19 @@
     <Compile Include="Components\Collapsible.fs" />
     <Compile Include="Components\LabelledCheckbox.fs" />
     <Compile Include="Components\ProgressBar.fs" />
+    <Compile Include="Components\Table.fs" />
     <None Include="..\README.md">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>
   </ItemGroup>
 
+  <!-- Uncomment this to regenerate the GeneratedVdom file. -->
+  <!--
+  <ItemGroup>
+    <MyriadSdkGenerator Include="$(NuGetPackageRoot)/woofware.myriad.plugins/$(WoofWareMyriadPluginVersion)/lib/net6.0/WoofWare.Myriad.Plugins.dll" />
+    <PackageReference Include="WoofWare.Myriad.Plugins" Version="$(WoofWareMyriadPluginVersion)" PrivateAssets="all" />
+    <PackageReference Include="Myriad.Sdk" Version="0.8.3" PrivateAssets="all" />
+  </ItemGroup>
+  -->
 </Project>

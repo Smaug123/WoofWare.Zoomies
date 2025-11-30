@@ -2,6 +2,7 @@ namespace WoofWare.Zoomies.Test
 
 open System
 open NUnit.Framework
+open FsUnitTyped
 open WoofWare.Expect
 open WoofWare.Zoomies
 open WoofWare.Zoomies.Components
@@ -29,9 +30,7 @@ module TestCollapsible =
             let collapsibleKey = NodeKey.make "collapsible"
 
             let vdom (vdomContext : VdomContext) (state : State) =
-                let childContent =
-                    Vdom.textContent false "This stuff was hidden"
-                    |> Vdom.withKey (NodeKey.make "child")
+                let childContent = Vdom.textContent "This stuff was hidden"
 
                 Collapsible.make vdomContext collapsibleKey state.CollapsibleState "Collapsible section" childContent
 
@@ -232,15 +231,12 @@ This stuff was hidden                                       |
             let vdom (vdomContext : VdomContext) (state : State) =
                 let childContent =
                     let line1 =
-                        Vdom.textContent false "Line 1 of content"
-                        |> Vdom.withKey (NodeKey.make "line1")
+                        Vdom.textContent "Line 1 of content" |> Vdom.withKey (NodeKey.make "line1")
 
                     let line2 =
-                        Vdom.textContent false "Line 2 of content"
-                        |> Vdom.withKey (NodeKey.make "line2")
+                        Vdom.textContent "Line 2 of content" |> Vdom.withKey (NodeKey.make "line2")
 
                     Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 1, line1, line2)
-                    |> Vdom.withKey (NodeKey.make "lines12")
 
                 Collapsible.make vdomContext collapsibleKey state.CollapsibleState "Multi-line section" childContent
 
@@ -379,9 +375,7 @@ Line 2 of content                                           |
             let vdom (vdomContext : VdomContext) (state : State) =
                 let collapsibleKey = NodeKey.make "collapsible"
 
-                let childContent =
-                    Vdom.textContent false "Child content here"
-                    |> Vdom.withKey (NodeKey.make "child")
+                let childContent = Vdom.textContent "Child content here"
 
                 Collapsible.make vdomContext collapsibleKey state.CollapsibleState longLabel childContent
 
@@ -399,18 +393,15 @@ Line 2 of content                                           |
                                     match VdomContext.focusedKey renderState with
                                     | None -> ()
                                     | Some focused ->
-                                        let key = NodeKey.toString focused
+                                        NodeKey.toHumanReadableString focused |> shouldEqual "collapsible"
 
-                                        if key = "collapsible" then
-                                            newState <-
-                                                {
-                                                    CollapsibleState =
-                                                        {
-                                                            IsExpanded = not state.CollapsibleState.IsExpanded
-                                                        }
-                                                }
-                                        else
-                                            failwith "unexpected key"
+                                        newState <-
+                                            {
+                                                CollapsibleState =
+                                                    {
+                                                        IsExpanded = not state.CollapsibleState.IsExpanded
+                                                    }
+                                            }
                                 else
                                     failwith "unexpected key char"
                             | WorldStateChange.MouseEvent _ -> failwith "no mouse events"

@@ -124,7 +124,7 @@ module FileBrowser =
                 ProcessWorldResult.make (state.ToImmutable ())
         }
 
-    let view (vdomContext : VdomContext) (state : State) : Vdom<DesiredBounds, Unkeyed> =
+    let view (vdomContext : VdomContext) (state : State) : Vdom<DesiredBounds> =
         let topPane =
             let label = $"[{state.File1Path}] / [{state.File2Path}]"
 
@@ -140,7 +140,7 @@ module FileBrowser =
                 | false, Some content -> content
                 | false, None -> "Press space to load a file"
 
-            Vdom.textContent false content |> Vdom.bordered
+            Vdom.textContent content |> Vdom.bordered
 
         Vdom.panelSplitAuto (SplitDirection.Horizontal, topPane, bottomPane)
 

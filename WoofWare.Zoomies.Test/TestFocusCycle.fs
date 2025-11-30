@@ -83,7 +83,9 @@ module TestFocusCycle =
                                         // pressed space while nothing focused
                                         ()
                                     | Some focused ->
-                                        let key = NodeKey.toString focused
+                                        // a hack just to make the test smaller; in real life you should more explicitly
+                                        // model what checkboxes you have with some sort of map
+                                        let key = NodeKey.toHumanReadableString focused
                                         let prefix = "checkbox"
 
                                         if key.StartsWith (prefix, StringComparison.Ordinal) then
@@ -372,7 +374,9 @@ module TestFocusCycle =
                                     match VdomContext.focusedKey renderState with
                                     | None -> ()
                                     | Some focused ->
-                                        let key = NodeKey.toString focused
+                                        // a hack just to make the test smaller; in real life you should more explicitly
+                                        // model what checkboxes you have with some sort of map
+                                        let key = NodeKey.toHumanReadableString focused
                                         let prefix = "checkbox"
 
                                         if key.StartsWith (prefix, StringComparison.Ordinal) then
@@ -693,16 +697,11 @@ module TestFocusCycle =
                     let nonFocusable =
                         Components.Checkbox.make' (false, isFocused) |> Vdom.withKey sharedKey
 
-                    Vdom.panelSplitProportion (
-                        SplitDirection.Vertical,
-                        0.5,
-                        Vdom.textContent false "more",
-                        nonFocusable
-                    )
+                    Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, Vdom.textContent "more", nonFocusable)
                 | 2 ->
                     // Third frame: nothing should now be focused, because the previous frame had no focusable elements.
                     currentFocus |> shouldEqual None
-                    Vdom.textContent false ""
+                    Vdom.textContent ""
                 | _ -> failwith "unexpected"
 
             use worldFreezer =

@@ -30,17 +30,14 @@ module TestRender =
     let tearDown () =
         GlobalBuilderConfig.updateAllSnapshots ()
 
-    let vdom (vdomContext : VdomContext) (state : State) : Vdom<DesiredBounds, _> =
+    let vdom (vdomContext : VdomContext) (state : State) : Vdom<DesiredBounds> =
         let left =
             Vdom.textContent
-                false
                 "not praising the praiseworthy keeps people uncompetitive; not prizing rare treasures keeps people from stealing; not looking at the desirable keeps the mind quiet"
             |> Vdom.bordered
 
         let right =
-            Vdom.textContent
-                false
-                "errybody wants to be a bodybuilder, but don't nobody want to lift no heavy-ass weights"
+            Vdom.textContent "errybody wants to be a bodybuilder, but don't nobody want to lift no heavy-ass weights"
             |> Vdom.bordered
 
         let topHalf = Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, left, right)
@@ -60,7 +57,7 @@ module TestRender =
                 Vdom.panelSplitProportion (
                     SplitDirection.Vertical,
                     0.5,
-                    Vdom.textContent false "only displayed when checked",
+                    Vdom.textContent "only displayed when checked",
                     Components.LabelledCheckbox.make (
                         vdomContext,
                         "this one is focusable!",
@@ -376,7 +373,7 @@ only displayed when checked                this one is focusable!               
                 let checkboxKey = NodeKey.make "checkbox"
 
                 let text =
-                    Vdom.textContent (currentFocus = Some textKey) "This is focusable text"
+                    Vdom.textContent ("This is focusable text", isFocused = (currentFocus = Some textKey))
                     |> Vdom.withKey textKey
                     |> Vdom.withFocusTracking
 
@@ -875,8 +872,8 @@ This is focusable text                                                          
         // Create vdom with a PanelSplit where a bordered child changes
         // Bordered doesn't repaint its entire area, so we can detect if PanelSplit is adding extra repaints
         let vdom (text : string) =
-            let left = Vdom.textContent false text |> Vdom.bordered
-            let right = Vdom.textContent false "static" |> Vdom.bordered
+            let left = Vdom.textContent text |> Vdom.bordered
+            let right = Vdom.textContent "static" |> Vdom.bordered
             Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, left, right)
 
         // First render
@@ -928,7 +925,7 @@ This is focusable text                                                          
 
         // Create vdom with bordered text that can change
         let vdom (content : string) =
-            Vdom.textContent false content |> Vdom.bordered
+            Vdom.textContent content |> Vdom.bordered
 
         // First render
         Render.oneStep renderState () (fun _ -> vdom "initial text")
@@ -982,8 +979,7 @@ This is focusable text                                                          
 
         // Create vdom with some content that will result in multiple cells being written
         let vdom =
-            Vdom.textContent false "This is some text that spans multiple cells"
-            |> Vdom.bordered
+            Vdom.textContent "This is some text that spans multiple cells" |> Vdom.bordered
 
         // Do a render
         Render.oneStep renderState () (fun _ -> vdom)
@@ -1016,9 +1012,9 @@ This is focusable text                                                          
 
         // Create a vdom with a keyed node - memoize it so we get the same reference each time
         // Use a wrapper (Bordered) to ensure we have an Unkeyed vdom as required by oneStep
-        let cachedKeyedContent = Vdom.textContent false "test content" |> Vdom.withKey key
+        let cachedKeyedContent = Vdom.textContent "test content" |> Vdom.withKey key
 
-        let vdom (_ : FakeUnit) : Vdom<DesiredBounds, _> =
+        let vdom (_ : FakeUnit) : Vdom<DesiredBounds> =
             // Wrap the keyed content in a bordered panel (which is Unkeyed)
             Vdom.bordered cachedKeyedContent
 
@@ -1056,8 +1052,8 @@ This is focusable text                                                          
                 if showSplit then
                     // A keyed PanelSplit with small children
                     // The background should be cleared
-                    let left = Vdom.textContent false "L"
-                    let right = Vdom.textContent false "R"
+                    let left = Vdom.textContent "L"
+                    let right = Vdom.textContent "R"
 
                     let split =
                         Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, left, right)
@@ -1066,8 +1062,7 @@ This is focusable text                                                          
                     Vdom.bordered split
                 else
                     // Fill the screen with characters to create "artifacts"
-                    Vdom.textContent false "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-                    |> Vdom.bordered
+                    Vdom.textContent "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" |> Vdom.bordered
 
             let processWorld =
                 { new WorldProcessor<unit, bool> with
@@ -1138,14 +1133,14 @@ This is focusable text                                                          
                 if showBordered then
                     // A keyed Bordered with small text content
                     // The border should be drawn
-                    let content = Vdom.textContent false "content"
+                    let content = Vdom.textContent "content"
 
                     let keyedBordered = Vdom.bordered content |> Vdom.withKey borderedKey
                     // Wrap in another bordered to make it Unkeyed at the top level
                     Vdom.bordered keyedBordered
                 else
                     // Fill the screen with characters to create "artifacts"
-                    Vdom.textContent false "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+                    Vdom.textContent "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
             let processWorld =
                 { new WorldProcessor<unit, bool> with
@@ -1217,7 +1212,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
             // Create a vdom where the checkbox has focus and is allocated bounds with Height=0
             // We use an absolute split to force the checkbox into a zero-height allocation
             let vdom (vdomContext : VdomContext) (_ : FakeUnit) =
-                let topContent = Vdom.textContent false "top"
+                let topContent = Vdom.textContent "top"
 
                 let checkbox = Components.Checkbox.make (vdomContext, checkboxKey, false)
 
@@ -1302,8 +1297,8 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
             // Create a vdom where text content has Width=0
             // With a terminal width of 1 and a 50/50 split, each side gets 0 or 1 width
             let vdom (_ : VdomContext) (_ : FakeUnit) =
-                let leftText = Vdom.textContent false "some text content"
-                let rightText = Vdom.textContent false "other text"
+                let leftText = Vdom.textContent "some text content"
+                let rightText = Vdom.textContent "other text"
                 // Split with 0.5 proportion, terminal has width 1, so left gets 0 width
                 Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, leftText, rightText)
 
@@ -1356,8 +1351,8 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
             // Create a vdom where keyed text content has Width=0
             // With a terminal width of 1 and a 50/50 split, each side gets 0 or 1 width
             let vdom (_ : VdomContext) (_ : FakeUnit) =
-                let leftText = Vdom.textContent false "some text content"
-                let rightText = Vdom.textContent false "other text"
+                let leftText = Vdom.textContent "some text content"
+                let rightText = Vdom.textContent "other text"
 
                 // Split with 0.5 proportion so that one side gets 0 width
                 if leftIsKeyed then
@@ -1407,8 +1402,8 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
             // This means left gets: int (float 1 * 0.1) = int 0.1 = 0
             // And right gets: 1 - 0 = 1
             let vdom (_ : VdomContext) (_ : FakeUnit) =
-                let leftText = Vdom.textContent false "left" |> Vdom.withKey leftKey
-                let rightText = Vdom.textContent false "right" |> Vdom.withKey rightKey
+                let leftText = Vdom.textContent "left" |> Vdom.withKey leftKey
+                let rightText = Vdom.textContent "right" |> Vdom.withKey rightKey
                 Vdom.panelSplitProportion (SplitDirection.Vertical, 0.1, leftText, rightText)
 
             let processWorld =
@@ -1463,8 +1458,8 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
             // This means top gets: int (float 2 * 0.1) = int 0.2 = 0
             // And bottom gets: 2 - 0 = 2
             let vdom (_ : VdomContext) (_ : FakeUnit) =
-                let topText = Vdom.textContent false "top" |> Vdom.withKey topKey
-                let bottomText = Vdom.textContent false "bottom" |> Vdom.withKey bottomKey
+                let topText = Vdom.textContent "top" |> Vdom.withKey topKey
+                let bottomText = Vdom.textContent "bottom" |> Vdom.withKey bottomKey
                 Vdom.panelSplitProportion (SplitDirection.Horizontal, 0.1, topText, bottomText)
 
             let processWorld =
@@ -1521,8 +1516,8 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
             let vdom (_ : VdomContext) (_ : FakeUnit) =
                 // Create two text components with different preferred widths
                 // "Hello world" has preferred width ~11, "Hi" has preferred width ~2
-                let left = Vdom.textContent false "Hello world"
-                let right = Vdom.textContent false "Hi"
+                let left = Vdom.textContent "Hello world"
+                let right = Vdom.textContent "Hi"
 
                 Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
 
@@ -1583,8 +1578,8 @@ Hello world                                                        Hi           
                 // The longer one (`left`) has its longest word of length 6, vs the shorter one having longest word
                 // of length 4, so satisfying their minimum requests allocates more space to `left`;
                 // then leftover spare space gets allocated equally between them, and `left` ends up a bit bigger.
-                let left = Vdom.textContent false "This is a longer piece of text"
-                let right = Vdom.textContent false "Also long text here"
+                let left = Vdom.textContent "This is a longer piece of text"
+                let right = Vdom.textContent "Also long text here"
 
                 Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
 
@@ -1637,8 +1632,8 @@ onger piece text her|
 
             let vdom (_ : VdomContext) (_ : FakeUnit) =
                 // Words with minimum widths that exceed available space
-                let left = Vdom.textContent false "Hello" // min width ~5
-                let right = Vdom.textContent false "World" // min width ~5
+                let left = Vdom.textContent "Hello" // min width ~5
+                let right = Vdom.textContent "World" // min width ~5
 
                 Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
 
@@ -1690,10 +1685,10 @@ o   d   |
 
             let vdom (_ : VdomContext) (_ : FakeUnit) =
                 // Short text (prefers 1 line) and longer text (prefers multiple lines)
-                let top = Vdom.textContent false "Short"
+                let top = Vdom.textContent "Short"
 
                 let bottom =
-                    Vdom.textContent false "This is a much longer text that will take multiple lines when rendered"
+                    Vdom.textContent "This is a much longer text that will take multiple lines when rendered"
 
                 Vdom.panelSplitAuto (SplitDirection.Horizontal, top, bottom)
 
@@ -1750,8 +1745,8 @@ e multiple lines when rendered          |
 
             let vdom (_ : VdomContext) (_ : FakeUnit) =
                 // Both components want more height than available
-                let top = Vdom.textContent false "Top section with some content that wraps around"
-                let bottom = Vdom.textContent false "Bottom section also with content"
+                let top = Vdom.textContent "Top section with some content that wraps around"
+                let bottom = Vdom.textContent "Bottom section also with content"
 
                 Vdom.panelSplitAuto (SplitDirection.Horizontal, top, bottom)
 
@@ -1802,9 +1797,9 @@ nt                            |
 
             let vdom (_ : VdomContext) (_ : FakeUnit) =
                 // Bordered panels to clearly show space allocation
-                let left = Vdom.textContent false "Small" |> Vdom.bordered
+                let left = Vdom.textContent "Small" |> Vdom.bordered
 
-                let right = Vdom.textContent false "This is much larger content" |> Vdom.bordered
+                let right = Vdom.textContent "This is much larger content" |> Vdom.bordered
 
                 Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
 
@@ -1858,8 +1853,8 @@ nt                            |
                     world.ReadKey
 
             let vdom (_ : VdomContext) (_ : FakeUnit) =
-                let left = Vdom.textContent false "A"
-                let right = Vdom.textContent false "B"
+                let left = Vdom.textContent "A"
+                let right = Vdom.textContent "B"
 
                 Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
 
@@ -1912,10 +1907,10 @@ B|
                 // A 25-character word in a 10-character wide terminal
                 // Should wrap to 3 lines: "AAAAAAAAAA" + "AAAAAAAAAA" + "AAAAA"
                 let longWord = String.replicate 25 "A"
-                let text = Vdom.textContent false longWord
+                let text = Vdom.textContent longWord
 
                 // Put it in an auto split with another component
-                let bottom = Vdom.textContent false "bottom"
+                let bottom = Vdom.textContent "bottom"
                 Vdom.panelSplitAuto (SplitDirection.Horizontal, text, bottom)
 
             let processWorld =
@@ -1974,15 +1969,15 @@ bottom    |
             let vdom (_ : VdomContext) (useLargeSplit : bool) =
                 if useLargeSplit then
                     // 50/50 split - left side filled with X's
-                    let left = Vdom.textContent false (String.replicate 200 "X")
-                    let right = Vdom.textContent false "right"
+                    let left = Vdom.textContent (String.replicate 200 "X")
+                    let right = Vdom.textContent "right"
                     Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, left, right)
                 else
                     // 25/75 split - left side has only "AAA"
                     // Bug: the area between where "AAA" ends and where the old 50% split was
                     // still contained X's from the previous render
-                    let left = Vdom.textContent false "AAA"
-                    let right = Vdom.textContent false "right"
+                    let left = Vdom.textContent "AAA"
+                    let right = Vdom.textContent "right"
                     Vdom.panelSplitProportion (SplitDirection.Vertical, 0.25, left, right)
 
             let processWorld =
@@ -2060,13 +2055,13 @@ AAA                 right                                                       
                 let split =
                     if useLargeSplit then
                         // 50/50 split
-                        let left = Vdom.textContent false (String.replicate 200 "X")
-                        let right = Vdom.textContent false "right"
+                        let left = Vdom.textContent (String.replicate 200 "X")
+                        let right = Vdom.textContent "right"
                         Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, left, right)
                     else
                         // 25/75 split
-                        let left = Vdom.textContent false "AAA"
-                        let right = Vdom.textContent false "right"
+                        let left = Vdom.textContent "AAA"
+                        let right = Vdom.textContent "right"
                         Vdom.panelSplitProportion (SplitDirection.Vertical, 0.25, left, right)
 
                 // Wrap in bordered to make it Unkeyed at the top level
@@ -2120,15 +2115,15 @@ AAA                 right                                                       
             let vdom (_ : VdomContext) (useWideLeft : bool) =
                 if useWideLeft then
                     // Left side gets 70% - fill it with X's in a bordered panel
-                    let left = Vdom.textContent false (String.replicate 500 "X") |> Vdom.bordered
-                    let right = Vdom.textContent false "R" |> Vdom.bordered
+                    let left = Vdom.textContent (String.replicate 500 "X") |> Vdom.bordered
+                    let right = Vdom.textContent "R" |> Vdom.bordered
                     Vdom.panelSplitProportion (SplitDirection.Vertical, 0.7, left, right)
                 else
                     // Left side gets 30% - just add a couple of A's in a bordered panel
                     // The area from 30% to 70% should be cleared, but if the bug exists,
                     // it will still contain X's from the previous render
-                    let left = Vdom.textContent false "AAA" |> Vdom.bordered
-                    let right = Vdom.textContent false "R" |> Vdom.bordered
+                    let left = Vdom.textContent "AAA" |> Vdom.bordered
+                    let right = Vdom.textContent "R" |> Vdom.bordered
                     Vdom.panelSplitProportion (SplitDirection.Vertical, 0.3, left, right)
 
             let processWorld =
@@ -2178,10 +2173,10 @@ AAA                 right                                                       
             let vdom (_ : VdomContext) (useLongText : bool) =
                 if useLongText then
                     // Long text filling the bordered area
-                    Vdom.textContent false (String.replicate 200 "X") |> Vdom.bordered
+                    Vdom.textContent (String.replicate 200 "X") |> Vdom.bordered
                 else
                     // Short text - exposed area should be cleared
-                    Vdom.textContent false "AAA" |> Vdom.bordered
+                    Vdom.textContent "AAA" |> Vdom.bordered
 
             let processWorld =
                 { new WorldProcessor<unit, bool> with
@@ -2251,9 +2246,9 @@ AAA                 right                                                       
             let vdom (_ : VdomContext) (useLongText : bool) =
                 let bordered =
                     if useLongText then
-                        Vdom.textContent false (String.replicate 200 "X") |> Vdom.bordered
+                        Vdom.textContent (String.replicate 200 "X") |> Vdom.bordered
                     else
-                        Vdom.textContent false "AAA" |> Vdom.bordered
+                        Vdom.textContent "AAA" |> Vdom.bordered
 
                 // Wrap in another bordered to make it Unkeyed at the top level
                 bordered |> Vdom.withKey borderedKey |> Vdom.bordered
@@ -2339,11 +2334,11 @@ AAA                 right                                                       
                     // This is the problematic absolute split
                     // It's measured with MaxWidth=50 (full terminal width for Auto split)
                     // But it will report MinWidth = 20 + child2.MinWidth
-                    let child1 = Vdom.textContent false "small"
+                    let child1 = Vdom.textContent "small"
                     // Long text in bordered panel: needs ~35 chars minimum for longest word "unnecessarily"
                     // Plus 2 for border = ~37
                     let child2 =
-                        Vdom.textContent false "This text contains unnecessarily long words that wrap"
+                        Vdom.textContent "This text contains unnecessarily long words that wrap"
                         |> Vdom.bordered
 
                     // Fixed width split: child1 gets 20, child2 gets the rest
@@ -2353,7 +2348,7 @@ AAA                 right                                                       
                     // - Container reports MinWidth = 20 + 37 = 57 > 50 ❌ VIOLATES INVARIANT
                     Vdom.panelSplitAbsolute (SplitDirection.Vertical, 20, child1, child2)
 
-                let right = Vdom.textContent false "Right side content"
+                let right = Vdom.textContent "Right side content"
 
                 // Auto split sees left.MinWidth=57, right.MinWidth=18
                 // minSum = 75 > 50 (terminal width)
@@ -2412,15 +2407,15 @@ small               ┌──────────────────┐
         task {
             let console, terminal = ConsoleHarness.make ()
 
-            let vdom (_ : VdomContext) (_ : unit) : Vdom<DesiredBounds, _> =
+            let vdom (_ : VdomContext) (_ : unit) : Vdom<DesiredBounds> =
                 // Use Vdom.empty with panelSplitAbsolute to right-justify content
                 // Negative absolute value gives the right side a fixed width, left side gets the rest
                 // Empty fills the left side, pushing "Right" to the right edge
                 Vdom.panelSplitAbsolute (
                     SplitDirection.Vertical,
                     -5,
-                    Vdom.empty |> Vdom.withKey (NodeKey.make "spacer"),
-                    Vdom.textContent false "Right" |> Vdom.withKey (NodeKey.make "content")
+                    (Vdom.empty |> Vdom.withKey (NodeKey.make "spacer")),
+                    (Vdom.textContent "Right" |> Vdom.withKey (NodeKey.make "content"))
                 )
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
