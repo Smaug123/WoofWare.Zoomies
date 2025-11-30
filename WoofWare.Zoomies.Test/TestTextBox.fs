@@ -118,6 +118,10 @@ module TestTextBox =
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
             state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
 
+            // Verify textbox state is unchanged (Tab was not inserted as text)
+            state.Content |> shouldEqual ""
+            state.Cursor |> shouldEqual 0
+
             expect {
                 snapshot
                     @"
@@ -506,82 +510,34 @@ Hello!|                                 |
     [<Test>]
     let ``cursor rendering maintains constant width across focus states`` () =
         task {
-            let textBoxKey = NodeKey.make "textbox"
+            let content = "Hello"
+            let cursor = 2
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
-                TextBox.make (ctx, textBoxKey, state.Content, state.Cursor)
+            // Create vdom for unfocused state
+            let unfocusedVdom = TextBox.make' (content, cursor, false)
 
-            let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
+            // Create vdom for focused state
+            let focusedVdom = TextBox.make' (content, cursor, true)
 
-            let world = MockWorld.make ()
-
-            use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
-
-            let haveFrameworkHandleFocus _ = true
-
-            let resolver = ActivationResolver.textBox textBoxKey TextEdit
-
-            let processWorld =
-                { new WorldProcessor<AppEvent, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
-
-            let clock = MockTime.make ()
-
-            let renderState = RenderState.make console clock.GetUtcNow None
-
-            let mutable state =
+            // Measure both with the same constraints
+            let constraints =
                 {
-                    Content = "Hello"
-                    Cursor = 2
+                    MaxWidth = 1000
+                    MaxHeight = 1000
                 }
 
-            // Render unfocused
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+            let unfocusedMeasured = VdomBounds.measure unfocusedVdom constraints
+            let focusedMeasured = VdomBounds.measure focusedVdom constraints
 
-            let unfocusedOutput = ConsoleHarness.toString terminal
-
-            expect {
-                snapshot
-                    @"
-Hello                                   |
-                                        |
-                                        |
-"
-
-                return unfocusedOutput
-            }
-
-            // Focus by pressing tab (since nothing else is focusable, it will focus the textbox)
-            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
-
-            let focusedOutput = ConsoleHarness.toString terminal
-
-            expect {
-                snapshot
-                    @"
-He|llo                                  |
-                                        |
-                                        |
-"
-
-                return focusedOutput
-            }
-
-        // Both outputs should have the same measured width
-        // Unfocused: "Hello " (6 chars: 5 content + 1 trailing space)
-        // Focused: "He|llo" (6 chars: 5 content + 1 cursor)
-        // This ensures zero layout jitter
+            // Both should have the same preferred width to ensure zero layout jitter
+            // Unfocused: "Hello " (6 chars: 5 content + 1 trailing space)
+            // Focused: "He|llo" (6 chars: 5 content + 1 cursor)
+            unfocusedMeasured.PreferredWidth |> shouldEqual focusedMeasured.PreferredWidth
+            unfocusedMeasured.PreferredWidth |> shouldEqual 6
         }
 
     [<Test>]
-    let ``focused textbox uses inverted style for clear visual feedback`` () =
+    let ``focused textbox renders cursor at correct position`` () =
         task {
             let textBox1Key = NodeKey.make "textbox1"
             let textBox2Key = NodeKey.make "textbox2"
@@ -632,6 +588,8 @@ He|llo                                  |
             // Initial render - textbox1 focused
             state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
 
+            // Note: This test verifies cursor position only. Style verification (CellStyle.inverted)
+            // is not tested because ConsoleHarness doesn't capture styling information.
             expect {
                 snapshot
                     @"
@@ -642,4 +600,159 @@ Unfocused                               |
 
                 return ConsoleHarness.toString terminal
             }
+        }
+
+    [<Test>]
+    let ``textbox handles invalid cursor positions gracefully`` () =
+        task {
+            let content = "Hello"
+
+            // Test negative cursor position
+            let negativeVdom = TextBox.make' (content, -1, true)
+
+            let constraints =
+                {
+                    MaxWidth = 1000
+                    MaxHeight = 1000
+                }
+            // Should not throw, just render content without cursor
+            VdomBounds.measure negativeVdom constraints |> ignore
+
+            // Test cursor position beyond content length
+            let beyondVdom = TextBox.make' (content, 100, true)
+            VdomBounds.measure beyondVdom constraints |> ignore
+        }
+
+    [<Test>]
+    let ``delete at end of text does nothing`` () =
+        task {
+            let textBoxKey = NodeKey.make "textbox"
+
+            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+                TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
+
+            let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = true
+
+            let resolver = ActivationResolver.textBox textBoxKey TextEdit
+
+            let processWorld =
+                { new WorldProcessor<AppEvent, State> with
+                    member _.ProcessWorld (inputs, renderState, state) =
+                        let mutable newState = state
+
+                        for input in inputs do
+                            match input with
+                            | WorldStateChange.ApplicationEvent (TextEdit action) ->
+                                let content, cursor = TextBoxHelpers.applyAction state.Content state.Cursor action
+
+                                newState <-
+                                    {
+                                        Content = content
+                                        Cursor = cursor
+                                    }
+                            | _ -> ()
+
+                        ProcessWorldResult.make newState
+                }
+
+            let clock = MockTime.make ()
+
+            let renderState = RenderState.make console clock.GetUtcNow None
+
+            let mutable state =
+                {
+                    Content = "Hello"
+                    Cursor = 5 // At end
+                }
+
+            // Initial render
+            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            // Press Delete (should do nothing, cursor is at end)
+            world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.Delete, false, false, false))
+            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state.Content |> shouldEqual "Hello"
+            state.Cursor |> shouldEqual 5
+        }
+
+    [<Test>]
+    let ``multiple text edit events in single batch are processed correctly`` () =
+        task {
+            let textBoxKey = NodeKey.make "textbox"
+
+            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+                TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
+
+            let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = true
+
+            let resolver = ActivationResolver.textBox textBoxKey TextEdit
+
+            let processWorld =
+                { new WorldProcessor<AppEvent, State> with
+                    member _.ProcessWorld (inputs, renderState, state) =
+                        let mutable newState = state
+
+                        for input in inputs do
+                            match input with
+                            | WorldStateChange.ApplicationEvent (TextEdit action) ->
+                                let content, cursor =
+                                    TextBoxHelpers.applyAction newState.Content newState.Cursor action
+
+                                newState <-
+                                    {
+                                        Content = content
+                                        Cursor = cursor
+                                    }
+                            | _ -> ()
+
+                        ProcessWorldResult.make newState
+                }
+
+            let clock = MockTime.make ()
+
+            let renderState = RenderState.make console clock.GetUtcNow None
+
+            let mutable state =
+                {
+                    Content = ""
+                    Cursor = 0
+                }
+
+            // Initial render
+            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            // Send multiple keystrokes before next pump
+            world.SendKey (ConsoleKeyInfo ('H', ConsoleKey.H, true, false, false))
+            world.SendKey (ConsoleKeyInfo ('i', ConsoleKey.I, false, false, false))
+            world.SendKey (ConsoleKeyInfo ('!', ConsoleKey.D1, true, false, false))
+
+            // Process all events in one batch
+            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            // All three characters should be inserted
+            state.Content |> shouldEqual "Hi!"
+            state.Cursor |> shouldEqual 3
         }

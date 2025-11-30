@@ -57,13 +57,15 @@ module ActivationResolver =
     /// Create a resolver for a text box that handles standard text editing keys.
     ///
     /// IMPORTANT: This resolver is only consulted when framework focus handling is enabled.
-    /// Tab is intercepted for focus cycling BEFORE reaching the resolver (see App.fs:131-143).
+    /// Tab is intercepted for focus cycling BEFORE reaching the resolver (the framework's
+    /// focus-cycling logic in App runs before resolver dispatch).
     ///
     /// If you need tab-insertion while using framework focus, this is currently not supported
-    /// without modifying App.fs. Workaround: use manual-focus mode and handle Tab in ProcessWorld.
+    /// without modifying the framework's focus-handling code. Workaround: use manual-focus mode
+    /// (haveFrameworkHandleFocus = false) and handle Tab in ProcessWorld.
     ///
-    /// In manual-focus mode (haveFrameworkHandleFocus = false), all keystrokes including Tab
-    /// are passed directly to ProcessWorld without consulting resolvers.
+    /// In manual-focus mode, all keystrokes including Tab are passed directly to ProcessWorld
+    /// without consulting resolvers.
     let textBox (key : NodeKey) (makeEvent : TextBoxAction -> 'e) : ActivationResolver<'e, 's> =
         ActivationResolver (fun k keystroke _ ->
             if k <> key then
