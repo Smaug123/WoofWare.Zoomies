@@ -227,9 +227,49 @@ type Vdom =
     static member panelSplitAuto (d, c1 : Vdom<DesiredBounds>, c2 : Vdom<DesiredBounds>) : Vdom<DesiredBounds> =
         Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, SplitBehaviour.Auto, c1, c2))
 
+    /// <summary>Creates a split panel where components share space based on their content preferences.</summary>
+    /// <remarks>
+    /// Space is divided proportionally to each component's preferred width (for vertical splits) or height (for horizontal splits).
+    /// </remarks>
+    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
+    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
+    /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
+    /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
+    static member panelSplitAuto (d, c1 : KeyedVdom<DesiredBounds>, c2 : Vdom<DesiredBounds>) : Vdom<DesiredBounds> =
+        Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, SplitBehaviour.Auto, Vdom.Keyed c1, c2))
+
+    /// <summary>Creates a split panel where components share space based on their content preferences.</summary>
+    /// <remarks>
+    /// Space is divided proportionally to each component's preferred width (for vertical splits) or height (for horizontal splits).
+    /// </remarks>
+    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
+    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
+    /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
+    /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
+    static member panelSplitAuto (d, c1 : Vdom<DesiredBounds>, c2 : KeyedVdom<DesiredBounds>) : Vdom<DesiredBounds> =
+        Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, SplitBehaviour.Auto, c1, Vdom.Keyed c2))
+
+    /// <summary>Creates a split panel where components share space based on their content preferences.</summary>
+    /// <remarks>
+    /// Space is divided proportionally to each component's preferred width (for vertical splits) or height (for horizontal splits).
+    /// </remarks>
+    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
+    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
+    /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
+    /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
+    static member panelSplitAuto
+        (d, c1 : KeyedVdom<DesiredBounds>, c2 : KeyedVdom<DesiredBounds>)
+        : Vdom<DesiredBounds>
+        =
+        Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, SplitBehaviour.Auto, Vdom.Keyed c1, Vdom.Keyed c2))
+
     /// Creates a bordered wrapper around a component, drawing a border around its content.
     static member bordered (inner : Vdom<DesiredBounds>) : Vdom<DesiredBounds> =
         Vdom.Unkeyed (UnkeyedVdom.Bordered inner)
+
+    /// Creates a bordered wrapper around a component, drawing a border around its content.
+    static member bordered (inner : KeyedVdom<DesiredBounds>) : Vdom<DesiredBounds> =
+        Vdom.Unkeyed (UnkeyedVdom.Bordered (Vdom.Keyed inner))
 
     /// Attach a key to a VDOM node, effectively giving that node a name.
     /// If the VDOM node is already keyed, this replaces the key.

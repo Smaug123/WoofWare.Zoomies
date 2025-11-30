@@ -65,7 +65,7 @@ module TestDebugDump =
         let inner =
             Vdom.textContent false "Bordered text" |> Vdom.withKey (NodeKey.make "inner")
 
-        let vdom = Vdom.bordered (Vdom.Keyed inner)
+        let vdom = Vdom.bordered inner
         let dump = Vdom.debugDump vdom
 
         expect {
@@ -83,8 +83,7 @@ module TestDebugDump =
         let left = Vdom.textContent false "Left" |> Vdom.withKey (NodeKey.make "left")
         let right = Vdom.textContent false "Right" |> Vdom.withKey (NodeKey.make "right")
 
-        let vdom =
-            Vdom.panelSplitProportion (SplitDirection.Vertical, 0.3, Vdom.Keyed left, Vdom.Keyed right)
+        let vdom = Vdom.panelSplitProportion (SplitDirection.Vertical, 0.3, left, right)
 
         let dump = Vdom.debugDump vdom
 
@@ -107,8 +106,7 @@ module TestDebugDump =
         let top = Vdom.textContent false "Top" |> Vdom.withKey (NodeKey.make "top")
         let bottom = Vdom.textContent false "Bottom" |> Vdom.withKey (NodeKey.make "bottom")
 
-        let vdom =
-            Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 5, Vdom.Keyed top, Vdom.Keyed bottom)
+        let vdom = Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 5, top, bottom)
 
         let dump = Vdom.debugDump vdom
 
@@ -134,8 +132,7 @@ module TestDebugDump =
         let right =
             Vdom.textContent false "Auto right" |> Vdom.withKey (NodeKey.make "auto-right")
 
-        let vdom =
-            Vdom.panelSplitAuto (SplitDirection.Vertical, Vdom.Keyed left, Vdom.Keyed right)
+        let vdom = Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
 
         let dump = Vdom.debugDump vdom
 
@@ -201,7 +198,6 @@ module TestDebugDump =
             Vdom.textContent false "Title"
             |> Vdom.withTag "title"
             |> Vdom.withKey (NodeKey.make "title-key")
-            |> Vdom.Keyed
             |> Vdom.bordered
 
         let content =
@@ -216,7 +212,7 @@ module TestDebugDump =
             |> Vdom.withFocusTracking
 
         let body =
-            Vdom.panelSplitProportion (SplitDirection.Horizontal, 0.8, Vdom.Keyed content, footer)
+            Vdom.panelSplitProportion (SplitDirection.Horizontal, 0.8, content, footer)
 
         let vdom = Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 3, title, body)
         let dump = Vdom.debugDump vdom
