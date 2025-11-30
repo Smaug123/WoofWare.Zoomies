@@ -22,12 +22,14 @@
     <Compile Include="TestVdomContext.fs" />
     <Compile Include="TestExternalEventSubscription.fs" />
     <Compile Include="TestOrderedSet.fs" />
+    <Compile Include="TestCatamorphism.fs" />
     <Compile Include="TestDebugDump.fs" />
     <Compile Include="TestRender.fs" />
     <Compile Include="TestFocusCycle.fs" />
     <Compile Include="TestCollapsible.fs" />
     <Compile Include="TestProgressBar.fs" />
     <Compile Include="TestButton.fs" />
+    <Compile Include="TestTable.fs" />
     <Compile Include="TestActivationWithPartialBatch.fs" />
     <Compile Include="TestBatchProcessing.fs" />
     <Compile Include="TestFlexibleContent.fs" />

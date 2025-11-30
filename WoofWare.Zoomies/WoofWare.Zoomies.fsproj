@@ -27,6 +27,7 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Object.fs" />
+    <Compile Include="Array.fs" />
     <Compile Include="FakeUnit.fs" />
     <Compile Include="Exception.fs" />
     <Compile Include="OrderedSet.fs" />
@@ -35,6 +36,12 @@
     <Compile Include="ConsoleColor.fs" />
     <Compile Include="CellStyle.fs" />
     <Compile Include="Vdom.fs" />
+    <Compile Include="GeneratedVdom.fs">
+      <MyriadFile>Vdom.fs</MyriadFile>
+      <MyriadParams>
+        <UnkeyedVdom>CreateCatamorphism(VdomCata')</UnkeyedVdom>
+      </MyriadParams>
+    </Compile>
     <Compile Include="ActivationResolver.fs" />
     <Compile Include="CtrlCHandler.fs" />
     <Compile Include="Terminal.fs" />
@@ -52,12 +59,14 @@
     <Compile Include="Components\Collapsible.fs" />
     <Compile Include="Components\LabelledCheckbox.fs" />
     <Compile Include="Components\ProgressBar.fs" />
+    <Compile Include="Components\Table.fs" />
     <None Include="..\README.md">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>
   </ItemGroup>
 
+  <!-- Uncomment this to regenerate the GeneratedVdom file. -->
   <!--
   <ItemGroup>
     <MyriadSdkGenerator Include="$(NuGetPackageRoot)/woofware.myriad.plugins/$(WoofWareMyriadPluginVersion)/lib/net6.0/WoofWare.Myriad.Plugins.dll" />

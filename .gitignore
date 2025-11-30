@@ -11,6 +11,8 @@ result
 .fake
 .vscode/
 
-**/Generated*.fs
 *.sarif
 .analyzerpackages/
+.DS_Store
+
+GeneratedStopwatch.fs

@@ -28,7 +28,7 @@ module TestActivationWithPartialBatch =
 
             let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
                 let text =
-                    Vdom.textContent false $"Clicks: {state.ButtonClickCount}, Keys: {state.ProcessedKeystrokes.Length}"
+                    Vdom.textContent $"Clicks: {state.ButtonClickCount}, Keys: {state.ProcessedKeystrokes.Length}"
 
                 let button =
                     Button.make (ctx, buttonKey, "Click Me", isInitiallyFocused = true, isFirstToFocus = true)

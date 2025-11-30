@@ -140,7 +140,7 @@ module FileBrowser =
                 | false, Some content -> content
                 | false, None -> "Press space to load a file"
 
-            Vdom.textContent false content |> Vdom.bordered
+            Vdom.textContent content |> Vdom.bordered
 
         Vdom.panelSplitAuto (SplitDirection.Horizontal, topPane, bottomPane)
 
