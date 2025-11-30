@@ -36,7 +36,7 @@ module TestDebugDump =
 
     [<Test>]
     let ``debugDump text with focus`` () =
-        let vdom = Vdom.textContent "Focused text"
+        let vdom = Vdom.textContent ("Focused text", isFocused = true)
         let dump = Vdom.debugDump vdom
 
         expect {
