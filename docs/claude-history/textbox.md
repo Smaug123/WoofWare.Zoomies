@@ -136,12 +136,13 @@ module ActivationResolver =
                     Some (makeEvent Home)
                 | ConsoleKey.End when keystroke.Modifiers = ConsoleModifiers.None ->
                     Some (makeEvent End)
-                | _ when keystroke.KeyChar <> '\000' ->
+                | _ when keystroke.KeyChar <> '\000' && not (System.Char.IsControl keystroke.KeyChar) ->
                     // Accept any printable character without checking modifiers.
                     // The console gives us the modified character in KeyChar:
                     //   - Shift+A → KeyChar = 'A'
                     //   - Shift+1 → KeyChar = '!'
-                    // Checking modifiers would block uppercase and punctuation (major regression).
+                    // Reject control characters (Enter, Esc, Tab, Backspace with modifiers, etc) to
+                    // avoid inserting them as literal text.
                     Some (makeEvent (InsertChar keystroke.KeyChar))
                 | _ -> None
         )
@@ -192,7 +193,10 @@ type TextBox =
                 if isFocused then
                     let before = content.Substring(0, cursorPos)
                     let after = content.Substring(cursorPos)
-                    // Show cursor as | with inverted style for clear focus indication
+                    // Show cursor as | with inverted style for clear focus indication.
+                    // The entire textbox content is inverted while focused (mirrors other controls'
+                    // focus styling). If you need a caret-only inversion, render the caret as its
+                    // own styled segment instead.
                     ($"{before}|{after}", CellStyle.inverted)
                 else
                     // Reserve cursor space at the end (maintains width without visual oddity)
@@ -551,8 +555,9 @@ let processWorld =
                                     state.UsernameCursor
                                     (InsertChar '\t')
                             newState <- { newState with Username = content; UsernameCursor = cursor }
-                        elif k.KeyChar <> '\000' then
-                            // Regular character
+                        elif k.KeyChar <> '\000' && not (System.Char.IsControl k.KeyChar) then
+                            // Regular character (skip control chars like Enter/Escape here unless
+                            // you choose to handle them explicitly)
                             let content, cursor =
                                 TextBoxHelpers.applyAction
                                     state.Username
@@ -605,8 +610,10 @@ If the application provides an invalid cursor position, the component should gra
 ### Special characters
 
 - Tab character (`'\t'`): Currently not insertable with framework focus (see Tab Handling Limitation)
-- Newline (`'\n'`): Not handled in single-line textbox; filter in `InsertChar` if needed
-- Non-printable characters: Will have `KeyChar = '\000'` and won't match the catch-all case
+- Newline (`'\n'`): Not handled in single-line textbox; filtered out by `Char.IsControl` in the resolver
+- Control characters like Enter (`'\r'`), Escape (`'\u001b'`), Tab (`'\t'`), and Backspace with modifiers
+  have non-zero `KeyChar` values; the resolver explicitly excludes all control characters before
+  emitting `InsertChar`
 
 ---
 
