@@ -27,6 +27,6 @@ type LabelledCheckbox =
                 ?isFirstToFocus = isFirstToFocus,
                 ?isInitiallyFocused = isInitiallyFocused
             ),
-            Vdom.textContent false label
+            Vdom.textContent label
         )
         |> Vdom.withTag "labelled-checkbox"

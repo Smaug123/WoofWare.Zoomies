@@ -37,7 +37,7 @@ module TestButton =
                     else
                         "Goodbye, World!"
 
-                let textVdom = Vdom.textContent false text
+                let textVdom = Vdom.textContent text
                 let button = Button.make (ctx, flipKey, "Flip Text")
 
                 Vdom.panelSplitAuto (SplitDirection.Horizontal, textVdom, button)
@@ -161,7 +161,7 @@ Hello, World!                           |
             let button3Key = NodeKey.make "button3"
 
             let vdom (ctx : VdomContext) (state : MultiButtonState) : Vdom<DesiredBounds> =
-                let statusText = Vdom.textContent false $"Last clicked: {state.LastClicked}"
+                let statusText = Vdom.textContent $"Last clicked: {state.LastClicked}"
 
                 let button1 =
                     Button.make (ctx, button1Key, "Button 1", isFirstToFocus = true, isInitiallyFocused = true)
@@ -345,7 +345,7 @@ Last clicked: Button 3                            |
             let vdom (ctx : VdomContext) (state : bool) : Vdom<DesiredBounds> =
                 let text = if state then "Hello, World!" else "Goodbye, World!"
 
-                let textVdom = Vdom.textContent false text
+                let textVdom = Vdom.textContent text
 
                 let button =
                     Button.make (ctx, flipKey, "Flip Text", isInitiallyFocused = true, isFirstToFocus = true)

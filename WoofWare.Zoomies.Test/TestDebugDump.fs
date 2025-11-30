@@ -23,7 +23,7 @@ module TestDebugDump =
 
     [<Test>]
     let ``debugDump simple text content`` () =
-        let vdom = Vdom.textContent false "Hello, World!"
+        let vdom = Vdom.textContent "Hello, World!"
         let dump = Vdom.debugDump vdom
 
         expect {
@@ -36,7 +36,7 @@ module TestDebugDump =
 
     [<Test>]
     let ``debugDump text with focus`` () =
-        let vdom = Vdom.textContent true "Focused text"
+        let vdom = Vdom.textContent "Focused text"
         let dump = Vdom.debugDump vdom
 
         expect {
@@ -62,8 +62,7 @@ module TestDebugDump =
 
     [<Test>]
     let ``debugDump bordered content`` () =
-        let inner =
-            Vdom.textContent false "Bordered text" |> Vdom.withKey (NodeKey.make "inner")
+        let inner = Vdom.textContent "Bordered text" |> Vdom.withKey (NodeKey.make "inner")
 
         let vdom = Vdom.bordered inner
         let dump = Vdom.debugDump vdom
@@ -80,8 +79,8 @@ module TestDebugDump =
 
     [<Test>]
     let ``debugDump panel split with proportion`` () =
-        let left = Vdom.textContent false "Left" |> Vdom.withKey (NodeKey.make "left")
-        let right = Vdom.textContent false "Right" |> Vdom.withKey (NodeKey.make "right")
+        let left = Vdom.textContent "Left" |> Vdom.withKey (NodeKey.make "left")
+        let right = Vdom.textContent "Right" |> Vdom.withKey (NodeKey.make "right")
 
         let vdom = Vdom.panelSplitProportion (SplitDirection.Vertical, 0.3, left, right)
 
@@ -103,8 +102,8 @@ module TestDebugDump =
 
     [<Test>]
     let ``debugDump panel split with absolute sizing`` () =
-        let top = Vdom.textContent false "Top" |> Vdom.withKey (NodeKey.make "top")
-        let bottom = Vdom.textContent false "Bottom" |> Vdom.withKey (NodeKey.make "bottom")
+        let top = Vdom.textContent "Top" |> Vdom.withKey (NodeKey.make "top")
+        let bottom = Vdom.textContent "Bottom" |> Vdom.withKey (NodeKey.make "bottom")
 
         let vdom = Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 5, top, bottom)
 
@@ -126,11 +125,10 @@ module TestDebugDump =
 
     [<Test>]
     let ``debugDump panel split with auto sizing`` () =
-        let left =
-            Vdom.textContent false "Auto left" |> Vdom.withKey (NodeKey.make "auto-left")
+        let left = Vdom.textContent "Auto left" |> Vdom.withKey (NodeKey.make "auto-left")
 
         let right =
-            Vdom.textContent false "Auto right" |> Vdom.withKey (NodeKey.make "auto-right")
+            Vdom.textContent "Auto right" |> Vdom.withKey (NodeKey.make "auto-right")
 
         let vdom = Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
 
@@ -153,7 +151,7 @@ module TestDebugDump =
     [<Test>]
     let ``debugDump with tags`` () =
         let vdom =
-            Vdom.textContent false "Tagged content"
+            Vdom.textContent "Tagged content"
             |> Vdom.withTag "my-component"
             |> Vdom.withKey (NodeKey.make "tagged-node")
             |> KeyedVdom.withTag "outer-tag"
@@ -174,8 +172,7 @@ module TestDebugDump =
     [<Test>]
     let ``debugDump with focus tracking`` () =
         let inner =
-            Vdom.textContent false "Focusable"
-            |> Vdom.withKey (NodeKey.make "focusable-key")
+            Vdom.textContent "Focusable" |> Vdom.withKey (NodeKey.make "focusable-key")
 
         let vdom =
             Vdom.withFocusTracking (inner, isFirstToFocus = true, isInitiallyFocused = true)
@@ -195,18 +192,18 @@ module TestDebugDump =
     [<Test>]
     let ``debugDump complex nested structure`` () =
         let title =
-            Vdom.textContent false "Title"
+            Vdom.textContent "Title"
             |> Vdom.withTag "title"
             |> Vdom.withKey (NodeKey.make "title-key")
             |> Vdom.bordered
 
         let content =
-            Vdom.textContent false "Content area"
+            Vdom.textContent "Content area"
             |> Vdom.withTag "content"
             |> Vdom.withKey (NodeKey.make "content-key")
 
         let footer =
-            Vdom.textContent false "Footer"
+            Vdom.textContent "Footer"
             |> Vdom.withTag "footer"
             |> Vdom.withKey (NodeKey.make "footer-key")
             |> Vdom.withFocusTracking

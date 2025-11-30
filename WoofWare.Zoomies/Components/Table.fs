@@ -123,7 +123,8 @@ module Table =
     /// Normalize cells to have uniform column count by padding short rows with Vdom.empty
     ///
     /// The result has length equal to the input, but is now a rectangular array where every row is as long as the longest
-    /// row. User-provided keys are preserved. Returns pairs of (actual vdom, keyless for measurement).
+    /// row. User-provided keys are preserved. Returns a 2D array of the VDOMs that will appear in each entry of the
+    /// table.
     let private normalizeCells (cells : Vdom<DesiredBounds>[][]) : Vdom<DesiredBounds>[,] =
         if cells.Length = 0 then
             Array2D.zeroCreate 0 0
@@ -553,7 +554,7 @@ module Table =
         (rowSpecs : Row[])
         : Vdom<DesiredBounds>
         =
-        // Normalize inputs (graceful error handling) - strips any existing keys from cells
+        // Normalize inputs in case the user has given us nonsense
         let cells = normalizeCells cells
 
         let numCols = if cells.Length = 0 then 0 else cells.GetLength 1

@@ -30,7 +30,7 @@ module TestCollapsible =
             let collapsibleKey = NodeKey.make "collapsible"
 
             let vdom (vdomContext : VdomContext) (state : State) =
-                let childContent = Vdom.textContent false "This stuff was hidden"
+                let childContent = Vdom.textContent "This stuff was hidden"
 
                 Collapsible.make vdomContext collapsibleKey state.CollapsibleState "Collapsible section" childContent
 
@@ -231,12 +231,10 @@ This stuff was hidden                                       |
             let vdom (vdomContext : VdomContext) (state : State) =
                 let childContent =
                     let line1 =
-                        Vdom.textContent false "Line 1 of content"
-                        |> Vdom.withKey (NodeKey.make "line1")
+                        Vdom.textContent "Line 1 of content" |> Vdom.withKey (NodeKey.make "line1")
 
                     let line2 =
-                        Vdom.textContent false "Line 2 of content"
-                        |> Vdom.withKey (NodeKey.make "line2")
+                        Vdom.textContent "Line 2 of content" |> Vdom.withKey (NodeKey.make "line2")
 
                     Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 1, line1, line2)
 
@@ -377,7 +375,7 @@ Line 2 of content                                           |
             let vdom (vdomContext : VdomContext) (state : State) =
                 let collapsibleKey = NodeKey.make "collapsible"
 
-                let childContent = Vdom.textContent false "Child content here"
+                let childContent = Vdom.textContent "Child content here"
 
                 Collapsible.make vdomContext collapsibleKey state.CollapsibleState longLabel childContent
 

@@ -69,8 +69,8 @@ module TestTable =
                 Table.makeContentSized
                     (NodeKey.make "t_")
                     [|
-                        [| Vdom.textContent false "A1" ; Vdom.textContent false "B1" |]
-                        [| Vdom.textContent false "A2" ; Vdom.textContent false "B2" |]
+                        [| Vdom.textContent "A1" ; Vdom.textContent "B1" |]
+                        [| Vdom.textContent "A2" ; Vdom.textContent "B2" |]
                     |]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
@@ -116,9 +116,9 @@ A2B2                |
                 Table.makeContentSized
                     (NodeKey.make "t_")
                     [|
-                        [| Vdom.textContent false "Name" ; Vdom.textContent false "Age" |]
-                        [| Vdom.textContent false "Alice" ; Vdom.textContent false "30" |]
-                        [| Vdom.textContent false "Bob" ; Vdom.textContent false "25" |]
+                        [| Vdom.textContent "Name" ; Vdom.textContent "Age" |]
+                        [| Vdom.textContent "Alice" ; Vdom.textContent "30" |]
+                        [| Vdom.textContent "Bob" ; Vdom.textContent "25" |]
                     |]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
@@ -164,8 +164,8 @@ Bob  25                       |
                 Table.makeSpaceFilling
                     (NodeKey.make "t_")
                     [|
-                        [| Vdom.textContent false "A1" ; Vdom.textContent false "B1" |]
-                        [| Vdom.textContent false "A2" ; Vdom.textContent false "B2" |]
+                        [| Vdom.textContent "A1" ; Vdom.textContent "B1" |]
+                        [| Vdom.textContent "A2" ; Vdom.textContent "B2" |]
                     |]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
@@ -211,11 +211,8 @@ A2        B2        |
                 Table.makeSpaceFilling
                     (NodeKey.make "t_")
                     [|
-                        [|
-                            Vdom.textContent false "Short"
-                            Vdom.textContent false "VeryLongColumnName"
-                        |]
-                        [| Vdom.textContent false "A" ; Vdom.textContent false "B" |]
+                        [| Vdom.textContent "Short" ; Vdom.textContent "VeryLongColumnName" |]
+                        [| Vdom.textContent "A" ; Vdom.textContent "B" |]
                     |]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
@@ -261,11 +258,9 @@ A        B                    |
                 Table.makeSpaceFilling
                     (NodeKey.make "t_")
                     [|
-                        [| Vdom.textContent false "Row1" |]
-                        [|
-                            Vdom.textContent false "This is a much longer row with wrapping text content"
-                        |]
-                        [| Vdom.textContent false "Row3" |]
+                        [| Vdom.textContent "Row1" |]
+                        [| Vdom.textContent "This is a much longer row with wrapping text content" |]
+                        [| Vdom.textContent "Row3" |]
                     |]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 25) (fun () -> 12)
@@ -318,8 +313,8 @@ Row3                     |
                 Table.make
                     (NodeKey.make "t_")
                     [|
-                        [| Vdom.textContent false "A" ; Vdom.textContent false "B" |]
-                        [| Vdom.textContent false "1" ; Vdom.textContent false "2" |]
+                        [| Vdom.textContent "A" ; Vdom.textContent "B" |]
+                        [| Vdom.textContent "1" ; Vdom.textContent "2" |]
                     |]
                     [| Column.Fixed 5 ; Column.Fixed 10 |]
                     [||]
@@ -367,8 +362,8 @@ A    B                        |
                 Table.make
                     (NodeKey.make "t_")
                     [|
-                        [| Vdom.textContent false "Left" ; Vdom.textContent false "Right" |]
-                        [| Vdom.textContent false "A" ; Vdom.textContent false "B" |]
+                        [| Vdom.textContent "Left" ; Vdom.textContent "Right" |]
+                        [| Vdom.textContent "A" ; Vdom.textContent "B" |]
                     |]
                     [| Column.Proportion 0.7 ; Column.Proportion 0.3 |]
                     [||]
@@ -416,13 +411,9 @@ A           B       |
                 Table.makeContentSized
                     (NodeKey.make "t_")
                     [|
-                        [|
-                            Vdom.textContent false "A"
-                            Vdom.textContent false "B"
-                            Vdom.textContent false "C"
-                        |]
-                        [| Vdom.textContent false "1" |]
-                        [| Vdom.textContent false "X" ; Vdom.textContent false "Y" |]
+                        [| Vdom.textContent "A" ; Vdom.textContent "B" ; Vdom.textContent "C" |]
+                        [| Vdom.textContent "1" |]
+                        [| Vdom.textContent "X" ; Vdom.textContent "Y" |]
                     |]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
@@ -465,7 +456,7 @@ XY                  |
     let ``single cell table`` () =
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
-                Table.makeContentSized (NodeKey.make "t_") [| [| Vdom.textContent false "Single" |] |]
+                Table.makeContentSized (NodeKey.make "t_") [| [| Vdom.textContent "Single" |] |]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
 
@@ -510,9 +501,9 @@ Single              |
                 Table.make
                     (NodeKey.make "t_")
                     [|
-                        [| Vdom.textContent false "Row1" |]
-                        [| Vdom.textContent false "Row2" |]
-                        [| Vdom.textContent false "Row3" |]
+                        [| Vdom.textContent "Row1" |]
+                        [| Vdom.textContent "Row2" |]
+                        [| Vdom.textContent "Row3" |]
                     |]
                     [||]
                     [| Row.Fixed 2 ; Row.Fixed 1 ; Row.Fixed 2 |]
@@ -565,9 +556,9 @@ Row3                |
                 Table.make
                     (NodeKey.make "t_")
                     [|
-                        [| Vdom.textContent false "Top" |]
-                        [| Vdom.textContent false "Middle" |]
-                        [| Vdom.textContent false "Bottom" |]
+                        [| Vdom.textContent "Top" |]
+                        [| Vdom.textContent "Middle" |]
+                        [| Vdom.textContent "Bottom" |]
                     |]
                     [||]
                     [| Row.Proportion 0.5 ; Row.Proportion 0.3 ; Row.Proportion 0.2 |]
@@ -620,9 +611,9 @@ Bottom              |
                 Table.make
                     (NodeKey.make "t_")
                     [|
-                        [| Vdom.textContent false "Fixed2" |]
-                        [| Vdom.textContent false "Auto" |]
-                        [| Vdom.textContent false "Prop" |]
+                        [| Vdom.textContent "Fixed2" |]
+                        [| Vdom.textContent "Auto" |]
+                        [| Vdom.textContent "Prop" |]
                     |]
                     [||]
                     [| Row.Fixed 2 ; Row.Content ; Row.Fixed 1 |]
@@ -676,7 +667,7 @@ Prop                |
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
-                    [| [| Vdom.textContent false "Row1" |] ; [| Vdom.textContent false "Row2" |] |]
+                    [| [| Vdom.textContent "Row1" |] ; [| Vdom.textContent "Row2" |] |]
                     [||]
                     [| Row.Fixed 1 ; Row.Fixed 1 |]
 
@@ -726,10 +717,7 @@ Row2                |
                 // This test verifies that tables handle cell content correctly
                 Table.makeContentSized
                     (NodeKey.make "t_")
-                    [|
-                        [| Vdom.textContent false "Cell1" |]
-                        [| Vdom.textContent false "Cell2" |]
-                    |]
+                    [| [| Vdom.textContent "Cell1" |] ; [| Vdom.textContent "Cell2" |] |]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
 
@@ -776,10 +764,10 @@ Cell2               |
                     (NodeKey.make "t_")
                     [|
                         [|
-                            Vdom.textContent false "Short"
-                            Vdom.textContent false "This is a longer text that should wrap"
+                            Vdom.textContent "Short"
+                            Vdom.textContent "This is a longer text that should wrap"
                         |]
-                        [| Vdom.textContent false "X" ; Vdom.textContent false "Y" |]
+                        [| Vdom.textContent "X" ; Vdom.textContent "Y" |]
                     |]
                     [| Column.Fixed 5 ; Column.Fixed 15 |]
                     [||]
@@ -828,10 +816,10 @@ X    Y                        |
                     (NodeKey.make "t_")
                     [|
                         [|
-                            Vdom.textContent false "VeryLongColumnName1"
-                            Vdom.textContent false "VeryLongColumnName2"
+                            Vdom.textContent "VeryLongColumnName1"
+                            Vdom.textContent "VeryLongColumnName2"
                         |]
-                        [| Vdom.textContent false "Data1" ; Vdom.textContent false "Data2" |]
+                        [| Vdom.textContent "Data1" ; Vdom.textContent "Data2" |]
                     |]
 
             // Very small terminal
@@ -880,8 +868,8 @@ Data1   Data2  |
                 Table.make
                     (NodeKey.make "t_")
                     [|
-                        [| Vdom.textContent false "A" ; Vdom.textContent false "B" |]
-                        [| Vdom.textContent false "1" ; Vdom.textContent false "2" |]
+                        [| Vdom.textContent "A" ; Vdom.textContent "B" |]
+                        [| Vdom.textContent "1" ; Vdom.textContent "2" |]
                     |]
                     [| Column.Proportion -0.5 ; Column.Proportion 1.0 |]
                     [||]
@@ -933,11 +921,7 @@ A B                 |
                 Table.make
                     (NodeKey.make "t_")
                     [|
-                        [|
-                            Vdom.textContent false "Col1"
-                            Vdom.textContent false "Col2"
-                            Vdom.textContent false "C3"
-                        |]
+                        [| Vdom.textContent "Col1" ; Vdom.textContent "Col2" ; Vdom.textContent "C3" |]
                     |]
                     [|
                         Column.Proportion System.Double.NaN
@@ -989,16 +973,8 @@ Col1          Col2          C3|
                 Table.make
                     (NodeKey.make "t_")
                     [|
-                        [|
-                            Vdom.textContent false "A"
-                            Vdom.textContent false "B"
-                            Vdom.textContent false "C"
-                        |]
-                        [|
-                            Vdom.textContent false "1"
-                            Vdom.textContent false "22"
-                            Vdom.textContent false "3"
-                        |]
+                        [| Vdom.textContent "A" ; Vdom.textContent "B" ; Vdom.textContent "C" |]
+                        [| Vdom.textContent "1" ; Vdom.textContent "22" ; Vdom.textContent "3" |]
                     |]
                     [| Column.Fixed 5 |] // Only 1 spec for 3 columns
                     [||]
@@ -1045,7 +1021,7 @@ A    B C                      |
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
-                    [| [| Vdom.textContent false "X" ; Vdom.textContent false "Y" |] |]
+                    [| [| Vdom.textContent "X" ; Vdom.textContent "Y" |] |]
                     [| Column.Fixed 3 ; Column.Fixed 4 ; Column.Fixed 10 ; Column.Content |] // 4 specs for 2 columns
                     [||]
 
@@ -1093,13 +1069,7 @@ X  Y                |
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
-                    [|
-                        [|
-                            Vdom.textContent false "A"
-                            Vdom.textContent false "B"
-                            Vdom.textContent false "C"
-                        |]
-                    |]
+                    [| [| Vdom.textContent "A" ; Vdom.textContent "B" ; Vdom.textContent "C" |] |]
                     [| Column.Proportion 0.0 ; Column.Proportion 0.0 ; Column.Proportion 0.0 |]
                     [||]
 
@@ -1148,15 +1118,11 @@ A         B         C         |
                     (NodeKey.make "t_")
                     [|
                         [|
-                            Vdom.textContent false "AutoCol"
-                            Vdom.textContent false "Fix"
-                            Vdom.textContent false "Prop"
+                            Vdom.textContent "AutoCol"
+                            Vdom.textContent "Fix"
+                            Vdom.textContent "Prop"
                         |]
-                        [|
-                            Vdom.textContent false "X"
-                            Vdom.textContent false "Y"
-                            Vdom.textContent false "Z"
-                        |]
+                        [| Vdom.textContent "X" ; Vdom.textContent "Y" ; Vdom.textContent "Z" |]
                     |]
                     [| Column.Content ; Column.Fixed 8 ; Column.Proportion 1.0 |]
                     [||]
@@ -1205,9 +1171,9 @@ X      Y       Z              |
                     (NodeKey.make "t_")
                     [|
                         [|
-                            Vdom.textContent false "VeryLongColumn1"
-                            Vdom.textContent false "VeryLongColumn2"
-                            Vdom.textContent false "VeryLongColumn3"
+                            Vdom.textContent "VeryLongColumn1"
+                            Vdom.textContent "VeryLongColumn2"
+                            Vdom.textContent "VeryLongColumn3"
                         |]
                     |]
                     [| Column.Content ; Column.Content ; Column.Content |]
@@ -1257,11 +1223,11 @@ gColumngColumnngColu|
                 Table.make
                     (NodeKey.make "t_")
                     [|
-                        [| Vdom.textContent false "Row1" |]
-                        [| Vdom.textContent false "Row2" |]
-                        [| Vdom.textContent false "Row3" |]
-                        [| Vdom.textContent false "Row4" |]
-                        [| Vdom.textContent false "Row5" |]
+                        [| Vdom.textContent "Row1" |]
+                        [| Vdom.textContent "Row2" |]
+                        [| Vdom.textContent "Row3" |]
+                        [| Vdom.textContent "Row4" |]
+                        [| Vdom.textContent "Row5" |]
                     |]
                     [||]
                     [| Row.Content ; Row.Content ; Row.Content ; Row.Content ; Row.Content |]
@@ -1322,8 +1288,8 @@ module TestTableMeasurements =
 
         let cata : VdomCata<Folded> =
             {
-                KeylessVdom =
-                    { new KeylessVdomCataCase<Folded, Folded, Folded> with
+                Vdom =
+                    { new VdomCataCase<Folded, Folded, Folded> with
                         member _.Keyed v = v
                         member _.Unkeyed v = v
                     }
@@ -1418,9 +1384,9 @@ module TestTableMeasurements =
     [<Test>]
     let ``table MinWidth equals sum of column minimums`` () =
         // Create cells with known MinWidth values
-        let cell1 = Vdom.textContent false "Short" // MinWidth = 5 (longest word)
-        let cell2 = Vdom.textContent false "VeryLongWord" // MinWidth = 12
-        let cell3 = Vdom.textContent false "A B C" // MinWidth = 1
+        let cell1 = Vdom.textContent "Short" // MinWidth = 5 (longest word)
+        let cell2 = Vdom.textContent "VeryLongWord" // MinWidth = 12
+        let cell3 = Vdom.textContent "A B C" // MinWidth = 1
 
         let table =
             Table.makeContentSized (NodeKey.make "t_") [| [| cell1 ; cell2 ; cell3 |] |]
@@ -1438,8 +1404,8 @@ module TestTableMeasurements =
 
     [<Test>]
     let ``table MinWidth with Column.Fixed uses fixed width`` () =
-        let cell1 = Vdom.textContent false "Short" // MinWidth = 5
-        let cell2 = Vdom.textContent false "X" // MinWidth = 1
+        let cell1 = Vdom.textContent "Short" // MinWidth = 5
+        let cell2 = Vdom.textContent "X" // MinWidth = 1
 
         let table =
             Table.make (NodeKey.make "t_") [| [| cell1 ; cell2 |] |] [| Column.Fixed 10 ; Column.Content |] [||]
@@ -1457,8 +1423,8 @@ module TestTableMeasurements =
 
     [<Test>]
     let ``table MinWidth with Column.Proportion uses cell minimum`` () =
-        let cell1 = Vdom.textContent false "Hello" // MinWidth = 5
-        let cell2 = Vdom.textContent false "World" // MinWidth = 5
+        let cell1 = Vdom.textContent "Hello" // MinWidth = 5
+        let cell2 = Vdom.textContent "World" // MinWidth = 5
 
         let table =
             Table.make
@@ -1481,8 +1447,7 @@ module TestTableMeasurements =
     [<Test>]
     let ``table MinHeightForWidth uses cell MinHeightForWidth`` () =
         // Create a cell with text that wraps
-        let cell =
-            Vdom.textContent false "This is a long text that will wrap when constrained"
+        let cell = Vdom.textContent "This is a long text that will wrap when constrained"
 
         let table = Table.makeContentSized (NodeKey.make "t_") [| [| cell |] |]
 
@@ -1504,8 +1469,7 @@ module TestTableMeasurements =
 
     [<Test>]
     let ``table PreferredHeightForWidth uses cell PreferredHeightForWidth`` () =
-        let cell =
-            Vdom.textContent false "This is text that wraps differently based on width"
+        let cell = Vdom.textContent "This is text that wraps differently based on width"
 
         let table = Table.makeContentSized (NodeKey.make "t_") [| [| cell |] |]
 
@@ -1526,14 +1490,14 @@ module TestTableMeasurements =
     [<Test>]
     let ``table with multiple rows uses max height per row`` () =
         // Row 1: two cells with different heights when wrapped
-        let cell1 = Vdom.textContent false "Short"
+        let cell1 = Vdom.textContent "Short"
 
         let cell2 =
-            Vdom.textContent false "This is a much longer text that will wrap to multiple lines"
+            Vdom.textContent "This is a much longer text that will wrap to multiple lines"
 
         // Row 2: both short
-        let cell3 = Vdom.textContent false "A"
-        let cell4 = Vdom.textContent false "B"
+        let cell3 = Vdom.textContent "A"
+        let cell4 = Vdom.textContent "B"
 
         let table =
             Table.makeContentSized (NodeKey.make "t_") [| [| cell1 ; cell2 |] ; [| cell3 ; cell4 |] |]
@@ -1574,10 +1538,9 @@ module TestTableMeasurements =
             // Create a table with:
             // - Column.Content with VERY LARGE preferred width but SMALL min width (wrappable text)
             // - Column.Proportion with non-zero minimum width
-            let autoCell =
-                Vdom.textContent false "Some long text with many words that wraps nicely" // Preferred ~50, MinWidth ~6 ("nicely")
+            let autoCell = Vdom.textContent "Some long text with many words that wraps nicely" // Preferred ~50, MinWidth ~6 ("nicely")
 
-            let propCell = Vdom.textContent false "PropCol" // Preferred 7, MinWidth 7 (single word)
+            let propCell = Vdom.textContent "PropCol" // Preferred 7, MinWidth 7 (single word)
 
             let table =
                 Table.make
@@ -1651,13 +1614,9 @@ module TestTableMeasurements =
                 keyPrefix
                 [|
                     [|
-                        Vdom.withKey
-                            (NodeKey.makeTableCellKey keyPrefix 0 None (Some 0) None)
-                            (Vdom.textContent false "L")
+                        Vdom.withKey (NodeKey.makeTableCellKey keyPrefix 0 None (Some 0) None) (Vdom.textContent "L")
                         |> Vdom.Keyed
-                        Vdom.withKey
-                            (NodeKey.makeTableCellKey keyPrefix 0 None (Some 1) None)
-                            (Vdom.textContent false "R")
+                        Vdom.withKey (NodeKey.makeTableCellKey keyPrefix 0 None (Some 1) None) (Vdom.textContent "R")
                         |> Vdom.Keyed
                     |]
                 |]
@@ -1691,7 +1650,7 @@ module TestTableMeasurements =
         let keyPrefix = NodeKey.make "t"
 
         let cell =
-            Vdom.withKey (NodeKey.makeTableCellKey keyPrefix 0 None (Some 0) None) (Vdom.textContent false "Hello")
+            Vdom.withKey (NodeKey.makeTableCellKey keyPrefix 0 None (Some 0) None) (Vdom.textContent "Hello")
             |> Vdom.Keyed
 
         let table = Table.makeContentSized keyPrefix [| [| cell |] |]
@@ -1733,7 +1692,7 @@ module TestTablePerformance =
                     for row in 0..9 do
                         [|
                             for col in 0..9 do
-                                Vdom.textContent false $"R{row}C{col}"
+                                Vdom.textContent $"R{row}C{col}"
                         |]
                 |]
 
@@ -1776,7 +1735,7 @@ module TestTablePerformance =
                     for _ in 0..19 do
                         [|
                             for col in 0..49 do
-                                Vdom.textContent false $"{col}"
+                                Vdom.textContent $"{col}"
                         |]
                 |]
 
@@ -1817,7 +1776,7 @@ module TestTablePerformance =
                     for _ in 0..4 do
                         [|
                             for col in 0..99 do
-                                Vdom.textContent false $"C{col}"
+                                Vdom.textContent $"C{col}"
                         |]
                 |]
 
@@ -1855,7 +1814,7 @@ module TestTablePerformance =
 module TestVdomMeasure =
     [<Test>]
     let ``VdomBounds.measure returns correct measurements for text content`` () =
-        let vdom = Vdom.textContent false "Hello World"
+        let vdom = Vdom.textContent "Hello World"
 
         let constraints =
             {
@@ -1872,7 +1831,7 @@ module TestVdomMeasure =
 
     [<Test>]
     let ``VdomBounds.measure handles text wrapping`` () =
-        let vdom = Vdom.textContent false "Hello World Test"
+        let vdom = Vdom.textContent "Hello World Test"
 
         let constraints =
             {
@@ -1892,7 +1851,7 @@ module TestVdomMeasure =
 
     [<Test>]
     let ``VdomBounds.measure handles bordered content`` () =
-        let innerVdom = Vdom.textContent false "Test"
+        let innerVdom = Vdom.textContent "Test"
         let vdom = Vdom.bordered innerVdom
 
         let constraints =
@@ -1912,8 +1871,8 @@ module TestVdomMeasure =
 
     [<Test>]
     let ``VdomBounds.measure handles panel splits`` () =
-        let left = Vdom.textContent false "Left"
-        let right = Vdom.textContent false "Right"
+        let left = Vdom.textContent "Left"
+        let right = Vdom.textContent "Right"
 
         let leftKeyed = Vdom.withKey (NodeKey.make "left") left
         let rightKeyed = Vdom.withKey (NodeKey.make "right") right
@@ -1951,8 +1910,7 @@ module TestVdomMeasure =
 
     [<Test>]
     let ``VdomBounds.measure respects max width constraint`` () =
-        let vdom =
-            Vdom.textContent false "This is a very long text that exceeds constraints"
+        let vdom = Vdom.textContent "This is a very long text that exceeds constraints"
 
         let constraints =
             {
@@ -1978,7 +1936,7 @@ module TestVdomMeasure =
                 MaxHeightForWidth = fun _ -> Some 5
             }
 
-        let customRender (_ : Rectangle) : Vdom<DesiredBounds> = Vdom.textContent false "Custom"
+        let customRender (_ : Rectangle) : Vdom<DesiredBounds> = Vdom.textContent "Custom"
 
         let vdom = Vdom.flexibleContent customMeasure customRender
 

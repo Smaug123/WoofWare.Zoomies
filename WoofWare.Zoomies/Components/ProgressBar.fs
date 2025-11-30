@@ -72,11 +72,11 @@ module ProgressBar =
                 else
                     barContent
 
-            let barVdom = Vdom.textContent false fullContent
+            let barVdom = Vdom.textContent fullContent
 
             match options.Label with
             | Some labelText ->
-                let labelVdom = Vdom.textContent false labelText
+                let labelVdom = Vdom.textContent labelText
                 let labelWidth = labelText.Length
                 Vdom.panelSplitAbsolute (SplitDirection.Vertical, labelWidth, labelVdom, barVdom)
             | None -> barVdom

@@ -1,5 +1,7 @@
 namespace WoofWare.Zoomies
 
+open System.Runtime.InteropServices
+
 /// Global configuration for the tagging system.
 [<RequireQualifiedAccess>]
 module VdomTagging =
@@ -110,11 +112,29 @@ type Vdom =
     /// See <c>Vdom.withFocusTracking</c> for details.
     /// </param>
     /// <param name="s">The text to display within the text area. Text will be truncated if it doesn't fit.</param>
-    /// <remarks>
-    /// </remarks>
-    static member textContent (isFocused : bool) (s : string) : Vdom<DesiredBounds> =
+    /// <param name="style">How the text should render.</param>
+    /// <param name="alignment">Where in the available area to place the text.</param>
+    static member textContent
+        (s : string, ?isFocused : bool, ?style : CellStyle, ?alignment : ContentAlignment)
+        : Vdom<DesiredBounds>
+        =
+        Vdom.textContent' (s, ?isFocused = isFocused, ?style = style, ?alignment = alignment)
+        |> Vdom.Unkeyed
+
+    /// This is `Vdom.textContent`, but you get back an UnkeyedVdom rather than a Vdom.
+    static member textContent'
+        (s : string, ?isFocused : bool, ?style : CellStyle, ?alignment : ContentAlignment)
+        : UnkeyedVdom<DesiredBounds>
+        =
         // TODO: create text areas which do smart truncation etc for you
-        Vdom.Unkeyed (UnkeyedVdom.TextContent (s, CellStyle.none, ContentAlignment.TopLeft, isFocused))
+        let style =
+            match style with
+            | None -> CellStyle.none
+            | Some s -> s
+
+        let alignment = defaultArg alignment ContentAlignment.TopLeft
+        let isFocused = defaultArg isFocused false
+        UnkeyedVdom.TextContent (s, style, alignment, isFocused)
 
     /// <summary>Creates a text content component with explicit styling.</summary>
     /// <param name="content">The text to display.</param>
@@ -134,6 +154,12 @@ type Vdom =
     /// </remarks>
     static member empty : Vdom<DesiredBounds> = Vdom.Unkeyed UnkeyedVdom.Empty
 
+    /// You might want to use `Vdom.panelSplit{Proportion,Auto,Absolute}` instead; this is the raw primitive.
+    static member panelSplit
+        (d : SplitDirection, b : SplitBehaviour, c1 : Vdom<DesiredBounds>, c2 : Vdom<DesiredBounds>)
+        =
+        UnkeyedVdom.PanelSplit (d, b, c1, c2)
+
     /// <summary>Creates a split panel where two components share space according to a proportion.</summary>
     /// <remarks>
     /// The first component <c>c1</c> receives proportion <c>p</c> of the space, and the second component <c>c2</c> receives <c>1 - p</c>.
@@ -151,7 +177,7 @@ type Vdom =
         if not (p > 0.0 && p < 1.0) then
             invalidArg "p" "proportion must be between 0 and 1"
 
-        Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, SplitBehaviour.Proportion p, c1, c2))
+        Vdom.panelSplit (d, SplitBehaviour.Proportion p, c1, c2) |> Vdom.Unkeyed
 
     /// <summary>Creates a split panel where two components share space according to a proportion.</summary>
     /// <remarks>
@@ -209,7 +235,7 @@ type Vdom =
     /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
     /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
     static member panelSplitAbsolute (d, p, c1 : Vdom<DesiredBounds>, c2 : Vdom<DesiredBounds>) : Vdom<DesiredBounds> =
-        Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, SplitBehaviour.Absolute p, c1, c2))
+        Vdom.panelSplit (d, SplitBehaviour.Absolute p, c1, c2) |> Vdom.Unkeyed
 
     /// <summary>Creates a split panel where one component receives a fixed number of cells.</summary>
     /// <remarks>
@@ -259,7 +285,7 @@ type Vdom =
     /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
     /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
     static member panelSplitAuto (d, c1 : Vdom<DesiredBounds>, c2 : Vdom<DesiredBounds>) : Vdom<DesiredBounds> =
-        Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, SplitBehaviour.Auto, c1, c2))
+        Vdom.panelSplit (d, SplitBehaviour.Auto, c1, c2) |> Vdom.Unkeyed
 
     /// <summary>Creates a split panel where components share space based on their content preferences.</summary>
     /// <remarks>
@@ -270,7 +296,7 @@ type Vdom =
     /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
     /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
     static member panelSplitAuto (d, c1 : KeyedVdom<DesiredBounds>, c2 : Vdom<DesiredBounds>) : Vdom<DesiredBounds> =
-        Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, SplitBehaviour.Auto, Vdom.Keyed c1, c2))
+        Vdom.panelSplitAuto (d, Vdom.Keyed c1, c2)
 
     /// <summary>Creates a split panel where components share space based on their content preferences.</summary>
     /// <remarks>
@@ -281,7 +307,7 @@ type Vdom =
     /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
     /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
     static member panelSplitAuto (d, c1 : Vdom<DesiredBounds>, c2 : KeyedVdom<DesiredBounds>) : Vdom<DesiredBounds> =
-        Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, SplitBehaviour.Auto, c1, Vdom.Keyed c2))
+        Vdom.panelSplitAuto (d, c1, Vdom.Keyed c2)
 
     /// <summary>Creates a split panel where components share space based on their content preferences.</summary>
     /// <remarks>
@@ -295,15 +321,18 @@ type Vdom =
         (d, c1 : KeyedVdom<DesiredBounds>, c2 : KeyedVdom<DesiredBounds>)
         : Vdom<DesiredBounds>
         =
-        Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, SplitBehaviour.Auto, Vdom.Keyed c1, Vdom.Keyed c2))
+        Vdom.panelSplitAuto (d, Vdom.Keyed c1, Vdom.Keyed c2)
 
     /// Creates a bordered wrapper around a component, drawing a border around its content.
-    static member bordered (inner : Vdom<DesiredBounds>) : Vdom<DesiredBounds> =
-        Vdom.Unkeyed (UnkeyedVdom.Bordered inner)
+    /// You can generally use `bordered` instead, which gives you a `Vdom` back instead of an `UnkeyedVdom`.
+    static member bordered' (inner : Vdom<DesiredBounds>) : UnkeyedVdom<DesiredBounds> = UnkeyedVdom.Bordered inner
+
+    /// Creates a bordered wrapper around a component, drawing a border around its content.
+    static member bordered (inner : Vdom<DesiredBounds>) : Vdom<DesiredBounds> = Vdom.bordered' inner |> Vdom.Unkeyed
 
     /// Creates a bordered wrapper around a component, drawing a border around its content.
     static member bordered (inner : KeyedVdom<DesiredBounds>) : Vdom<DesiredBounds> =
-        Vdom.Unkeyed (UnkeyedVdom.Bordered (Vdom.Keyed inner))
+        Vdom.bordered' (Vdom.Keyed inner) |> Vdom.Unkeyed
 
     /// Attach a key to a VDOM node, effectively giving that node a name.
     /// If the VDOM node is already keyed, this replaces the key.
@@ -340,10 +369,18 @@ type Vdom =
         (vdom : KeyedVdom<'bounds>, ?isFirstToFocus : bool, ?isInitiallyFocused : bool)
         : Vdom<'bounds>
         =
+        Vdom.withFocusTracking' (vdom, ?isFirstToFocus = isFirstToFocus, ?isInitiallyFocused = isInitiallyFocused)
+        |> Vdom.Unkeyed
+
+    /// `withFocusTracking`, but gives you back an UnkeyedVdom instead of a Vdom.
+    static member withFocusTracking'
+        (vdom : KeyedVdom<'bounds>, ?isFirstToFocus : bool, ?isInitiallyFocused : bool)
+        : UnkeyedVdom<'bounds>
+        =
         let isFirstToFocus = defaultArg isFirstToFocus false
         let isInitiallyFocused = defaultArg isInitiallyFocused false
 
-        Vdom.Unkeyed (UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, vdom))
+        UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, vdom)
 
     /// <summary>Creates a flexible content component that can render different content based on allocated bounds.</summary>
     /// <param name="measure">Function that specifies size requirements given measurement constraints.</param>
@@ -402,13 +439,25 @@ type Vdom =
         (render : Rectangle -> Vdom<DesiredBounds>)
         : Vdom<DesiredBounds>
         =
+        Vdom.flexibleContent' measure render |> Vdom.Unkeyed
+
+    /// This is `Vdom.flexibleContent`, but you get the `UnkeyedVdom` directly rather than a `Vdom`.
+    static member flexibleContent'
+        (measure : MeasureConstraints -> MeasuredSize)
+        (render : Rectangle -> Vdom<DesiredBounds>)
+        : UnkeyedVdom<DesiredBounds>
+        =
         let content =
             {
                 Measure = measure
                 Render = render
             }
 
-        Vdom.Unkeyed (UnkeyedVdom.FlexibleContent content)
+        UnkeyedVdom.FlexibleContent content
+
+    /// A consumer almost certainly wants `Vdom.withTag` instead.
+    static member internal withTag' (tag : string) (vdom : Vdom<DesiredBounds>) : UnkeyedVdom<DesiredBounds> =
+        UnkeyedVdom.Tag (tag, vdom)
 
     /// Attach a semantic tag to this node. Tags are metadata only and do not
     /// affect rendering or layout.

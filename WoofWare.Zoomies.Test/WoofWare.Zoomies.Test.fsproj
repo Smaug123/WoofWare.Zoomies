@@ -22,6 +22,7 @@
     <Compile Include="TestVdomContext.fs" />
     <Compile Include="TestExternalEventSubscription.fs" />
     <Compile Include="TestOrderedSet.fs" />
+    <Compile Include="TestCatamorphism.fs" />
     <Compile Include="TestDebugDump.fs" />
     <Compile Include="TestRender.fs" />
     <Compile Include="TestFocusCycle.fs" />

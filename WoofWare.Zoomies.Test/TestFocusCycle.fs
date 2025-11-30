@@ -697,16 +697,11 @@ module TestFocusCycle =
                     let nonFocusable =
                         Components.Checkbox.make' (false, isFocused) |> Vdom.withKey sharedKey
 
-                    Vdom.panelSplitProportion (
-                        SplitDirection.Vertical,
-                        0.5,
-                        Vdom.textContent false "more",
-                        nonFocusable
-                    )
+                    Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, Vdom.textContent "more", nonFocusable)
                 | 2 ->
                     // Third frame: nothing should now be focused, because the previous frame had no focusable elements.
                     currentFocus |> shouldEqual None
-                    Vdom.textContent false ""
+                    Vdom.textContent ""
                 | _ -> failwith "unexpected"
 
             use worldFreezer =
