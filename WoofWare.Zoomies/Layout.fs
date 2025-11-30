@@ -562,8 +562,8 @@ module internal Layout =
             Children = [ child1Measured ; child2Measured ]
         }
 
-    /// Measure any Vdom node
-    and private measureEither
+    /// Measure any Vdom node. Exposed publically through VdomBounds.measure.
+    and internal measureEither
         (constraints : MeasureConstraints)
         (vdom : Vdom<DesiredBounds>)
         : MeasuredNode<DesiredBounds>
