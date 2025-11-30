@@ -26,7 +26,7 @@ module TestActivationWithPartialBatch =
         task {
             let buttonKey = NodeKey.make "test-button"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
                 let text =
                     Vdom.textContent false $"Clicks: {state.ButtonClickCount}, Keys: {state.ProcessedKeystrokes.Length}"
 
@@ -139,7 +139,7 @@ module TestActivationWithPartialBatch =
         task {
             let buttonKey = NodeKey.make "test-button"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
                 let button =
                     Button.make (ctx, buttonKey, "Click Me", isInitiallyFocused = true, isFirstToFocus = true)
 

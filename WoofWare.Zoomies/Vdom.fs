@@ -1,7 +1,5 @@
 namespace WoofWare.Zoomies
 
-open TypeEquality
-
 /// Global configuration for the tagging system.
 [<RequireQualifiedAccess>]
 module VdomTagging =
@@ -47,12 +45,6 @@ module NodeKey =
 
             $"%s{toHumanReadableString nodeKey}_%i{row}%s{toRow}%s{col}"
 
-/// Phantom type to track whether a node has a key
-type Keyed = private | Keyed
-
-/// Phantom type to track whether a node lacks a key
-type Unkeyed = private | Unkeyed
-
 /// Specify the direction to split, when splitting a panel.
 type SplitDirection =
     /// Split so that the divider runs vertically: one component is to the left and one is to the right.
@@ -86,35 +78,24 @@ type ContentAlignment =
 type internal FlexibleContent =
     {
         Measure : MeasureConstraints -> MeasuredSize
-        Render : Rectangle -> KeylessVdom<DesiredBounds>
+        Render : Rectangle -> Vdom<DesiredBounds>
     }
 
-and internal UnkeyedVdom<'bounds> =
-    | Bordered of KeylessVdom<'bounds>
-    | PanelSplit of SplitDirection * SplitBehaviour * child1 : KeylessVdom<'bounds> * child2 : KeylessVdom<'bounds>
+and [<NoEquality ; NoComparison>] Vdom<'bounds> =
+    | Keyed of KeyedVdom<'bounds>
+    | Unkeyed of UnkeyedVdom<'bounds>
+
+and KeyedVdom<'bounds> = internal | KeyedVdom of NodeKey * UnkeyedVdom<'bounds>
+
+and UnkeyedVdom<'bounds> =
+    private
+    | Bordered of Vdom<'bounds>
+    | PanelSplit of SplitDirection * SplitBehaviour * child1 : Vdom<'bounds> * child2 : Vdom<'bounds>
     | TextContent of content : string * style : CellStyle * alignment : ContentAlignment * focused : bool
     | Focusable of isFirstToFocus : bool * isInitiallyFocused : bool * KeyedVdom<'bounds>
     | Empty
     | FlexibleContent of FlexibleContent
-    | Tag of tag : string * inner : KeylessVdom<'bounds>
-
-and internal KeyedVdom<'bounds> = | WithKey of NodeKey * UnkeyedVdom<'bounds>
-
-and internal KeylessVdom<'bounds> =
-    private
-    | Keyed of KeyedVdom<'bounds>
-    | Unkeyed of UnkeyedVdom<'bounds>
-
-[<NoEquality ; NoComparison>]
-type Vdom<'bounds, 'keyed> =
-    private
-    | Keyed of KeyedVdom<'bounds> * Teq<'keyed, Keyed>
-    | Unkeyed of UnkeyedVdom<'bounds> * Teq<'keyed, Unkeyed>
-
-[<RequireQualifiedAccess>]
-module private VdomUtils =
-    let teqUnreachable (_ : Teq<Keyed, Unkeyed>) : 'a = failwith "unreachable"
-    let teqUnreachable' (_ : Teq<Unkeyed, Keyed>) : 'a = failwith "unreachable"
+    | Tag of tag : string * inner : Vdom<'bounds>
 
 [<Sealed>]
 type Vdom =
@@ -131,9 +112,9 @@ type Vdom =
     /// <param name="s">The text to display within the text area. Text will be truncated if it doesn't fit.</param>
     /// <remarks>
     /// </remarks>
-    static member textContent (isFocused : bool) (s : string) : Vdom<DesiredBounds, Unkeyed> =
+    static member textContent (isFocused : bool) (s : string) : Vdom<DesiredBounds> =
         // TODO: create text areas which do smart truncation etc for you
-        Vdom.Unkeyed (UnkeyedVdom.TextContent (s, CellStyle.none, ContentAlignment.TopLeft, isFocused), Teq.refl)
+        Vdom.Unkeyed (UnkeyedVdom.TextContent (s, CellStyle.none, ContentAlignment.TopLeft, isFocused))
 
     /// <summary>Creates a text content component with explicit styling.</summary>
     /// <param name="content">The text to display.</param>
@@ -141,12 +122,9 @@ type Vdom =
     /// <param name="alignment">Where within the panel to place the text.</param>
     static member styledText
         (content : string, style : CellStyle, ?alignment : ContentAlignment)
-        : Vdom<DesiredBounds, Unkeyed>
+        : Vdom<DesiredBounds>
         =
-        Vdom.Unkeyed (
-            UnkeyedVdom.TextContent (content, style, defaultArg alignment ContentAlignment.TopLeft, false),
-            Teq.refl
-        )
+        Vdom.Unkeyed (UnkeyedVdom.TextContent (content, style, defaultArg alignment ContentAlignment.TopLeft, false))
 
     /// <summary>Creates an empty zero-sized element.</summary>
     /// <remarks>
@@ -154,8 +132,7 @@ type Vdom =
     /// For example, use <c>Vdom.panelSplitAbsolute</c> with a negative width and <c>Vdom.empty</c> to push content
     /// to the right edge of a panel.
     /// </remarks>
-    static member empty : Vdom<DesiredBounds, Unkeyed> =
-        Vdom.Unkeyed (UnkeyedVdom.Empty, Teq.refl)
+    static member empty : Vdom<DesiredBounds> = Vdom.Unkeyed UnkeyedVdom.Empty
 
     /// <summary>Creates a split panel where two components share space according to a proportion.</summary>
     /// <remarks>
@@ -168,24 +145,13 @@ type Vdom =
     /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
     /// <exception cref="ArgumentException">The proportion <c>p</c> was not between 0 and 1, exclusive.</exception>
     static member panelSplitProportion
-        (d, p, c1 : Vdom<DesiredBounds, Keyed>, c2 : Vdom<DesiredBounds, Keyed>)
-        : Vdom<DesiredBounds, Unkeyed>
+        (d, p, c1 : Vdom<DesiredBounds>, c2 : Vdom<DesiredBounds>)
+        : Vdom<DesiredBounds>
         =
         if not (p > 0.0 && p < 1.0) then
             invalidArg "p" "proportion must be between 0 and 1"
 
-        match c1 with
-        | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
-        | Keyed (c1, _) ->
-
-        match c2 with
-        | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
-        | Keyed (c2, _) ->
-
-        Vdom.Unkeyed (
-            UnkeyedVdom.PanelSplit (d, SplitBehaviour.Proportion p, KeylessVdom.Keyed c1, KeylessVdom.Keyed c2),
-            Teq.refl
-        )
+        Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, SplitBehaviour.Proportion p, c1, c2))
 
     /// <summary>Creates a split panel where two components share space according to a proportion.</summary>
     /// <remarks>
@@ -198,24 +164,9 @@ type Vdom =
     /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
     /// <exception cref="ArgumentException">The proportion <c>p</c> was not between 0 and 1, exclusive.</exception>
     static member panelSplitProportion
-        (d, p, c1 : Vdom<DesiredBounds, Keyed>, c2 : Vdom<DesiredBounds, Unkeyed>)
-        : Vdom<DesiredBounds, Unkeyed>
+        (d : SplitDirection, p : float, c1 : KeyedVdom<DesiredBounds>, c2 : KeyedVdom<DesiredBounds>)
         =
-        if not (p > 0.0 && p < 1.0) then
-            invalidArg "p" "proportion must be between 0 and 1"
-
-        match c1 with
-        | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
-        | Keyed (c1, _) ->
-
-        match c2 with
-        | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
-        | Unkeyed (c2, _) ->
-
-        Vdom.Unkeyed (
-            UnkeyedVdom.PanelSplit (d, SplitBehaviour.Proportion p, KeylessVdom.Keyed c1, KeylessVdom.Unkeyed c2),
-            Teq.refl
-        )
+        Vdom.panelSplitProportion (d, p, Vdom.Keyed c1, Vdom.Keyed c2)
 
     /// <summary>Creates a split panel where two components share space according to a proportion.</summary>
     /// <remarks>
@@ -228,24 +179,9 @@ type Vdom =
     /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
     /// <exception cref="ArgumentException">The proportion <c>p</c> was not between 0 and 1, exclusive.</exception>
     static member panelSplitProportion
-        (d, p, c1 : Vdom<DesiredBounds, Unkeyed>, c2 : Vdom<DesiredBounds, Keyed>)
-        : Vdom<DesiredBounds, Unkeyed>
+        (d : SplitDirection, p : float, c1 : Vdom<DesiredBounds>, c2 : KeyedVdom<DesiredBounds>)
         =
-        if not (p > 0.0 && p < 1.0) then
-            invalidArg "p" "proportion must be between 0 and 1"
-
-        match c1 with
-        | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
-        | Unkeyed (c1, _) ->
-
-        match c2 with
-        | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
-        | Keyed (c2, _) ->
-
-        Vdom.Unkeyed (
-            UnkeyedVdom.PanelSplit (d, SplitBehaviour.Proportion p, KeylessVdom.Unkeyed c1, KeylessVdom.Keyed c2),
-            Teq.refl
-        )
+        Vdom.panelSplitProportion (d, p, c1, Vdom.Keyed c2)
 
     /// <summary>Creates a split panel where two components share space according to a proportion.</summary>
     /// <remarks>
@@ -258,24 +194,9 @@ type Vdom =
     /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
     /// <exception cref="ArgumentException">The proportion <c>p</c> was not between 0 and 1, exclusive.</exception>
     static member panelSplitProportion
-        (d, p, c1 : Vdom<DesiredBounds, Unkeyed>, c2 : Vdom<DesiredBounds, Unkeyed>)
-        : Vdom<DesiredBounds, Unkeyed>
+        (d : SplitDirection, p : float, c1 : KeyedVdom<DesiredBounds>, c2 : Vdom<DesiredBounds>)
         =
-        if not (p > 0.0 && p < 1.0) then
-            invalidArg "p" "proportion must be between 0 and 1"
-
-        match c1 with
-        | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
-        | Unkeyed (c1, _) ->
-
-        match c2 with
-        | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
-        | Unkeyed (c2, _) ->
-
-        Vdom.Unkeyed (
-            UnkeyedVdom.PanelSplit (d, SplitBehaviour.Proportion p, KeylessVdom.Unkeyed c1, KeylessVdom.Unkeyed c2),
-            Teq.refl
-        )
+        Vdom.panelSplitProportion (d, p, Vdom.Keyed c1, c2)
 
     /// <summary>Creates a split panel where one component receives a fixed number of cells.</summary>
     /// <remarks>
@@ -287,22 +208,8 @@ type Vdom =
     /// <param name="p">The number of cells to allocate. If positive, allocates to the first component; if negative, allocates abs(p) to the second component.</param>
     /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
     /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
-    static member panelSplitAbsolute
-        (d, p, c1 : Vdom<DesiredBounds, Keyed>, c2 : Vdom<DesiredBounds, Keyed>)
-        : Vdom<DesiredBounds, Unkeyed>
-        =
-        match c1 with
-        | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
-        | Keyed (c1, _) ->
-
-        match c2 with
-        | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
-        | Keyed (c2, _) ->
-
-        Vdom.Unkeyed (
-            UnkeyedVdom.PanelSplit (d, SplitBehaviour.Absolute p, KeylessVdom.Keyed c1, KeylessVdom.Keyed c2),
-            Teq.refl
-        )
+    static member panelSplitAbsolute (d, p, c1 : Vdom<DesiredBounds>, c2 : Vdom<DesiredBounds>) : Vdom<DesiredBounds> =
+        Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, SplitBehaviour.Absolute p, c1, c2))
 
     /// <summary>Creates a split panel where one component receives a fixed number of cells.</summary>
     /// <remarks>
@@ -314,22 +221,8 @@ type Vdom =
     /// <param name="p">The number of cells to allocate. If positive, allocates to the first component; if negative, allocates abs(p) to the second component.</param>
     /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
     /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
-    static member panelSplitAbsolute
-        (d, p, c1 : Vdom<DesiredBounds, Unkeyed>, c2 : Vdom<DesiredBounds, Keyed>)
-        : Vdom<DesiredBounds, Unkeyed>
-        =
-        match c1 with
-        | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
-        | Unkeyed (c1, _) ->
-
-        match c2 with
-        | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
-        | Keyed (c2, _) ->
-
-        Vdom.Unkeyed (
-            UnkeyedVdom.PanelSplit (d, SplitBehaviour.Absolute p, KeylessVdom.Unkeyed c1, KeylessVdom.Keyed c2),
-            Teq.refl
-        )
+    static member panelSplitAbsolute (d, p, c1 : KeyedVdom<DesiredBounds>, c2 : KeyedVdom<DesiredBounds>) =
+        Vdom.panelSplitAbsolute (d, p, Vdom.Keyed c1, Vdom.Keyed c2)
 
     /// <summary>Creates a split panel where one component receives a fixed number of cells.</summary>
     /// <remarks>
@@ -341,22 +234,8 @@ type Vdom =
     /// <param name="p">The number of cells to allocate. If positive, allocates to the first component; if negative, allocates abs(p) to the second component.</param>
     /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
     /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
-    static member panelSplitAbsolute
-        (d, p, c1 : Vdom<DesiredBounds, Keyed>, c2 : Vdom<DesiredBounds, Unkeyed>)
-        : Vdom<DesiredBounds, Unkeyed>
-        =
-        match c1 with
-        | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
-        | Keyed (c1, _) ->
-
-        match c2 with
-        | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
-        | Unkeyed (c2, _) ->
-
-        Vdom.Unkeyed (
-            UnkeyedVdom.PanelSplit (d, SplitBehaviour.Absolute p, KeylessVdom.Keyed c1, KeylessVdom.Unkeyed c2),
-            Teq.refl
-        )
+    static member panelSplitAbsolute (d, p, c1 : Vdom<DesiredBounds>, c2 : KeyedVdom<DesiredBounds>) =
+        Vdom.panelSplitAbsolute (d, p, c1, Vdom.Keyed c2)
 
     /// <summary>Creates a split panel where one component receives a fixed number of cells.</summary>
     /// <remarks>
@@ -368,22 +247,41 @@ type Vdom =
     /// <param name="p">The number of cells to allocate. If positive, allocates to the first component; if negative, allocates abs(p) to the second component.</param>
     /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
     /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
-    static member panelSplitAbsolute
-        (d, p, c1 : Vdom<DesiredBounds, Unkeyed>, c2 : Vdom<DesiredBounds, Unkeyed>)
-        : Vdom<DesiredBounds, Unkeyed>
-        =
-        match c1 with
-        | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
-        | Unkeyed (c1, _) ->
+    static member panelSplitAbsolute (d, p, c1 : KeyedVdom<DesiredBounds>, c2 : Vdom<DesiredBounds>) =
+        Vdom.panelSplitAbsolute (d, p, Vdom.Keyed c1, c2)
 
-        match c2 with
-        | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
-        | Unkeyed (c2, _) ->
+    /// <summary>Creates a split panel where components share space based on their content preferences.</summary>
+    /// <remarks>
+    /// Space is divided proportionally to each component's preferred width (for vertical splits) or height (for horizontal splits).
+    /// </remarks>
+    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
+    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
+    /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
+    /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
+    static member panelSplitAuto (d, c1 : Vdom<DesiredBounds>, c2 : Vdom<DesiredBounds>) : Vdom<DesiredBounds> =
+        Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, SplitBehaviour.Auto, c1, c2))
 
-        Vdom.Unkeyed (
-            UnkeyedVdom.PanelSplit (d, SplitBehaviour.Absolute p, KeylessVdom.Unkeyed c1, KeylessVdom.Unkeyed c2),
-            Teq.refl
-        )
+    /// <summary>Creates a split panel where components share space based on their content preferences.</summary>
+    /// <remarks>
+    /// Space is divided proportionally to each component's preferred width (for vertical splits) or height (for horizontal splits).
+    /// </remarks>
+    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
+    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
+    /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
+    /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
+    static member panelSplitAuto (d, c1 : KeyedVdom<DesiredBounds>, c2 : Vdom<DesiredBounds>) : Vdom<DesiredBounds> =
+        Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, SplitBehaviour.Auto, Vdom.Keyed c1, c2))
+
+    /// <summary>Creates a split panel where components share space based on their content preferences.</summary>
+    /// <remarks>
+    /// Space is divided proportionally to each component's preferred width (for vertical splits) or height (for horizontal splits).
+    /// </remarks>
+    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
+    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
+    /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
+    /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
+    static member panelSplitAuto (d, c1 : Vdom<DesiredBounds>, c2 : KeyedVdom<DesiredBounds>) : Vdom<DesiredBounds> =
+        Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, SplitBehaviour.Auto, c1, Vdom.Keyed c2))
 
     /// <summary>Creates a split panel where components share space based on their content preferences.</summary>
     /// <remarks>
@@ -394,110 +292,21 @@ type Vdom =
     /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
     /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
     static member panelSplitAuto
-        (d, c1 : Vdom<DesiredBounds, Keyed>, c2 : Vdom<DesiredBounds, Keyed>)
-        : Vdom<DesiredBounds, Unkeyed>
+        (d, c1 : KeyedVdom<DesiredBounds>, c2 : KeyedVdom<DesiredBounds>)
+        : Vdom<DesiredBounds>
         =
-        match c1 with
-        | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
-        | Keyed (c1, _) ->
-
-        match c2 with
-        | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
-        | Keyed (c2, _) ->
-
-        Vdom.Unkeyed (
-            UnkeyedVdom.PanelSplit (d, SplitBehaviour.Auto, KeylessVdom.Keyed c1, KeylessVdom.Keyed c2),
-            Teq.refl
-        )
-
-    /// <summary>Creates a split panel where components share space based on their content preferences.</summary>
-    /// <remarks>
-    /// Space is divided proportionally to each component's preferred width (for vertical splits) or height (for horizontal splits).
-    /// </remarks>
-    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
-    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
-    /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
-    /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
-    static member panelSplitAuto
-        (d, c1 : Vdom<DesiredBounds, Keyed>, c2 : Vdom<DesiredBounds, Unkeyed>)
-        : Vdom<DesiredBounds, Unkeyed>
-        =
-        match c1 with
-        | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
-        | Keyed (c1, _) ->
-
-        match c2 with
-        | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
-        | Unkeyed (c2, _) ->
-
-        Vdom.Unkeyed (
-            UnkeyedVdom.PanelSplit (d, SplitBehaviour.Auto, KeylessVdom.Keyed c1, KeylessVdom.Unkeyed c2),
-            Teq.refl
-        )
-
-    /// <summary>Creates a split panel where components share space based on their content preferences.</summary>
-    /// <remarks>
-    /// Space is divided proportionally to each component's preferred width (for vertical splits) or height (for horizontal splits).
-    /// </remarks>
-    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
-    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
-    /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
-    /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
-    static member panelSplitAuto
-        (d, c1 : Vdom<DesiredBounds, Unkeyed>, c2 : Vdom<DesiredBounds, Keyed>)
-        : Vdom<DesiredBounds, Unkeyed>
-        =
-        match c1 with
-        | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
-        | Unkeyed (c1, _) ->
-
-        match c2 with
-        | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
-        | Keyed (c2, _) ->
-
-        Vdom.Unkeyed (
-            UnkeyedVdom.PanelSplit (d, SplitBehaviour.Auto, KeylessVdom.Unkeyed c1, KeylessVdom.Keyed c2),
-            Teq.refl
-        )
-
-    /// <summary>Creates a split panel where components share space based on their content preferences.</summary>
-    /// <remarks>
-    /// Space is divided proportionally to each component's preferred width (for vertical splits) or height (for horizontal splits).
-    /// </remarks>
-    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
-    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
-    /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
-    /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
-    static member panelSplitAuto
-        (d, c1 : Vdom<DesiredBounds, Unkeyed>, c2 : Vdom<DesiredBounds, Unkeyed>)
-        : Vdom<DesiredBounds, Unkeyed>
-        =
-        match c1 with
-        | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
-        | Unkeyed (c1, _) ->
-
-        match c2 with
-        | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
-        | Unkeyed (c2, _) ->
-
-        Vdom.Unkeyed (
-            UnkeyedVdom.PanelSplit (d, SplitBehaviour.Auto, KeylessVdom.Unkeyed c1, KeylessVdom.Unkeyed c2),
-            Teq.refl
-        )
+        Vdom.Unkeyed (UnkeyedVdom.PanelSplit (d, SplitBehaviour.Auto, Vdom.Keyed c1, Vdom.Keyed c2))
 
     /// Creates a bordered wrapper around a component, drawing a border around its content.
-    static member bordered (inner : Vdom<_, Keyed>) : Vdom<DesiredBounds, Unkeyed> =
-        match inner with
-        | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
-        | Keyed (inner, _) -> Vdom.Unkeyed (UnkeyedVdom.Bordered (KeylessVdom.Keyed inner), Teq.refl)
+    static member bordered (inner : Vdom<DesiredBounds>) : Vdom<DesiredBounds> =
+        Vdom.Unkeyed (UnkeyedVdom.Bordered inner)
 
     /// Creates a bordered wrapper around a component, drawing a border around its content.
-    static member bordered (inner : Vdom<_, Unkeyed>) : Vdom<DesiredBounds, Unkeyed> =
-        match inner with
-        | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
-        | Unkeyed (inner, _) -> Vdom.Unkeyed (UnkeyedVdom.Bordered (KeylessVdom.Unkeyed inner), Teq.refl)
+    static member bordered (inner : KeyedVdom<DesiredBounds>) : Vdom<DesiredBounds> =
+        Vdom.Unkeyed (UnkeyedVdom.Bordered (Vdom.Keyed inner))
 
     /// Attach a key to a VDOM node, effectively giving that node a name.
+    /// If the VDOM node is already keyed, this replaces the key.
     ///
     /// You're free to arbitrarily reshuffle keys, reassign them to new nodes, etc., between renders.
     /// Doing so will invalidate the layout cache, but will not incur any repainting unless you also changed how
@@ -508,10 +317,10 @@ type Vdom =
     /// a different node has key "foo", focus will be on that different node.
     ///
     /// It's up to you to ensure that at most one component has a given key within a single Vdom.
-    static member withKey (key : NodeKey) (vdom : Vdom<'bounds, Unkeyed>) : Vdom<'bounds, Keyed> =
+    static member withKey (key : NodeKey) (vdom : Vdom<'bounds>) : KeyedVdom<'bounds> =
         match vdom with
-        | Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
-        | Unkeyed (vdom, _) -> Vdom.Keyed (KeyedVdom.WithKey (key, vdom), Teq.refl)
+        | Vdom.Keyed (KeyedVdom (_prevKey, vdom)) -> KeyedVdom (key, vdom)
+        | Vdom.Unkeyed vdom -> KeyedVdom (key, vdom)
 
     /// Mark a keyed node as focusable, for the purposes of the automatic focus tracking system.
     ///
@@ -528,15 +337,13 @@ type Vdom =
     ///
     /// This annotation does nothing if WoofWare.Zoomies is running with automatic focus tracking turned off.
     static member withFocusTracking
-        (vdom : Vdom<'bounds, Keyed>, ?isFirstToFocus : bool, ?isInitiallyFocused : bool)
-        : Vdom<'bounds, Unkeyed>
+        (vdom : KeyedVdom<'bounds>, ?isFirstToFocus : bool, ?isInitiallyFocused : bool)
+        : Vdom<'bounds>
         =
         let isFirstToFocus = defaultArg isFirstToFocus false
         let isInitiallyFocused = defaultArg isInitiallyFocused false
 
-        match vdom with
-        | Unkeyed (_, teq) -> VdomUtils.teqUnreachable teq
-        | Keyed (vdom, _) -> Vdom.Unkeyed (UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, vdom), Teq.refl)
+        Vdom.Unkeyed (UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, vdom))
 
     /// <summary>Creates a flexible content component that can render different content based on allocated bounds.</summary>
     /// <param name="measure">Function that specifies size requirements given measurement constraints.</param>
@@ -592,52 +399,47 @@ type Vdom =
     /// </remarks>
     static member flexibleContent
         (measure : MeasureConstraints -> MeasuredSize)
-        (render : Rectangle -> Vdom<DesiredBounds, Unkeyed>)
-        : Vdom<DesiredBounds, Unkeyed>
+        (render : Rectangle -> Vdom<DesiredBounds>)
+        : Vdom<DesiredBounds>
         =
-        let renderInternal (bounds : Rectangle) : KeylessVdom<DesiredBounds> =
-            match render bounds with
-            | Vdom.Keyed (_, teq) -> VdomUtils.teqUnreachable' teq
-            | Vdom.Unkeyed (vdom, _) -> KeylessVdom.Unkeyed vdom
-
         let content =
             {
                 Measure = measure
-                Render = renderInternal
+                Render = render
             }
 
-        Vdom.Unkeyed (UnkeyedVdom.FlexibleContent content, Teq.refl)
+        Vdom.Unkeyed (UnkeyedVdom.FlexibleContent content)
 
     /// Attach a semantic tag to this node. Tags are metadata only and do not
     /// affect rendering or layout.
     ///
     /// If VdomTagging.Enabled is false, this is a no-op returning the input unchanged.
-    static member withTag (tag : string) (vdom : Vdom<'bounds, 'keyed>) : Vdom<'bounds, 'keyed> =
+    static member withTag (tag : string) (vdom : Vdom<'bounds>) : Vdom<'bounds> =
         if not VdomTagging.Enabled then
             vdom
         else
             match vdom with
-            | Vdom.Unkeyed (inner, teq) ->
-                let wrappedInner = UnkeyedVdom.Tag (tag, KeylessVdom.Unkeyed inner)
-                Vdom.Unkeyed (wrappedInner, teq)
-            | Vdom.Keyed (inner, teq) ->
+            | Vdom.Unkeyed inner ->
+                let wrappedInner = UnkeyedVdom.Tag (tag, Vdom.Unkeyed inner)
+                Vdom.Unkeyed wrappedInner
+            | Vdom.Keyed inner ->
                 // Extract the inner content, wrap it in a Tag, then re-key it
-                let (KeyedVdom.WithKey (key, innerUnkeyed)) = inner
-                let wrappedInner = UnkeyedVdom.Tag (tag, KeylessVdom.Unkeyed innerUnkeyed)
-                let rekeyedInner = KeyedVdom.WithKey (key, wrappedInner)
-                Vdom.Keyed (rekeyedInner, teq)
+                let (KeyedVdom (key, innerUnkeyed)) = inner
+                let wrappedInner = UnkeyedVdom.Tag (tag, Vdom.Unkeyed innerUnkeyed)
+                let rekeyedInner = KeyedVdom (key, wrappedInner)
+                Vdom.Keyed rekeyedInner
 
     /// Produce a human-readable tree representation of the VDOM structure,
     /// including tags and keys.
-    static member debugDump (vdom : Vdom<'bounds, 'keyed>) : string =
+    static member debugDump (vdom : Vdom<'bounds>) : string =
         let sb = System.Text.StringBuilder ()
 
-        let rec dumpKeylessVdom (indent : string) (vdom : KeylessVdom<'bounds>) : unit =
+        let rec dumpVdom (indent : string) (vdom : Vdom<'bounds>) : unit =
             match vdom with
-            | KeylessVdom.Keyed keyed -> dumpKeyedVdom indent keyed
-            | KeylessVdom.Unkeyed unkeyed -> dumpUnkeyedVdom indent unkeyed
+            | Vdom.Keyed keyed -> dumpKeyedVdom indent keyed
+            | Vdom.Unkeyed unkeyed -> dumpUnkeyedVdom indent unkeyed
 
-        and dumpKeyedVdom (indent : string) (KeyedVdom.WithKey (key, inner)) : unit =
+        and dumpKeyedVdom (indent : string) (KeyedVdom (key, inner)) : unit =
             sb.AppendLine (sprintf "%sKey: %s" indent (NodeKey.toHumanReadableString key))
             |> ignore
 
@@ -671,7 +473,7 @@ type Vdom =
                 |> ignore
             | UnkeyedVdom.Bordered inner ->
                 sb.AppendLine (sprintf "%sBordered:" indent) |> ignore
-                dumpKeylessVdom (indent + "  ") inner
+                dumpVdom (indent + "  ") inner
             | UnkeyedVdom.PanelSplit (direction, behaviour, c1, c2) ->
                 let dirStr =
                     match direction with
@@ -686,9 +488,9 @@ type Vdom =
 
                 sb.AppendLine (sprintf "%sPanelSplit: %s %s" indent dirStr behavStr) |> ignore
                 sb.AppendLine (sprintf "%s  First:" indent) |> ignore
-                dumpKeylessVdom (indent + "    ") c1
+                dumpVdom (indent + "    ") c1
                 sb.AppendLine (sprintf "%s  Second:" indent) |> ignore
-                dumpKeylessVdom (indent + "    ") c2
+                dumpVdom (indent + "    ") c2
             | UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, inner) ->
                 let flags = ResizeArray<string> ()
 
@@ -709,24 +511,29 @@ type Vdom =
             | UnkeyedVdom.FlexibleContent _ -> sb.AppendLine (sprintf "%sFlexibleContent <function>" indent) |> ignore
             | UnkeyedVdom.Tag (tag, inner) ->
                 sb.AppendLine (sprintf "%sTag: %s" indent tag) |> ignore
-                dumpKeylessVdom (indent + "  ") inner
+                dumpVdom (indent + "  ") inner
 
-        match vdom with
-        | Vdom.Keyed (keyed, _) ->
-            dumpKeyedVdom "" keyed
-            sb.ToString ()
-        | Vdom.Unkeyed (unkeyed, _) ->
-            dumpUnkeyedVdom "" unkeyed
-            sb.ToString ()
+        dumpVdom "" vdom
+        sb.ToString ()
 
-[<Sealed>]
-type private KeylessVdom =
-    static member referenceEquals (self : KeylessVdom<'bounds>, other : KeyedVdom<'bounds>) =
-        match self with
-        | KeylessVdom.Keyed vdom -> Object.referenceEquals vdom other
-        | KeylessVdom.Unkeyed _ -> false
+    /// Produce a human-readable tree representation of the VDOM structure,
+    /// including tags and keys.
+    static member debugDump (vdom : KeyedVdom<'bounds>) : string = Vdom.debugDump (Vdom.Keyed vdom)
 
-    static member referenceEquals (self : KeylessVdom<'bounds>, other : UnkeyedVdom<'bounds>) =
-        match self with
-        | KeylessVdom.Unkeyed vdom -> Object.referenceEquals vdom other
-        | KeylessVdom.Keyed _ -> false
+[<RequireQualifiedAccess>]
+module KeyedVdom =
+    /// Attach a semantic tag to this node. Tags are metadata only and do not
+    /// affect rendering or layout.
+    ///
+    /// If VdomTagging.Enabled is false, this is a no-op returning the input unchanged.
+    let withTag (tag : string) (vdom : KeyedVdom<'bounds>) : KeyedVdom<'bounds> =
+        if not VdomTagging.Enabled then
+            vdom
+        else
+            let (KeyedVdom (key, innerUnkeyed)) = vdom
+            let wrappedInner = UnkeyedVdom.Tag (tag, Vdom.Unkeyed innerUnkeyed)
+            KeyedVdom (key, wrappedInner)
+
+    /// Produce a human-readable tree representation of the VDOM structure,
+    /// including tags and keys.
+    let debugDump (vdom : KeyedVdom<'bounds>) : string = Vdom.debugDump (Vdom.Keyed vdom)

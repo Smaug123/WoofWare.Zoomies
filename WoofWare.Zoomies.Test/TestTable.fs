@@ -23,8 +23,8 @@ module TestTable =
     [<Test>]
     let ``empty table`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
-                Table.makeContentSized<Unkeyed> (NodeKey.make "t_") [||]
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+                Table.makeContentSized (NodeKey.make "t_") [||]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
 
@@ -65,7 +65,7 @@ module TestTable =
     [<Test>]
     let ``simple 2x2 content-sized table`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.makeContentSized
                     (NodeKey.make "t_")
                     [|
@@ -112,7 +112,7 @@ A2B2                |
     [<Test>]
     let ``3x2 content-sized table with different cell widths`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.makeContentSized
                     (NodeKey.make "t_")
                     [|
@@ -160,7 +160,7 @@ Bob  25                       |
     [<Test>]
     let ``simple 2x2 space-filling table`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.makeSpaceFilling
                     (NodeKey.make "t_")
                     [|
@@ -207,7 +207,7 @@ A2        B2        |
     [<Test>]
     let ``space-filling table with mismatched column widths`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.makeSpaceFilling
                     (NodeKey.make "t_")
                     [|
@@ -257,7 +257,7 @@ A        B                    |
     [<Test>]
     let ``space-filling table with mismatched row heights`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.makeSpaceFilling
                     (NodeKey.make "t_")
                     [|
@@ -314,7 +314,7 @@ Row3                     |
     [<Test>]
     let ``table with fixed column widths`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [|
@@ -363,7 +363,7 @@ A    B                        |
     [<Test>]
     let ``table with proportion columns`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [|
@@ -412,7 +412,7 @@ A           B       |
     [<Test>]
     let ``ragged rows are padded with empty`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.makeContentSized
                     (NodeKey.make "t_")
                     [|
@@ -464,7 +464,7 @@ XY                  |
     [<Test>]
     let ``single cell table`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.makeContentSized (NodeKey.make "t_") [| [| Vdom.textContent false "Single" |] |]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
@@ -506,7 +506,7 @@ Single              |
     [<Test>]
     let ``table with fixed row heights`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [|
@@ -561,7 +561,7 @@ Row3                |
     [<Test>]
     let ``table with proportion rows`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [|
@@ -616,7 +616,7 @@ Bottom              |
     [<Test>]
     let ``table with mixed row specs`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [|
@@ -673,7 +673,7 @@ Prop                |
         task {
             // This test verifies the fix for the bug where Array.foldBack2 ignored height
             // for the last row, causing it to absorb all remaining vertical space
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [| [| Vdom.textContent false "Row1" |] ; [| Vdom.textContent false "Row2" |] |]
@@ -721,7 +721,7 @@ Row2                |
     [<Test>]
     let ``table with simple keyed cells`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 // Table internally assigns keys to cells based on (row, col) position
                 // This test verifies that tables handle cell content correctly
                 Table.makeContentSized
@@ -771,7 +771,7 @@ Cell2               |
     // TEST EXPECTATION WAS WRONG: Expected Column.Fixed 15 to span 25 chars (absorbing slack), but it should only span 15 chars
     let ``table with multiline text wrapping in cells`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [|
@@ -823,7 +823,7 @@ X    Y                        |
     [<Test>]
     let ``table constrained by terminal size`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.makeContentSized
                     (NodeKey.make "t_")
                     [|
@@ -876,7 +876,7 @@ Data1   Data2  |
         task {
             // After sanitization: -0.5 becomes 0.01, so the first column gets ~0.01/(0.01+1.0) ≈ 1% of space
             // With 20 char width and minima of 1 each, column 1 gets ~2 chars, column 2 gets ~18 chars
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [|
@@ -929,7 +929,7 @@ A B                 |
             // Column 1 (0.01) and Column 2 (0.01) share remaining space equally after Column.Content
             // With 30 char width, column 3 (Auto) gets its preferred (2), leaving 28 for columns 1 and 2
             // Columns 1 and 2 each get ~14 chars (minima 4 each + ~10 extra each)
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [|
@@ -985,7 +985,7 @@ Col1          Col2          C3|
     [<Test>]
     let ``fewer column specs than columns pads with Auto`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [|
@@ -1042,7 +1042,7 @@ A    B C                      |
     [<Test>]
     let ``more column specs than columns truncates extras`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [| [| Vdom.textContent false "X" ; Vdom.textContent false "Y" |] |]
@@ -1090,7 +1090,7 @@ X  Y                |
         task {
             // After sanitization, 0.0 becomes 0.01 for all columns
             // With equal proportions, space divides equally: each column gets ~10 chars in a 30-char terminal
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [|
@@ -1143,7 +1143,7 @@ A         B         C         |
     [<Test>]
     let ``mixed column specs Auto Fixed and Proportion`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [|
@@ -1200,7 +1200,7 @@ X      Y       Z              |
     [<Test>]
     let ``over-constrained columns trigger shrink-to-fit`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [|
@@ -1253,7 +1253,7 @@ gColumngColumnngColu|
     [<Test>]
     let ``over-constrained rows trigger shrink-to-fit`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [|
@@ -1312,7 +1312,7 @@ module TestTableMeasurements =
     let private findAllocatedWidth
         (targetKey : NodeKey)
         (bounds : Rectangle)
-        (vdom : Vdom<DesiredBounds, 'keyed>)
+        (vdom : Vdom<DesiredBounds>)
         : int option
         =
         let matchKey (key : NodeKey) (child : Folded) : Folded =
@@ -1611,7 +1611,7 @@ module TestTableMeasurements =
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [| [| autoCell ; propCell |] |]
@@ -1654,9 +1654,11 @@ module TestTableMeasurements =
                         Vdom.withKey
                             (NodeKey.makeTableCellKey keyPrefix 0 None (Some 0) None)
                             (Vdom.textContent false "L")
+                        |> Vdom.Keyed
                         Vdom.withKey
                             (NodeKey.makeTableCellKey keyPrefix 0 None (Some 1) None)
                             (Vdom.textContent false "R")
+                        |> Vdom.Keyed
                     |]
                 |]
                 [| Column.Fixed 3 ; Column.Fixed 4 |]
@@ -1690,6 +1692,7 @@ module TestTableMeasurements =
 
         let cell =
             Vdom.withKey (NodeKey.makeTableCellKey keyPrefix 0 None (Some 0) None) (Vdom.textContent false "Hello")
+            |> Vdom.Keyed
 
         let table = Table.makeContentSized keyPrefix [| [| cell |] |]
 
@@ -1734,7 +1737,7 @@ module TestTablePerformance =
                         |]
                 |]
 
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.makeContentSized (NodeKey.make "t_") cells
 
             let console, terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 30)
@@ -1777,7 +1780,7 @@ module TestTablePerformance =
                         |]
                 |]
 
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.makeContentSized (NodeKey.make "t_") cells
 
             let console, terminal = ConsoleHarness.make' (fun () -> 200) (fun () -> 50)
@@ -1818,7 +1821,7 @@ module TestTablePerformance =
                         |]
                 |]
 
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 Table.makeContentSized (NodeKey.make "t_") cells
 
             let console, terminal = ConsoleHarness.make' (fun () -> 400) (fun () -> 20)
@@ -1975,7 +1978,7 @@ module TestVdomMeasure =
                 MaxHeightForWidth = fun _ -> Some 5
             }
 
-        let customRender (_ : Rectangle) : Vdom<DesiredBounds, Unkeyed> = Vdom.textContent false "Custom"
+        let customRender (_ : Rectangle) : Vdom<DesiredBounds> = Vdom.textContent false "Custom"
 
         let vdom = Vdom.flexibleContent customMeasure customRender
 

@@ -19,11 +19,6 @@ module VdomBounds =
     /// <param name="vdom">The VDOM node to measure.</param>
     /// <param name="constraints">The constraints within which to measure the node.</param>
     /// <returns>The measured size information for the node.</returns>
-    let measure (vdom : Vdom<DesiredBounds, 'keyed>) (constraints : MeasureConstraints) : MeasuredSize =
-        let keylessVdom =
-            match vdom with
-            | Vdom.Keyed (inner, _) -> KeylessVdom.Keyed inner
-            | Vdom.Unkeyed (inner, _) -> KeylessVdom.Unkeyed inner
-
-        let measured = Layout.measureEither constraints keylessVdom
+    let measure (vdom : Vdom<DesiredBounds>) (constraints : MeasureConstraints) : MeasuredSize =
+        let measured = Layout.measureEither constraints vdom
         measured.Measured

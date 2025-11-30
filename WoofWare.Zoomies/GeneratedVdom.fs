@@ -56,7 +56,7 @@ type VdomCata<'r> = VdomCata'<'r, 'r, 'r>
 module UnkeyedVdomCata =
     [<RequireQualifiedAccess>]
     type private Instruction =
-        | Process__KeylessVdom of KeylessVdom<DesiredBounds>
+        | Process__KeylessVdom of Vdom<DesiredBounds>
         | Process__KeyedVdom of KeyedVdom<DesiredBounds>
         | Process__UnkeyedVdom of UnkeyedVdom<DesiredBounds>
         | KeylessVdom_Keyed
@@ -82,15 +82,15 @@ module UnkeyedVdomCata =
             match currentInstruction with
             | Instruction.Process__KeylessVdom x ->
                 match x with
-                | KeylessVdom.Keyed arg0_0 ->
+                | Vdom.Keyed arg0_0 ->
                     instructions.Add Instruction.KeylessVdom_Keyed
                     instructions.Add (Instruction.Process__KeyedVdom arg0_0)
-                | KeylessVdom.Unkeyed arg0_0 ->
+                | Vdom.Unkeyed arg0_0 ->
                     instructions.Add Instruction.KeylessVdom_Unkeyed
                     instructions.Add (Instruction.Process__UnkeyedVdom arg0_0)
             | Instruction.Process__KeyedVdom x ->
                 match x with
-                | KeyedVdom.WithKey (arg0_0, arg1_0) ->
+                | KeyedVdom.KeyedVdom (arg0_0, arg1_0) ->
                     instructions.Add (Instruction.KeyedVdom_WithKey arg0_0)
                     instructions.Add (Instruction.Process__UnkeyedVdom arg1_0)
             | Instruction.Process__UnkeyedVdom x ->
@@ -114,7 +114,7 @@ module UnkeyedVdomCata =
                                                    Render = render
                                                }) ->
                     // Fold the render function so that it returns the catamorphism result
-                    let foldedRender bounds = runKeylessVdom cata (render bounds)
+                    let foldedRender bounds = runVdom cata (render bounds)
                     cata.UnkeyedVdom.FlexibleContent measure foldedRender |> unkeyedVdomStack.Add
                 | UnkeyedVdom.Tag (tag, inner) ->
                     instructions.Add (Instruction.UnkeyedVdom_Tag tag)
@@ -155,9 +155,9 @@ module UnkeyedVdomCata =
         keylessVdomStack, keyedVdomStack, unkeyedVdomStack
 
     /// Execute the catamorphism.
-    and internal runKeylessVdom<'KeylessVdomRet, 'KeyedVdomRet, 'UnkeyedVdomRet>
+    and internal runVdom<'KeylessVdomRet, 'KeyedVdomRet, 'UnkeyedVdomRet>
         (cata : VdomCata'<'KeylessVdomRet, 'KeyedVdomRet, 'UnkeyedVdomRet>)
-        (x : KeylessVdom<DesiredBounds>)
+        (x : Vdom<DesiredBounds>)
         : 'KeylessVdomRet
         =
         let instructions = ResizeArray ()
@@ -199,7 +199,4 @@ module UnkeyedVdomCata =
 [<RequireQualifiedAccess>]
 module VdomCata =
     /// Execute a catamorphism over a Vdom value.
-    let run (cata : VdomCata<'r>) (vdom : Vdom<DesiredBounds, 'keyed>) : 'r =
-        match vdom with
-        | Vdom.Keyed (keyed, _) -> UnkeyedVdomCata.runKeyedVdom cata keyed
-        | Vdom.Unkeyed (unkeyed, _) -> UnkeyedVdomCata.runUnkeyedVdom cata unkeyed
+    let run (cata : VdomCata<'r>) (vdom : Vdom<DesiredBounds>) : 'r = UnkeyedVdomCata.runVdom cata vdom

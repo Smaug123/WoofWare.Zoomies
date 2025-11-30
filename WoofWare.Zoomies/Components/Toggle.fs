@@ -12,7 +12,7 @@ type Toggle =
     /// <param name="isFocused">True if the toggle should render as if it currently has focus.</param>
     static member make'
         (untoggledGlyph : char, toggledGlyph : char, isToggled : bool, isFocused : bool)
-        : Vdom<DesiredBounds, Unkeyed>
+        : Vdom<DesiredBounds>
         =
         let glyph = if isToggled then toggledGlyph else untoggledGlyph
 
@@ -55,7 +55,7 @@ type Toggle =
             ?isFirstToFocus : bool,
             ?isInitiallyFocused : bool
         )
-        : Vdom<DesiredBounds, Unkeyed>
+        : Vdom<DesiredBounds>
         =
         let isFocused = VdomContext.focusedKey ctx = Some key
 

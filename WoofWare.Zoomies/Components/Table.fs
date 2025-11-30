@@ -124,21 +124,14 @@ module Table =
     ///
     /// The result has length equal to the input, but is now a rectangular array where every row is as long as the longest
     /// row. User-provided keys are preserved. Returns pairs of (actual vdom, keyless for measurement).
-    let private normalizeCells (cells : Vdom<DesiredBounds, 'keyed>[][]) : (obj * KeylessVdom<DesiredBounds>)[,] =
+    let private normalizeCells (cells : Vdom<DesiredBounds>[][]) : Vdom<DesiredBounds>[,] =
         if cells.Length = 0 then
             Array2D.zeroCreate 0 0
         else
             let numRows = cells.Length
             let maxCols = cells |> Array.maxOf 0 _.Length
 
-            let emptyVdom = Vdom.empty :> obj
-
-            let emptyKeyless =
-                match Vdom.empty with
-                | Vdom.Unkeyed (u, _teq) -> KeylessVdom.Unkeyed u
-                | Vdom.Keyed (k, _teq) -> KeylessVdom.Keyed k
-
-            let result = Array2D.create numRows maxCols (emptyVdom, emptyKeyless)
+            let result = Array2D.create numRows maxCols Vdom.empty
 
             for rowIdx = 0 to cells.Length - 1 do
                 let row = Array.get cells rowIdx
@@ -147,12 +140,7 @@ module Table =
                 for colIdx = 0 to row.Length - 1 do
                     let cell = Array.get row colIdx
 
-                    let keylessVdom =
-                        match cell with
-                        | Vdom.Keyed (keyed, _teq) -> KeylessVdom.Keyed keyed
-                        | Vdom.Unkeyed (unkeyed, _teq) -> KeylessVdom.Unkeyed unkeyed
-
-                    Array2D.set result rowIdx colIdx (box cell, keylessVdom)
+                    Array2D.set result rowIdx colIdx cell
 
             // let's just make it very obvious what our result's dimensions are!
             assert (result.GetLength 0 = numRows)
@@ -560,10 +548,10 @@ module Table =
     /// are rendered in the same VDOM tree. If rendering multiple tables, ensure each has a unique keyPrefix.
     let make
         (keyPrefix : NodeKey)
-        (cells : Vdom<DesiredBounds, 'keyed>[][])
+        (cells : Vdom<DesiredBounds>[][])
         (columnSpecs : Column[])
         (rowSpecs : Row[])
-        : Vdom<DesiredBounds, Unkeyed>
+        : Vdom<DesiredBounds>
         =
         // Normalize inputs (graceful error handling) - strips any existing keys from cells
         let cells = normalizeCells cells
@@ -614,7 +602,7 @@ module Table =
                 // Measure all cells to determine column widths
                 let cellMeasurements =
                     cells
-                    |> Array2D.map (fun (_vdom, keyless) ->
+                    |> Array2D.map (fun keyless ->
                         // Measure the cell using its keyless representation
                         let measured = Layout.measureEither constraints keyless
                         measured.Measured
@@ -713,7 +701,7 @@ module Table =
                     MaxHeightForWidth = fun _ -> None
                 }
 
-        let render (bounds : Rectangle) : Vdom<DesiredBounds, Unkeyed> =
+        let render (bounds : Rectangle) : Vdom<DesiredBounds> =
             if numRows = 0 || numCols = 0 then
                 Vdom.empty
             else
@@ -730,7 +718,7 @@ module Table =
                             }
 
                         cells
-                        |> Array2D.map (fun (_vdom, keyless) ->
+                        |> Array2D.map (fun keyless ->
                             let measured = Layout.measureEither maxConstraints keyless
                             measured.Measured
                         )
@@ -757,29 +745,18 @@ module Table =
 
                 // Each row: cell0 | cell1 | cell2 | ...
                 // Build with unique keys for intermediate split accumulators
-                let buildRow
-                    (rowIdx : int)
-                    (rowCells : (obj * KeylessVdom<DesiredBounds>)[])
-                    (widths : int[])
-                    : Vdom<DesiredBounds, Unkeyed>
-                    =
+                let buildRow (rowIdx : int) (rowCells : Vdom<DesiredBounds>[]) (widths : int[]) : Vdom<DesiredBounds> =
                     assert (rowCells.Length = widths.Length)
 
                     match rowCells with
                     | [||] -> empty
-                    | [| (cellObj, _keyless) |] ->
+                    | [| cell |] ->
                         // Single cell: reserve its allocated width so it doesn't absorb extra space
                         let width = if widths.Length = 0 then 0 else (Array.head widths)
 
                         // Use absolute split so the single cell keeps its allocated width even if there's
                         // extra space beyond the sum of column widths.
-                        // We need to try both keyed and unkeyed overloads
-                        try
-                            let cell : Vdom<DesiredBounds, Keyed> = unbox cellObj
-                            Vdom.panelSplitAbsolute (SplitDirection.Vertical, width, cell, empty)
-                        with _ ->
-                            let cell : Vdom<DesiredBounds, Unkeyed> = unbox cellObj
-                            Vdom.panelSplitAbsolute (SplitDirection.Vertical, width, cell, empty)
+                        Vdom.panelSplitAbsolute (SplitDirection.Vertical, width, cell, empty)
                     | _ ->
                         // Build right-to-left using indexed fold: cell0 | (cell1 | (cell2 | ...))
                         // Each intermediate split gets a unique key based on its column span
@@ -789,18 +766,13 @@ module Table =
                         let _, _, result =
                             Array.foldBack2
                                 (fun
-                                    (cellObj, _keyless)
+                                    (cell : Vdom<DesiredBounds>)
                                     (width : int)
-                                    (colIdx, isFirst, accum : Vdom<DesiredBounds, Unkeyed>) ->
+                                    (colIdx, isFirst, accum : Vdom<DesiredBounds>) ->
                                     if isFirst then
                                         // Last cell in fold (rightmost cell in row), reserve its width explicitly
                                         let splitResult =
-                                            try
-                                                let cell : Vdom<DesiredBounds, Keyed> = unbox cellObj
-                                                Vdom.panelSplitAbsolute (SplitDirection.Vertical, width, cell, empty)
-                                            with _ ->
-                                                let cell : Vdom<DesiredBounds, Unkeyed> = unbox cellObj
-                                                Vdom.panelSplitAbsolute (SplitDirection.Vertical, width, cell, empty)
+                                            Vdom.panelSplitAbsolute (SplitDirection.Vertical, width, cell, empty)
 
                                         (colIdx - 1, false, splitResult)
                                     else
@@ -817,24 +789,7 @@ module Table =
                                                 accum
 
                                         let splitResult =
-                                            try
-                                                let cell : Vdom<DesiredBounds, Keyed> = unbox cellObj
-
-                                                Vdom.panelSplitAbsolute (
-                                                    SplitDirection.Vertical,
-                                                    width,
-                                                    cell,
-                                                    accumKeyed
-                                                )
-                                            with _ ->
-                                                let cell : Vdom<DesiredBounds, Unkeyed> = unbox cellObj
-
-                                                Vdom.panelSplitAbsolute (
-                                                    SplitDirection.Vertical,
-                                                    width,
-                                                    cell,
-                                                    accumKeyed
-                                                )
+                                            Vdom.panelSplitAbsolute (SplitDirection.Vertical, width, cell, accumKeyed)
 
                                         (colIdx - 1, false, splitResult)
                                 )
@@ -859,7 +814,7 @@ module Table =
 
                     let _, _, result =
                         Array.foldBack2
-                            (fun (row : Vdom<DesiredBounds, Unkeyed>) height (rowIdx, isFirst, accum) ->
+                            (fun (row : Vdom<DesiredBounds>) height (rowIdx, isFirst, accum) ->
                                 if isFirst then
                                     // Last row in fold (bottommost row), reserve its height explicitly
                                     (rowIdx - 1,
@@ -898,11 +853,7 @@ module Table =
     ///
     /// The keyPrefix parameter namespaces internal intermediate split keys to prevent collisions when multiple tables
     /// are rendered in the same VDOM tree. If rendering multiple tables, ensure each has a unique keyPrefix.
-    let makeContentSized<'keyed>
-        (keyPrefix : NodeKey)
-        (cells : Vdom<DesiredBounds, 'keyed>[][])
-        : Vdom<DesiredBounds, Unkeyed>
-        =
+    let makeContentSized (keyPrefix : NodeKey) (cells : Vdom<DesiredBounds>[][]) : Vdom<DesiredBounds> =
         make keyPrefix cells [||] [||]
 
     /// Creates a space-filling table where all columns and rows expand proportionally to fill available space.
@@ -912,11 +863,7 @@ module Table =
     ///
     /// The keyPrefix parameter namespaces internal intermediate split keys to prevent collisions when multiple tables
     /// are rendered in the same VDOM tree. If rendering multiple tables, ensure each has a unique keyPrefix.
-    let makeSpaceFilling<'keyed>
-        (keyPrefix : NodeKey)
-        (cells : Vdom<DesiredBounds, 'keyed>[][])
-        : Vdom<DesiredBounds, Unkeyed>
-        =
+    let makeSpaceFilling (keyPrefix : NodeKey) (cells : Vdom<DesiredBounds>[][]) : Vdom<DesiredBounds> =
         if cells.Length = 0 then
             make keyPrefix cells [||] [||]
         else

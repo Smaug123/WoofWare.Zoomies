@@ -30,7 +30,7 @@ module TestRender =
     let tearDown () =
         GlobalBuilderConfig.updateAllSnapshots ()
 
-    let vdom (vdomContext : VdomContext) (state : State) : Vdom<DesiredBounds, _> =
+    let vdom (vdomContext : VdomContext) (state : State) : Vdom<DesiredBounds> =
         let left =
             Vdom.textContent
                 false
@@ -1018,7 +1018,7 @@ This is focusable text                                                          
         // Use a wrapper (Bordered) to ensure we have an Unkeyed vdom as required by oneStep
         let cachedKeyedContent = Vdom.textContent false "test content" |> Vdom.withKey key
 
-        let vdom (_ : FakeUnit) : Vdom<DesiredBounds, _> =
+        let vdom (_ : FakeUnit) : Vdom<DesiredBounds> =
             // Wrap the keyed content in a bordered panel (which is Unkeyed)
             Vdom.bordered cachedKeyedContent
 
@@ -2412,15 +2412,15 @@ small               ┌──────────────────┐
         task {
             let console, terminal = ConsoleHarness.make ()
 
-            let vdom (_ : VdomContext) (_ : unit) : Vdom<DesiredBounds, _> =
+            let vdom (_ : VdomContext) (_ : unit) : Vdom<DesiredBounds> =
                 // Use Vdom.empty with panelSplitAbsolute to right-justify content
                 // Negative absolute value gives the right side a fixed width, left side gets the rest
                 // Empty fills the left side, pushing "Right" to the right edge
                 Vdom.panelSplitAbsolute (
                     SplitDirection.Vertical,
                     -5,
-                    Vdom.empty |> Vdom.withKey (NodeKey.make "spacer"),
-                    Vdom.textContent false "Right" |> Vdom.withKey (NodeKey.make "content")
+                    (Vdom.empty |> Vdom.withKey (NodeKey.make "spacer")),
+                    (Vdom.textContent false "Right" |> Vdom.withKey (NodeKey.make "content"))
                 )
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
