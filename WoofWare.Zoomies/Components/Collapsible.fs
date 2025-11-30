@@ -46,8 +46,8 @@ module Collapsible =
         (key : NodeKey)
         (state : State)
         (label : string)
-        (child : Vdom<DesiredBounds, Keyed>)
-        : Vdom<DesiredBounds, Unkeyed>
+        (child : Vdom<DesiredBounds>)
+        : Vdom<DesiredBounds>
         =
         let toggle =
             Toggle.make (ctx, key, '▶', '▼', state.IsExpanded)

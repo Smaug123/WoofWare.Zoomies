@@ -7,7 +7,7 @@ type Checkbox =
     static member private toggledGlyph = '☑'
     static member private untoggledGlyph = '☐'
 
-    static member make' (isChecked : bool, isFocused : bool) : Vdom<DesiredBounds, Unkeyed> =
+    static member make' (isChecked : bool, isFocused : bool) : Vdom<DesiredBounds> =
         Toggle.make' (Checkbox.untoggledGlyph, Checkbox.toggledGlyph, isChecked, isFocused)
         |> Vdom.withTag "checkbox"
 
@@ -30,7 +30,7 @@ type Checkbox =
     /// </remarks>
     static member make
         (ctx : VdomContext, key : NodeKey, isChecked : bool, ?isFirstToFocus : bool, ?isInitiallyFocused : bool)
-        : Vdom<DesiredBounds, Unkeyed>
+        : Vdom<DesiredBounds>
         =
         Toggle.make (
             ctx,

@@ -124,7 +124,7 @@ module FileBrowser =
                 ProcessWorldResult.make (state.ToImmutable ())
         }
 
-    let view (vdomContext : VdomContext) (state : State) : Vdom<DesiredBounds, Unkeyed> =
+    let view (vdomContext : VdomContext) (state : State) : Vdom<DesiredBounds> =
         let topPane =
             let label = $"[{state.File1Path}] / [{state.File2Path}]"
 

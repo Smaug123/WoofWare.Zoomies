@@ -22,7 +22,7 @@ module TestProgressBar =
     [<Test>]
     let ``progress bar at 0%`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> = ProgressBar.make 0.0 (Some 10)
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> = ProgressBar.make 0.0 (Some 10)
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 2)
 
@@ -60,7 +60,7 @@ module TestProgressBar =
     [<Test>]
     let ``progress bar at 50%`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> = ProgressBar.make 0.5 (Some 10)
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> = ProgressBar.make 0.5 (Some 10)
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 2)
 
@@ -98,7 +98,7 @@ module TestProgressBar =
     [<Test>]
     let ``progress bar at 100%`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> = ProgressBar.make 1.0 (Some 10)
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> = ProgressBar.make 1.0 (Some 10)
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 2)
 
@@ -136,7 +136,7 @@ module TestProgressBar =
     [<Test>]
     let ``progress bar with label`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 let options =
                     ProgressBar.Options.Default |> ProgressBar.Options.WithLabel "Loading:"
 
@@ -178,7 +178,7 @@ Loading:[███░░░░░░░] 30%      |
     [<Test>]
     let ``progress bar without percentage`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 let options = ProgressBar.Options.Default |> ProgressBar.Options.WithoutPercentage
                 ProgressBar.make' options 0.7 (Some 10)
 
@@ -218,7 +218,7 @@ Loading:[███░░░░░░░] 30%      |
     [<Test>]
     let ``progress bar with label and no percentage`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 let options =
                     ProgressBar.Options.Default
                     |> ProgressBar.Options.WithLabel "Progress:"
@@ -262,7 +262,7 @@ Progress:[██████░░░░]         |
     [<Test>]
     let ``progress bar with varying widths`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 let bar1 = ProgressBar.make 0.5 (Some 5)
                 let bar2 = ProgressBar.make 0.5 (Some 20)
 
@@ -304,7 +304,7 @@ Progress:[██████░░░░]         |
     [<Test>]
     let ``progress bar displays n/a for invalid progress`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> = ProgressBar.make -0.1 (Some 10)
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> = ProgressBar.make -0.1 (Some 10)
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 2)
 
@@ -343,7 +343,7 @@ Progress:[██████░░░░]         |
     [<Test>]
     let ``progress bar handles invalid width gracefully`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 let bar1 = ProgressBar.make 0.5 (Some 0)
                 let bar2 = ProgressBar.make 0.5 (Some -1)
 
@@ -385,7 +385,7 @@ Progress:[██████░░░░]         |
     [<Test>]
     let ``progress bar with non-divisible progress`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> = ProgressBar.make 0.33 (Some 10)
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> = ProgressBar.make 0.33 (Some 10)
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 2)
 
