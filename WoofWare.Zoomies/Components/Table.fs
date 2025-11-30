@@ -1,27 +1,122 @@
 namespace WoofWare.Zoomies.Components
 
 open WoofWare.Zoomies
-open TypeEquality
 
-/// Sizing specification for a table column
-type ColumnSpec =
-    /// Column width determined by widest cell content
-    | AutoColumn
-    /// Column has fixed width (measured in cells)
-    | FixedColumn of width : int
-    /// Column gets proportional share of remaining space after auto/fixed columns
-    /// Proportion must be > 0
-    | ProportionColumn of proportion : float
+/// <summary>
+/// Sizing specification for a table column.
+/// </summary>
+/// <remarks>
+/// The layout algorithm satisfies constraints as follows:
+///
+/// <para>
+/// If there's not enough space to satisfy every column's minimum width, prioritise the fixed columns first, and
+/// distribute whatever's left among the other (non-fixed) columns proportionally according to their min widths.
+/// (If we can't even accommodate the fixed columns' min widths, just assign the available space proportionally to
+/// *every* column, ignoring specs entirely.)
+/// </para>
+/// <para>
+/// Otherwise, there is enough space to satisfy every column's min width.
+/// Grow content-sized columns towards their preferred size proportionally.
+/// If there's still leftover space once both Fixed and Content-sized columns have their preferred width, distribute
+/// it proportionally among the <c>Proportion</c> columns according to their weights.
+/// </para>
+/// </remarks>
+[<RequireQualifiedAccess>]
+type Column =
+    /// <summary>Column width is determined by widest cell content.</summary>
+    /// <remarks>
+    /// See docstring of <c>Column</c> for a description of how the layout algorithm distributes space among columns
+    /// of the various types.
+    ///
+    /// Measurements (like min width and preferred width) are inherited directly from the VDOM that's contained in the
+    /// cell.
+    /// </remarks>
+    | Content
+    /// <summary>Column width is fixed.</summary>
+    /// <remarks>
+    /// See docstring of <c>Column</c> for a description of how the layout algorithm distributes space among columns
+    /// of the various types.
+    ///
+    /// Measurements are set exactly by <c>width</c>: min width = preferred width = <c>width</c>.
+    ///</remarks>
+    /// <param name="width">The number of cells this column should take up.</param>
+    | Fixed of width : int
+    /// <summary>Column gets proportional share of remaining space after content-sized/fixed columns.</summary>
+    /// <remarks>
+    /// See docstring of <c>Column</c> for a description of how the layout algorithm distributes space among columns
+    /// of the various types.
+    ///
+    /// Measurements (like min width and preferred width) are inherited directly from the VDOM that's contained in the
+    /// cell.
+    /// </remarks>
+    /// <param name="weight">
+    /// The weight to assign to this column when apportioning leftover space.
+    ///
+    /// This is purely relative: the number has no meaning except when aggregated with other columns.
+    /// For example, you could have columns of weights 5.0 and 1.0; in that case, the first gets 5/6 of the leftover
+    /// space, and the second gets 1/6.
+    ///
+    /// Must be finite and greater than 0.
+    /// </param>
+    | Proportion of weight : float
 
-/// Sizing specification for a table row
-type RowSpec =
-    /// Row height determined by tallest cell (given allocated column widths)
-    | AutoRow
-    /// Row has fixed height (measured in cells)
-    | FixedRow of height : int
-    /// Row gets proportional share of remaining space after auto/fixed rows
-    /// Proportion must be > 0
-    | ProportionRow of proportion : float
+/// <summary>
+/// Sizing specification for a table row.
+/// </summary>
+/// <remarks>
+/// The layout algorithm satisfies constraints as follows:
+///
+/// <para>
+/// If there's not enough space to satisfy every row's minimum height, prioritise the fixed rows first, and
+/// distribute whatever's left among the other (non-fixed) rows proportionally according to their min heights.
+/// (If we can't even accommodate the fixed rows' min heights, just assign the available space proportionally to
+/// *every* row, ignoring specs entirely.)
+/// </para>
+/// <para>
+/// Otherwise, there is enough space to satisfy every row's min height.
+/// Grow content-sized rows towards their preferred size proportionally.
+/// If there's still leftover space once both Fixed and Content-sized rows have their preferred height, distribute
+/// it proportionally among the <c>Proportion</c> rows according to their weights.
+/// </para>
+/// </remarks>
+[<RequireQualifiedAccess>]
+type Row =
+    /// <summary>Row height is determined by tallest cell (given allocated column widths).</summary>
+    /// <remarks>
+    /// See docstring of <c>Row</c> for a description of how the layout algorithm distributes space among rows
+    /// of the various types.
+    ///
+    /// Measurements (like min height and preferred height) are inherited directly from the VDOM that's contained in the
+    /// cells, given the allocated column widths.
+    /// </remarks>
+    | Content
+    /// <summary>Row height is fixed.</summary>
+    /// <remarks>
+    /// See docstring of <c>Row</c> for a description of how the layout algorithm distributes space among rows
+    /// of the various types.
+    ///
+    /// Measurements are set exactly by <c>height</c>: min height = preferred height = <c>height</c>.
+    ///</remarks>
+    /// <param name="height">The number of cells this row should take up.</param>
+    | Fixed of height : int
+    /// <summary>Row gets proportional share of remaining space after content-sized/fixed rows.</summary>
+    /// <remarks>
+    /// See docstring of <c>Row</c> for a description of how the layout algorithm distributes space among rows
+    /// of the various types.
+    ///
+    /// Measurements (like min height and preferred height) are inherited directly from the VDOM that's contained in the
+    /// cells, given the allocated column widths.
+    /// </remarks>
+    /// <param name="weight">
+    /// The weight to assign to this row when apportioning leftover space.
+    ///
+    /// This is purely relative: the number has no meaning except when aggregated with other rows.
+    /// For example, you could have rows of weights 5.0 and 1.0; in that case, the first gets 5/6 of the leftover
+    /// space, and the second gets 1/6.
+    ///
+    /// Must be finite and greater than 0.
+    /// </param>
+    | Proportion of weight : float
 
 [<RequireQualifiedAccess>]
 module Table =
@@ -46,11 +141,11 @@ module Table =
             let result = Array2D.create numRows maxCols (emptyVdom, emptyKeyless)
 
             for rowIdx = 0 to cells.Length - 1 do
-                let row = cells.[rowIdx]
+                let row = Array.get cells rowIdx
                 assert (row.Length <= maxCols)
 
                 for colIdx = 0 to row.Length - 1 do
-                    let cell = row.[colIdx]
+                    let cell = Array.get row colIdx
 
                     let keylessVdom =
                         match cell with
@@ -78,22 +173,22 @@ module Table =
         result
 
     /// Sanitize proportion values to ensure they are positive and real; clamp noncompliant values to epsilon
-    let private sanitizeColumnSpec (spec : ColumnSpec) : ColumnSpec =
+    let private sanitizeColumn (spec : Column) : Column =
         match spec with
-        | ProportionColumn p when p <= 0.0 || System.Double.IsNaN p || System.Double.IsInfinity p ->
-            ProportionColumn 0.01
+        | Column.Proportion p when p <= 0.0 || System.Double.IsNaN p || System.Double.IsInfinity p ->
+            Column.Proportion 0.01
         | other -> other
 
     /// Sanitize proportion values to ensure they are positive and real; clamp noncompliant values to epsilon
-    let private sanitizeRowSpec (spec : RowSpec) : RowSpec =
+    let private sanitizeRow (spec : Row) : Row =
         match spec with
-        | ProportionRow p when p <= 0.0 || System.Double.IsNaN p || System.Double.IsInfinity p -> ProportionRow 0.01
+        | Row.Proportion p when p <= 0.0 || System.Double.IsNaN p || System.Double.IsInfinity p -> Row.Proportion 0.01
         | other -> other
 
     /// Allocate column widths from available width, respecting per-column minima.
     let private allocateColumnWidths
         (availableWidth : int)
-        (columnSpecs : ColumnSpec[])
+        (columnSpecs : Column[])
         (cellMeasurements : MeasuredSize[,])
         : int[]
         =
@@ -116,15 +211,15 @@ module Table =
 
                 let minWidth =
                     match spec with
-                    | FixedColumn w -> w
-                    | AutoColumn
-                    | ProportionColumn _ -> cellMeasForCol |> Array.maxOf 0 _.MinWidth
+                    | Column.Fixed w -> w
+                    | Column.Content
+                    | Column.Proportion _ -> cellMeasForCol |> Array.maxOf 0 _.MinWidth
 
                 let preferredWidth =
                     match spec with
-                    | FixedColumn w -> w
-                    | AutoColumn
-                    | ProportionColumn _ -> cellMeasForCol |> Array.maxOf 0 _.PreferredWidth
+                    | Column.Fixed w -> w
+                    | Column.Content
+                    | Column.Proportion _ -> cellMeasForCol |> Array.maxOf 0 _.PreferredWidth
 
                 (spec, colIdx, minWidth, preferredWidth)
             )
@@ -138,9 +233,9 @@ module Table =
             // Separate fixed from auto/proportion
             let fixedWidth =
                 columnInfo
-                |> Array.sumBy (fun (spec, _, minW, _) ->
+                |> Array.sumBy (fun (spec, _, _, _) ->
                     match spec with
-                    | FixedColumn w -> w
+                    | Column.Fixed w -> w
                     | _ -> 0
                 )
 
@@ -170,7 +265,7 @@ module Table =
                     columnInfo
                     |> Array.sumBy (fun (spec, _, minW, _) ->
                         match spec with
-                        | FixedColumn _ -> 0
+                        | Column.Fixed _ -> 0
                         | _ -> minW
                     )
 
@@ -178,7 +273,7 @@ module Table =
                     columnInfo
                     |> Array.map (fun (spec, _, minW, _) ->
                         match spec with
-                        | FixedColumn w -> w // Fixed columns keep exact width
+                        | Column.Fixed w -> w // Fixed columns keep exact width
                         | _ when autoAndProportionMinTotal = 0 -> 0
                         | _ ->
                             // Scale auto/proportion columns proportionally to fit in remaining space
@@ -191,7 +286,7 @@ module Table =
                 // Distribute rounding errors to non-fixed columns
                 while allocated < availableWidth && idx < numCols do
                     match columnInfo[idx] with
-                    | FixedColumn _, _, _, _ -> () // Don't adjust fixed columns
+                    | Column.Fixed _, _, _, _ -> () // Don't adjust fixed columns
                     | _ ->
                         scaled[idx] <- scaled[idx] + 1
                         allocated <- allocated + 1
@@ -210,7 +305,7 @@ module Table =
                 columnInfo
                 |> Array.choose (fun (spec, idx, minW, prefW) ->
                     match spec with
-                    | AutoColumn -> Some (idx, max 0 (prefW - minW))
+                    | Column.Content -> Some (idx, max 0 (prefW - minW))
                     | _ -> None
                 )
 
@@ -241,7 +336,7 @@ module Table =
                 columnInfo
                 |> Array.choose (fun (spec, idx, _, _) ->
                     match spec with
-                    | ProportionColumn p -> Some (idx, p)
+                    | Column.Proportion p -> Some (idx, p)
                     | _ -> None
                 )
 
@@ -269,7 +364,7 @@ module Table =
     /// Allocate row heights from available height (similar to columns, but heights depend on column widths)
     let private allocateRowHeights
         (availableHeight : int)
-        (rowSpecs : RowSpec[])
+        (rowSpecs : Row[])
         (cellMeasurements : MeasuredSize[,])
         (columnWidths : int[])
         : int[]
@@ -296,16 +391,16 @@ module Table =
 
                 let minHeight =
                     match spec with
-                    | FixedRow h -> h
-                    | AutoRow
-                    | ProportionRow _ ->
+                    | Row.Fixed h -> h
+                    | Row.Content
+                    | Row.Proportion _ ->
                         Array.max2Of 0 (fun cell colWidth -> cell.MinHeightForWidth colWidth) cellsInRow columnWidths
 
                 let preferredHeight =
                     match spec with
-                    | FixedRow h -> h
-                    | AutoRow
-                    | ProportionRow _ ->
+                    | Row.Fixed h -> h
+                    | Row.Content
+                    | Row.Proportion _ ->
                         Array.max2Of
                             0
                             (fun cell colWidth -> cell.PreferredHeightForWidth colWidth)
@@ -321,9 +416,9 @@ module Table =
             // Over-constrained: prioritize fixed rows, then shrink auto rows (with 1-line floor)
             let fixedHeight =
                 rowInfo
-                |> Array.sumBy (fun (spec, _, minH, _) ->
+                |> Array.sumBy (fun (spec, _, _, _) ->
                     match spec with
-                    | FixedRow h -> h
+                    | Row.Fixed h -> h
                     | _ -> 0
                 )
 
@@ -335,7 +430,7 @@ module Table =
                     rowInfo
                     |> Array.map (fun (spec, _, minH, _) ->
                         match spec with
-                        | AutoRow -> max 1 (int (float minH * float availableHeight / totalMinF)) // 1-line floor for auto
+                        | Row.Content -> max 1 (int (float minH * float availableHeight / totalMinF)) // 1-line floor for auto
                         | _ -> int (float minH * float availableHeight / totalMinF)
                     )
 
@@ -357,7 +452,7 @@ module Table =
                     rowInfo
                     |> Array.sumBy (fun (spec, _, minH, _) ->
                         match spec with
-                        | FixedRow _ -> 0
+                        | Row.Fixed _ -> 0
                         | _ -> minH
                     )
 
@@ -365,13 +460,13 @@ module Table =
                     rowInfo
                     |> Array.map (fun (spec, _, minH, _) ->
                         match spec with
-                        | FixedRow h -> h // Fixed rows keep exact height
-                        | AutoRow when autoAndProportionMinTotal = 0 -> 1 // 1-line floor
-                        | AutoRow ->
+                        | Row.Fixed h -> h // Fixed rows keep exact height
+                        | Row.Content when autoAndProportionMinTotal = 0 -> 1 // 1-line floor
+                        | Row.Content ->
                             // Scale auto rows proportionally, with 1-line floor
                             max 1 (int (float minH * float remainingHeight / float autoAndProportionMinTotal))
-                        | ProportionRow _ when autoAndProportionMinTotal = 0 -> 0
-                        | ProportionRow _ ->
+                        | Row.Proportion _ when autoAndProportionMinTotal = 0 -> 0
+                        | Row.Proportion _ ->
                             // Scale proportion rows proportionally to fit in remaining space
                             int (float minH * float remainingHeight / float autoAndProportionMinTotal)
                     )
@@ -382,7 +477,7 @@ module Table =
                 // Distribute rounding errors to non-fixed rows
                 while allocated < availableHeight && idx < rowSpecs.Length do
                     match rowInfo[idx] with
-                    | FixedRow _, _, _, _ -> () // Don't adjust fixed rows
+                    | Row.Fixed _, _, _, _ -> () // Don't adjust fixed rows
                     | _ ->
                         scaled[idx] <- scaled[idx] + 1
                         allocated <- allocated + 1
@@ -400,7 +495,7 @@ module Table =
                 rowInfo
                 |> Array.choose (fun (spec, idx, minH, prefH) ->
                     match spec with
-                    | AutoRow -> Some (idx, max 0 (prefH - minH))
+                    | Row.Content -> Some (idx, max 0 (prefH - minH))
                     | _ -> None
                 )
 
@@ -430,7 +525,7 @@ module Table =
                 rowInfo
                 |> Array.choose (fun (spec, idx, _, _) ->
                     match spec with
-                    | ProportionRow p -> Some (idx, p)
+                    | Row.Proportion p -> Some (idx, p)
                     | _ -> None
                 )
 
@@ -466,8 +561,8 @@ module Table =
     let make
         (keyPrefix : NodeKey)
         (cells : Vdom<DesiredBounds, 'keyed>[][])
-        (columnSpecs : ColumnSpec[])
-        (rowSpecs : RowSpec[])
+        (columnSpecs : Column[])
+        (rowSpecs : Row[])
         : Vdom<DesiredBounds, Unkeyed>
         =
         // Normalize inputs (graceful error handling) - strips any existing keys from cells
@@ -479,13 +574,13 @@ module Table =
 
         let columnSpecs =
             columnSpecs
-            |> Array.map sanitizeColumnSpec
-            |> fun specs -> normalizeSpecs specs numCols AutoColumn
+            |> Array.map sanitizeColumn
+            |> fun specs -> normalizeSpecs specs numCols Column.Content
 
         let rowSpecs =
             rowSpecs
-            |> Array.map sanitizeRowSpec
-            |> fun specs -> normalizeSpecs specs numRows AutoRow
+            |> Array.map sanitizeRow
+            |> fun specs -> normalizeSpecs specs numRows Row.Content
 
         // Cache cell measurements so render can reuse them
         let mutable cachedCellMeasurements : MeasuredSize[,] option = None
@@ -533,9 +628,9 @@ module Table =
                     [|
                         for colIdx in 0 .. numCols - 1 do
                             match Array.item colIdx columnSpecs with
-                            | FixedColumn w -> w // Fixed columns have exact size
-                            | AutoColumn
-                            | ProportionColumn _ ->
+                            | Column.Fixed w -> w // Fixed columns have exact size
+                            | Column.Content
+                            | Column.Proportion _ ->
                                 // Even proportion columns must report child minima
                                 let column = Array.getColumn colIdx cellMeasurements
                                 column |> Array.maxOf 0 _.MinWidth
@@ -548,9 +643,9 @@ module Table =
                     [|
                         for colIdx in 0 .. numCols - 1 do
                             match Array.item colIdx columnSpecs with
-                            | FixedColumn w -> w
-                            | AutoColumn
-                            | ProportionColumn _ ->
+                            | Column.Fixed w -> w
+                            | Column.Content
+                            | Column.Proportion _ ->
                                 // Include proportion column preferences so table reports accurate preferred size
                                 let column = Array.getColumn colIdx cellMeasurements
                                 column |> Array.maxOf 0 _.PreferredWidth
@@ -580,9 +675,9 @@ module Table =
                                 sumOfRowHeights <-
                                     sumOfRowHeights
                                     + match Array.item rowIdx rowSpecs with
-                                      | FixedRow h -> h
-                                      | AutoRow
-                                      | ProportionRow _ ->
+                                      | Row.Fixed h -> h
+                                      | Row.Content
+                                      | Row.Proportion _ ->
                                           // Even proportion rows must report child minima
                                           Array.max2Of
                                               0
@@ -604,9 +699,9 @@ module Table =
                                 sumOfRowHeights <-
                                     sumOfRowHeights
                                     + match Array.item rowIdx rowSpecs with
-                                      | FixedRow h -> h
-                                      | AutoRow
-                                      | ProportionRow _ ->
+                                      | Row.Fixed h -> h
+                                      | Row.Content
+                                      | Row.Proportion _ ->
                                           // Proportion rows report child preferred heights
                                           Array.max2Of
                                               0
@@ -674,7 +769,7 @@ module Table =
                     | [||] -> empty
                     | [| (cellObj, _keyless) |] ->
                         // Single cell: reserve its allocated width so it doesn't absorb extra space
-                        let width = if widths.Length = 0 then 0 else widths.[0]
+                        let width = if widths.Length = 0 then 0 else (Array.head widths)
 
                         // Use absolute split so the single cell keeps its allocated width even if there's
                         // extra space beyond the sum of column widths.
@@ -797,15 +892,40 @@ module Table =
 
         Vdom.flexibleContent measure render |> Vdom.withTag "table"
 
-    /// Creates an auto-sized table (all columns and rows size to content).
+    /// Creates a content-sized table (all columns and rows size exactly to content with no spare space, if possible).
     /// Gracefully handles ragged rows (pads with Vdom.empty).
     /// Accepts both keyed and unkeyed cells and preserves them as-is.
     ///
     /// The keyPrefix parameter namespaces internal intermediate split keys to prevent collisions when multiple tables
     /// are rendered in the same VDOM tree. If rendering multiple tables, ensure each has a unique keyPrefix.
-    let makeAuto<'keyed>
+    let makeContentSized<'keyed>
         (keyPrefix : NodeKey)
         (cells : Vdom<DesiredBounds, 'keyed>[][])
         : Vdom<DesiredBounds, Unkeyed>
         =
         make keyPrefix cells [||] [||]
+
+    /// Creates a space-filling table where all columns and rows expand proportionally to fill available space.
+    /// Each column and row gets its minimum size first (based on content), then excess space is distributed equally.
+    /// Gracefully handles ragged rows (pads with Vdom.empty).
+    /// Accepts both keyed and unkeyed cells and preserves them as-is.
+    ///
+    /// The keyPrefix parameter namespaces internal intermediate split keys to prevent collisions when multiple tables
+    /// are rendered in the same VDOM tree. If rendering multiple tables, ensure each has a unique keyPrefix.
+    let makeSpaceFilling<'keyed>
+        (keyPrefix : NodeKey)
+        (cells : Vdom<DesiredBounds, 'keyed>[][])
+        : Vdom<DesiredBounds, Unkeyed>
+        =
+        if cells.Length = 0 then
+            make keyPrefix cells [||] [||]
+        else
+            let numRows = cells.Length
+            let numCols = cells |> Array.maxOf 0 _.Length
+
+            // All columns get equal proportion of width (after minimums)
+            let columnSpecs = Array.create numCols (Column.Proportion 1.0)
+            // All rows get equal proportion of height (after minimums)
+            let rowSpecs = Array.create numRows (Row.Proportion 1.0)
+
+            make keyPrefix cells columnSpecs rowSpecs

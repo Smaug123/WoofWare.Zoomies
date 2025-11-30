@@ -24,7 +24,7 @@ module TestTable =
     let ``empty table`` () =
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
-                Table.makeAuto<Unkeyed> (NodeKey.make "t_") [||]
+                Table.makeContentSized<Unkeyed> (NodeKey.make "t_") [||]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
 
@@ -63,10 +63,10 @@ module TestTable =
         }
 
     [<Test>]
-    let ``simple 2x2 auto table`` () =
+    let ``simple 2x2 content-sized table`` () =
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
-                Table.makeAuto
+                Table.makeContentSized
                     (NodeKey.make "t_")
                     [|
                         [| Vdom.textContent false "A1" ; Vdom.textContent false "B1" |]
@@ -110,10 +110,10 @@ A2B2                |
         }
 
     [<Test>]
-    let ``3x2 auto table with different cell widths`` () =
+    let ``3x2 content-sized table with different cell widths`` () =
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
-                Table.makeAuto
+                Table.makeContentSized
                     (NodeKey.make "t_")
                     [|
                         [| Vdom.textContent false "Name" ; Vdom.textContent false "Age" |]
@@ -158,6 +158,160 @@ Bob  25                       |
         }
 
     [<Test>]
+    let ``simple 2x2 space-filling table`` () =
+        task {
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+                Table.makeSpaceFilling
+                    (NodeKey.make "t_")
+                    [|
+                        [| Vdom.textContent false "A1" ; Vdom.textContent false "B1" |]
+                        [| Vdom.textContent false "A2" ; Vdom.textContent false "B2" |]
+                    |]
+
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = false
+
+            let processWorld =
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+
+            expect {
+                snapshot
+                    @"
+A1        B1        |
+                    |
+                    |
+A2        B2        |
+                    |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``space-filling table with mismatched column widths`` () =
+        task {
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+                Table.makeSpaceFilling
+                    (NodeKey.make "t_")
+                    [|
+                        [|
+                            Vdom.textContent false "Short"
+                            Vdom.textContent false "VeryLongColumnName"
+                        |]
+                        [| Vdom.textContent false "A" ; Vdom.textContent false "B" |]
+                    |]
+
+            let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = false
+
+            let processWorld =
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+
+            expect {
+                snapshot
+                    @"
+Short    VeryLongColumnName   |
+                              |
+                              |
+A        B                    |
+                              |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``space-filling table with mismatched row heights`` () =
+        task {
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
+                Table.makeSpaceFilling
+                    (NodeKey.make "t_")
+                    [|
+                        [| Vdom.textContent false "Row1" |]
+                        [|
+                            Vdom.textContent false "This is a much longer row with wrapping text content"
+                        |]
+                        [| Vdom.textContent false "Row3" |]
+                    |]
+
+            let console, terminal = ConsoleHarness.make' (fun () -> 25) (fun () -> 12)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = false
+
+            let processWorld =
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+
+            expect {
+                snapshot
+                    @"
+Row1                     |
+                         |
+                         |
+                         |
+This is a much longer row|
+ with wrapping text conte|
+nt                       |
+                         |
+                         |
+Row3                     |
+                         |
+                         |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
     let ``table with fixed column widths`` () =
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
@@ -167,7 +321,7 @@ Bob  25                       |
                         [| Vdom.textContent false "A" ; Vdom.textContent false "B" |]
                         [| Vdom.textContent false "1" ; Vdom.textContent false "2" |]
                     |]
-                    [| FixedColumn 5 ; FixedColumn 10 |]
+                    [| Column.Fixed 5 ; Column.Fixed 10 |]
                     [||]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
@@ -216,7 +370,7 @@ A    B                        |
                         [| Vdom.textContent false "Left" ; Vdom.textContent false "Right" |]
                         [| Vdom.textContent false "A" ; Vdom.textContent false "B" |]
                     |]
-                    [| ProportionColumn 0.7 ; ProportionColumn 0.3 |]
+                    [| Column.Proportion 0.7 ; Column.Proportion 0.3 |]
                     [||]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
@@ -259,7 +413,7 @@ A           B       |
     let ``ragged rows are padded with empty`` () =
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
-                Table.makeAuto
+                Table.makeContentSized
                     (NodeKey.make "t_")
                     [|
                         [|
@@ -311,7 +465,7 @@ XY                  |
     let ``single cell table`` () =
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
-                Table.makeAuto (NodeKey.make "t_") [| [| Vdom.textContent false "Single" |] |]
+                Table.makeContentSized (NodeKey.make "t_") [| [| Vdom.textContent false "Single" |] |]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
 
@@ -361,7 +515,7 @@ Single              |
                         [| Vdom.textContent false "Row3" |]
                     |]
                     [||]
-                    [| FixedRow 2 ; FixedRow 1 ; FixedRow 2 |]
+                    [| Row.Fixed 2 ; Row.Fixed 1 ; Row.Fixed 2 |]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 10)
 
@@ -416,7 +570,7 @@ Row3                |
                         [| Vdom.textContent false "Bottom" |]
                     |]
                     [||]
-                    [| ProportionRow 0.5 ; ProportionRow 0.3 ; ProportionRow 0.2 |]
+                    [| Row.Proportion 0.5 ; Row.Proportion 0.3 ; Row.Proportion 0.2 |]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 10)
 
@@ -471,7 +625,7 @@ Bottom              |
                         [| Vdom.textContent false "Prop" |]
                     |]
                     [||]
-                    [| FixedRow 2 ; AutoRow ; ProportionRow 1.0 |]
+                    [| Row.Fixed 2 ; Row.Content ; Row.Fixed 1 |]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 10)
 
@@ -524,7 +678,7 @@ Prop                |
                     (NodeKey.make "t_")
                     [| [| Vdom.textContent false "Row1" |] ; [| Vdom.textContent false "Row2" |] |]
                     [||]
-                    [| FixedRow 1 ; FixedRow 1 |]
+                    [| Row.Fixed 1 ; Row.Fixed 1 |]
 
             // Terminal is 5 lines tall, but rows only need 2 lines (1+1)
             // The bottom row should NOT absorb the extra 3 lines
@@ -570,7 +724,7 @@ Row2                |
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
                 // Table internally assigns keys to cells based on (row, col) position
                 // This test verifies that tables handle cell content correctly
-                Table.makeAuto
+                Table.makeContentSized
                     (NodeKey.make "t_")
                     [|
                         [| Vdom.textContent false "Cell1" |]
@@ -614,7 +768,7 @@ Cell2               |
         }
 
     [<Test>]
-    // TEST EXPECTATION WAS WRONG: Expected FixedColumn 15 to span 25 chars (absorbing slack), but it should only span 15 chars
+    // TEST EXPECTATION WAS WRONG: Expected Column.Fixed 15 to span 25 chars (absorbing slack), but it should only span 15 chars
     let ``table with multiline text wrapping in cells`` () =
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
@@ -627,7 +781,7 @@ Cell2               |
                         |]
                         [| Vdom.textContent false "X" ; Vdom.textContent false "Y" |]
                     |]
-                    [| FixedColumn 5 ; FixedColumn 15 |]
+                    [| Column.Fixed 5 ; Column.Fixed 15 |]
                     [||]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
@@ -670,7 +824,7 @@ X    Y                        |
     let ``table constrained by terminal size`` () =
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
-                Table.makeAuto
+                Table.makeContentSized
                     (NodeKey.make "t_")
                     [|
                         [|
@@ -729,7 +883,7 @@ Data1   Data2  |
                         [| Vdom.textContent false "A" ; Vdom.textContent false "B" |]
                         [| Vdom.textContent false "1" ; Vdom.textContent false "2" |]
                     |]
-                    [| ProportionColumn -0.5 ; ProportionColumn 1.0 |]
+                    [| Column.Proportion -0.5 ; Column.Proportion 1.0 |]
                     [||]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
@@ -772,7 +926,7 @@ A B                 |
     let ``NaN and Infinity proportions are sanitized to epsilon`` () =
         task {
             // After sanitization, NaN and Infinity become 0.01
-            // Column 1 (0.01) and Column 2 (0.01) share remaining space equally after AutoColumn
+            // Column 1 (0.01) and Column 2 (0.01) share remaining space equally after Column.Content
             // With 30 char width, column 3 (Auto) gets its preferred (2), leaving 28 for columns 1 and 2
             // Columns 1 and 2 each get ~14 chars (minima 4 each + ~10 extra each)
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
@@ -786,11 +940,11 @@ A B                 |
                         |]
                     |]
                     [|
-                        ProportionColumn System.Double.NaN
-                        ProportionColumn System.Double.PositiveInfinity
-                        AutoColumn
+                        Column.Proportion System.Double.NaN
+                        Column.Proportion System.Double.PositiveInfinity
+                        Column.Content
                     |]
-                    [| ProportionRow System.Double.NegativeInfinity |]
+                    [| Row.Proportion System.Double.NegativeInfinity |]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
 
@@ -846,7 +1000,7 @@ Col1          Col2          C3|
                             Vdom.textContent false "3"
                         |]
                     |]
-                    [| FixedColumn 5 |] // Only 1 spec for 3 columns
+                    [| Column.Fixed 5 |] // Only 1 spec for 3 columns
                     [||]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
@@ -892,7 +1046,7 @@ A    B C                      |
                 Table.make
                     (NodeKey.make "t_")
                     [| [| Vdom.textContent false "X" ; Vdom.textContent false "Y" |] |]
-                    [| FixedColumn 3 ; FixedColumn 4 ; FixedColumn 10 ; AutoColumn |] // 4 specs for 2 columns
+                    [| Column.Fixed 3 ; Column.Fixed 4 ; Column.Fixed 10 ; Column.Content |] // 4 specs for 2 columns
                     [||]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
@@ -946,7 +1100,7 @@ X  Y                |
                             Vdom.textContent false "C"
                         |]
                     |]
-                    [| ProportionColumn 0.0 ; ProportionColumn 0.0 ; ProportionColumn 0.0 |]
+                    [| Column.Proportion 0.0 ; Column.Proportion 0.0 ; Column.Proportion 0.0 |]
                     [||]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
@@ -971,7 +1125,7 @@ X  Y                |
 
             App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
 
-            // After sanitization all become ProportionColumn 0.01, dividing space equally
+            // After sanitization all become Column.Proportion 0.01, dividing space equally
             expect {
                 snapshot
                     @"
@@ -1004,7 +1158,7 @@ A         B         C         |
                             Vdom.textContent false "Z"
                         |]
                     |]
-                    [| AutoColumn ; FixedColumn 8 ; ProportionColumn 1.0 |]
+                    [| Column.Content ; Column.Fixed 8 ; Column.Proportion 1.0 |]
                     [||]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
@@ -1056,7 +1210,7 @@ X      Y       Z              |
                             Vdom.textContent false "VeryLongColumn3"
                         |]
                     |]
-                    [| AutoColumn ; AutoColumn ; AutoColumn |]
+                    [| Column.Content ; Column.Content ; Column.Content |]
                     [||]
 
             // Terminal only 20 chars wide, but content wants 45 chars
@@ -1110,7 +1264,7 @@ gColumngColumnngColu|
                         [| Vdom.textContent false "Row5" |]
                     |]
                     [||]
-                    [| AutoRow ; AutoRow ; AutoRow ; AutoRow ; AutoRow |]
+                    [| Row.Content ; Row.Content ; Row.Content ; Row.Content ; Row.Content |]
 
             // Terminal only 3 lines high, but content wants 5 lines
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 3)
@@ -1268,7 +1422,8 @@ module TestTableMeasurements =
         let cell2 = Vdom.textContent false "VeryLongWord" // MinWidth = 12
         let cell3 = Vdom.textContent false "A B C" // MinWidth = 1
 
-        let table = Table.makeAuto (NodeKey.make "t_") [| [| cell1 ; cell2 ; cell3 |] |]
+        let table =
+            Table.makeContentSized (NodeKey.make "t_") [| [| cell1 ; cell2 ; cell3 |] |]
 
         let constraints =
             {
@@ -1282,12 +1437,12 @@ module TestTableMeasurements =
         measured.MinWidth |> shouldEqual 18
 
     [<Test>]
-    let ``table MinWidth with FixedColumn uses fixed width`` () =
+    let ``table MinWidth with Column.Fixed uses fixed width`` () =
         let cell1 = Vdom.textContent false "Short" // MinWidth = 5
         let cell2 = Vdom.textContent false "X" // MinWidth = 1
 
         let table =
-            Table.make (NodeKey.make "t_") [| [| cell1 ; cell2 |] |] [| FixedColumn 10 ; AutoColumn |] [||]
+            Table.make (NodeKey.make "t_") [| [| cell1 ; cell2 |] |] [| Column.Fixed 10 ; Column.Content |] [||]
 
         let constraints =
             {
@@ -1297,11 +1452,11 @@ module TestTableMeasurements =
 
         let measured = VdomBounds.measure table constraints
 
-        // FixedColumn contributes its fixed size to MinWidth: 10 + 1 = 11
+        // Column.Fixed contributes its fixed size to MinWidth: 10 + 1 = 11
         measured.MinWidth |> shouldEqual 11
 
     [<Test>]
-    let ``table MinWidth with ProportionColumn uses cell minimum`` () =
+    let ``table MinWidth with Column.Proportion uses cell minimum`` () =
         let cell1 = Vdom.textContent false "Hello" // MinWidth = 5
         let cell2 = Vdom.textContent false "World" // MinWidth = 5
 
@@ -1309,7 +1464,7 @@ module TestTableMeasurements =
             Table.make
                 (NodeKey.make "t_")
                 [| [| cell1 ; cell2 |] |]
-                [| ProportionColumn 0.5 ; ProportionColumn 0.5 |]
+                [| Column.Proportion 0.5 ; Column.Proportion 0.5 |]
                 [||]
 
         let constraints =
@@ -1329,7 +1484,7 @@ module TestTableMeasurements =
         let cell =
             Vdom.textContent false "This is a long text that will wrap when constrained"
 
-        let table = Table.makeAuto (NodeKey.make "t_") [| [| cell |] |]
+        let table = Table.makeContentSized (NodeKey.make "t_") [| [| cell |] |]
 
         let constraints =
             {
@@ -1352,7 +1507,7 @@ module TestTableMeasurements =
         let cell =
             Vdom.textContent false "This is text that wraps differently based on width"
 
-        let table = Table.makeAuto (NodeKey.make "t_") [| [| cell |] |]
+        let table = Table.makeContentSized (NodeKey.make "t_") [| [| cell |] |]
 
         let constraints =
             {
@@ -1381,7 +1536,7 @@ module TestTableMeasurements =
         let cell4 = Vdom.textContent false "B"
 
         let table =
-            Table.makeAuto (NodeKey.make "t_") [| [| cell1 ; cell2 |] ; [| cell3 ; cell4 |] |]
+            Table.makeContentSized (NodeKey.make "t_") [| [| cell1 ; cell2 |] ; [| cell3 ; cell4 |] |]
 
         let constraints =
             {
@@ -1417,8 +1572,8 @@ module TestTableMeasurements =
             // even when the parent honors the table's MinWidth
 
             // Create a table with:
-            // - AutoColumn with VERY LARGE preferred width but SMALL min width (wrappable text)
-            // - ProportionColumn with non-zero minimum width
+            // - Column.Content with VERY LARGE preferred width but SMALL min width (wrappable text)
+            // - Column.Proportion with non-zero minimum width
             let autoCell =
                 Vdom.textContent false "Some long text with many words that wraps nicely" // Preferred ~50, MinWidth ~6 ("nicely")
 
@@ -1428,7 +1583,7 @@ module TestTableMeasurements =
                 Table.make
                     (NodeKey.make "t_")
                     [| [| autoCell ; propCell |] |]
-                    [| AutoColumn ; ProportionColumn 1.0 |]
+                    [| Column.Content ; Column.Proportion 1.0 |]
                     [||]
 
             let constraints =
@@ -1460,7 +1615,7 @@ module TestTableMeasurements =
                 Table.make
                     (NodeKey.make "t_")
                     [| [| autoCell ; propCell |] |]
-                    [| AutoColumn ; ProportionColumn 1.0 |]
+                    [| Column.Content ; Column.Proportion 1.0 |]
                     [||]
 
             let processWorld =
@@ -1504,7 +1659,7 @@ module TestTableMeasurements =
                             (Vdom.textContent false "R")
                     |]
                 |]
-                [| FixedColumn 3 ; FixedColumn 4 |]
+                [| Column.Fixed 3 ; Column.Fixed 4 |]
                 [||]
 
         // Warm the measurement cache so render reuses the precomputed column widths
@@ -1536,7 +1691,7 @@ module TestTableMeasurements =
         let cell =
             Vdom.withKey (NodeKey.makeTableCellKey keyPrefix 0 None (Some 0) None) (Vdom.textContent false "Hello")
 
-        let table = Table.makeAuto keyPrefix [| [| cell |] |]
+        let table = Table.makeContentSized keyPrefix [| [| cell |] |]
 
         let constraints =
             {
@@ -1580,7 +1735,7 @@ module TestTablePerformance =
                 |]
 
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
-                Table.makeAuto (NodeKey.make "t_") cells
+                Table.makeContentSized (NodeKey.make "t_") cells
 
             let console, terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 30)
 
@@ -1623,7 +1778,7 @@ module TestTablePerformance =
                 |]
 
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
-                Table.makeAuto (NodeKey.make "t_") cells
+                Table.makeContentSized (NodeKey.make "t_") cells
 
             let console, terminal = ConsoleHarness.make' (fun () -> 200) (fun () -> 50)
 
@@ -1664,7 +1819,7 @@ module TestTablePerformance =
                 |]
 
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds, Unkeyed> =
-                Table.makeAuto (NodeKey.make "t_") cells
+                Table.makeContentSized (NodeKey.make "t_") cells
 
             let console, terminal = ConsoleHarness.make' (fun () -> 400) (fun () -> 20)
 
