@@ -1,6 +1,7 @@
 namespace WoofWare.Zoomies.Test
 
 open System
+open System.Collections.Immutable
 open NUnit.Framework
 open FsUnitTyped
 open WoofWare.Expect
@@ -139,10 +140,10 @@ module TestTextBox =
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
-                TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
+            let vdom (ctx : VdomContext) (_ : ImmutableArray<ConsoleKeyInfo>) : Vdom<DesiredBounds> =
+                TextBox.make (ctx, textBoxKey, "", 0, isInitiallyFocused = true)
 
-            let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
+            let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
             let world = MockWorld.make ()
 
@@ -157,30 +158,24 @@ module TestTextBox =
 
             let resolver = ActivationResolver.none
 
-            let receivedKeystrokes = ResizeArray<ConsoleKeyInfo> ()
-
             let processWorld =
-                { new WorldProcessor<AppEvent, State> with
+                { new WorldProcessor<AppEvent, ImmutableArray<_>> with
                     member _.ProcessWorld (inputs, renderState, state) =
-                        let mutable newState = state
+                        let mutable newState = state.ToBuilder ()
 
                         for input in inputs do
                             match input with
-                            | WorldStateChange.Keystroke k -> receivedKeystrokes.Add k
+                            | WorldStateChange.Keystroke k -> newState.Add k
                             | _ -> ()
 
-                        ProcessWorldResult.make newState
+                        ProcessWorldResult.make (newState.ToImmutable ())
                 }
 
             let clock = MockTime.make ()
 
             let renderState = RenderState.make console clock.GetUtcNow None
 
-            let mutable state =
-                {
-                    Content = ""
-                    Cursor = 0
-                }
+            let mutable state = ImmutableArray.Empty
 
             // Initial render
             state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
@@ -198,10 +193,10 @@ module TestTextBox =
             state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
 
             // Verify all three keystrokes reached ProcessWorld
-            receivedKeystrokes.Count |> shouldEqual 3
-            receivedKeystrokes.[0].Key |> shouldEqual ConsoleKey.Tab
-            receivedKeystrokes.[1].Key |> shouldEqual ConsoleKey.A
-            receivedKeystrokes.[2].Key |> shouldEqual ConsoleKey.Backspace
+            state
+            |> Seq.map _.Key
+            |> Seq.toList
+            |> shouldEqual [ ConsoleKey.Tab ; ConsoleKey.A ; ConsoleKey.Backspace ]
         }
 
     [<Test>]
@@ -322,7 +317,7 @@ Hello!|                                 |
             let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
-            let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
+            let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
             let world = MockWorld.make ()
 
@@ -416,7 +411,7 @@ Hello!|                                 |
             let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
-            let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
+            let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
             let world = MockWorld.make ()
 
@@ -542,7 +537,7 @@ Hello!|                                 |
             let textBox1Key = NodeKey.make "textbox1"
             let textBox2Key = NodeKey.make "textbox2"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : VdomContext) (_ : State) : Vdom<DesiredBounds> =
                 let textbox1 =
                     TextBox.make (ctx, textBox1Key, "Focused", 3, isInitiallyFocused = true, isFirstToFocus = true)
 
@@ -631,7 +626,7 @@ Unfocused                               |
             let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
-            let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
+            let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
             let world = MockWorld.make ()
 
@@ -695,7 +690,7 @@ Unfocused                               |
             let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
-            let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
+            let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
             let world = MockWorld.make ()
 

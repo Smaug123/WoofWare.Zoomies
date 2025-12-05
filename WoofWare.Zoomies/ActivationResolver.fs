@@ -78,7 +78,7 @@ module ActivationResolver =
                 | ConsoleKey.RightArrow when keystroke.Modifiers = ConsoleModifiers.None -> Some (makeEvent MoveRight)
                 | ConsoleKey.Home when keystroke.Modifiers = ConsoleModifiers.None -> Some (makeEvent Home)
                 | ConsoleKey.End when keystroke.Modifiers = ConsoleModifiers.None -> Some (makeEvent End)
-                | _ when keystroke.KeyChar <> '\000' && not (System.Char.IsControl keystroke.KeyChar) ->
+                | _ when keystroke.KeyChar <> '\000' && not (Char.IsControl keystroke.KeyChar) ->
                     // Accept any printable character without checking modifiers.
                     // The console gives us the modified character in KeyChar:
                     //   - Shift+A → KeyChar = 'A'
