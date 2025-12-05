@@ -269,6 +269,8 @@ module internal Layout =
 
     /// Measure a vertical split with auto (content-driven) sizing
     and private measureVerticalSplitAuto
+        (weight1 : ExpansionWeight)
+        (weight2 : ExpansionWeight)
         (child1 : Vdom<DesiredBounds>)
         (child2 : Vdom<DesiredBounds>)
         (constraints : MeasureConstraints)
@@ -302,20 +304,38 @@ module internal Layout =
                 let w1 = m1.MinWidth + int (float remainder * p)
                 (w1, totalWidth - w1)
             else // totalWidth > totalPref
-                // More than preferences - distribute excess proportionally to preferences
-                let p =
-                    if totalPref = 0 then
-                        0.5
-                    else
-                        float m1.PreferredWidth / float totalPref
+                // More than preferences - distribute excess according to weights
+                let resolvedWeight1 =
+                    match weight1 with
+                    | ExpansionWeight.FromContent -> float m1.PreferredWidth
+                    | ExpansionWeight.Fixed w -> w
 
-                let extraSpace = totalWidth - totalPref
-                let extraFor1 = int (float extraSpace * p)
-                let w1 = m1.PreferredWidth + extraFor1
-                (w1, totalWidth - w1)
+                let resolvedWeight2 =
+                    match weight2 with
+                    | ExpansionWeight.FromContent -> float m2.PreferredWidth
+                    | ExpansionWeight.Fixed w -> w
+
+                let totalWeight = resolvedWeight1 + resolvedWeight2
+
+                if totalWeight = 0.0 then
+                    // Neither component wants excess - each gets preferred
+                    (m1.PreferredWidth, m2.PreferredWidth)
+                else
+                    let extraSpace = totalWidth - totalPref
+                    let extraFor1 = int (float extraSpace * (resolvedWeight1 / totalWeight))
+                    let w1 = m1.PreferredWidth + extraFor1
+                    (w1, totalWidth - w1)
 
         {
-            Vdom = Vdom.Unkeyed (UnkeyedVdom.PanelSplit (SplitDirection.Vertical, SplitBehaviour.Auto, child1, child2))
+            Vdom =
+                Vdom.Unkeyed (
+                    UnkeyedVdom.PanelSplit (
+                        SplitDirection.Vertical,
+                        SplitBehaviour.AutoWeighted (weight1, weight2),
+                        child1,
+                        child2
+                    )
+                )
             Measured =
                 {
                     MinWidth = m1.MinWidth + m2.MinWidth
@@ -342,6 +362,8 @@ module internal Layout =
 
     /// Measure a horizontal split with auto (content-driven) sizing
     and private measureHorizontalSplitAuto
+        (weight1 : ExpansionWeight)
+        (weight2 : ExpansionWeight)
         (child1 : Vdom<DesiredBounds>)
         (child2 : Vdom<DesiredBounds>)
         (constraints : MeasureConstraints)
@@ -355,7 +377,14 @@ module internal Layout =
 
         {
             Vdom =
-                Vdom.Unkeyed (UnkeyedVdom.PanelSplit (SplitDirection.Horizontal, SplitBehaviour.Auto, child1, child2))
+                Vdom.Unkeyed (
+                    UnkeyedVdom.PanelSplit (
+                        SplitDirection.Horizontal,
+                        SplitBehaviour.AutoWeighted (weight1, weight2),
+                        child1,
+                        child2
+                    )
+                )
             Measured =
                 {
                     MinWidth = max m1.MinWidth m2.MinWidth
@@ -615,12 +644,14 @@ module internal Layout =
                 measureVerticalSplitProportion p child1 child2 constraints
             | SplitDirection.Vertical, SplitBehaviour.Absolute n ->
                 measureVerticalSplitAbsolute n child1 child2 constraints
-            | SplitDirection.Vertical, SplitBehaviour.Auto -> measureVerticalSplitAuto child1 child2 constraints
+            | SplitDirection.Vertical, SplitBehaviour.AutoWeighted (w1, w2) ->
+                measureVerticalSplitAuto w1 w2 child1 child2 constraints
             | SplitDirection.Horizontal, SplitBehaviour.Proportion p ->
                 measureHorizontalSplitProportion p child1 child2 constraints
             | SplitDirection.Horizontal, SplitBehaviour.Absolute n ->
                 measureHorizontalSplitAbsolute n child1 child2 constraints
-            | SplitDirection.Horizontal, SplitBehaviour.Auto -> measureHorizontalSplitAuto child1 child2 constraints
+            | SplitDirection.Horizontal, SplitBehaviour.AutoWeighted (w1, w2) ->
+                measureHorizontalSplitAuto w1 w2 child1 child2 constraints
         | UnkeyedVdom.Focusable (_, _, keyedVdom) ->
             // Focusable is transparent for measurement purposes
             let childMeasured = measureEither constraints (Vdom.Keyed keyedVdom)
@@ -910,7 +941,7 @@ module internal Layout =
                     let w1 = max 0 w1 // Ensure non-negative
                     let w2 = bounds.Width - w1
                     (w1, w2)
-                | SplitBehaviour.Auto ->
+                | SplitBehaviour.AutoWeighted (weight1, weight2) ->
                     let totalPref = m1.PreferredWidth + m2.PreferredWidth
                     let minSum = m1.MinWidth + m2.MinWidth
 
@@ -931,17 +962,27 @@ module internal Layout =
                         let w1 = m1.MinWidth + int (float remainder * p)
                         (w1, bounds.Width - w1)
                     else // bounds.Width > totalPref
-                        // More than preferences - distribute excess proportionally to preferences
-                        let p =
-                            if totalPref = 0 then
-                                0.5
-                            else
-                                float m1.PreferredWidth / float totalPref
+                        // More than preferences - distribute excess according to weights
+                        let resolvedWeight1 =
+                            match weight1 with
+                            | ExpansionWeight.FromContent -> float m1.PreferredWidth
+                            | ExpansionWeight.Fixed w -> w
 
-                        let extraSpace = bounds.Width - totalPref
-                        let extraFor1 = int (float extraSpace * p)
-                        let w1 = m1.PreferredWidth + extraFor1
-                        (w1, bounds.Width - w1)
+                        let resolvedWeight2 =
+                            match weight2 with
+                            | ExpansionWeight.FromContent -> float m2.PreferredWidth
+                            | ExpansionWeight.Fixed w -> w
+
+                        let totalWeight = resolvedWeight1 + resolvedWeight2
+
+                        if totalWeight = 0.0 then
+                            // Neither component wants excess - each gets preferred
+                            (m1.PreferredWidth, m2.PreferredWidth)
+                        else
+                            let extraSpace = bounds.Width - totalPref
+                            let extraFor1 = int (float extraSpace * (resolvedWeight1 / totalWeight))
+                            let w1 = m1.PreferredWidth + extraFor1
+                            (w1, bounds.Width - w1)
 
             let bounds1 =
                 {
@@ -979,7 +1020,7 @@ module internal Layout =
                     let h1 = max 0 h1 // Ensure non-negative
                     let h2 = bounds.Height - h1
                     (h1, h2)
-                | SplitBehaviour.Auto ->
+                | SplitBehaviour.AutoWeighted (weight1, weight2) ->
                     let prefH1 = m1.PreferredHeightForWidth bounds.Width
                     let prefH2 = m2.PreferredHeightForWidth bounds.Width
                     let totalPref = prefH1 + prefH2
@@ -1004,7 +1045,7 @@ module internal Layout =
                         let h1 = minH1 + int (float remainder * p)
                         (h1, bounds.Height - h1)
                     else // bounds.Height > totalPref
-                        // More than preferences - distribute excess proportionally to preferences
+                        // More than preferences - distribute excess according to weights
                         // BUT respect max height constraints
                         let maxH1 = m1.MaxHeightForWidth bounds.Width
                         let maxH2 = m2.MaxHeightForWidth bounds.Width
@@ -1035,24 +1076,33 @@ module internal Layout =
                             let h1 = minH1 + int (float remainder * p)
                             (h1, bounds.Height - h1)
                         else
-                            // Have excess beyond maxes - give each their effective pref, distribute remainder
-                            let extraSpace = bounds.Height - effectiveTotalPref
+                            // Have excess beyond maxes - distribute according to weights
+                            let resolvedWeight1 =
+                                match weight1 with
+                                | ExpansionWeight.FromContent -> float effectivePrefH1
+                                | ExpansionWeight.Fixed w -> w
 
-                            let p =
-                                if effectiveTotalPref = 0 then
-                                    0.5
-                                else
-                                    float effectivePrefH1 / float effectiveTotalPref
+                            let resolvedWeight2 =
+                                match weight2 with
+                                | ExpansionWeight.FromContent -> float effectivePrefH2
+                                | ExpansionWeight.Fixed w -> w
 
-                            let extraFor1 = int (float extraSpace * p)
-                            let h1 = effectivePrefH1 + extraFor1
-                            // Clamp h1 to max if it exists (shouldn't exceed it, but just to be safe)
-                            let h1 =
-                                match maxH1 with
-                                | Some m -> min h1 m
-                                | None -> h1
+                            let totalWeight = resolvedWeight1 + resolvedWeight2
 
-                            (h1, bounds.Height - h1)
+                            if totalWeight = 0.0 then
+                                // Neither component wants excess - each gets effective preferred
+                                (effectivePrefH1, effectivePrefH2)
+                            else
+                                let extraSpace = bounds.Height - effectiveTotalPref
+                                let extraFor1 = int (float extraSpace * (resolvedWeight1 / totalWeight))
+                                let h1 = effectivePrefH1 + extraFor1
+                                // Clamp h1 to max if it exists (shouldn't exceed it, but just to be safe)
+                                let h1 =
+                                    match maxH1 with
+                                    | Some m -> min h1 m
+                                    | None -> h1
+
+                                (h1, bounds.Height - h1)
 
             let bounds1 =
                 {

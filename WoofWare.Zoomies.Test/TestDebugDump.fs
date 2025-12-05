@@ -136,7 +136,7 @@ module TestDebugDump =
 
         expect {
             snapshot
-                @"PanelSplit: Vertical Auto
+                @"PanelSplit: Vertical AutoWeighted (FromContent, FromContent)
   First:
     Key: auto-left
       Text: ""Auto left"" [top-left]
