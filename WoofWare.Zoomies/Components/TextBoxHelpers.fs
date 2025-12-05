@@ -37,3 +37,38 @@ module TextBoxHelpers =
         | MoveRight -> (content, min content.Length (cursor + 1))
         | Home -> (content, 0)
         | End -> (content, content.Length)
+
+        | DeleteToEnd ->
+            // Delete from cursor to end of line
+            let before = content.Substring (0, cursor)
+            (before, cursor)
+
+        | DeleteToBeginning ->
+            // Delete from cursor to beginning of line
+            let after = content.Substring cursor
+            (after, 0)
+
+        | DeleteWordBackward ->
+            if cursor = 0 then
+                (content, cursor)
+            else
+                // Find the start of the word to delete
+                // First, skip any whitespace immediately before the cursor
+                let mutable pos = cursor - 1
+
+                while pos > 0 && System.Char.IsWhiteSpace content.[pos] do
+                    pos <- pos - 1
+
+                // Then, skip the word characters
+                while pos > 0 && not (System.Char.IsWhiteSpace content.[pos - 1]) do
+                    pos <- pos - 1
+
+                // Handle case where we're at position 0 but didn't find whitespace
+                if pos > 0 || System.Char.IsWhiteSpace content.[0] then
+                    ()
+                else
+                    pos <- 0
+
+                let before = content.Substring (0, pos)
+                let after = content.Substring cursor
+                (before + after, pos)

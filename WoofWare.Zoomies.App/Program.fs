@@ -8,159 +8,124 @@ open WoofWare.Zoomies
 open WoofWare.Zoomies.Components
 
 type AppEvent =
-    | FileLoaded of filename : string * content : string * generation : int
-    | FileLoadError of filename : string * error : string * generation : int
+    | TextEdit of TextBoxAction
+    | LoadButtonClicked
+    | FileLoaded of content : string * generation : int
+    | FileLoadError of error : string * generation : int
 
 type State =
     {
-        File1Path : string
-        File2Path : string
-        ShowingFile1 : bool
+        PathInput : string
+        CursorPos : int
         FileContent : string option
         IsLoading : bool
         Generation : int
     }
 
-    static member Create (file1 : string, file2 : string) =
+    static member Initial =
         {
-            File1Path = file1
-            File2Path = file2
-            ShowingFile1 = true
+            PathInput = ""
+            CursorPos = 0
             FileContent = None
             IsLoading = false
-            Generation = 1
+            Generation = 0
         }
-
-    member this.CurrentFile = if this.ShowingFile1 then this.File1Path else this.File2Path
-
-type StateBuilder =
-    {
-        mutable File1Path : string
-        mutable File2Path : string
-        mutable ShowingFile1 : bool
-        mutable FileContent : string option
-        mutable IsLoading : bool
-        mutable Generation : int
-    }
-
-    member state.ToImmutable () : State =
-        {
-            File1Path = state.File1Path
-            File2Path = state.File2Path
-            ShowingFile1 = state.ShowingFile1
-            FileContent = state.FileContent
-            IsLoading = state.IsLoading
-            Generation = state.Generation
-        }
-
-    static member Create (state : State) : StateBuilder =
-        {
-            File1Path = state.File1Path
-            File2Path = state.File2Path
-            ShowingFile1 = state.ShowingFile1
-            FileContent = state.FileContent
-            IsLoading = state.IsLoading
-            Generation = state.Generation
-        }
-
-    member this.CurrentFile = if this.ShowingFile1 then this.File1Path else this.File2Path
 
 module FileBrowser =
+    let textBoxKey = NodeKey.make "pathInput"
+    let loadButtonKey = NodeKey.make "loadButton"
 
-    /// For simplicity I'm not making these cancellable.
     let loadFileAsync (generation : int) (worldBridge : IWorldBridge<_>) (filepath : string) : unit Task =
         task {
             try
                 let! content = File.ReadAllTextAsync filepath
-                return FileLoaded (filepath, content, generation) |> worldBridge.PostEvent
+                return FileLoaded (content, generation) |> worldBridge.PostEvent
             with e ->
-                FileLoadError (filepath, e.Message, generation) |> worldBridge.PostEvent
+                FileLoadError (e.Message, generation) |> worldBridge.PostEvent
         }
 
-    let processWorld (initialState : State) (worldBridge : IWorldBridge<AppEvent>) =
-        // Trigger initial file load
-        let _ = loadFileAsync initialState.Generation worldBridge initialState.CurrentFile
-
+    let processWorld (worldBridge : IWorldBridge<AppEvent>) =
         { new WorldProcessor<AppEvent, State> with
-            member _.ProcessWorld (changes, prevVdom, state) =
-                let state = StateBuilder.Create state
+            member _.ProcessWorld (changes, _prevVdom, state) =
+                let mutable pathInput = state.PathInput
+                let mutable cursorPos = state.CursorPos
+                let mutable fileContent = state.FileContent
+                let mutable isLoading = state.IsLoading
+                let mutable generation = state.Generation
 
                 for change in changes do
                     match change with
-                    | WorldStateChange.MouseEvent _ ->
-                        // ignore mouse events
-                        ()
-                    | WorldStateChange.KeyboardEvent _ ->
-                        // ignore keyboard events
-                        ()
-                    | WorldStateChange.Keystroke key when key.KeyChar = ' ' ->
-                        // Toggle which file we're showing.
-                        state.ShowingFile1 <- not state.ShowingFile1
-                        state.IsLoading <- true
-                        state.FileContent <- None
-
-                        // Trigger async load of the new file
-                        state.Generation <- state.Generation + 1
-
-                        loadFileAsync state.Generation worldBridge state.CurrentFile
-                        |> ignore<Task<unit>>
+                    | WorldStateChange.MouseEvent _
+                    | WorldStateChange.KeyboardEvent _
                     | WorldStateChange.Keystroke _ -> ()
 
-                    | WorldStateChange.ApplicationEvent (FileLoaded (filename, content, generation)) ->
-                        // Only update if this is still the file we're expecting
-                        if state.Generation = generation then
-                            state.FileContent <- Some content
-                            state.IsLoading <- false
+                    | WorldStateChange.ApplicationEvent (TextEdit action) ->
+                        let newContent, newCursor = TextBoxHelpers.applyAction pathInput cursorPos action
+                        pathInput <- newContent
+                        cursorPos <- newCursor
 
-                    | WorldStateChange.ApplicationEvent (FileLoadError (filename, error, generation)) ->
-                        if state.Generation = generation then
-                            state.FileContent <- Some $"Error loading file: {error}"
-                            state.IsLoading <- false
+                    | WorldStateChange.ApplicationEvent LoadButtonClicked ->
+                        if not isLoading && pathInput.Length > 0 then
+                            isLoading <- true
+                            fileContent <- None
+                            generation <- generation + 1
+                            loadFileAsync generation worldBridge pathInput |> ignore<Task<unit>>
+
+                    | WorldStateChange.ApplicationEvent (FileLoaded (content, gen)) ->
+                        if generation = gen then
+                            fileContent <- Some content
+                            isLoading <- false
+
+                    | WorldStateChange.ApplicationEvent (FileLoadError (error, gen)) ->
+                        if generation = gen then
+                            fileContent <- Some $"Error: {error}"
+                            isLoading <- false
 
                     | WorldStateChange.ApplicationEventException e ->
                         ExceptionDispatchInfo.Throw e
                         failwith "unreachable"
 
-                ProcessWorldResult.make (state.ToImmutable ())
+                ProcessWorldResult.make
+                    {
+                        PathInput = pathInput
+                        CursorPos = cursorPos
+                        FileContent = fileContent
+                        IsLoading = isLoading
+                        Generation = generation
+                    }
         }
 
-    let view (vdomContext : VdomContext) (state : State) : Vdom<DesiredBounds> =
+    let view (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
         let topPane =
-            let label = $"[{state.File1Path}] / [{state.File2Path}]"
+            let textBox =
+                TextBox.make (ctx, textBoxKey, state.PathInput, state.CursorPos, isInitiallyFocused = true)
+                |> Vdom.bordered
 
-            let checkboxKey = NodeKey.make "checkbox"
+            let button = Button.make (ctx, loadButtonKey, "Load")
 
-            LabelledCheckbox.make (vdomContext, label, checkboxKey, not state.ShowingFile1)
-            |> Vdom.bordered
+            Vdom.panelSplitAuto (SplitDirection.Vertical, textBox, button)
 
         let bottomPane =
             let content =
                 match state.IsLoading, state.FileContent with
                 | true, _ -> "Loading..."
                 | false, Some content -> content
-                | false, None -> "Press space to load a file"
+                | false, None -> "Enter a file path and press Load"
 
             Vdom.textContent content |> Vdom.bordered
 
         Vdom.panelSplitAuto (SplitDirection.Horizontal, topPane, bottomPane)
 
-    let run (getEnv : string -> string option) (file1 : string) (file2 : string) =
-        let state = State.Create (file1, file2)
+    let resolver : ActivationResolver<AppEvent, State> =
+        ActivationResolver.combine
+            [
+                ActivationResolver.textBox textBoxKey TextEdit
+                ActivationResolver.button loadButtonKey LoadButtonClicked
+            ]
 
-        let initialState =
-            { state with
-                IsLoading = true
-            }
+    let run (getEnv : string -> string option) =
+        App.run getEnv State.Initial (fun _ -> true) processWorld view resolver
 
-        App.run
-            getEnv
-            initialState
-            (fun _ -> true) // framework handles focus
-            (processWorld initialState)
-            view
-            ActivationResolver.none
-
-// Usage:
 module Program =
     let getEnv (varName : string) : string option =
         match Environment.GetEnvironmentVariable varName with
@@ -168,13 +133,6 @@ module Program =
         | value -> Some value
 
     [<EntryPoint>]
-    let main argv =
-        let cwd = DirectoryInfo Environment.CurrentDirectory
-
-        let file1, file2 =
-            match cwd.EnumerateFiles () |> Seq.take 2 |> Seq.toList with
-            | [ a ; b ] -> a, b
-            | _ -> failwith "oh no"
-
-        FileBrowser.run getEnv file1.FullName file2.FullName |> _.Wait()
+    let main _argv =
+        (FileBrowser.run getEnv).Wait ()
         0
