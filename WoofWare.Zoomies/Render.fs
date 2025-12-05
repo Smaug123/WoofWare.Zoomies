@@ -902,22 +902,31 @@ module Render =
                 match alignment with
                 | ContentAlignment.Centered ->
                     // Center the text horizontally and vertically within bounds
-                    let centerY = bounds.Height / 2
-                    let contentLen = content.Length
-                    let startX = max 0 ((bounds.Width - contentLen) / 2)
-                    let mutable x = startX
+                    let lines = content.Split '\n'
+                    let lineCount = lines.Length
+                    // Vertically center the block of lines
+                    // Formula: for block center to be at height/2, startY = (height - lineCount + 1) / 2
+                    let startY = max 0 ((bounds.Height - lineCount + 1) / 2)
 
-                    for ch in content do
-                        if x < bounds.Width then
-                            let cell =
-                                {
-                                    Char = ch
-                                    BackgroundColor = style.Background
-                                    TextColor = style.Foreground
-                                }
+                    for lineIndex = 0 to lines.Length - 1 do
+                        let line = lines.[lineIndex]
+                        let y = startY + lineIndex
 
-                            setAtRelativeOffset dirty bounds x centerY (ValueSome cell)
-                            x <- x + 1
+                        if y < bounds.Height then
+                            let startX = max 0 ((bounds.Width - line.Length) / 2)
+                            let mutable x = startX
+
+                            for ch in line do
+                                if x < bounds.Width then
+                                    let cell =
+                                        {
+                                            Char = ch
+                                            BackgroundColor = style.Background
+                                            TextColor = style.Foreground
+                                        }
+
+                                    setAtRelativeOffset dirty bounds x y (ValueSome cell)
+                                    x <- x + 1
                 | ContentAlignment.TopLeft ->
                     // Render from top-left, wrapping to next line
                     let mutable index = 0
@@ -925,23 +934,33 @@ module Render =
                     let mutable currY = 0
 
                     while index < content.Length do
-                        let cell =
-                            {
-                                Char = content.Chars index
-                                BackgroundColor = style.Background
-                                TextColor = style.Foreground
-                            }
+                        let ch = content.Chars index
 
-                        setAtRelativeOffset dirty bounds currX currY (ValueSome cell)
-
-                        currX <- currX + 1
-
-                        if currX = bounds.Width then
+                        if ch = '\n' then
+                            // Newline: move to start of next line without rendering
                             currX <- 0
                             currY <- currY + 1
 
                             if currY >= bounds.Height then
                                 index <- content.Length
+                        else
+                            let cell =
+                                {
+                                    Char = ch
+                                    BackgroundColor = style.Background
+                                    TextColor = style.Foreground
+                                }
+
+                            setAtRelativeOffset dirty bounds currX currY (ValueSome cell)
+
+                            currX <- currX + 1
+
+                            if currX = bounds.Width then
+                                currX <- 0
+                                currY <- currY + 1
+
+                                if currY >= bounds.Height then
+                                    index <- content.Length
 
                         index <- index + 1
 
