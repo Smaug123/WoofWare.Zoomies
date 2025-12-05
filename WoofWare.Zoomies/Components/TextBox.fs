@@ -7,7 +7,7 @@ type TextBox =
     /// <summary>Low-level TextBox rendering without framework integration.</summary>
     /// <remarks>Shows the text content with a cursor indicator at the specified position.</remarks>
     /// <param name="content">The text content to display.</param>
-    /// <param name="cursorPos">The cursor position (character index, 0 to content.Length inclusive).</param>
+    /// <param name="cursorPos">The cursor position (character index, 0 to content.Length inclusive), or -1 to show no cursor.</param>
     /// <param name="isFocused">Whether the textbox should render as focused (with cursor visible and inverted style).</param>
     static member make' (content : string, cursorPos : int, isFocused : bool) : Vdom<DesiredBounds> =
         // Reserved-width cursor: always allocate space for cursor marker
