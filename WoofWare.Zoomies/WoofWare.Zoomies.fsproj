@@ -42,6 +42,7 @@
         <UnkeyedVdom>CreateCatamorphism(VdomCata')</UnkeyedVdom>
       </MyriadParams>
     </Compile>
+    <Compile Include="TextBoxAction.fs" />
     <Compile Include="ActivationResolver.fs" />
     <Compile Include="CtrlCHandler.fs" />
     <Compile Include="Terminal.fs" />
@@ -60,6 +61,8 @@
     <Compile Include="Components\LabelledCheckbox.fs" />
     <Compile Include="Components\ProgressBar.fs" />
     <Compile Include="Components\Table.fs" />
+    <Compile Include="Components\TextBox.fs" />
+    <Compile Include="Components\TextBoxHelpers.fs" />
     <None Include="..\README.md">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
