@@ -11,3 +11,9 @@ type TextBoxAction =
     | MoveRight
     | Home
     | End
+    /// Delete from cursor to end of line (Ctrl+K)
+    | DeleteToEnd
+    /// Delete from cursor to beginning of line (Ctrl+U)
+    | DeleteToBeginning
+    /// Delete word backward (Ctrl+W)
+    | DeleteWordBackward
