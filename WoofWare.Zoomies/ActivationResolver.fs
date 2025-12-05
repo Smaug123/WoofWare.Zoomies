@@ -71,6 +71,8 @@ module ActivationResolver =
             if k <> key then
                 None
             else
+                let isCtrl = keystroke.Modifiers = ConsoleModifiers.Control
+
                 match keystroke.Key with
                 | ConsoleKey.Backspace when keystroke.Modifiers = ConsoleModifiers.None -> Some (makeEvent Backspace)
                 | ConsoleKey.Delete when keystroke.Modifiers = ConsoleModifiers.None -> Some (makeEvent Delete)
@@ -78,6 +80,16 @@ module ActivationResolver =
                 | ConsoleKey.RightArrow when keystroke.Modifiers = ConsoleModifiers.None -> Some (makeEvent MoveRight)
                 | ConsoleKey.Home when keystroke.Modifiers = ConsoleModifiers.None -> Some (makeEvent Home)
                 | ConsoleKey.End when keystroke.Modifiers = ConsoleModifiers.None -> Some (makeEvent End)
+                // Emacs-style Ctrl shortcuts
+                | ConsoleKey.A when isCtrl -> Some (makeEvent Home) // Ctrl+A: beginning of line
+                | ConsoleKey.E when isCtrl -> Some (makeEvent End) // Ctrl+E: end of line
+                | ConsoleKey.B when isCtrl -> Some (makeEvent MoveLeft) // Ctrl+B: backward char
+                | ConsoleKey.F when isCtrl -> Some (makeEvent MoveRight) // Ctrl+F: forward char
+                | ConsoleKey.D when isCtrl -> Some (makeEvent Delete) // Ctrl+D: delete char
+                | ConsoleKey.H when isCtrl -> Some (makeEvent Backspace) // Ctrl+H: backspace
+                | ConsoleKey.K when isCtrl -> Some (makeEvent DeleteToEnd) // Ctrl+K: kill to end
+                | ConsoleKey.U when isCtrl -> Some (makeEvent DeleteToBeginning) // Ctrl+U: kill to beginning
+                | ConsoleKey.W when isCtrl -> Some (makeEvent DeleteWordBackward) // Ctrl+W: delete word backward
                 | _ when keystroke.KeyChar <> '\000' && not (Char.IsControl keystroke.KeyChar) ->
                     // Accept any printable character without checking modifiers.
                     // The console gives us the modified character in KeyChar:

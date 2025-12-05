@@ -751,3 +751,413 @@ Unfocused                               |
             state.Content |> shouldEqual "Hi!"
             state.Cursor |> shouldEqual 3
         }
+
+    [<Test>]
+    let ``Ctrl+A and Ctrl+E move cursor to beginning and end`` () =
+        task {
+            let textBoxKey = NodeKey.make "textbox"
+
+            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+                TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
+
+            let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = true
+
+            let resolver = ActivationResolver.textBox textBoxKey TextEdit
+
+            let processWorld =
+                { new WorldProcessor<AppEvent, State> with
+                    member _.ProcessWorld (inputs, renderState, state) =
+                        let mutable newState = state
+
+                        for input in inputs do
+                            match input with
+                            | WorldStateChange.ApplicationEvent (TextEdit action) ->
+                                let content, cursor = TextBoxHelpers.applyAction state.Content state.Cursor action
+
+                                newState <-
+                                    {
+                                        Content = content
+                                        Cursor = cursor
+                                    }
+                            | _ -> ()
+
+                        ProcessWorldResult.make newState
+                }
+
+            let clock = MockTime.make ()
+
+            let renderState = RenderState.make console clock.GetUtcNow None
+
+            let mutable state =
+                {
+                    Content = "Hello World"
+                    Cursor = 5 // Middle of text
+                }
+
+            // Initial render
+            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            // Press Ctrl+A (beginning of line)
+            world.SendKey (ConsoleKeyInfo ('\001', ConsoleKey.A, false, false, true))
+            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state.Content |> shouldEqual "Hello World"
+            state.Cursor |> shouldEqual 0
+
+            // Press Ctrl+E (end of line)
+            world.SendKey (ConsoleKeyInfo ('\005', ConsoleKey.E, false, false, true))
+            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state.Content |> shouldEqual "Hello World"
+            state.Cursor |> shouldEqual 11
+        }
+
+    [<Test>]
+    let ``Ctrl+B and Ctrl+F move cursor left and right`` () =
+        task {
+            let textBoxKey = NodeKey.make "textbox"
+
+            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+                TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
+
+            let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = true
+
+            let resolver = ActivationResolver.textBox textBoxKey TextEdit
+
+            let processWorld =
+                { new WorldProcessor<AppEvent, State> with
+                    member _.ProcessWorld (inputs, renderState, state) =
+                        let mutable newState = state
+
+                        for input in inputs do
+                            match input with
+                            | WorldStateChange.ApplicationEvent (TextEdit action) ->
+                                let content, cursor = TextBoxHelpers.applyAction state.Content state.Cursor action
+
+                                newState <-
+                                    {
+                                        Content = content
+                                        Cursor = cursor
+                                    }
+                            | _ -> ()
+
+                        ProcessWorldResult.make newState
+                }
+
+            let clock = MockTime.make ()
+
+            let renderState = RenderState.make console clock.GetUtcNow None
+
+            let mutable state =
+                {
+                    Content = "Hello"
+                    Cursor = 3
+                }
+
+            // Initial render
+            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            // Press Ctrl+B (backward)
+            world.SendKey (ConsoleKeyInfo ('\002', ConsoleKey.B, false, false, true))
+            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state.Cursor |> shouldEqual 2
+
+            // Press Ctrl+F (forward)
+            world.SendKey (ConsoleKeyInfo ('\006', ConsoleKey.F, false, false, true))
+            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state.Cursor |> shouldEqual 3
+        }
+
+    [<Test>]
+    let ``Ctrl+D deletes character at cursor and Ctrl+H is backspace`` () =
+        task {
+            let textBoxKey = NodeKey.make "textbox"
+
+            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+                TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
+
+            let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = true
+
+            let resolver = ActivationResolver.textBox textBoxKey TextEdit
+
+            let processWorld =
+                { new WorldProcessor<AppEvent, State> with
+                    member _.ProcessWorld (inputs, renderState, state) =
+                        let mutable newState = state
+
+                        for input in inputs do
+                            match input with
+                            | WorldStateChange.ApplicationEvent (TextEdit action) ->
+                                let content, cursor = TextBoxHelpers.applyAction state.Content state.Cursor action
+
+                                newState <-
+                                    {
+                                        Content = content
+                                        Cursor = cursor
+                                    }
+                            | _ -> ()
+
+                        ProcessWorldResult.make newState
+                }
+
+            let clock = MockTime.make ()
+
+            let renderState = RenderState.make console clock.GetUtcNow None
+
+            let mutable state =
+                {
+                    Content = "Hello"
+                    Cursor = 2
+                }
+
+            // Initial render
+            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            // Press Ctrl+D (delete char at cursor, should delete 'l')
+            world.SendKey (ConsoleKeyInfo ('\004', ConsoleKey.D, false, false, true))
+            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state.Content |> shouldEqual "Helo"
+            state.Cursor |> shouldEqual 2
+
+            // Press Ctrl+H (backspace, should delete 'e')
+            world.SendKey (ConsoleKeyInfo ('\008', ConsoleKey.H, false, false, true))
+            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state.Content |> shouldEqual "Hlo"
+            state.Cursor |> shouldEqual 1
+        }
+
+    [<Test>]
+    let ``Ctrl+K deletes from cursor to end of line`` () =
+        task {
+            let textBoxKey = NodeKey.make "textbox"
+
+            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+                TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
+
+            let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = true
+
+            let resolver = ActivationResolver.textBox textBoxKey TextEdit
+
+            let processWorld =
+                { new WorldProcessor<AppEvent, State> with
+                    member _.ProcessWorld (inputs, renderState, state) =
+                        let mutable newState = state
+
+                        for input in inputs do
+                            match input with
+                            | WorldStateChange.ApplicationEvent (TextEdit action) ->
+                                let content, cursor = TextBoxHelpers.applyAction state.Content state.Cursor action
+
+                                newState <-
+                                    {
+                                        Content = content
+                                        Cursor = cursor
+                                    }
+                            | _ -> ()
+
+                        ProcessWorldResult.make newState
+                }
+
+            let clock = MockTime.make ()
+
+            let renderState = RenderState.make console clock.GetUtcNow None
+
+            let mutable state =
+                {
+                    Content = "Hello World"
+                    Cursor = 5
+                }
+
+            // Initial render
+            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            // Press Ctrl+K (kill to end)
+            world.SendKey (ConsoleKeyInfo ('\011', ConsoleKey.K, false, false, true))
+            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state.Content |> shouldEqual "Hello"
+            state.Cursor |> shouldEqual 5
+        }
+
+    [<Test>]
+    let ``Ctrl+U deletes from cursor to beginning of line`` () =
+        task {
+            let textBoxKey = NodeKey.make "textbox"
+
+            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+                TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
+
+            let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = true
+
+            let resolver = ActivationResolver.textBox textBoxKey TextEdit
+
+            let processWorld =
+                { new WorldProcessor<AppEvent, State> with
+                    member _.ProcessWorld (inputs, renderState, state) =
+                        let mutable newState = state
+
+                        for input in inputs do
+                            match input with
+                            | WorldStateChange.ApplicationEvent (TextEdit action) ->
+                                let content, cursor = TextBoxHelpers.applyAction state.Content state.Cursor action
+
+                                newState <-
+                                    {
+                                        Content = content
+                                        Cursor = cursor
+                                    }
+                            | _ -> ()
+
+                        ProcessWorldResult.make newState
+                }
+
+            let clock = MockTime.make ()
+
+            let renderState = RenderState.make console clock.GetUtcNow None
+
+            let mutable state =
+                {
+                    Content = "Hello World"
+                    Cursor = 6
+                }
+
+            // Initial render
+            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            // Press Ctrl+U (kill to beginning)
+            world.SendKey (ConsoleKeyInfo ('\021', ConsoleKey.U, false, false, true))
+            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state.Content |> shouldEqual "World"
+            state.Cursor |> shouldEqual 0
+        }
+
+    [<Test>]
+    let ``Ctrl+W deletes word backward`` () =
+        task {
+            let textBoxKey = NodeKey.make "textbox"
+
+            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+                TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
+
+            let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = true
+
+            let resolver = ActivationResolver.textBox textBoxKey TextEdit
+
+            let processWorld =
+                { new WorldProcessor<AppEvent, State> with
+                    member _.ProcessWorld (inputs, renderState, state) =
+                        let mutable newState = state
+
+                        for input in inputs do
+                            match input with
+                            | WorldStateChange.ApplicationEvent (TextEdit action) ->
+                                let content, cursor = TextBoxHelpers.applyAction state.Content state.Cursor action
+
+                                newState <-
+                                    {
+                                        Content = content
+                                        Cursor = cursor
+                                    }
+                            | _ -> ()
+
+                        ProcessWorldResult.make newState
+                }
+
+            let clock = MockTime.make ()
+
+            let renderState = RenderState.make console clock.GetUtcNow None
+
+            let mutable state =
+                {
+                    Content = "Hello World Test"
+                    Cursor = 11 // After "World"
+                }
+
+            // Initial render
+            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            // Press Ctrl+W (delete word backward, should delete "World")
+            world.SendKey (ConsoleKeyInfo ('\023', ConsoleKey.W, false, false, true))
+            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state.Content |> shouldEqual "Hello  Test"
+            state.Cursor |> shouldEqual 6
+
+            // Press Ctrl+W again (should delete "Hello")
+            world.SendKey (ConsoleKeyInfo ('\023', ConsoleKey.W, false, false, true))
+            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state.Content |> shouldEqual " Test"
+            state.Cursor |> shouldEqual 0
+        }
