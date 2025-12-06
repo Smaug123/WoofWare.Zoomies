@@ -428,6 +428,8 @@ module App =
                     RenderState.unregisterBracketedPaste renderState
                     RenderState.unregisterMouseMode renderState
                     RenderState.exitAlternateScreen renderState
+                    // Flush any buffered output to ensure cleanup operations are written to the terminal
+                    RenderState.flush renderState
 
                     match exc with
                     | None -> complete.SetResult ()

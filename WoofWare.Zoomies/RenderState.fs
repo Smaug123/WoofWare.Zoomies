@@ -72,6 +72,9 @@ module RenderState =
     let unregisterBracketedPaste (s : RenderState) =
         s.Output TerminalOp.UnregisterBracketedPaste
 
+    /// Flush any buffered output to the console.
+    let flush (s : RenderState) = s.Console.Flush ()
+
     /// Query the rendered bounds of a keyed node
     let layoutOf (key : NodeKey) (s : RenderState) : Rectangle option =
         match s.KeyToNode.TryGetValue key with

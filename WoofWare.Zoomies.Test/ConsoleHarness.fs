@@ -75,6 +75,7 @@ module ConsoleHarness =
                 WindowHeight = height
                 ColorMode = ColorMode.Color
                 Execute = execute fake
+                Flush = fun () -> ()
             }
 
         result, fake
