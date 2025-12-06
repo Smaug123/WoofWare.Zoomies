@@ -84,7 +84,7 @@ type DesiredBounds = unit
 type ContentAlignment =
     /// Content is centered both horizontally and vertically.
     | Centered
-    /// Content starts at the top-left corner and wraps.
+    /// Content starts at the top-left corner.
     | TopLeft
 
 type internal FlexibleContent =
@@ -103,7 +103,7 @@ and UnkeyedVdom<'bounds> =
     private
     | Bordered of Vdom<'bounds>
     | PanelSplit of SplitDirection * SplitBehaviour * child1 : Vdom<'bounds> * child2 : Vdom<'bounds>
-    | TextContent of content : string * style : CellStyle * alignment : ContentAlignment * focused : bool
+    | TextContent of content : string * style : CellStyle * alignment : ContentAlignment * focused : bool * wrap : bool
     | Focusable of isFirstToFocus : bool * isInitiallyFocused : bool * KeyedVdom<'bounds>
     | Empty
     | FlexibleContent of FlexibleContent
@@ -121,22 +121,28 @@ type Vdom =
     /// This has nothing to do with the WoofWare.Zoomies automatic focus tracking system; it's purely a display concern.
     /// See <c>Vdom.withFocusTracking</c> for details.
     /// </param>
-    /// <param name="s">The text to display within the text area. Text will be truncated if it doesn't fit.</param>
+    /// <param name="s">
+    /// The text to display within the text area.
+    /// Text will be truncated if it doesn't fit, if <c>wrap</c> is false.
+    /// </param>
     /// <param name="style">How the text should render.</param>
     /// <param name="alignment">Where in the available area to place the text.</param>
+    /// <param name="wrap">
+    /// If true (the default), text wraps to the next line when it reaches the edge of the bounds.
+    /// If false, text is truncated at the edge of the bounds and does not wrap.
+    /// </param>
     static member textContent
-        (s : string, ?isFocused : bool, ?style : CellStyle, ?alignment : ContentAlignment)
+        (s : string, ?isFocused : bool, ?style : CellStyle, ?alignment : ContentAlignment, ?wrap : bool)
         : Vdom<DesiredBounds>
         =
-        Vdom.textContent' (s, ?isFocused = isFocused, ?style = style, ?alignment = alignment)
+        Vdom.textContent' (s, ?isFocused = isFocused, ?style = style, ?alignment = alignment, ?wrap = wrap)
         |> Vdom.Unkeyed
 
     /// This is `Vdom.textContent`, but you get back an UnkeyedVdom rather than a Vdom.
     static member textContent'
-        (s : string, ?isFocused : bool, ?style : CellStyle, ?alignment : ContentAlignment)
+        (s : string, ?isFocused : bool, ?style : CellStyle, ?alignment : ContentAlignment, ?wrap : bool)
         : UnkeyedVdom<DesiredBounds>
         =
-        // TODO: create text areas which do smart truncation etc for you
         let style =
             match style with
             | None -> CellStyle.none
@@ -144,17 +150,26 @@ type Vdom =
 
         let alignment = defaultArg alignment ContentAlignment.TopLeft
         let isFocused = defaultArg isFocused false
-        UnkeyedVdom.TextContent (s, style, alignment, isFocused)
+        let wrap = defaultArg wrap true
+        UnkeyedVdom.TextContent (s, style, alignment, isFocused, wrap)
 
     /// <summary>Creates a text content component with explicit styling.</summary>
     /// <param name="content">The text to display.</param>
     /// <param name="style">The cell styling to apply to the text.</param>
     /// <param name="alignment">Where within the panel to place the text.</param>
+    /// <param name="wrap">
+    /// If true (the default), text wraps to the next line when it reaches the edge of the bounds.
+    /// If false, text is truncated at the edge of the bounds and does not wrap.
+    /// </param>
     static member styledText
-        (content : string, style : CellStyle, ?alignment : ContentAlignment)
+        (content : string, style : CellStyle, ?alignment : ContentAlignment, ?wrap : bool)
         : Vdom<DesiredBounds>
         =
-        Vdom.Unkeyed (UnkeyedVdom.TextContent (content, style, defaultArg alignment ContentAlignment.TopLeft, false))
+        let wrap = defaultArg wrap true
+
+        Vdom.Unkeyed (
+            UnkeyedVdom.TextContent (content, style, defaultArg alignment ContentAlignment.TopLeft, false, wrap)
+        )
 
     /// <summary>Creates an empty zero-sized element.</summary>
     /// <remarks>
@@ -579,7 +594,7 @@ type Vdom =
         and dumpUnkeyedVdom (indent : string) (vdom : UnkeyedVdom<'bounds>) : unit =
             match vdom with
             | UnkeyedVdom.Empty -> sb.AppendLine (sprintf "%sEmpty" indent) |> ignore
-            | UnkeyedVdom.TextContent (content, style, alignment, focused) ->
+            | UnkeyedVdom.TextContent (content, style, alignment, focused, wrap) ->
                 let truncated =
                     if content.Length > 50 then
                         content.Substring (0, 47) + "..."
@@ -587,6 +602,7 @@ type Vdom =
                         content
 
                 let focusedStr = if focused then " (focused)" else ""
+                let wrapStr = if wrap then "" else " (no-wrap)"
 
                 let alignmentStr =
                     match alignment with
@@ -595,11 +611,12 @@ type Vdom =
 
                 sb.AppendLine (
                     sprintf
-                        "%sText: \"%s\" [%s]%s"
+                        "%sText: \"%s\" [%s]%s%s"
                         indent
                         (truncated.Replace("\n", "\\n").Replace ("\r", "\\r"))
                         alignmentStr
                         focusedStr
+                        wrapStr
                 )
                 |> ignore
             | UnkeyedVdom.Bordered inner ->
