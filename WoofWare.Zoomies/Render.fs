@@ -1059,13 +1059,31 @@ module Render =
             | None -> ()
 
     let writeBuffer (dirty : TerminalCell voption[,]) : TerminalOp seq =
-        // TODO this is super dumb
         seq {
+            // Track cursor position to avoid redundant MoveCursor operations.
+            // After writing a character, the cursor automatically advances right by 1.
+            let mutable cursorX = -1
+            let mutable cursorY = -1
+            let width = dirty.GetLength 1
+
             for y = 0 to dirty.GetLength 0 - 1 do
                 for x = 0 to dirty.GetLength 1 - 1 do
                     match dirty.[y, x] with
                     | ValueNone -> ()
-                    | ValueSome cell -> yield! [ TerminalOp.MoveCursor (x, y) ; TerminalOp.WriteChar cell ]
+                    | ValueSome cell ->
+                        if cursorX <> x || cursorY <> y then
+                            yield TerminalOp.MoveCursor (x, y)
+
+                        yield TerminalOp.WriteChar cell
+
+                        // After writing, cursor advances right. But at row end, terminal behavior
+                        // varies (may wrap, stay put, etc.), so mark position as unknown.
+                        if x + 1 < width then
+                            cursorX <- x + 1
+                            cursorY <- y
+                        else
+                            cursorX <- -1
+                            cursorY <- -1
         }
 
     let oneStep<'state> (renderState : RenderState) (userState : 'state) (compute : 'state -> Vdom<DesiredBounds>) =
