@@ -520,3 +520,431 @@ Footer              |
                 return ConsoleHarness.toString terminal
             }
         }
+
+    [<Test>]
+    let ``text with wrap=true wraps to next line when exceeding width`` () =
+        task {
+            let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Text that exceeds width - with wrap=true (default), it wraps
+                Vdom.textContent ("Hello World, this is a long text", wrap = true)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                (FakeUnit.fake ())
+                (fun _ -> true)
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
+            |> ignore<FakeUnit>
+
+            expect {
+                snapshot
+                    @"
+Hello Worl|
+d, this is|
+ a long te|
+xt        |
+          |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``text with wrap=false truncates at width boundary`` () =
+        task {
+            let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Text that exceeds width - with wrap=false, it truncates
+                Vdom.textContent ("Hello World, this is a long text", wrap = false)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                (FakeUnit.fake ())
+                (fun _ -> true)
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
+            |> ignore<FakeUnit>
+
+            expect {
+                snapshot
+                    @"
+Hello Worl|
+          |
+          |
+          |
+          |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``text with wrap=false and explicit newlines respects newlines`` () =
+        task {
+            let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Multi-line text with wrap=false - each line truncates independently
+                Vdom.textContent ("First line is long\nSecond is too\nShort", wrap = false)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                (FakeUnit.fake ())
+                (fun _ -> true)
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
+            |> ignore<FakeUnit>
+
+            expect {
+                snapshot
+                    @"
+First line|
+Second is |
+Short     |
+          |
+          |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``wrap=false affects layout measurement - text requests only 1 line height`` () =
+        task {
+            // This test demonstrates that wrap=false affects the layout measurement,
+            // not just rendering. With wrap=false, text that would normally wrap
+            // to multiple lines now only requests 1 line of height.
+            let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 6)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Long text with wrap=false - should only take 1 line in auto layout
+                let text =
+                    Vdom.textContent ("This is a very long text that would wrap", wrap = false)
+
+                let footer = Vdom.textContent "Footer"
+                Vdom.panelSplitAuto (SplitDirection.Horizontal, text, footer)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                (FakeUnit.fake ())
+                (fun _ -> true)
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
+            |> ignore<FakeUnit>
+
+            // The truncated text takes only 1 line, footer takes 1 line
+            expect {
+                snapshot
+                    @"
+This is a |
+Footer    |
+          |
+          |
+          |
+          |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``wrap=true vs wrap=false comparison in auto layout`` () =
+        task {
+            // Compare wrap=true vs wrap=false side by side to show the difference
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 6)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Left side: wrap=true, Right side: wrap=false
+                let longText = "Long text here"
+                let leftText = Vdom.textContent (longText, wrap = true)
+                let rightText = Vdom.textContent (longText, wrap = false)
+                Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, leftText, rightText)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                (FakeUnit.fake ())
+                (fun _ -> true)
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
+            |> ignore<FakeUnit>
+
+            // Left side wraps (10 chars wide), right side truncates (10 chars wide)
+            expect {
+                snapshot
+                    @"
+Long text Long text |
+here                |
+                    |
+                    |
+                    |
+                    |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``centered text with wrap=true wraps long lines and centers each wrapped line`` () =
+        task {
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 6)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Long text that exceeds width - with wrap=true and Centered alignment
+                // "ABCDEFGHIJKLMNOPQRSTUVWXYZ" is 26 chars, width is 20
+                // Should wrap to: "ABCDEFGHIJKLMNOPQRST" (20 chars, centered = offset 0)
+                //                 "UVWXYZ" (6 chars, centered = offset 7)
+                Vdom.textContent ("ABCDEFGHIJKLMNOPQRSTUVWXYZ", alignment = ContentAlignment.Centered, wrap = true)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                (FakeUnit.fake ())
+                (fun _ -> true)
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
+            |> ignore<FakeUnit>
+
+            // First line fills width (no centering offset), second line is centered
+            expect {
+                snapshot
+                    @"
+                    |
+                    |
+ABCDEFGHIJKLMNOPQRST|
+       UVWXYZ       |
+                    |
+                    |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``centered text with wrap=false truncates long lines`` () =
+        task {
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Long text with wrap=false and Centered alignment - should truncate
+                Vdom.textContent ("ABCDEFGHIJKLMNOPQRSTUVWXYZ", alignment = ContentAlignment.Centered, wrap = false)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                (FakeUnit.fake ())
+                (fun _ -> true)
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
+            |> ignore<FakeUnit>
+
+            // Text is truncated at width boundary (left portion shown)
+            expect {
+                snapshot
+                    @"
+                    |
+                    |
+ABCDEFGHIJKLMNOPQRST|
+                    |
+                    |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``centered text with wrap=true handles multiple lines with some needing wrapping`` () =
+        task {
+            let console, terminal = ConsoleHarness.make' (fun () -> 12) (fun () -> 7)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Multi-line text where some lines need wrapping
+                // Line 1: "Short" (5 chars) - fits, centered
+                // Line 2: "This is too long" (16 chars) - wraps to "This is too " (12) + "long" (4)
+                // Line 3: "End" (3 chars) - fits, centered
+                Vdom.textContent ("Short\nThis is too long\nEnd", alignment = ContentAlignment.Centered, wrap = true)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                (FakeUnit.fake ())
+                (fun _ -> true)
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
+            |> ignore<FakeUnit>
+
+            // 4 lines of content (Short, "This is too ", "long", End), centered in 7 lines
+            // startY = (7 - 4 + 1) / 2 = 2
+            expect {
+                snapshot
+                    @"
+            |
+            |
+   Short    |
+This is too |
+    long    |
+    End     |
+            |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }

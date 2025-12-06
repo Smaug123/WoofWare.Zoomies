@@ -27,8 +27,8 @@ module TestCatamorphism =
                 member _.PanelSplit dir split child1 child2 =
                     Vdom.panelSplit (dir, split, child1, child2)
 
-                member _.TextContent content style alignment focused =
-                    Vdom.textContent' (content, focused, style = style, alignment = alignment)
+                member _.TextContent content style alignment focused wrap =
+                    Vdom.textContent' (content, focused, style = style, alignment = alignment, wrap = wrap)
 
                 member _.Focusable isFirstToFocus isInitiallyFocused inner =
                     Vdom.withFocusTracking' (
