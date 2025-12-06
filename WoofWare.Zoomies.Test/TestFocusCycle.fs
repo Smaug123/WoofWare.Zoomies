@@ -834,10 +834,11 @@ more      [☐]   |
                     world.KeyAvailable
                     world.ReadKey
 
+            let textKey = NodeKey.make "focusable-text"
+            let checkboxKey = NodeKey.make "checkbox"
+
             let vdom (vdomContext : VdomContext) (_ : FakeUnit) =
                 let currentFocus = VdomContext.focusedKey vdomContext
-                let textKey = NodeKey.make "focusable-text"
-                let checkboxKey = NodeKey.make "checkbox"
 
                 let text =
                     Vdom.textContent ("This is focusable text", isFocused = (currentFocus = Some textKey))
@@ -905,6 +906,9 @@ This is focusable text                                                          
                 ActivationResolver.none
             |> ignore<FakeUnit>
 
+            // Assert that focus moved to the text element
+            RenderState.focusedKey renderState |> shouldEqual (Some textKey)
+
             expect {
                 snapshot
                     @"
@@ -935,6 +939,9 @@ This is focusable text                                                          
                 vdom
                 ActivationResolver.none
             |> ignore<FakeUnit>
+
+            // Assert that focus moved to the checkbox
+            RenderState.focusedKey renderState |> shouldEqual (Some checkboxKey)
 
             expect {
                 snapshot
@@ -1056,7 +1063,7 @@ This is focusable text                                                          
                 return ConsoleHarness.toString terminal
             }
 
-            // Tab should focus checkbox2 (marked with isInitialFocus=true), not checkbox1
+            // Tab should focus checkbox2 (marked with isFirstToFocus=true), not checkbox1
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             App.pumpOnce
