@@ -61,7 +61,7 @@ module TestBatchProcessing =
                             | WorldStateChange.Keystroke c -> newState <- newState.Add c.KeyChar
                             | WorldStateChange.MouseEvent _ -> ()
                             | WorldStateChange.ApplicationEvent _ -> ()
-                            | WorldStateChange.KeyboardEvent _ -> ()
+                            | WorldStateChange.Paste _ -> ()
                             | WorldStateChange.ApplicationEventException _ -> ()
 
                         totalProcessed <- totalProcessed + toProcess
@@ -251,7 +251,7 @@ module TestBatchProcessing =
                                     shouldRerender <- true
                             | WorldStateChange.MouseEvent _ -> ()
                             | WorldStateChange.ApplicationEvent _ -> ()
-                            | WorldStateChange.KeyboardEvent _ -> ()
+                            | WorldStateChange.Paste _ -> ()
                             | WorldStateChange.ApplicationEventException _ -> ()
 
                         if shouldRerender then

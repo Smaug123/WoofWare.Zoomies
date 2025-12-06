@@ -56,8 +56,15 @@ module FileBrowser =
                 for change in changes do
                     match change with
                     | WorldStateChange.MouseEvent _
-                    | WorldStateChange.KeyboardEvent _
                     | WorldStateChange.Keystroke _ -> ()
+
+                    | WorldStateChange.Paste text ->
+                        // Handle pasted text by inserting it at the cursor position
+                        let newContent, newCursor =
+                            TextBoxHelpers.applyAction pathInput cursorPos (InsertString text)
+
+                        pathInput <- newContent
+                        cursorPos <- newCursor
 
                     | WorldStateChange.ApplicationEvent (TextEdit action) ->
                         let newContent, newCursor = TextBoxHelpers.applyAction pathInput cursorPos action
