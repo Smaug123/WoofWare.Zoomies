@@ -11,10 +11,15 @@ open WoofWare.Zoomies
 [<Parallelizable(ParallelScope.All)>]
 module TestAppRun =
 
+    /// Marker to track when Flush is called (interleaved with terminal ops)
+    type private ConsoleOp =
+        | TerminalOp of TerminalOp
+        | Flush
+
     [<Test>]
     let ``App.run' registers bracketed paste on startup and unregisters on quit`` () =
         task {
-            let ops = ConcurrentQueue<TerminalOp> ()
+            let ops = ConcurrentQueue<ConsoleOp> ()
 
             let console : IConsole =
                 {
@@ -23,8 +28,8 @@ module TestAppRun =
                     WindowWidth = fun () -> 80
                     WindowHeight = fun () -> 10
                     ColorMode = ColorMode.Color
-                    Execute = fun op -> ops.Enqueue op
-                    Flush = fun () -> ()
+                    Execute = fun op -> ops.Enqueue (TerminalOp op)
+                    Flush = fun () -> ops.Enqueue Flush
                 }
 
             let clock = MockTime.make ()
@@ -76,13 +81,13 @@ module TestAppRun =
             // Check that we got the expected operations
             let opsList = ops.ToArray () |> Array.toList
 
-            // RegisterBracketedPaste should appear early (after EnterAlternateScreen, RegisterMouseMode)
-            let registerIndex =
-                opsList |> List.tryFindIndex (fun op -> op = TerminalOp.RegisterBracketedPaste)
+            // Helper to find index of a terminal op
+            let findTerminalOp op =
+                opsList |> List.tryFindIndex (fun consoleOp -> consoleOp = TerminalOp op)
 
-            let unregisterIndex =
-                opsList
-                |> List.tryFindIndex (fun op -> op = TerminalOp.UnregisterBracketedPaste)
+            // RegisterBracketedPaste should appear early (after EnterAlternateScreen, RegisterMouseMode)
+            let registerIndex = findTerminalOp TerminalOp.RegisterBracketedPaste
+            let unregisterIndex = findTerminalOp TerminalOp.UnregisterBracketedPaste
 
             registerIndex.IsSome |> shouldEqual true
             unregisterIndex.IsSome |> shouldEqual true
@@ -91,23 +96,33 @@ module TestAppRun =
             unregisterIndex.Value > registerIndex.Value |> shouldEqual true
 
             // Verify order: Register should come after EnterAlternateScreen
-            let enterAltScreenIndex =
-                opsList |> List.tryFindIndex (fun op -> op = TerminalOp.EnterAlternateScreen)
+            let enterAltScreenIndex = findTerminalOp TerminalOp.EnterAlternateScreen
 
             enterAltScreenIndex.IsSome |> shouldEqual true
             registerIndex.Value > enterAltScreenIndex.Value |> shouldEqual true
 
             // Verify order: Register should come after RegisterMouseMode
-            let registerMouseModeIndex =
-                opsList |> List.tryFindIndex (fun op -> op = TerminalOp.RegisterMouseMode)
+            let registerMouseModeIndex = findTerminalOp TerminalOp.RegisterMouseMode
 
             registerMouseModeIndex.IsSome |> shouldEqual true
             registerIndex.Value > registerMouseModeIndex.Value |> shouldEqual true
 
             // Verify order: Unregister should come before ExitAlternateScreen
-            let exitAltScreenIndex =
-                opsList |> List.tryFindIndex (fun op -> op = TerminalOp.ExitAlternateScreen)
+            let exitAltScreenIndex = findTerminalOp TerminalOp.ExitAlternateScreen
 
             exitAltScreenIndex.IsSome |> shouldEqual true
             unregisterIndex.Value < exitAltScreenIndex.Value |> shouldEqual true
+
+            // Verify that a flush is called after all shutdown operations
+            // This ensures buffered cleanup ops are written to the terminal
+            let lastFlushIndex =
+                opsList
+                |> List.mapi (fun i op -> i, op)
+                |> List.filter (fun (_, op) -> op = Flush)
+                |> List.tryLast
+                |> Option.map fst
+
+            lastFlushIndex.IsSome |> shouldEqual true
+            // The final flush should come after ExitAlternateScreen (the last cleanup operation)
+            lastFlushIndex.Value > exitAltScreenIndex.Value |> shouldEqual true
         }
