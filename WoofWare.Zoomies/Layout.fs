@@ -1027,6 +1027,8 @@ module internal Layout =
                     let minH1 = m1.MinHeightForWidth bounds.Width
                     let minH2 = m2.MinHeightForWidth bounds.Width
                     let minSum = minH1 + minH2
+                    let maxH1 = m1.MaxHeightForWidth bounds.Width
+                    let maxH2 = m2.MaxHeightForWidth bounds.Width
 
                     if bounds.Height < minSum then
                         // Can't satisfy minimums - scale proportionally by minimum requirements
@@ -1043,12 +1045,23 @@ module internal Layout =
                         // Satisfy minimums, distribute remainder by ratio
                         let remainder = bounds.Height - minSum
                         let h1 = minH1 + int (float remainder * p)
-                        (h1, bounds.Height - h1)
+                        // Clamp h1 to max height constraint
+                        let h1 =
+                            match maxH1 with
+                            | Some m -> min h1 m
+                            | None -> h1
+                        // Calculate h2 after clamping h1 so it can absorb saved space
+                        let h2 = bounds.Height - h1
+                        // Clamp h2 to max height constraint
+                        let h2 =
+                            match maxH2 with
+                            | Some m -> min h2 m
+                            | None -> h2
+
+                        (h1, h2)
                     else // bounds.Height > totalPref
                         // More than preferences - distribute excess according to weights
                         // BUT respect max height constraints
-                        let maxH1 = m1.MaxHeightForWidth bounds.Width
-                        let maxH2 = m2.MaxHeightForWidth bounds.Width
 
                         // Clamp preferences to maxes
                         let effectivePrefH1 =
@@ -1074,9 +1087,14 @@ module internal Layout =
 
                             let remainder = bounds.Height - (minH1 + minH2)
                             let h1 = minH1 + int (float remainder * p)
-
+                            // Clamp h1 to max height constraint
+                            let h1 =
+                                match maxH1 with
+                                | Some m -> min h1 m
+                                | None -> h1
+                            // Calculate h2 after clamping h1 so it can absorb saved space
                             let h2 = bounds.Height - h1
-
+                            // Clamp h2 to max height constraint
                             let h2 =
                                 match maxH2 with
                                 | Some m -> min h2 m

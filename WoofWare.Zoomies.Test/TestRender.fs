@@ -3060,3 +3060,112 @@ Line3               |
                 return ConsoleHarness.toString terminal
             }
         }
+
+    [<Test>]
+    let ``horizontal AutoWeighted clamps first child height to its max`` () =
+        task {
+            // Regression test for: first child's height was not clamped to maxHeight
+            // when bounds.Height is between minSum and totalPref (lines 1036-1046 branch).
+            //
+            // Setup:
+            // - First child: minH=1, prefH=10, maxH=2
+            // - Second child: minH=1, prefH=10, maxH=None
+            // - Container height = 10
+            //
+            // With totalPref=20 and minSum=2, bounds.Height=10 is in the "between" branch.
+            // Without the fix, h1 = 1 + int(8 * 0.5) = 5, which exceeds maxH1=2.
+            // With the fix, h1 should be clamped to 2.
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 10)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Create first child with maxHeight=2 using FlexibleContent
+                // It has prefHeight=10 but maxHeight=2, so it should be clamped
+                let topMeasure (_ : MeasureConstraints) =
+                    {
+                        MinWidth = 1
+                        PreferredWidth = 20
+                        MaxWidth = None
+                        MinHeightForWidth = fun _ -> 1
+                        PreferredHeightForWidth = fun _ -> 10
+                        MaxHeightForWidth = fun _ -> Some 2
+                    }
+
+                let topRender (bounds : Rectangle) =
+                    // Render "T" on each row to show how many rows we got
+                    let lines = [ for _ in 1 .. bounds.Height -> "T" ]
+                    Vdom.textContent (String.concat "\n" lines)
+
+                let top = Vdom.flexibleContent topMeasure topRender
+
+                // Second child has high prefHeight but no maxHeight constraint
+                let bottomMeasure (_ : MeasureConstraints) =
+                    {
+                        MinWidth = 1
+                        PreferredWidth = 20
+                        MaxWidth = None
+                        MinHeightForWidth = fun _ -> 1
+                        PreferredHeightForWidth = fun _ -> 10
+                        MaxHeightForWidth = fun _ -> None
+                    }
+
+                let bottomRender (bounds : Rectangle) =
+                    let lines = [ for _ in 1 .. bounds.Height -> "B" ]
+                    Vdom.textContent (String.concat "\n" lines)
+
+                let bottom = Vdom.flexibleContent bottomMeasure bottomRender
+
+                // Use AutoWeighted with default weights
+                Vdom.panelSplit (
+                    SplitDirection.Horizontal,
+                    SplitBehaviour.AutoWeighted (ExpansionWeight.FromContent, ExpansionWeight.FromContent),
+                    top,
+                    bottom
+                )
+                |> Vdom.Unkeyed
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                (FakeUnit.fake ())
+                (fun _ -> true)
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+            |> ignore<FakeUnit>
+
+            // First child should be clamped to 2 rows (its maxHeight)
+            // So we should see T on rows 0-1, B on rows 2-9
+            expect {
+                snapshot
+                    @"
+T                   |
+T                   |
+B                   |
+B                   |
+B                   |
+B                   |
+B                   |
+B                   |
+B                   |
+B                   |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
