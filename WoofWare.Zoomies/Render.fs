@@ -958,7 +958,31 @@ module Render =
                     // Center the text horizontally and vertically within bounds
                     // Normalize line endings: CRLF -> LF, lone CR -> LF
                     let content = content.Replace("\r\n", "\n").Replace ("\r", "\n")
-                    let lines = content.Split '\n'
+                    let inputLines = content.Split '\n'
+
+                    // Process lines based on wrap setting
+                    let lines =
+                        if wrap && bounds.Width > 0 then
+                            // Wrap long lines by breaking them into chunks of bounds.Width
+                            inputLines
+                            |> Array.collect (fun line ->
+                                if line.Length <= bounds.Width then
+                                    [| line |]
+                                else
+                                    let chunks = ResizeArray ()
+
+                                    let mutable i = 0
+
+                                    while i < line.Length do
+                                        let chunkLen = min bounds.Width (line.Length - i)
+                                        chunks.Add (line.Substring (i, chunkLen))
+                                        i <- i + bounds.Width
+
+                                    chunks.ToArray ()
+                            )
+                        else
+                            inputLines
+
                     let lineCount = lines.Length
                     // Vertically center the block of lines
                     // Formula: for block center to be at height/2, startY = (height - lineCount + 1) / 2
