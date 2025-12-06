@@ -1,6 +1,7 @@
 namespace WoofWare.Zoomies
 
 open System
+open System.Text
 
 [<RequireQualifiedAccess>]
 module Render =
@@ -290,25 +291,46 @@ module Render =
     let writeBuffer (dirty : TerminalCell voption[,]) : TerminalOp seq =
         seq {
             // Track cursor position to avoid redundant MoveCursor operations.
-            // After writing a character, the cursor automatically advances right by 1.
+            // After writing characters, the cursor automatically advances right.
             let mutable cursorX = -1
             let mutable cursorY = -1
             let width = dirty.GetLength 1
+            let height = dirty.GetLength 0
 
-            for y = 0 to dirty.GetLength 0 - 1 do
-                for x = 0 to dirty.GetLength 1 - 1 do
+            for y = 0 to height - 1 do
+                let mutable x = 0
+
+                while x < width do
                     match dirty.[y, x] with
-                    | ValueNone -> ()
-                    | ValueSome cell ->
+                    | ValueNone -> x <- x + 1
+                    | ValueSome startCell ->
+                        // Found a cell to write - start collecting a run of consecutive
+                        // cells with the same foreground and background colors
                         if cursorX <> x || cursorY <> y then
                             yield TerminalOp.MoveCursor (x, y)
 
-                        yield TerminalOp.WriteChar cell
+                        let bg = startCell.BackgroundColor
+                        let fg = startCell.TextColor
+                        let runChars = StringBuilder ()
+                        runChars.Append startCell.Char |> ignore
+                        x <- x + 1
+
+                        // Keep adding consecutive cells with matching style
+                        let mutable continueRun = true
+
+                        while continueRun && x < width do
+                            match dirty.[y, x] with
+                            | ValueSome nextCell when nextCell.BackgroundColor = bg && nextCell.TextColor = fg ->
+                                runChars.Append nextCell.Char |> ignore
+                                x <- x + 1
+                            | _ -> continueRun <- false
+
+                        yield TerminalOp.WriteRun (runChars.ToString (), bg, fg)
 
                         // After writing, cursor advances right. But at row end, terminal behavior
                         // varies (may wrap, stay put, etc.), so mark position as unknown.
-                        if x + 1 < width then
-                            cursorX <- x + 1
+                        if x < width then
+                            cursorX <- x
                             cursorY <- y
                         else
                             cursorX <- -1

@@ -89,7 +89,7 @@ module TestCheckbox =
                 terminalOps
                 |> Seq.exists (
                     function
-                    | TerminalOp.WriteChar cell when cell.Char = '[' || cell.Char = ']' -> true
+                    | TerminalOp.WriteRun (text, _, _) when text.Contains '[' || text.Contains ']' -> true
                     | _ -> false
                 )
 
