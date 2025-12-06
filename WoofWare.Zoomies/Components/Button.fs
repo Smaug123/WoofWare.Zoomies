@@ -18,7 +18,7 @@ type Button =
             | false, true -> " *", "* "
             | false, false -> "[ ", " ]"
 
-        let content = $"{leftBracket} {label} {rightBracket}"
+        let content = $"%s{leftBracket} %s{label} %s{rightBracket}"
         let style = if isPressed then CellStyle.inverted else CellStyle.none
 
         Vdom.styledText (content, style, ContentAlignment.Centered)

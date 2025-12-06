@@ -431,7 +431,7 @@ module App =
                 ->
                 // Create temp file with unpredictable name to prevent symlink attacks
                 let tempPath = Path.GetTempPath ()
-                let fileName = $"zoomies-layout-{Guid.NewGuid ()}.txt"
+                let fileName = $"zoomies-layout-%O{Guid.NewGuid ()}.txt"
                 let fullPath = Path.Combine (tempPath, fileName)
 
                 // Create the file exclusively (will fail if it somehow already exists)
@@ -440,7 +440,7 @@ module App =
 
                 let writer = new StreamWriter (stream, AutoFlush = true)
 
-                Console.Error.WriteLine $"WoofWare.Zoomies: Debug layout logging enabled. Writing to: {fullPath}"
+                Console.Error.WriteLine $"WoofWare.Zoomies: Debug layout logging enabled. Writing to: %s{fullPath}"
                 Some writer
             | _ -> None
 

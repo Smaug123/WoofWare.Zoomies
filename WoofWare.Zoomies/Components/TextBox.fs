@@ -21,10 +21,10 @@ type TextBox =
                     // The entire textbox content is inverted while focused (mirrors other controls'
                     // focus styling). If you need a caret-only inversion, render the caret as its
                     // own styled segment instead.
-                    ($"{before}|{after}", CellStyle.inverted)
+                    ($"%s{before}|%s{after}", CellStyle.inverted)
                 else
                     // Reserve cursor space at the end (maintains width without visual oddity)
-                    ($"{content} ", CellStyle.none)
+                    ($"%s{content} ", CellStyle.none)
             else
                 // Invalid cursor position: just show content
                 (content, CellStyle.none)

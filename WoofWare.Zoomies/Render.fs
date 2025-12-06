@@ -706,15 +706,15 @@ module Render =
 
             let behavStr =
                 match behaviour with
-                | SplitBehaviour.Proportion p -> $"Proportion({p})"
-                | SplitBehaviour.Absolute n -> $"Absolute({n})"
+                | SplitBehaviour.Proportion p -> $"Proportion(%f{p})"
+                | SplitBehaviour.Absolute n -> $"Absolute(%d{n})"
                 | SplitBehaviour.AutoWeighted (w1, w2) ->
                     let weightStr w =
                         match w with
                         | ExpansionWeight.FromContent -> "FromContent"
                         | ExpansionWeight.Fixed f -> sprintf "Fixed %.2f" f
 
-                    $"AutoWeighted ({weightStr w1}, {weightStr w2})"
+                    $"AutoWeighted (%s{weightStr w1}, %s{weightStr w2})"
 
             fprintf writer $"PanelSplit(%s{dirStr}, %s{behavStr})"
         | Vdom.Unkeyed (UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, _)) ->
