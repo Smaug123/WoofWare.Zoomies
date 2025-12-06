@@ -57,9 +57,10 @@ module TestBordered =
             | TerminalOp.MoveCursor (x, y) ->
                 cursorX <- x
                 cursorY <- y
-            | TerminalOp.WriteChar _ ->
-                writtenCells.Add (cursorX, cursorY)
-                cursorX <- cursorX + 1
+            | TerminalOp.WriteRun (text, _, _) ->
+                for _ in text do
+                    writtenCells.Add (cursorX, cursorY)
+                    cursorX <- cursorX + 1
             | _ -> ()
 
         // The text content changed, so we should write to text cells
