@@ -52,6 +52,8 @@
     <Compile Include="VdomContext.fs" />
     <Compile Include="Layout.fs" />
     <Compile Include="VdomBounds.fs" />
+    <Compile Include="RenderState.fs" />
+    <Compile Include="TreeReconciliation.fs" />
     <Compile Include="Render.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Components\Button.fs" />
