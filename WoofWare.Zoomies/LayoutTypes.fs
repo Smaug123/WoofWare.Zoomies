@@ -58,7 +58,8 @@ type MeasuredSize =
         /// Maximum useful width (None = unbounded). You can use this to request that the component *not* grow beyond
         /// some bound.
         ///
-        /// The arrange pass may violate this preference if there's too much space available.
+        /// For AutoWeighted splits, the arrange pass respects this constraint and will not allocate more width than
+        /// MaxWidth to this component. For Proportion and Absolute splits, the constraint may be violated.
         MaxWidth : int option
         /// Minimum height needed given some width.
         ///
@@ -76,7 +77,8 @@ type MeasuredSize =
         /// Maximum useful height given some width (None = unbounded). You can use this to request that the component
         /// *not* grow beyond some bound.
         ///
-        /// The arrange pass may violate this preference if there's too much space available.
+        /// For AutoWeighted splits, the arrange pass respects this constraint and will not allocate more height than
+        /// MaxHeightForWidth to this component. For Proportion and Absolute splits, the constraint may be violated.
         MaxHeightForWidth : int -> int option
     }
 

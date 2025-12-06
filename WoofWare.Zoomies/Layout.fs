@@ -1022,66 +1022,41 @@ module internal Layout =
 
                         let effectiveTotalPref = effectivePrefW1 + effectivePrefW2
 
-                        if bounds.Width <= effectiveTotalPref then
-                            // Even after clamping to maxes, we're at or below total
-                            // Distribute as normal
-                            let p =
-                                if effectiveTotalPref = 0 then
-                                    0.5
-                                else
-                                    float effectivePrefW1 / float effectiveTotalPref
+                        // Since bounds.Width > totalPref >= effectiveTotalPref, we always have excess.
+                        // Distribute according to weights.
+                        let resolvedWeight1 =
+                            match weight1 with
+                            | ExpansionWeight.FromContent -> float effectivePrefW1
+                            | ExpansionWeight.Fixed w -> w
 
-                            let remainder = bounds.Width - (m1.MinWidth + m2.MinWidth)
-                            let w1 = m1.MinWidth + int (float remainder * p)
-                            // Clamp w1 to max width constraint
+                        let resolvedWeight2 =
+                            match weight2 with
+                            | ExpansionWeight.FromContent -> float effectivePrefW2
+                            | ExpansionWeight.Fixed w -> w
+
+                        let totalWeight = resolvedWeight1 + resolvedWeight2
+
+                        if totalWeight = 0.0 then
+                            // Neither component wants excess - each gets effective preferred
+                            (effectivePrefW1, effectivePrefW2)
+                        else
+                            let extraSpace = bounds.Width - effectiveTotalPref
+                            let extraFor1 = int (float extraSpace * (resolvedWeight1 / totalWeight))
+                            let w1 = effectivePrefW1 + extraFor1
+                            // Clamp w1 to max if it exists (shouldn't exceed it, but just to be safe)
                             let w1 =
                                 match maxW1 with
                                 | Some m -> min w1 m
                                 | None -> w1
-                            // Calculate w2 after clamping w1 so it can absorb saved space
+
                             let w2 = bounds.Width - w1
-                            // Clamp w2 to max width constraint
+
                             let w2 =
                                 match maxW2 with
                                 | Some m -> min w2 m
                                 | None -> w2
 
                             (w1, w2)
-                        else
-                            // Have excess beyond maxes - distribute according to weights
-                            let resolvedWeight1 =
-                                match weight1 with
-                                | ExpansionWeight.FromContent -> float effectivePrefW1
-                                | ExpansionWeight.Fixed w -> w
-
-                            let resolvedWeight2 =
-                                match weight2 with
-                                | ExpansionWeight.FromContent -> float effectivePrefW2
-                                | ExpansionWeight.Fixed w -> w
-
-                            let totalWeight = resolvedWeight1 + resolvedWeight2
-
-                            if totalWeight = 0.0 then
-                                // Neither component wants excess - each gets effective preferred
-                                (effectivePrefW1, effectivePrefW2)
-                            else
-                                let extraSpace = bounds.Width - effectiveTotalPref
-                                let extraFor1 = int (float extraSpace * (resolvedWeight1 / totalWeight))
-                                let w1 = effectivePrefW1 + extraFor1
-                                // Clamp w1 to max if it exists (shouldn't exceed it, but just to be safe)
-                                let w1 =
-                                    match maxW1 with
-                                    | Some m -> min w1 m
-                                    | None -> w1
-
-                                let w2 = bounds.Width - w1
-
-                                let w2 =
-                                    match maxW2 with
-                                    | Some m -> min w2 m
-                                    | None -> w2
-
-                                (w1, w2)
 
             let bounds1 =
                 {
@@ -1175,66 +1150,41 @@ module internal Layout =
 
                         let effectiveTotalPref = effectivePrefH1 + effectivePrefH2
 
-                        if bounds.Height <= effectiveTotalPref then
-                            // Even after clamping to maxes, we're at or below total
-                            // Distribute as normal
-                            let p =
-                                if effectiveTotalPref = 0 then
-                                    0.5
-                                else
-                                    float effectivePrefH1 / float effectiveTotalPref
+                        // Since bounds.Height > totalPref >= effectiveTotalPref, we always have excess.
+                        // Distribute according to weights.
+                        let resolvedWeight1 =
+                            match weight1 with
+                            | ExpansionWeight.FromContent -> float effectivePrefH1
+                            | ExpansionWeight.Fixed w -> w
 
-                            let remainder = bounds.Height - (minH1 + minH2)
-                            let h1 = minH1 + int (float remainder * p)
-                            // Clamp h1 to max height constraint
+                        let resolvedWeight2 =
+                            match weight2 with
+                            | ExpansionWeight.FromContent -> float effectivePrefH2
+                            | ExpansionWeight.Fixed w -> w
+
+                        let totalWeight = resolvedWeight1 + resolvedWeight2
+
+                        if totalWeight = 0.0 then
+                            // Neither component wants excess - each gets effective preferred
+                            (effectivePrefH1, effectivePrefH2)
+                        else
+                            let extraSpace = bounds.Height - effectiveTotalPref
+                            let extraFor1 = int (float extraSpace * (resolvedWeight1 / totalWeight))
+                            let h1 = effectivePrefH1 + extraFor1
+                            // Clamp h1 to max if it exists (shouldn't exceed it, but just to be safe)
                             let h1 =
                                 match maxH1 with
                                 | Some m -> min h1 m
                                 | None -> h1
-                            // Calculate h2 after clamping h1 so it can absorb saved space
+
                             let h2 = bounds.Height - h1
-                            // Clamp h2 to max height constraint
+
                             let h2 =
                                 match maxH2 with
                                 | Some m -> min h2 m
                                 | None -> h2
 
                             (h1, h2)
-                        else
-                            // Have excess beyond maxes - distribute according to weights
-                            let resolvedWeight1 =
-                                match weight1 with
-                                | ExpansionWeight.FromContent -> float effectivePrefH1
-                                | ExpansionWeight.Fixed w -> w
-
-                            let resolvedWeight2 =
-                                match weight2 with
-                                | ExpansionWeight.FromContent -> float effectivePrefH2
-                                | ExpansionWeight.Fixed w -> w
-
-                            let totalWeight = resolvedWeight1 + resolvedWeight2
-
-                            if totalWeight = 0.0 then
-                                // Neither component wants excess - each gets effective preferred
-                                (effectivePrefH1, effectivePrefH2)
-                            else
-                                let extraSpace = bounds.Height - effectiveTotalPref
-                                let extraFor1 = int (float extraSpace * (resolvedWeight1 / totalWeight))
-                                let h1 = effectivePrefH1 + extraFor1
-                                // Clamp h1 to max if it exists (shouldn't exceed it, but just to be safe)
-                                let h1 =
-                                    match maxH1 with
-                                    | Some m -> min h1 m
-                                    | None -> h1
-
-                                let h2 = bounds.Height - h1
-
-                                let h2 =
-                                    match maxH2 with
-                                    | Some m -> min h2 m
-                                    | None -> h2
-
-                                (h1, h2)
 
             let bounds1 =
                 {
