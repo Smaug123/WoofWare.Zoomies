@@ -94,6 +94,7 @@ module TestCollapsible =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -125,6 +126,7 @@ module TestCollapsible =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -156,6 +158,7 @@ module TestCollapsible =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -187,6 +190,7 @@ This stuff was hidden                                       |
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -284,6 +288,7 @@ This stuff was hidden                                       |
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -315,6 +320,7 @@ This stuff was hidden                                       |
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             // Expand
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
@@ -328,6 +334,7 @@ This stuff was hidden                                       |
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -425,6 +432,7 @@ Line 2 of content                                           |
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -456,6 +464,7 @@ Line 2 of content                                           |
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -487,6 +496,7 @@ Line 2 of content                                           |
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
