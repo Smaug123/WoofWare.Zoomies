@@ -148,6 +148,9 @@ module RenderState =
 
     let internal vdomContext (rs : RenderState) = rs.VdomContext
 
+    /// Get the currently focused key, if any
+    let focusedKey (rs : RenderState) : NodeKey option = VdomContext.focusedKey rs.VdomContext
+
     let internal make (c : IConsole) (getUtcNow : unit -> DateTime) (debugWriter : IO.StreamWriter option) =
         let bounds = getBounds c
 
