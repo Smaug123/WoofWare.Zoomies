@@ -53,7 +53,7 @@ module TestWorldFreezer =
                         | WorldStateChange.Keystroke c -> c.KeyChar
                         | ApplicationEvent () -> failwith "no app events"
                         | MouseEvent _ -> failwith "no mouse events"
-                        | KeyboardEvent _ -> failwith "no keyboard events"
+                        | Paste _ -> failwith "no paste events"
                         | ApplicationEventException _ -> failwith "no exceptions possible"
                     )
 
@@ -234,7 +234,13 @@ module TestWorldFreezer =
         let tail = drainChanges wfWhole |> Array.toList
         let entirelyDrained = result @ tail
 
-        if entirelyDrained |> List.forall (fun k -> k.IsKeystroke) then
+        // If all events are keystrokes (and there's at least one), verify they match the input.
+        // Empty results are valid (e.g., BeginBracketedPaste just enters paste mode).
+        // Paste events are also valid and don't need to match keystroke-for-keystroke.
+        if
+            not (List.isEmpty entirelyDrained)
+            && entirelyDrained |> List.forall (fun k -> k.IsKeystroke)
+        then
             let keys =
                 entirelyDrained
                 |> List.map (fun k ->
@@ -300,7 +306,8 @@ module TestWorldFreezer =
         Check.One (propConfig, prop)
 
     [<Test>]
-    let ``Can emit begin-bracketed-paste`` () =
+    let ``Begin-bracketed-paste enters paste mode without emitting event`` () =
+        // BeginBracketedPaste just enters paste mode; it doesn't emit any event
         let change =
             {
                 ChunkingInput.InputChar1 = '\u001B'
@@ -309,23 +316,12 @@ module TestWorldFreezer =
             }
 
         let actual = computeExpected change
-
-        actual
-        |> List.exactlyOne
-        |> shouldEqual (WorldStateChange.KeyboardEvent KeyboardEvent.BeginBracketedPaste)
-
-        let prop =
-            fun l ->
-                chunkingInvariantProperty
-                    { change with
-                        ChangesPerChunk = l
-                    }
-            |> Prop.forAll (Arb.fromGen (Gen.listOf (Gen.choose (0, 11))))
-
-        Check.One (propConfig, prop)
+        // Nothing should be emitted - we're just entering paste mode
+        actual |> shouldEqual []
 
     [<Test>]
-    let ``Can emit end-bracketed-paste`` () =
+    let ``End-bracketed-paste without begin emits nothing`` () =
+        // Spurious EndBracketedPaste (without BeginBracketedPaste) should be ignored
         let change =
             {
                 ChunkingInput.InputChar1 = '\u001B'
@@ -334,20 +330,118 @@ module TestWorldFreezer =
             }
 
         let actual = computeExpected change
+        // Nothing should be emitted for spurious end marker
+        actual |> shouldEqual []
 
-        actual
-        |> List.exactlyOne
-        |> shouldEqual (WorldStateChange.KeyboardEvent KeyboardEvent.EndBracketedPaste)
+    [<Test>]
+    let ``Empty paste emits Paste event with empty string`` () =
+        // BeginBracketedPaste followed immediately by EndBracketedPaste
+        let beginPaste = [ '\u001B' ; '[' ; '2' ; '0' ; '0' ; '~' ]
+        let endPaste = [ '\u001B' ; '[' ; '2' ; '0' ; '1' ; '~' ]
+        let allChars = beginPaste @ endPaste
 
-        let prop =
-            fun l ->
-                chunkingInvariantProperty
-                    { change with
-                        ChangesPerChunk = l
-                    }
-            |> Prop.forAll (Arb.fromGen (Gen.listOf (Gen.choose (0, 11))))
+        let change =
+            {
+                ChunkingInput.InputChar1 = List.head allChars
+                InputRest = List.tail allChars
+                ChangesPerChunk = []
+            }
 
-        Check.One (propConfig, prop)
+        let actual = computeExpected change
+        actual |> List.exactlyOne |> shouldEqual (WorldStateChange.Paste "")
+
+    [<Test>]
+    let ``Paste with text emits Paste event with buffered content`` () =
+        // Paste "hello"
+        let beginPaste = [ '\u001B' ; '[' ; '2' ; '0' ; '0' ; '~' ]
+        let content = [ 'h' ; 'e' ; 'l' ; 'l' ; 'o' ]
+        let endPaste = [ '\u001B' ; '[' ; '2' ; '0' ; '1' ; '~' ]
+        let allChars = beginPaste @ content @ endPaste
+
+        let change =
+            {
+                ChunkingInput.InputChar1 = List.head allChars
+                InputRest = List.tail allChars
+                ChangesPerChunk = []
+            }
+
+        let actual = computeExpected change
+        actual |> List.exactlyOne |> shouldEqual (WorldStateChange.Paste "hello")
+
+    [<Test>]
+    let ``Paste batches all characters into single event`` () =
+        // This is the key test: pasting many characters should result in ONE event, not many
+        let beginPaste = [ '\u001B' ; '[' ; '2' ; '0' ; '0' ; '~' ]
+        let content = List.init 100 (fun i -> char (int 'a' + (i % 26)))
+        let endPaste = [ '\u001B' ; '[' ; '2' ; '0' ; '1' ; '~' ]
+        let allChars = beginPaste @ content @ endPaste
+
+        let change =
+            {
+                ChunkingInput.InputChar1 = List.head allChars
+                InputRest = List.tail allChars
+                ChangesPerChunk = []
+            }
+
+        let actual = computeExpected change
+
+        // Should be exactly one Paste event
+        actual |> List.length |> shouldEqual 1
+
+        match List.head actual with
+        | WorldStateChange.Paste s -> s.Length |> shouldEqual 100
+        | other -> failwith $"Expected Paste event, got %O{other}"
+
+    [<Test>]
+    let ``Paste containing escape characters buffers them correctly`` () =
+        // If pasted content contains ESC, it should be buffered (not interpreted as escape sequence)
+        // Note: This test verifies that aborted escape sequences within paste mode get buffered
+        let beginPaste = [ '\u001B' ; '[' ; '2' ; '0' ; '0' ; '~' ]
+        // Paste contains: "a<ESC>b" - the ESC is a literal character, not an escape sequence start
+        // But since ESC is followed by 'b' (not '['), the escape sequence will be aborted
+        // and both ESC and 'b' should be buffered
+        let content = [ 'a' ; '\u001B' ; 'b' ]
+        let endPaste = [ '\u001B' ; '[' ; '2' ; '0' ; '1' ; '~' ]
+        let allChars = beginPaste @ content @ endPaste
+
+        let change =
+            {
+                ChunkingInput.InputChar1 = List.head allChars
+                InputRest = List.tail allChars
+                ChangesPerChunk = []
+            }
+
+        // Use drainChanges which handles the timeout-based re-emit of aborted escape sequences
+        let keyInfos = allChars |> List.map charToKeyInfo
+        let mutable timestamp = 0L
+
+        let sw =
+            { new IStopwatch with
+                member _.Frequency = 1L
+                member _.GetTimestamp () = timestamp
+            }
+
+        let wf, _ = makeFreezerOverList sw keyInfos keyInfos.Length
+        wf.RefreshExternal ()
+        let result1 = drainChanges wf |> Array.toList
+
+        // Trigger timeout to flush any pending escape sequences
+        timestamp <- 1L
+        wf.RefreshExternal ()
+        let result2 = drainChanges wf |> Array.toList
+
+        let actual = result1 @ result2
+
+        // Should have exactly one Paste event containing "a<ESC>b"
+        actual |> List.length |> shouldEqual 1
+
+        match List.head actual with
+        | WorldStateChange.Paste s ->
+            s.Length |> shouldEqual 3
+            s.[0] |> shouldEqual 'a'
+            s.[1] |> shouldEqual '\u001B'
+            s.[2] |> shouldEqual 'b'
+        | other -> failwith $"Expected Paste event, got %O{other}"
 
     let ansiCharGen =
         let baseSet = [ '\u001B' ; '[' ; '<' ; ';' ; 'M' ; 'm' ; '~' ]

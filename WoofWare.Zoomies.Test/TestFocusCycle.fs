@@ -97,7 +97,7 @@ module TestFocusCycle =
                                     failwith "unexpected key char"
                             | WorldStateChange.MouseEvent _ -> failwith "no mouse events"
                             | WorldStateChange.ApplicationEvent () -> failwith "no app events"
-                            | WorldStateChange.KeyboardEvent _ -> failwith "no keyboard events"
+                            | WorldStateChange.Paste _ -> failwith "no paste events"
                             | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
 
                         ProcessWorldResult.make
@@ -399,7 +399,7 @@ module TestFocusCycle =
                                     failwith "unexpected key char"
                             | WorldStateChange.MouseEvent _ -> failwith "no mouse events"
                             | WorldStateChange.ApplicationEvent () -> failwith "no app events"
-                            | WorldStateChange.KeyboardEvent _ -> failwith "no keyboard events"
+                            | WorldStateChange.Paste _ -> failwith "no paste events"
                             | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
 
                         ProcessWorldResult.make
@@ -618,7 +618,7 @@ module TestFocusCycle =
                             | WorldStateChange.Keystroke _ -> renderCheckbox1 <- not renderCheckbox1
                             | WorldStateChange.MouseEvent _ -> failwith "no mouse events"
                             | WorldStateChange.ApplicationEvent () -> failwith "no app events"
-                            | WorldStateChange.KeyboardEvent _ -> failwith "no keyboard events"
+                            | WorldStateChange.Paste _ -> failwith "no paste events"
                             | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
 
                         ProcessWorldResult.make renderCheckbox1
@@ -744,7 +744,7 @@ module TestFocusCycle =
                             | WorldStateChange.Keystroke _ -> newState <- newState + 1
                             | WorldStateChange.MouseEvent _ -> failwith "no mouse events"
                             | WorldStateChange.ApplicationEvent () -> failwith "no app events"
-                            | WorldStateChange.KeyboardEvent _ -> failwith "no keyboard events"
+                            | WorldStateChange.Paste _ -> failwith "no paste events"
                             | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
 
                         ProcessWorldResult.make newState
@@ -880,8 +880,8 @@ more      [☐]   |
                         for change in worldChanges do
                             match change with
                             | Keystroke _ -> ()
-                            | KeyboardEvent _ -> failwith "no keyboard events"
                             | MouseEvent _ -> failwith "no mouse events"
+                            | Paste _ -> failwith "no paste events"
                             | ApplicationEvent () -> failwith "no app events"
                             | ApplicationEventException _ -> failwith "no exceptions possible"
 
@@ -1061,8 +1061,8 @@ This is focusable text                                                          
                         for change in worldChanges do
                             match change with
                             | Keystroke _ -> ()
-                            | KeyboardEvent _ -> failwith "no keyboard events"
                             | MouseEvent _ -> failwith "no mouse events"
+                            | Paste _ -> failwith "no paste events"
                             | ApplicationEvent () -> failwith "no app events"
                             | ApplicationEventException _ -> failwith "no exceptions possible"
 
@@ -1233,8 +1233,8 @@ This is focusable text                                                          
                         for change in worldChanges do
                             match change with
                             | Keystroke _ -> ()
-                            | KeyboardEvent _ -> failwith "no keyboard events"
                             | MouseEvent _ -> failwith "no mouse events"
+                            | Paste _ -> failwith "no paste events"
                             | ApplicationEvent () -> failwith "no app events"
                             | ApplicationEventException _ -> failwith "no exceptions possible"
 

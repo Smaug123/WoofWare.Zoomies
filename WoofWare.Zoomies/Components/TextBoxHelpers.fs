@@ -17,6 +17,11 @@ module TextBoxHelpers =
             let after = content.Substring cursor
             (before + (string<char> c) + after, cursor + 1)
 
+        | InsertString s ->
+            let before = content.Substring (0, cursor)
+            let after = content.Substring cursor
+            (before + s + after, cursor + s.Length)
+
         | Backspace ->
             if cursor > 0 then
                 let before = content.Substring (0, cursor - 1)

@@ -64,7 +64,9 @@ type MouseEvent =
         | MouseEvent.Press (button, modifiers, coords) -> $"Press %O{button} (%O{modifiers}) at %O{coords}"
         | MouseEvent.Release (button, modifiers, coords) -> $"Release %O{button} (%O{modifiers}) at %O{coords}"
 
-type KeyboardEvent =
+/// Internal type used for ANSI escape code parsing within WorldFreezer.
+/// These events are not emitted to users; they are handled internally.
+type internal KeyboardEvent =
     | BeginBracketedPaste
     | EndBracketedPaste
 
@@ -79,14 +81,14 @@ type internal RawWorldStateChange<'appEvent> =
 type WorldStateChange<'appEvent> =
     /// Most interaction with a Zoomies TUI app is in the form of keystrokes. We pass you a nearly-unfiltered stream
     /// of the keystrokes the user supplies. Certain sequences of keystroke are ANSI escape codes, which we surface
-    /// as e.g. the WorldStateChange.MouseEvent case instead.
+    /// as e.g. the WorldStateChange.MouseEvent or WorldStateChange.Paste cases instead.
     | Keystroke of ConsoleKeyInfo
-    /// WoofWare.Zoomies automatically interprets certain ANSI escape codes as indicating keyboard events like
-    /// "begin bracketed paste".
-    | KeyboardEvent of KeyboardEvent
     /// WoofWare.Zoomies automatically interprets certain ANSI escape codes as indicating mouse events like "mouse
     /// down".
     | MouseEvent of MouseEvent
+    /// When the user pastes text via bracketed paste mode, we batch all the pasted characters into a single event
+    /// rather than emitting individual keystrokes. This prevents O(n) re-renders for an n-character paste.
+    | Paste of string
     /// When you use an IWorldBridge to insert events into the WoofWare.Zoomies-supplied event stream, they flow through
     /// as instances of ApplicationEvent.
     | ApplicationEvent of 'appEvent
@@ -206,6 +208,11 @@ type WorldFreezer<'appEvent> =
             _ActiveSubscriptionRequests : int ref
             /// Incremented when the terminal is resized. Checked by the render loop.
             _TerminalResizeGeneration : int ref
+            /// Buffer for accumulating characters during a bracketed paste operation.
+            /// Reused across paste operations; cleared when each paste completes.
+            _PasteBuffer : Text.StringBuilder
+            /// Whether we're currently in bracketed paste mode.
+            mutable _InPasteMode : bool
         }
 
     /// Load pending changes from the external world, like keystrokes, into the change list.
@@ -233,6 +240,13 @@ type WorldFreezer<'appEvent> =
             let result = ResizeArray ()
             let mutable out = Unchecked.defaultof<_>
 
+            // Helper to add a keystroke: either buffer it (if in paste mode) or emit it
+            let addKeystroke (key : ConsoleKeyInfo) =
+                if this._InPasteMode then
+                    this._PasteBuffer.Append key.KeyChar |> ignore<Text.StringBuilder>
+                else
+                    result.Add (WorldStateChange.Keystroke key)
+
             while this._Changes.TryDequeue &out do
                 // Note: the tests assume that key.Key is only ever compared to ConsoleKey.Escape, and that the
                 // Modifiers are only ever compared to None.
@@ -250,14 +264,14 @@ type WorldFreezer<'appEvent> =
                     if key.Key = ConsoleKey.Escape && key.Modifiers = ConsoleModifiers.None then
                         this._DequeueState.Esc <- ValueSome (this._Stopwatch.GetTimestamp (), key)
                     else
-                        result.Add (WorldStateChange.Keystroke key)
+                        addKeystroke key
                 | ValueSome (_ts, esc) ->
 
                 let emitBuffered () =
-                    result.Add (WorldStateChange.Keystroke esc)
+                    addKeystroke esc
 
                     for p in this._DequeueState.Processed do
-                        result.Add (WorldStateChange.Keystroke p)
+                        addKeystroke p
 
                     this._DequeueState.Clear ()
 
@@ -308,10 +322,17 @@ type WorldFreezer<'appEvent> =
 
                         match code, key.KeyChar with
                         | 200, '~' ->
-                            result.Add (WorldStateChange.KeyboardEvent KeyboardEvent.BeginBracketedPaste)
+                            // Begin bracketed paste: enter paste mode (don't emit the event)
+                            this._InPasteMode <- true
                             this._DequeueState.Clear ()
                         | 201, '~' ->
-                            result.Add (WorldStateChange.KeyboardEvent KeyboardEvent.EndBracketedPaste)
+                            // End bracketed paste: emit the buffered paste content and exit paste mode
+                            if this._InPasteMode then
+                                let pastedText = this._PasteBuffer.ToString ()
+                                this._PasteBuffer.Clear () |> ignore<Text.StringBuilder>
+                                this._InPasteMode <- false
+                                result.Add (WorldStateChange.Paste pastedText)
+                            // If we weren't in paste mode, just ignore the spurious end marker
                             this._DequeueState.Clear ()
                         | _ ->
                             match this._Behaviour with
@@ -443,7 +464,9 @@ type WorldFreezer<'appEvent> =
 
             match this._DequeueState.ReemitIfTime this._Stopwatch with
             | Some expiredKeys ->
-                expiredKeys |> Seq.map WorldStateChange.Keystroke |> result.AddRange
+                for key in expiredKeys do
+                    addKeystroke key
+
                 this._DequeueState.Clear ()
             | None -> ()
 
@@ -543,6 +566,8 @@ module WorldFreezer =
             _ActiveSubscriptionRequests = ref 0
             _HasDisposed = TaskCompletionSource<_> ()
             _TerminalResizeGeneration = ref 0
+            _PasteBuffer = Text.StringBuilder ()
+            _InPasteMode = false
         }
 
     let listen<'appEvent> () : WorldFreezer<'appEvent> =
