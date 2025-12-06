@@ -24,6 +24,7 @@ module TestAppRun =
                     WindowHeight = fun () -> 10
                     ColorMode = ColorMode.Color
                     Execute = fun op -> ops.Enqueue op
+                    Flush = fun () -> ()
                 }
 
             let clock = MockTime.make ()

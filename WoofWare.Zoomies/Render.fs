@@ -441,3 +441,6 @@ module Render =
 
         if haveManipulatedCursor && cursorFlip then
             RenderState.setCursorVisible renderState
+
+        // Flush all buffered output to the console in a single write
+        RenderState.flush renderState
