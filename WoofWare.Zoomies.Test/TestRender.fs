@@ -140,7 +140,15 @@ module TestRender =
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
             state <-
-                App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -164,7 +172,15 @@ module TestRender =
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             state <-
-                App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -188,7 +204,15 @@ module TestRender =
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             state <-
-                App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -212,7 +236,15 @@ module TestRender =
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
             state <-
-                App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -236,7 +268,15 @@ only displayed when checked                this one is focusable!               
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             state <-
-                App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -260,7 +300,15 @@ only displayed when checked                this one is focusable!               
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
             state <-
-                App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -284,7 +332,15 @@ only displayed when checked                this one is focusable!               
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             state <-
-                App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -308,7 +364,15 @@ only displayed when checked                this one is focusable!               
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
             state <-
-                App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -332,7 +396,15 @@ only displayed when checked                this one is focusable!               
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
             state <-
-                App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot

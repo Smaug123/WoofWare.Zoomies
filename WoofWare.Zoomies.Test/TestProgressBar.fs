@@ -44,7 +44,15 @@ module TestProgressBar =
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -82,7 +90,15 @@ module TestProgressBar =
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -120,7 +136,15 @@ module TestProgressBar =
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -162,7 +186,15 @@ module TestProgressBar =
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -202,7 +234,15 @@ Loading:[███░░░░░░░] 30%      |
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -246,7 +286,15 @@ Loading:[███░░░░░░░] 30%      |
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -288,7 +336,15 @@ Progress:[██████░░░░]         |
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -326,7 +382,15 @@ Progress:[██████░░░░]         |
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
             |> ignore
 
             expect {
@@ -369,7 +433,15 @@ Progress:[██████░░░░]         |
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -407,7 +479,15 @@ Progress:[██████░░░░]         |
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot

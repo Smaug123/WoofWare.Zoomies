@@ -84,7 +84,16 @@ module TestButton =
                 }
 
             // Initial render - button unfocused
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -99,7 +108,17 @@ Hello, World!                           |
 
             // Press tab to focus the button
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -114,7 +133,17 @@ Hello, World!                           |
 
             // Press space to activate the button
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -129,7 +158,17 @@ Goodbye, World!                         |
 
             // Press space again to flip back
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -233,7 +272,16 @@ Hello, World!                           |
                 }
 
             // Initial render - Button 1 focused (isFirstToFocus)
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -248,7 +296,17 @@ Last clicked: None                                |
 
             // Activate Button 1 with space
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -263,7 +321,17 @@ Last clicked: Button 1                            |
 
             // Tab to Button 2
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -278,7 +346,17 @@ Last clicked: Button 1                            |
 
             // Activate Button 2 with Enter
             world.SendKey (ConsoleKeyInfo ('\r', ConsoleKey.Enter, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -293,7 +371,17 @@ Last clicked: Button 2                            |
 
             // Tab to Button 3
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -308,7 +396,17 @@ Last clicked: Button 2                            |
 
             // Activate Button 3 with space
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -323,7 +421,17 @@ Last clicked: Button 3                            |
 
             // Tab back to Button 1 (cycles)
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -387,7 +495,16 @@ Last clicked: Button 3                            |
             let mutable state = true
 
             // Initial render - button focused
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -402,7 +519,17 @@ Hello, World!                           |
 
             // Press space to activate the button
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -420,7 +547,16 @@ Goodbye, World!                         |
             clock.Advance (TimeSpan.FromMilliseconds (VdomContext.RECENT_ACTIVATION_TIMEOUT_MS - 0.01))
             |> ignore<DateTime>
 
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -434,7 +570,17 @@ Goodbye, World!                         |
             }
 
             clock.Advance (TimeSpan.FromMilliseconds 0.02) |> ignore<DateTime>
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             expect {
                 snapshot

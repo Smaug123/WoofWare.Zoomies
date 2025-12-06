@@ -116,7 +116,15 @@ module TestPanelSplit =
 
             // First render: fill with X's
             let mutable state =
-                App.pumpOnce worldFreezer false (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    false
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -137,7 +145,15 @@ module TestPanelSplit =
             // Second render: show keyed PanelSplit
             // The X's should be cleared (replaced with spaces), not left as artifacts
             state <-
-                App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -196,6 +212,7 @@ module TestPanelSplit =
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             // Check that the left child has zero width
@@ -252,6 +269,7 @@ module TestPanelSplit =
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             // Check that the top child has zero height
@@ -303,6 +321,7 @@ module TestPanelSplit =
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             expect {
@@ -365,6 +384,7 @@ Hello world                                                        Hi           
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             expect {
@@ -419,6 +439,7 @@ onger piece text her|
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             expect {
@@ -474,6 +495,7 @@ o   d   |
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             expect {
@@ -532,6 +554,7 @@ e multiple lines when rendered          |
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             expect {
@@ -585,6 +608,7 @@ nt                            |
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             expect {
@@ -640,6 +664,7 @@ nt                            |
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             expect {
@@ -695,7 +720,15 @@ B|
 
             // First render: 50/50 split with X's filling the left side
             let mutable state =
-                App.pumpOnce worldFreezer true (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    true
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -715,7 +748,15 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX                                        
 
             // Second render: 25/75 split with only "AAA" on left
             state <-
-                App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             // For reference, although the actual test assertion comes afterwards:
             let secondRender = ConsoleHarness.toString terminal
@@ -782,14 +823,30 @@ AAA                 right                                                       
 
             // First render: 50/50 split
             let mutable state =
-                App.pumpOnce worldFreezer true (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    true
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             // Send keystroke to trigger rebalance
             world.SendKey (ConsoleKeyInfo ('x', ConsoleKey.NoName, false, false, false))
 
             // Second render: 25/75 split
             state <-
-                App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             let secondRender = ConsoleHarness.toString terminal
 
@@ -841,7 +898,15 @@ AAA                 right                                                       
 
             // First render: 70/30 split with X's on the left
             let mutable state =
-                App.pumpOnce worldFreezer true (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    true
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             ConsoleHarness.toString terminal |> shouldContainText "XXXX"
 
@@ -850,7 +915,15 @@ AAA                 right                                                       
 
             // Second render: 30/70 split
             state <-
-                App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             let secondRender = ConsoleHarness.toString terminal
 
@@ -930,6 +1003,7 @@ AAA                 right                                                       
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             // Expected behavior after fix:
@@ -1001,6 +1075,7 @@ small               ┌──────────────────┐
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             // Left should expand to fill most of the space, Right should be exactly 5 chars wide
@@ -1055,6 +1130,7 @@ Left                               Right|
                 processWorld
                 vdomAuto
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             // Now test panelSplitAutoExpand
@@ -1076,6 +1152,7 @@ Left                               Right|
                 processWorld
                 vdomExpand
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             // With panelSplitAuto, excess is distributed proportionally by preferred width
@@ -1146,6 +1223,7 @@ Left                               Right|
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             // Both Top and Bottom have max height of 1, so each gets exactly 1 row.
@@ -1213,6 +1291,7 @@ Bottom              |
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             // Each should get exactly their preferred width: Left=4, Right=5
@@ -1277,6 +1356,7 @@ LeftRight                               |
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             // Second child should be clamped to 1 row despite wanting all excess
@@ -1349,7 +1429,15 @@ Bottom              |
 
             // First render with content
             state <-
-                App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -1368,7 +1456,15 @@ Line3               |
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
             state <-
-                App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             // "Line2" and "Line3" should be cleared, only "OnlyThis" remains
             expect {
@@ -1480,6 +1576,7 @@ OnlyThis            |
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             // First child should be clamped to 12 columns (its maxWidth)
@@ -1584,6 +1681,7 @@ LLLLLLLLLLLLRRRRRRRR|
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             // First child should be clamped to 2 rows (its maxHeight)

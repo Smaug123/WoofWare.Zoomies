@@ -122,7 +122,15 @@ module TestExternalEventSubscription =
             let mutable state = TimerState.Empty ()
 
             state <-
-                App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -137,7 +145,15 @@ module TestExternalEventSubscription =
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
             state <-
-                App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -153,7 +169,15 @@ module TestExternalEventSubscription =
             globalTimer.IsNone |> shouldEqual true
             // But after another pump, we'll process the timer-start.
             state <-
-                App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             match globalTimer with
             | Some timer -> timer.Trigger ()
@@ -161,7 +185,15 @@ module TestExternalEventSubscription =
 
             // The timer has triggered an app event!
             state <-
-                App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -177,7 +209,15 @@ module TestExternalEventSubscription =
             | None -> failwith "expected a timer to be running"
 
             state <-
-                App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -192,7 +232,15 @@ module TestExternalEventSubscription =
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
             state <-
-                App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -217,6 +265,7 @@ module TestExternalEventSubscription =
                         processWorld
                         vdom
                         ActivationResolver.none
+                        (fun () -> false)
 
                 do! timer.Disposal
                 ()

@@ -102,7 +102,16 @@ module TestTextBox =
                 }
 
             // Initial render - textbox focused
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -117,7 +126,17 @@ module TestTextBox =
 
             // Press Tab to move focus to button
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             // Verify textbox state is unchanged (Tab was not inserted as text)
             state.Content |> shouldEqual ""
@@ -178,19 +197,58 @@ module TestTextBox =
             let mutable state = ImmutableArray.Empty
 
             // Initial render
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             // Press Tab
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             // Press 'a'
             world.SendKey (ConsoleKeyInfo ('a', ConsoleKey.A, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             // Press Backspace
             world.SendKey (ConsoleKeyInfo ('\b', ConsoleKey.Backspace, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             // Verify all three keystrokes reached ProcessWorld
             state
@@ -253,46 +311,115 @@ module TestTextBox =
                 }
 
             // Initial render
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             // Type 'H' (Shift+h)
             world.SendKey (ConsoleKeyInfo ('H', ConsoleKey.H, true, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             state.Content |> shouldEqual "H"
             state.Cursor |> shouldEqual 1
 
             // Type 'e'
             world.SendKey (ConsoleKeyInfo ('e', ConsoleKey.E, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             state.Content |> shouldEqual "He"
             state.Cursor |> shouldEqual 2
 
             // Type 'l'
             world.SendKey (ConsoleKeyInfo ('l', ConsoleKey.L, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             state.Content |> shouldEqual "Hel"
             state.Cursor |> shouldEqual 3
 
             // Type 'l'
             world.SendKey (ConsoleKeyInfo ('l', ConsoleKey.L, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             state.Content |> shouldEqual "Hell"
             state.Cursor |> shouldEqual 4
 
             // Type 'o'
             world.SendKey (ConsoleKeyInfo ('o', ConsoleKey.O, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             state.Content |> shouldEqual "Hello"
             state.Cursor |> shouldEqual 5
 
             // Type '!' (Shift+1)
             world.SendKey (ConsoleKeyInfo ('!', ConsoleKey.D1, true, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             state.Content |> shouldEqual "Hello!"
             state.Cursor |> shouldEqual 6
@@ -363,41 +490,110 @@ Hello!|                                 |
                 }
 
             // Initial render
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             // Press Backspace
             world.SendKey (ConsoleKeyInfo ('\b', ConsoleKey.Backspace, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             state.Content |> shouldEqual "Hell"
             state.Cursor |> shouldEqual 4
 
             // Move cursor to 1 (between 'H' and 'e')
             world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.Home, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.RightArrow, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             state.Cursor |> shouldEqual 1
 
             // Press Delete (should delete 'e')
             world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.Delete, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             state.Content |> shouldEqual "Hll"
             state.Cursor |> shouldEqual 1
 
             // Press Backspace (should delete 'H')
             world.SendKey (ConsoleKeyInfo ('\b', ConsoleKey.Backspace, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             state.Content |> shouldEqual "ll"
             state.Cursor |> shouldEqual 0
 
             // Press Backspace again (should do nothing, at start)
             world.SendKey (ConsoleKeyInfo ('\b', ConsoleKey.Backspace, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             state.Content |> shouldEqual "ll"
             state.Cursor |> shouldEqual 0
@@ -457,46 +653,115 @@ Hello!|                                 |
                 }
 
             // Initial render
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             // Press Left
             world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.LeftArrow, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             state.Content |> shouldEqual "Hello"
             state.Cursor |> shouldEqual 4
 
             // Press Left
             world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.LeftArrow, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             state.Content |> shouldEqual "Hello"
             state.Cursor |> shouldEqual 3
 
             // Press Home
             world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.Home, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             state.Content |> shouldEqual "Hello"
             state.Cursor |> shouldEqual 0
 
             // Press Right
             world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.RightArrow, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             state.Content |> shouldEqual "Hello"
             state.Cursor |> shouldEqual 1
 
             // Press End
             world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.End, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             state.Content |> shouldEqual "Hello"
             state.Cursor |> shouldEqual 5
 
             // Press Right (should do nothing, at end)
             world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.RightArrow, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             state.Content |> shouldEqual "Hello"
             state.Cursor |> shouldEqual 5
@@ -581,7 +846,16 @@ Hello!|                                 |
                 }
 
             // Initial render - textbox1 focused
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             // Note: This test verifies cursor position only. Style verification (CellStyle.inverted)
             // is not tested because ConsoleHarness doesn't capture styling information.
@@ -672,11 +946,30 @@ Unfocused                               |
                 }
 
             // Initial render
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             // Press Delete (should do nothing, cursor is at end)
             world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.Delete, false, false, false))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             state.Content |> shouldEqual "Hello"
             state.Cursor |> shouldEqual 5
@@ -737,7 +1030,16 @@ Unfocused                               |
                 }
 
             // Initial render
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             // Send multiple keystrokes before next pump
             world.SendKey (ConsoleKeyInfo ('H', ConsoleKey.H, true, false, false))
@@ -745,7 +1047,16 @@ Unfocused                               |
             world.SendKey (ConsoleKeyInfo ('!', ConsoleKey.D1, true, false, false))
 
             // Process all events in one batch
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             // All three characters should be inserted
             state.Content |> shouldEqual "Hi!"
@@ -806,18 +1117,47 @@ Unfocused                               |
                 }
 
             // Initial render
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             // Press Ctrl+A (beginning of line)
             world.SendKey (ConsoleKeyInfo ('\001', ConsoleKey.A, false, false, true))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             state.Content |> shouldEqual "Hello World"
             state.Cursor |> shouldEqual 0
 
             // Press Ctrl+E (end of line)
             world.SendKey (ConsoleKeyInfo ('\005', ConsoleKey.E, false, false, true))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             state.Content |> shouldEqual "Hello World"
             state.Cursor |> shouldEqual 11
@@ -877,17 +1217,46 @@ Unfocused                               |
                 }
 
             // Initial render
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             // Press Ctrl+B (backward)
             world.SendKey (ConsoleKeyInfo ('\002', ConsoleKey.B, false, false, true))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             state.Cursor |> shouldEqual 2
 
             // Press Ctrl+F (forward)
             world.SendKey (ConsoleKeyInfo ('\006', ConsoleKey.F, false, false, true))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             state.Cursor |> shouldEqual 3
         }
@@ -946,18 +1315,47 @@ Unfocused                               |
                 }
 
             // Initial render
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             // Press Ctrl+D (delete char at cursor, should delete 'l')
             world.SendKey (ConsoleKeyInfo ('\004', ConsoleKey.D, false, false, true))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             state.Content |> shouldEqual "Helo"
             state.Cursor |> shouldEqual 2
 
             // Press Ctrl+H (backspace, should delete 'e')
             world.SendKey (ConsoleKeyInfo ('\008', ConsoleKey.H, false, false, true))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             state.Content |> shouldEqual "Hlo"
             state.Cursor |> shouldEqual 1
@@ -1017,11 +1415,30 @@ Unfocused                               |
                 }
 
             // Initial render
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             // Press Ctrl+K (kill to end)
             world.SendKey (ConsoleKeyInfo ('\011', ConsoleKey.K, false, false, true))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             state.Content |> shouldEqual "Hello"
             state.Cursor |> shouldEqual 5
@@ -1081,11 +1498,30 @@ Unfocused                               |
                 }
 
             // Initial render
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             // Press Ctrl+U (kill to beginning)
             world.SendKey (ConsoleKeyInfo ('\021', ConsoleKey.U, false, false, true))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             state.Content |> shouldEqual "World"
             state.Cursor |> shouldEqual 0
@@ -1145,18 +1581,47 @@ Unfocused                               |
                 }
 
             // Initial render
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             // Press Ctrl+W (delete word backward, should delete "World")
             world.SendKey (ConsoleKeyInfo ('\023', ConsoleKey.W, false, false, true))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             state.Content |> shouldEqual "Hello  Test"
             state.Cursor |> shouldEqual 6
 
             // Press Ctrl+W again (should delete "Hello")
             world.SendKey (ConsoleKeyInfo ('\023', ConsoleKey.W, false, false, true))
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             state.Content |> shouldEqual " Test"
             state.Cursor |> shouldEqual 0

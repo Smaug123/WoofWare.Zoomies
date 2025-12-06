@@ -107,7 +107,16 @@ module TestActivationWithPartialBatch =
                 }
 
             // Initial render - button is focused
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             // Send a batch of events that will trigger the bug:
             // - 'a' keystroke (will be processed in first batch, then Rerender requested)
@@ -122,7 +131,16 @@ module TestActivationWithPartialBatch =
             world.SendKey (ConsoleKeyInfo ('d', ConsoleKey.NoName, false, false, false))
 
             // Process the batch
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             // Verify that ALL keystrokes were processed (not lost due to the bug)
             // Expected: ['a', 'b', 'c', 'd']
@@ -202,7 +220,16 @@ module TestActivationWithPartialBatch =
                 }
 
             // Initial render
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             // Send: a, b, c, Space (activate), d, e, Space (activate), f
             world.SendKey (ConsoleKeyInfo ('a', ConsoleKey.NoName, false, false, false))
@@ -214,7 +241,16 @@ module TestActivationWithPartialBatch =
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
             world.SendKey (ConsoleKeyInfo ('f', ConsoleKey.NoName, false, false, false))
 
-            state <- App.pumpOnce worldFreezer state haveFrameworkHandleFocus renderState processWorld vdom resolver
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
 
             // All keystrokes should be processed (note: space keys are consumed by activation, not passed through)
             state.ProcessedKeystrokes |> shouldEqual [ 'a' ; 'b' ; 'c' ; 'd' ; 'e' ; 'f' ]

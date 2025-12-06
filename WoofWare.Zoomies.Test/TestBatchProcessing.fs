@@ -94,6 +94,7 @@ module TestBatchProcessing =
                         processWorld
                         vdom
                         ActivationResolver.none
+                        (fun () -> false)
 
                 iterations <- iterations + 1
 
@@ -286,6 +287,7 @@ module TestBatchProcessing =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             vdomRenderCount |> shouldEqual 1
 
@@ -303,6 +305,7 @@ module TestBatchProcessing =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             vdomRenderCount |> shouldEqual 2
 
@@ -323,6 +326,7 @@ module TestBatchProcessing =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             vdomRenderCount |> shouldEqual 3
 
@@ -342,6 +346,7 @@ module TestBatchProcessing =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             vdomRenderCount |> shouldEqual 4
 
@@ -363,6 +368,7 @@ module TestBatchProcessing =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             vdomRenderCount |> shouldEqual 5
 
@@ -384,6 +390,7 @@ module TestBatchProcessing =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             vdomRenderCount |> shouldEqual 6
 
@@ -405,6 +412,7 @@ module TestBatchProcessing =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             vdomRenderCount |> shouldEqual 7
 
@@ -483,6 +491,7 @@ module TestBatchProcessing =
                         processWorld
                         vdom
                         ActivationResolver.none
+                        (fun () -> false)
 
                 let initialRenderCount = vdomRenderCount
 
@@ -501,6 +510,7 @@ module TestBatchProcessing =
                         processWorld
                         vdom
                         ActivationResolver.none
+                        (fun () -> false)
 
                 // Verify all events were processed in order
                 let expectedChars = [ 'a' .. char (int 'a' + totalKeystrokes - 1) ]

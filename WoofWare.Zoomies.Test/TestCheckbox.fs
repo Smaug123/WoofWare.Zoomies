@@ -59,6 +59,7 @@ module TestCheckbox =
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             terminalOps.Clear ()
@@ -74,6 +75,7 @@ module TestCheckbox =
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             // Check that the checkbox has bounds with Height=0
