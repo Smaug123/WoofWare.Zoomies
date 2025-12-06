@@ -103,7 +103,7 @@ module FileBrowser =
 
             let button = Button.make (ctx, loadButtonKey, "Load")
 
-            Vdom.panelSplitAuto (SplitDirection.Vertical, textBox, button)
+            Vdom.panelSplitAutoExpand (SplitDirection.Vertical, textBox, button)
 
         let bottomPane =
             let content =

@@ -960,3 +960,649 @@ small               ┌──────────────────┐
                 return ConsoleHarness.toString terminal
             }
         }
+
+    [<Test>]
+    let ``panelSplitAutoExpand gives all excess to first component`` () =
+        task {
+            // With panelSplitAutoExpand, the first component should get all excess space
+            // while the second stays at its content size
+            let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // "Left" has preferred width ~4, "Right" has preferred width ~5
+                // Total preferred = 9, available = 40, so excess = 31
+                // With panelSplitAutoExpand, Left should get all 31 excess (width=35), Right stays at 5
+                let left = Vdom.textContent "Left"
+                let right = Vdom.textContent "Right"
+
+                Vdom.panelSplitAutoExpand (SplitDirection.Vertical, left, right)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                (FakeUnit.fake ())
+                (fun _ -> true)
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+            |> ignore<FakeUnit>
+
+            // Left should expand to fill most of the space, Right should be exactly 5 chars wide
+            expect {
+                snapshot
+                    @"
+Left                               Right|
+                                        |
+                                        |
+                                        |
+                                        |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``panelSplitAuto vs panelSplitAutoExpand comparison`` () =
+        task {
+            // This test demonstrates the difference between Auto and AutoExpand
+            // by showing that Auto distributes excess proportionally while AutoExpand gives it all to the first
+
+            // First, test panelSplitAuto
+            let consoleAuto, terminalAuto = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdomAuto (_ : VdomContext) (_ : FakeUnit) =
+                let left = Vdom.textContent "Left"
+                let right = Vdom.textContent "Right"
+                Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderStateAuto = RenderState.make consoleAuto MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                (FakeUnit.fake ())
+                (fun _ -> true)
+                renderStateAuto
+                processWorld
+                vdomAuto
+                ActivationResolver.none
+            |> ignore<FakeUnit>
+
+            // Now test panelSplitAutoExpand
+            let consoleExpand, terminalExpand =
+                ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
+
+            let vdomExpand (_ : VdomContext) (_ : FakeUnit) =
+                let left = Vdom.textContent "Left"
+                let right = Vdom.textContent "Right"
+                Vdom.panelSplitAutoExpand (SplitDirection.Vertical, left, right)
+
+            let renderStateExpand = RenderState.make consoleExpand MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                (FakeUnit.fake ())
+                (fun _ -> true)
+                renderStateExpand
+                processWorld
+                vdomExpand
+                ActivationResolver.none
+            |> ignore<FakeUnit>
+
+            // With panelSplitAuto, excess is distributed proportionally by preferred width
+            // Left (4) : Right (5) ratio, so Left gets 4 + int(31*4/9) = 17, Right gets 23
+            expect {
+                snapshot
+                    @"
+Left             Right                  |
+                                        |
+                                        |
+"
+
+                return ConsoleHarness.toString terminalAuto
+            }
+
+            // With panelSplitAutoExpand, Left gets ALL the excess, Right stays at 5
+            expect {
+                snapshot
+                    @"
+Left                               Right|
+                                        |
+                                        |
+"
+
+                return ConsoleHarness.toString terminalExpand
+            }
+        }
+
+    [<Test>]
+    let ``panelSplitAutoExpand horizontal respects max height constraints`` () =
+        task {
+            // Test horizontal split - when both components have max height constraints,
+            // they are clamped and excess space is unused
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 10)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Both components have preferred height of 1 and max height of 1 (text content)
+                // Total preferred = 2, available = 10, so excess = 8
+                // With panelSplitAutoExpand, Top would get all excess, but max height clamps it to 1
+                // Bottom also has max height 1, so gets clamped to 1
+                // The 8 rows of excess are unused container space
+                let top = Vdom.textContent "Top"
+                let bottom = Vdom.textContent "Bottom"
+
+                Vdom.panelSplitAutoExpand (SplitDirection.Horizontal, top, bottom)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                (FakeUnit.fake ())
+                (fun _ -> true)
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+            |> ignore<FakeUnit>
+
+            // Both Top and Bottom have max height of 1, so each gets exactly 1 row.
+            // The remaining 8 rows are unused container space (not assigned to either child).
+            expect {
+                snapshot
+                    @"
+Top                 |
+Bottom              |
+                    |
+                    |
+                    |
+                    |
+                    |
+                    |
+                    |
+                    |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``AutoWeighted with Fixed 0 on both sides gives each their preferred size`` () =
+        task {
+            // When both sides have Fixed 0.0 weight, neither wants excess
+            // Each should get exactly their preferred size, with remaining space unused
+            let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                let left = Vdom.textContent "Left"
+                let right = Vdom.textContent "Right"
+
+                // Use the raw panelSplit with explicit weights
+                Vdom.panelSplit (
+                    SplitDirection.Vertical,
+                    SplitBehaviour.AutoWeighted (ExpansionWeight.Fixed 0.0, ExpansionWeight.Fixed 0.0),
+                    left,
+                    right
+                )
+                |> Vdom.Unkeyed
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                (FakeUnit.fake ())
+                (fun _ -> true)
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+            |> ignore<FakeUnit>
+
+            // Each should get exactly their preferred width: Left=4, Right=5
+            // Total = 9, leaving 31 as unassigned container space to the right of both children
+            expect {
+                snapshot
+                    @"
+LeftRight                               |
+                                        |
+                                        |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``horizontal AutoWeighted clamps second child height to its max`` () =
+        task {
+            // Regression test for: second child's height was not clamped to maxHeight
+            // With a 10-row container and two 1-row max-height children,
+            // the second child should get 1 row (clamped), not 9 rows (unclamped)
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 10)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // First child has max height 1 (text content) and weight 0
+                // Second child has max height 1 (text content) and weight 1 (gets excess)
+                // Even though second child wants excess, it should be clamped to max height 1
+                let top = Vdom.textContent "Top"
+                let bottom = Vdom.textContent "Bottom"
+
+                // Use AutoWeighted with first=0, second=1 so second child would get all excess
+                Vdom.panelSplit (
+                    SplitDirection.Horizontal,
+                    SplitBehaviour.AutoWeighted (ExpansionWeight.Fixed 0.0, ExpansionWeight.Fixed 1.0),
+                    top,
+                    bottom
+                )
+                |> Vdom.Unkeyed
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                (FakeUnit.fake ())
+                (fun _ -> true)
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+            |> ignore<FakeUnit>
+
+            // Second child should be clamped to 1 row despite wanting all excess
+            // Top on row 0, Bottom on row 1, rows 2-9 are unused (cleared)
+            expect {
+                snapshot
+                    @"
+Top                 |
+Bottom              |
+                    |
+                    |
+                    |
+                    |
+                    |
+                    |
+                    |
+                    |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``PanelSplit clears unallocated container space when children don't fill bounds`` () =
+        task {
+            // Regression test for: unallocated container space was not cleared
+            // When both children have max heights that don't fill the container,
+            // the remaining space should be cleared (not show stale content)
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            // State: true = show full content, false = show minimal content
+            let vdom (_ : VdomContext) (showContent : bool) =
+                if showContent then
+                    // First render: show content that fills the container
+                    let top = Vdom.textContent "Line1"
+                    let middle = Vdom.textContent "Line2"
+                    let bottom = Vdom.textContent "Line3"
+
+                    Vdom.panelSplitAuto (
+                        SplitDirection.Horizontal,
+                        top,
+                        Vdom.panelSplitAuto (SplitDirection.Horizontal, middle, bottom)
+                    )
+                else
+                    // Second render: show less content (children don't fill container)
+                    // The old "Line2" and "Line3" should be cleared
+                    let top = Vdom.textContent "OnlyThis"
+                    Vdom.panelSplitAuto (SplitDirection.Horizontal, top, Vdom.empty)
+
+            let processWorld =
+                { new WorldProcessor<unit, bool> with
+                    member _.ProcessWorld (worldChanges, _, state) =
+                        // Toggle state when any key is pressed
+                        let newState = if worldChanges.Length > 0 then not state else state
+                        ProcessWorldResult.make newState
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let mutable state = true
+
+            // First render with content
+            state <-
+                App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+
+            expect {
+                snapshot
+                    @"
+Line1               |
+Line2               |
+Line3               |
+                    |
+                    |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
+            // Press any key to toggle state and trigger re-render with less content
+            world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
+
+            state <-
+                App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+
+            // "Line2" and "Line3" should be cleared, only "OnlyThis" remains
+            expect {
+                snapshot
+                    @"
+OnlyThis            |
+                    |
+                    |
+                    |
+                    |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``vertical AutoWeighted clamps width to MaxWidth like horizontal clamps height`` () =
+        task {
+            // Regression test for: vertical AutoWeighted does not clamp widths to MaxWidth
+            // but horizontal AutoWeighted does clamp heights to MaxHeight.
+            // This test verifies that both dimensions are handled symmetrically.
+            //
+            // Setup:
+            // - First child: minW=10, prefW=30, maxW=12
+            // - Second child: minW=1, prefW=10, maxW=None
+            // - Container width = 20
+            //
+            // Measurement phase clamps first child's PreferredWidth to MaxWidth:
+            // - m1.PreferredWidth = min(30, 12) = 12
+            // - m2.PreferredWidth = 10
+            // - totalPref = 22, minSum = 11
+            //
+            // bounds.Width=20 is in the "between" branch (11 <= 20 <= 22).
+            // The between-branch uses minimum widths for proportioning:
+            // Without the fix:
+            // - p = min1/(min1+min2) = 10/11 = 0.909
+            // - remainder = 20 - 11 = 9
+            // - w1 = 10 + int(9 * 0.909) = 18 (EXCEEDS maxW=12!)
+            //
+            // With the fix, w1 should be clamped to min(18, 12) = 12.
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Create first child with maxWidth=12 using FlexibleContent
+                // The proportional calculation will give it 14 columns, which exceeds maxWidth
+                let leftMeasure (_ : MeasureConstraints) =
+                    {
+                        MinWidth = 10
+                        PreferredWidth = 30
+                        MaxWidth = Some 12
+                        MinHeightForWidth = fun _ -> 1
+                        PreferredHeightForWidth = fun _ -> 1
+                        MaxHeightForWidth = fun _ -> None
+                    }
+
+                let leftRender (bounds : Rectangle) =
+                    // Render "L" repeated to show how many columns we got
+                    Vdom.textContent (String.replicate bounds.Width "L")
+
+                let left = Vdom.flexibleContent leftMeasure leftRender
+
+                // Second child has lower prefWidth
+                let rightMeasure (_ : MeasureConstraints) =
+                    {
+                        MinWidth = 1
+                        PreferredWidth = 10
+                        MaxWidth = None
+                        MinHeightForWidth = fun _ -> 1
+                        PreferredHeightForWidth = fun _ -> 1
+                        MaxHeightForWidth = fun _ -> None
+                    }
+
+                let rightRender (bounds : Rectangle) =
+                    Vdom.textContent (String.replicate bounds.Width "R")
+
+                let right = Vdom.flexibleContent rightMeasure rightRender
+
+                // Use vertical AutoWeighted with default weights
+                Vdom.panelSplit (
+                    SplitDirection.Vertical,
+                    SplitBehaviour.AutoWeighted (ExpansionWeight.FromContent, ExpansionWeight.FromContent),
+                    left,
+                    right
+                )
+                |> Vdom.Unkeyed
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                (FakeUnit.fake ())
+                (fun _ -> true)
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+            |> ignore<FakeUnit>
+
+            // First child should be clamped to 12 columns (its maxWidth)
+            // So we should see LLLLLLLLLLLL (12 L's) followed by RRRRRRRR (8 R's)
+            expect {
+                snapshot
+                    @"
+LLLLLLLLLLLLRRRRRRRR|
+                    |
+                    |
+                    |
+                    |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``horizontal AutoWeighted clamps first child height to its max`` () =
+        task {
+            // Regression test for: first child's height was not clamped to maxHeight
+            // when bounds.Height is between minSum and totalPref (lines 1036-1046 branch).
+            //
+            // Setup:
+            // - First child: minH=1, prefH=10, maxH=2
+            // - Second child: minH=1, prefH=10, maxH=None
+            // - Container height = 10
+            //
+            // With totalPref=20 and minSum=2, bounds.Height=10 is in the "between" branch.
+            // Without the fix, h1 = 1 + int(8 * 0.5) = 5, which exceeds maxH1=2.
+            // With the fix, h1 should be clamped to 2.
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 10)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Create first child with maxHeight=2 using FlexibleContent
+                // It has prefHeight=10 but maxHeight=2, so it should be clamped
+                let topMeasure (_ : MeasureConstraints) =
+                    {
+                        MinWidth = 1
+                        PreferredWidth = 20
+                        MaxWidth = None
+                        MinHeightForWidth = fun _ -> 1
+                        PreferredHeightForWidth = fun _ -> 10
+                        MaxHeightForWidth = fun _ -> Some 2
+                    }
+
+                let topRender (bounds : Rectangle) =
+                    // Render "T" on each row to show how many rows we got
+                    let lines = [ for _ in 1 .. bounds.Height -> "T" ]
+                    Vdom.textContent (String.concat "\n" lines)
+
+                let top = Vdom.flexibleContent topMeasure topRender
+
+                // Second child has high prefHeight but no maxHeight constraint
+                let bottomMeasure (_ : MeasureConstraints) =
+                    {
+                        MinWidth = 1
+                        PreferredWidth = 20
+                        MaxWidth = None
+                        MinHeightForWidth = fun _ -> 1
+                        PreferredHeightForWidth = fun _ -> 10
+                        MaxHeightForWidth = fun _ -> None
+                    }
+
+                let bottomRender (bounds : Rectangle) =
+                    let lines = [ for _ in 1 .. bounds.Height -> "B" ]
+                    Vdom.textContent (String.concat "\n" lines)
+
+                let bottom = Vdom.flexibleContent bottomMeasure bottomRender
+
+                // Use AutoWeighted with default weights
+                Vdom.panelSplit (
+                    SplitDirection.Horizontal,
+                    SplitBehaviour.AutoWeighted (ExpansionWeight.FromContent, ExpansionWeight.FromContent),
+                    top,
+                    bottom
+                )
+                |> Vdom.Unkeyed
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                (FakeUnit.fake ())
+                (fun _ -> true)
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+            |> ignore<FakeUnit>
+
+            // First child should be clamped to 2 rows (its maxHeight)
+            // So we should see T on rows 0-1, B on rows 2-9
+            expect {
+                snapshot
+                    @"
+T                   |
+T                   |
+B                   |
+B                   |
+B                   |
+B                   |
+B                   |
+B                   |
+B                   |
+B                   |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }

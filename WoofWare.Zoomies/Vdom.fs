@@ -1,7 +1,5 @@
 namespace WoofWare.Zoomies
 
-open System.Runtime.InteropServices
-
 /// Global configuration for the tagging system.
 [<RequireQualifiedAccess>]
 module VdomTagging =
@@ -54,6 +52,17 @@ type SplitDirection =
     /// Split so that the divider runs horizontally: one component is on top and one is on the bottom.
     | Horizontal
 
+/// Determines how a component in an auto-weighted split should absorb excess space.
+[<RequireQualifiedAccess>]
+type ExpansionWeight =
+    /// Use the component's preferred width/height as its weight for absorbing excess space.
+    /// Excess is distributed proportionally to content preferences.
+    | FromContent
+    /// Use an explicit weight for absorbing excess space.
+    /// A weight of 0.0 means "don't expand beyond preferred size".
+    /// Positive weights distribute excess proportionally among components with positive weights.
+    | Fixed of float
+
 /// Determines how space is divided when a panel is split into two components.
 [<RequireQualifiedAccess>]
 type SplitBehaviour =
@@ -63,8 +72,9 @@ type SplitBehaviour =
     | Proportion of float
     /// Split using an absolute cell count: the first component gets exactly this many cells, and the second gets the remainder.
     | Absolute of int
-    /// Split based on content preferences: space is divided proportionally to each component's preferred width/height.
-    | Auto
+    /// Split based on content preferences, with configurable excess space distribution.
+    /// Each component receives at least its preferred size. Excess space is distributed according to the weights.
+    | AutoWeighted of weight1 : ExpansionWeight * weight2 : ExpansionWeight
 
 type Border = | Yes
 
@@ -279,17 +289,27 @@ type Vdom =
     /// <summary>Creates a split panel where components share space based on their content preferences.</summary>
     /// <remarks>
     /// Space is divided proportionally to each component's preferred width (for vertical splits) or height (for horizontal splits).
+    /// Excess space is distributed proportionally to content preferences.
+    /// Insufficient space (when total available is below the sum of minimums) is distributed proportionally to minimum requirements.
     /// </remarks>
     /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
     /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
     /// <param name="c1">The Vdom to display in the first (top or left) component.</param>
     /// <param name="c2">The Vdom to display in the second (bottom or right) component.</param>
     static member panelSplitAuto (d, c1 : Vdom<DesiredBounds>, c2 : Vdom<DesiredBounds>) : Vdom<DesiredBounds> =
-        Vdom.panelSplit (d, SplitBehaviour.Auto, c1, c2) |> Vdom.Unkeyed
+        Vdom.panelSplit (
+            d,
+            SplitBehaviour.AutoWeighted (ExpansionWeight.FromContent, ExpansionWeight.FromContent),
+            c1,
+            c2
+        )
+        |> Vdom.Unkeyed
 
     /// <summary>Creates a split panel where components share space based on their content preferences.</summary>
     /// <remarks>
     /// Space is divided proportionally to each component's preferred width (for vertical splits) or height (for horizontal splits).
+    /// Excess space is distributed proportionally to content preferences.
+    /// Insufficient space (when total available is below the sum of minimums) is distributed proportionally to minimum requirements.
     /// </remarks>
     /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
     /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
@@ -301,6 +321,8 @@ type Vdom =
     /// <summary>Creates a split panel where components share space based on their content preferences.</summary>
     /// <remarks>
     /// Space is divided proportionally to each component's preferred width (for vertical splits) or height (for horizontal splits).
+    /// Excess space is distributed proportionally to content preferences.
+    /// Insufficient space (when total available is below the sum of minimums) is distributed proportionally to minimum requirements.
     /// </remarks>
     /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
     /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
@@ -312,6 +334,8 @@ type Vdom =
     /// <summary>Creates a split panel where components share space based on their content preferences.</summary>
     /// <remarks>
     /// Space is divided proportionally to each component's preferred width (for vertical splits) or height (for horizontal splits).
+    /// Excess space is distributed proportionally to content preferences.
+    /// Insufficient space (when total available is below the sum of minimums) is distributed proportionally to minimum requirements.
     /// </remarks>
     /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
     /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
@@ -322,6 +346,64 @@ type Vdom =
         : Vdom<DesiredBounds>
         =
         Vdom.panelSplitAuto (d, Vdom.Keyed c1, Vdom.Keyed c2)
+
+    /// <summary>Creates a split panel where the first component expands to fill excess space.</summary>
+    /// <remarks>
+    /// Both components receive their preferred size. Any excess space goes entirely to the first component.
+    /// The second component stays at its content size.
+    /// </remarks>
+    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
+    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
+    /// <param name="c1">The Vdom to display in the first (top or left) component. This component expands to fill excess space.</param>
+    /// <param name="c2">The Vdom to display in the second (bottom or right) component. This component stays at its content size.</param>
+    static member panelSplitAutoExpand (d, c1 : Vdom<DesiredBounds>, c2 : Vdom<DesiredBounds>) : Vdom<DesiredBounds> =
+        Vdom.panelSplit (d, SplitBehaviour.AutoWeighted (ExpansionWeight.Fixed 1.0, ExpansionWeight.Fixed 0.0), c1, c2)
+        |> Vdom.Unkeyed
+
+    /// <summary>Creates a split panel where the first component expands to fill excess space.</summary>
+    /// <remarks>
+    /// Both components receive their preferred size. Any excess space goes entirely to the first component.
+    /// The second component stays at its content size.
+    /// </remarks>
+    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
+    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
+    /// <param name="c1">The Vdom to display in the first (top or left) component. This component expands to fill excess space.</param>
+    /// <param name="c2">The Vdom to display in the second (bottom or right) component. This component stays at its content size.</param>
+    static member panelSplitAutoExpand
+        (d, c1 : KeyedVdom<DesiredBounds>, c2 : Vdom<DesiredBounds>)
+        : Vdom<DesiredBounds>
+        =
+        Vdom.panelSplitAutoExpand (d, Vdom.Keyed c1, c2)
+
+    /// <summary>Creates a split panel where the first component expands to fill excess space.</summary>
+    /// <remarks>
+    /// Both components receive their preferred size. Any excess space goes entirely to the first component.
+    /// The second component stays at its content size.
+    /// </remarks>
+    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
+    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
+    /// <param name="c1">The Vdom to display in the first (top or left) component. This component expands to fill excess space.</param>
+    /// <param name="c2">The Vdom to display in the second (bottom or right) component. This component stays at its content size.</param>
+    static member panelSplitAutoExpand
+        (d, c1 : Vdom<DesiredBounds>, c2 : KeyedVdom<DesiredBounds>)
+        : Vdom<DesiredBounds>
+        =
+        Vdom.panelSplitAutoExpand (d, c1, Vdom.Keyed c2)
+
+    /// <summary>Creates a split panel where the first component expands to fill excess space.</summary>
+    /// <remarks>
+    /// Both components receive their preferred size. Any excess space goes entirely to the first component.
+    /// The second component stays at its content size.
+    /// </remarks>
+    /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
+    /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
+    /// <param name="c1">The Vdom to display in the first (top or left) component. This component expands to fill excess space.</param>
+    /// <param name="c2">The Vdom to display in the second (bottom or right) component. This component stays at its content size.</param>
+    static member panelSplitAutoExpand
+        (d, c1 : KeyedVdom<DesiredBounds>, c2 : KeyedVdom<DesiredBounds>)
+        : Vdom<DesiredBounds>
+        =
+        Vdom.panelSplitAutoExpand (d, Vdom.Keyed c1, Vdom.Keyed c2)
 
     /// Creates a bordered wrapper around a component, drawing a border around its content.
     /// You can generally use `bordered` instead, which gives you a `Vdom` back instead of an `UnkeyedVdom`.
@@ -533,7 +615,13 @@ type Vdom =
                     match behaviour with
                     | SplitBehaviour.Proportion p -> sprintf "Proportion %.2f" p
                     | SplitBehaviour.Absolute n -> sprintf "Absolute %d" n
-                    | SplitBehaviour.Auto -> "Auto"
+                    | SplitBehaviour.AutoWeighted (w1, w2) ->
+                        let weightStr w =
+                            match w with
+                            | ExpansionWeight.FromContent -> "FromContent"
+                            | ExpansionWeight.Fixed f -> sprintf "Fixed %.2f" f
+
+                        sprintf "AutoWeighted (%s, %s)" (weightStr w1) (weightStr w2)
 
                 sb.AppendLine (sprintf "%sPanelSplit: %s %s" indent dirStr behavStr) |> ignore
                 sb.AppendLine (sprintf "%s  First:" indent) |> ignore

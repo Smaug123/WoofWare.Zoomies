@@ -708,7 +708,13 @@ module Render =
                 match behaviour with
                 | SplitBehaviour.Proportion p -> $"Proportion({p})"
                 | SplitBehaviour.Absolute n -> $"Absolute({n})"
-                | SplitBehaviour.Auto -> "Auto"
+                | SplitBehaviour.AutoWeighted (w1, w2) ->
+                    let weightStr w =
+                        match w with
+                        | ExpansionWeight.FromContent -> "FromContent"
+                        | ExpansionWeight.Fixed f -> sprintf "Fixed %.2f" f
+
+                    $"AutoWeighted ({weightStr w1}, {weightStr w2})"
 
             fprintf writer $"PanelSplit(%s{dirStr}, %s{behavStr})"
         | Vdom.Unkeyed (UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, _)) ->
@@ -806,7 +812,7 @@ module Render =
             | _ -> false
 
         match unkeyedVdom with
-        | UnkeyedVdom.PanelSplit _ ->
+        | UnkeyedVdom.PanelSplit (direction, _, _, _) ->
             // Only paint background if this is a new node or bounds changed
             let previousNode =
                 if previousMatchesContainer unkeyedVdom then
@@ -823,8 +829,45 @@ module Render =
                     Some prev.OverlaidChildren.[0], Some prev.OverlaidChildren.[1]
                 | _ -> None, None
 
-            renderToBuffer dirty prevChild1 node.OverlaidChildren.[0]
-            renderToBuffer dirty prevChild2 node.OverlaidChildren.[1]
+            let child1 = node.OverlaidChildren.[0]
+            let child2 = node.OverlaidChildren.[1]
+
+            renderToBuffer dirty prevChild1 child1
+            renderToBuffer dirty prevChild2 child2
+
+            // Clear any unallocated space in the container that isn't covered by children
+            // This handles the case where max height/width constraints leave unused space
+            match direction with
+            | SplitDirection.Horizontal ->
+                // Children are stacked vertically (first=top, second=bottom)
+                // Unallocated space is after child2
+                let usedHeight = child1.Bounds.Height + child2.Bounds.Height
+
+                if usedHeight < bounds.Height then
+                    let unallocatedBounds =
+                        {
+                            TopLeftX = bounds.TopLeftX
+                            TopLeftY = bounds.TopLeftY + usedHeight
+                            Width = bounds.Width
+                            Height = bounds.Height - usedHeight
+                        }
+
+                    clearBoundsWithSpaces dirty unallocatedBounds
+            | SplitDirection.Vertical ->
+                // Children are side-by-side (first=left, second=right)
+                // Unallocated space is after child2
+                let usedWidth = child1.Bounds.Width + child2.Bounds.Width
+
+                if usedWidth < bounds.Width then
+                    let unallocatedBounds =
+                        {
+                            TopLeftX = bounds.TopLeftX + usedWidth
+                            TopLeftY = bounds.TopLeftY
+                            Width = bounds.Width - usedWidth
+                            Height = bounds.Height
+                        }
+
+                    clearBoundsWithSpaces dirty unallocatedBounds
 
         | UnkeyedVdom.Bordered _ ->
             // Only paint background and border if this is a new node or bounds changed
