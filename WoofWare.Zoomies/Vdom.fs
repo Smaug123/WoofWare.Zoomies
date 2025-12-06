@@ -84,7 +84,7 @@ type DesiredBounds = unit
 type ContentAlignment =
     /// Content is centered both horizontally and vertically.
     | Centered
-    /// Content starts at the top-left corner and wraps.
+    /// Content starts at the top-left corner.
     | TopLeft
 
 type internal FlexibleContent =
@@ -121,7 +121,10 @@ type Vdom =
     /// This has nothing to do with the WoofWare.Zoomies automatic focus tracking system; it's purely a display concern.
     /// See <c>Vdom.withFocusTracking</c> for details.
     /// </param>
-    /// <param name="s">The text to display within the text area. Text will be truncated if it doesn't fit.</param>
+    /// <param name="s">
+    /// The text to display within the text area.
+    /// Text will be truncated if it doesn't fit, if <c>wrap</c> is false.
+    /// </param>
     /// <param name="style">How the text should render.</param>
     /// <param name="alignment">Where in the available area to place the text.</param>
     /// <param name="wrap">
