@@ -1403,12 +1403,13 @@ OnlyThis            |
             // - totalPref = 22, minSum = 11
             //
             // bounds.Width=20 is in the "between" branch (11 <= 20 <= 22).
+            // The between-branch uses minimum widths for proportioning:
             // Without the fix:
-            // - p = 12/22 = 0.545
+            // - p = min1/(min1+min2) = 10/11 = 0.909
             // - remainder = 20 - 11 = 9
-            // - w1 = 10 + int(9 * 0.545) = 14 (EXCEEDS maxW=12!)
+            // - w1 = 10 + int(9 * 0.909) = 18 (EXCEEDS maxW=12!)
             //
-            // With the fix, w1 should be clamped to min(14, 12) = 12.
+            // With the fix, w1 should be clamped to min(18, 12) = 12.
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
 
             let world = MockWorld.make ()

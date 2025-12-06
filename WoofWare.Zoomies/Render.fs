@@ -712,7 +712,7 @@ module Render =
                     let weightStr w =
                         match w with
                         | ExpansionWeight.FromContent -> "FromContent"
-                        | ExpansionWeight.Fixed f -> $"Fixed ({f})"
+                        | ExpansionWeight.Fixed f -> sprintf "Fixed %.2f" f
 
                     $"AutoWeighted ({weightStr w1}, {weightStr w2})"
 
