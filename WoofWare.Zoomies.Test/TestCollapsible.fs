@@ -75,7 +75,6 @@ module TestCollapsible =
                                     failwith "unexpected key char"
                             | WorldStateChange.MouseEvent _ -> failwith "no mouse events"
                             | WorldStateChange.ApplicationEvent () -> failwith "no app events"
-                            | WorldStateChange.KeyboardEvent _ -> failwith "no keyboard events"
                             | WorldStateChange.Paste _ -> failwith "no paste events"
                             | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
 
@@ -270,7 +269,6 @@ This stuff was hidden                                       |
                                     failwith "unexpected key char"
                             | WorldStateChange.MouseEvent _ -> failwith "no mouse events"
                             | WorldStateChange.ApplicationEvent () -> failwith "no app events"
-                            | WorldStateChange.KeyboardEvent _ -> failwith "no keyboard events"
                             | WorldStateChange.Paste _ -> failwith "no paste events"
                             | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
 
@@ -415,7 +413,6 @@ Line 2 of content                                           |
                                     failwith "unexpected key char"
                             | WorldStateChange.MouseEvent _ -> failwith "no mouse events"
                             | WorldStateChange.ApplicationEvent () -> failwith "no app events"
-                            | WorldStateChange.KeyboardEvent _ -> failwith "no keyboard events"
                             | WorldStateChange.Paste _ -> failwith "no paste events"
                             | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
 

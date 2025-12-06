@@ -53,7 +53,6 @@ module TestWorldFreezer =
                         | WorldStateChange.Keystroke c -> c.KeyChar
                         | ApplicationEvent () -> failwith "no app events"
                         | MouseEvent _ -> failwith "no mouse events"
-                        | KeyboardEvent _ -> failwith "no keyboard events"
                         | Paste _ -> failwith "no paste events"
                         | ApplicationEventException _ -> failwith "no exceptions possible"
                     )

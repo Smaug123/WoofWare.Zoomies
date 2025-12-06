@@ -64,7 +64,9 @@ type MouseEvent =
         | MouseEvent.Press (button, modifiers, coords) -> $"Press %O{button} (%O{modifiers}) at %O{coords}"
         | MouseEvent.Release (button, modifiers, coords) -> $"Release %O{button} (%O{modifiers}) at %O{coords}"
 
-type KeyboardEvent =
+/// Internal type used for ANSI escape code parsing within WorldFreezer.
+/// These events are not emitted to users; they are handled internally.
+type internal KeyboardEvent =
     | BeginBracketedPaste
     | EndBracketedPaste
 
@@ -79,11 +81,8 @@ type internal RawWorldStateChange<'appEvent> =
 type WorldStateChange<'appEvent> =
     /// Most interaction with a Zoomies TUI app is in the form of keystrokes. We pass you a nearly-unfiltered stream
     /// of the keystrokes the user supplies. Certain sequences of keystroke are ANSI escape codes, which we surface
-    /// as e.g. the WorldStateChange.MouseEvent case instead.
+    /// as e.g. the WorldStateChange.MouseEvent or WorldStateChange.Paste cases instead.
     | Keystroke of ConsoleKeyInfo
-    /// WoofWare.Zoomies automatically interprets certain ANSI escape codes as indicating keyboard events like
-    /// "begin bracketed paste".
-    | KeyboardEvent of KeyboardEvent
     /// WoofWare.Zoomies automatically interprets certain ANSI escape codes as indicating mouse events like "mouse
     /// down".
     | MouseEvent of MouseEvent

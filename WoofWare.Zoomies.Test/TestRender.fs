@@ -115,7 +115,6 @@ module TestRender =
                                     }
                             | _ -> ()
                         | Keystroke _ -> ()
-                        | KeyboardEvent _ -> failwith "no keyboard events"
                         | MouseEvent _ -> failwith "no mouse events"
                         | Paste _ -> failwith "no paste events"
                         | ApplicationEvent () -> failwith "no app events"

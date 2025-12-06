@@ -56,7 +56,6 @@ module FileBrowser =
                 for change in changes do
                     match change with
                     | WorldStateChange.MouseEvent _
-                    | WorldStateChange.KeyboardEvent _
                     | WorldStateChange.Keystroke _ -> ()
 
                     | WorldStateChange.Paste text ->
