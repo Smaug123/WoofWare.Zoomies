@@ -76,6 +76,7 @@ module TestCollapsible =
                             | WorldStateChange.MouseEvent _ -> failwith "no mouse events"
                             | WorldStateChange.ApplicationEvent () -> failwith "no app events"
                             | WorldStateChange.KeyboardEvent _ -> failwith "no keyboard events"
+                            | WorldStateChange.Paste _ -> failwith "no paste events"
                             | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
 
                         ProcessWorldResult.make newState
@@ -270,6 +271,7 @@ This stuff was hidden                                       |
                             | WorldStateChange.MouseEvent _ -> failwith "no mouse events"
                             | WorldStateChange.ApplicationEvent () -> failwith "no app events"
                             | WorldStateChange.KeyboardEvent _ -> failwith "no keyboard events"
+                            | WorldStateChange.Paste _ -> failwith "no paste events"
                             | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
 
                         ProcessWorldResult.make newState
@@ -414,6 +416,7 @@ Line 2 of content                                           |
                             | WorldStateChange.MouseEvent _ -> failwith "no mouse events"
                             | WorldStateChange.ApplicationEvent () -> failwith "no app events"
                             | WorldStateChange.KeyboardEvent _ -> failwith "no keyboard events"
+                            | WorldStateChange.Paste _ -> failwith "no paste events"
                             | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
 
                         ProcessWorldResult.make newState

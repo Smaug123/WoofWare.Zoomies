@@ -62,6 +62,7 @@ module TestBatchProcessing =
                             | WorldStateChange.MouseEvent _ -> ()
                             | WorldStateChange.ApplicationEvent _ -> ()
                             | WorldStateChange.KeyboardEvent _ -> ()
+                            | WorldStateChange.Paste _ -> ()
                             | WorldStateChange.ApplicationEventException _ -> ()
 
                         totalProcessed <- totalProcessed + toProcess
@@ -252,6 +253,7 @@ module TestBatchProcessing =
                             | WorldStateChange.MouseEvent _ -> ()
                             | WorldStateChange.ApplicationEvent _ -> ()
                             | WorldStateChange.KeyboardEvent _ -> ()
+                            | WorldStateChange.Paste _ -> ()
                             | WorldStateChange.ApplicationEventException _ -> ()
 
                         if shouldRerender then

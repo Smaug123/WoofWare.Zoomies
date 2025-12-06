@@ -5,6 +5,8 @@ namespace WoofWare.Zoomies
 /// component-specific types stay separate from the generic ActivationResolver module.
 type TextBoxAction =
     | InsertChar of char
+    /// Insert a string at the cursor position (e.g., from a paste operation).
+    | InsertString of string
     | Backspace
     | Delete
     | MoveLeft
