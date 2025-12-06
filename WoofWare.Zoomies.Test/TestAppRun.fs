@@ -49,7 +49,7 @@ module TestAppRun =
 
             use cts = new CancellationTokenSource ()
 
-            let appTask =
+            let appHandle =
                 App.run'
                     cts.Token
                     console
@@ -63,14 +63,14 @@ module TestAppRun =
                     resolver
                     None
 
-            // Give the app a moment to start up and render
-            do! System.Threading.Tasks.Task.Delay 50
+            // Wait for the app to be ready (initial setup and first render complete)
+            do! appHandle.Ready
 
             // Cancel to trigger quit
             cts.Cancel ()
 
             // Wait for the app to finish
-            do! appTask
+            do! appHandle.Finished
 
             // Check that we got the expected operations
             let opsList = ops.ToArray () |> Array.toList

@@ -56,6 +56,16 @@ type WorldProcessor<'appEvent, 'userState> =
         events : ReadOnlySpan<WorldStateChange<'appEvent>> * previousRenderState : VdomContext * 'userState ->
             ProcessWorldResult<'userState>
 
+/// Handle to a running application, providing tasks for lifecycle events.
+type AppHandle =
+    {
+        /// Completes when the app has finished initial setup and rendered for the first time.
+        Ready : Task
+        /// Completes when the app has finished running (either normally or due to cancellation).
+        /// This task will fault if the app throws an exception.
+        Finished : Task
+    }
+
 [<RequireQualifiedAccess>]
 module App =
 
@@ -307,7 +317,9 @@ module App =
     /// for as long as this task is running.
     /// Cancel the CancellationToken to cause the render loop to quit and to unhook all these state listeners.
     ///
-    /// The resulting Task faults if any user logic raises an exception.
+    /// Returns an AppHandle with:
+    /// - Ready: completes when initial setup is done and first render is complete
+    /// - Finished: completes when the app exits (faults if user logic raises an exception)
     let run'<'state, 'appEvent when 'state : equality>
         (terminate : CancellationToken)
         (console : IConsole)
@@ -320,11 +332,13 @@ module App =
         (vdom : VdomContext -> 'state -> Vdom<DesiredBounds>)
         (resolveActivation : ActivationResolver<'appEvent, 'state>)
         (debugWriter : StreamWriter option)
-        : Task
+        : AppHandle
         =
         // RunContinuationsAsynchronously so that we don't force continuation on the UI thread.
         // I want to make sure the UI thread could in principle be torn down once execution of the UI has finished.
         // Synchronous continuations would run on that thread.
+        let ready = TaskCompletionSource TaskCreationOptions.RunContinuationsAsynchronously
+
         let complete =
             TaskCompletionSource TaskCreationOptions.RunContinuationsAsynchronously
 
@@ -374,6 +388,9 @@ module App =
                         let isCancelled () =
                             cancels > 0 || terminate.IsCancellationRequested
 
+                        // Signal that we're ready: initial setup complete, first render done
+                        ready.SetResult ()
+
                         while not (isCancelled ()) do
                             currentState <-
                                 pumpOnce
@@ -388,6 +405,8 @@ module App =
 
                         None
                     with e ->
+                        // If we fail before signaling ready, signal failure there too
+                        ready.TrySetException e |> ignore
                         Some e
 
                 ctrlC.Unregister ctrlCHandler
@@ -418,7 +437,10 @@ module App =
             |> Thread
             |> _.Start()
 
-        complete.Task
+        {
+            Ready = ready.Task
+            Finished = complete.Task
+        }
 
     let run<'state, 'appEvent when 'state : equality>
         (getEnv : string -> string option)
@@ -427,7 +449,7 @@ module App =
         (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'state>)
         (vdom : VdomContext -> 'state -> Vdom<DesiredBounds>)
         (resolveActivation : ActivationResolver<'appEvent, 'state>)
-        : Task
+        : AppHandle
         =
         // Check if debug logging is enabled
         let debugWriter =
