@@ -33,7 +33,16 @@ module ConsoleHarness =
         | TerminalOp.MoveCursor (x, y) ->
             c.CursorX <- x
             c.CursorY <- y
-        | TerminalOp.WriteChar ch -> c.Display.[c.CursorY, c.CursorX] <- ch.Char
+        | TerminalOp.WriteChar ch ->
+            c.Display.[c.CursorY, c.CursorX] <- ch.Char
+            // Advance cursor right (real terminals do this automatically).
+            // At row end, set to absurd values to catch code that incorrectly
+            // assumes cursor position after hitting the edge.
+            if c.CursorX + 1 < Array2D.length2 c.Display then
+                c.CursorX <- c.CursorX + 1
+            else
+                c.CursorX <- Int32.MinValue
+                c.CursorY <- Int32.MinValue
         | SetCursorVisibility _ -> ()
         | ClearScreen ->
             for y = 0 to Array2D.length1 c.Display - 1 do

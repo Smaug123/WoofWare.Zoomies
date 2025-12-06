@@ -49,17 +49,21 @@ module TestPanelSplit =
         // Change only the left child's text content
         Render.oneStep renderState () (fun _ -> vdom "changed")
 
-        // Collect all the cells that were written to
+        // Collect all the cells that were written to, tracking cursor position
+        // (cursor advances automatically after each write, and MoveCursor may be skipped for consecutive cells)
         let writtenCells =
             let result = ResizeArray<int * int> ()
+            let mutable cursorX = 0
+            let mutable cursorY = 0
 
-            for i = 0 to terminalOps.Count - 1 do
-                match terminalOps.[i] with
+            for op in terminalOps do
+                match op with
                 | TerminalOp.MoveCursor (x, y) ->
-                    if i + 1 < terminalOps.Count then
-                        match terminalOps.[i + 1] with
-                        | TerminalOp.WriteChar _ -> result.Add (x, y)
-                        | _ -> ()
+                    cursorX <- x
+                    cursorY <- y
+                | TerminalOp.WriteChar _ ->
+                    result.Add (cursorX, cursorY)
+                    cursorX <- cursorX + 1
                 | _ -> ()
 
             result

@@ -409,19 +409,13 @@ module Render =
 
         let cursorFlip = RenderState.isCursorVisible renderState
         let mutable haveManipulatedCursor = false
-        let currentBuffer = RenderState.buffer renderState
 
-        for y = 0 to currentBuffer.GetLength 0 - 1 do
-            for x = 0 to currentBuffer.GetLength 1 - 1 do
-                match currentBuffer.[y, x] with
-                | ValueNone -> ()
-                | ValueSome cell ->
-                    if not haveManipulatedCursor && cursorFlip then
-                        RenderState.setCursorInvisible renderState
-                        haveManipulatedCursor <- true
+        for op in writeBuffer (RenderState.buffer renderState) do
+            if not haveManipulatedCursor && cursorFlip then
+                RenderState.setCursorInvisible renderState
+                haveManipulatedCursor <- true
 
-                    RenderState.output renderState (TerminalOp.MoveCursor (x, y))
-                    RenderState.output renderState (TerminalOp.WriteChar cell)
+            RenderState.output renderState op
 
         if haveManipulatedCursor && cursorFlip then
             RenderState.setCursorVisible renderState
