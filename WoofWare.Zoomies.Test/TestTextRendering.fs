@@ -65,6 +65,7 @@ module TestTextRendering =
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
         }
 
@@ -123,6 +124,7 @@ module TestTextRendering =
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
         }
 
@@ -168,6 +170,7 @@ module TestTextRendering =
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             expect {
@@ -222,6 +225,7 @@ bottom    |
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             expect {
@@ -271,6 +275,7 @@ Line3               |
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             expect {
@@ -320,6 +325,7 @@ Line3               |
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             expect {
@@ -369,6 +375,7 @@ Line3               |
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             expect {
@@ -432,6 +439,7 @@ Line3               |
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             // All 5 lines of text should be visible, plus the footer
@@ -493,6 +501,7 @@ Footer              |
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             expect {
@@ -545,6 +554,7 @@ Footer              |
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             expect {
@@ -594,6 +604,7 @@ xt        |
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             expect {
@@ -643,6 +654,7 @@ Hello Worl|
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             expect {
@@ -699,6 +711,7 @@ Short     |
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             // The truncated text takes only 1 line, footer takes 1 line
@@ -754,6 +767,7 @@ Footer    |
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             // Left side wraps (10 chars wide), right side truncates (10 chars wide)

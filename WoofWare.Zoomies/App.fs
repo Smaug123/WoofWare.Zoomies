@@ -79,13 +79,14 @@ module App =
         (processWorld : WorldProcessor<'appEvent, 'state>)
         (vdom : VdomContext -> 'state -> Vdom<DesiredBounds>)
         (resolveActivation : ActivationResolver<'appEvent, 'state>)
+        (isCancelled : unit -> bool)
         : 'state
         =
         let mutable startState = state
         let mutable currentState = state
         let mutable startOfBatch = 0
 
-        while startOfBatch < changes.Length do
+        while startOfBatch < changes.Length && not (isCancelled ()) do
             let mutable forceRerender = false
 
             if haveFrameworkHandleFocus currentState then
@@ -257,6 +258,7 @@ module App =
         (processWorld : WorldProcessor<'appEvent, 'state>)
         (vdom : VdomContext -> 'state -> Vdom<DesiredBounds>)
         (resolveActivation : ActivationResolver<'appEvent, 'state>)
+        (isCancelled : unit -> bool)
         : 'state
         =
         let go state =
@@ -280,6 +282,7 @@ module App =
                         processWorld
                         vdom
                         resolveActivation
+                        isCancelled
 
             if listener.TerminalResizeGeneration <> resizeGeneration then
                 // Our knowledge of the current terminal's contents could be arbitrarily corrupted:
@@ -368,7 +371,10 @@ module App =
                         listener <- Some listener'
                         let processWorld = processWorld listener'
 
-                        while cancels = 0 && not terminate.IsCancellationRequested do
+                        let isCancelled () =
+                            cancels > 0 || terminate.IsCancellationRequested
+
+                        while not (isCancelled ()) do
                             currentState <-
                                 pumpOnce
                                     listener'
@@ -378,6 +384,7 @@ module App =
                                     processWorld
                                     vdom
                                     resolveActivation
+                                    isCancelled
 
                         None
                     with e ->

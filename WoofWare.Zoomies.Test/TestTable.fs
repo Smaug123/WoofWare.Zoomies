@@ -46,7 +46,15 @@ module TestTable =
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -93,7 +101,15 @@ module TestTable =
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -141,7 +157,15 @@ A2B2                |
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -188,7 +212,15 @@ Bob  25                       |
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -235,7 +267,15 @@ A2        B2        |
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -283,7 +323,15 @@ A        B                    |
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -339,7 +387,15 @@ Row3                     |
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -388,7 +444,15 @@ A    B                        |
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -436,7 +500,15 @@ A           B       |
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -478,7 +550,15 @@ XY                  |
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -528,7 +608,15 @@ Single              |
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -583,7 +671,15 @@ Row3                |
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -638,7 +734,15 @@ Bottom              |
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -693,7 +797,15 @@ Prop                |
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -739,7 +851,15 @@ Row2                |
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -792,7 +912,15 @@ Cell2               |
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -843,7 +971,15 @@ X    Y                        |
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -894,7 +1030,15 @@ Data1   Data2  |
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -950,7 +1094,15 @@ A B                 |
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -999,7 +1151,15 @@ Col1          Col2          C3|
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -1045,7 +1205,15 @@ A    B C                      |
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -1093,7 +1261,15 @@ X  Y                |
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             // After sanitization all become Column.Proportion 0.01, dividing space equally
             expect {
@@ -1147,7 +1323,15 @@ A         B         C         |
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -1200,7 +1384,15 @@ X      Y       Z              |
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -1253,7 +1445,15 @@ gColumngColumnngColu|
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             expect {
                 snapshot
@@ -1596,6 +1796,7 @@ module TestTableMeasurements =
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore
 
             let output = ConsoleHarness.toString terminal
@@ -1720,7 +1921,15 @@ module TestTablePerformance =
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
             // Just verify it renders without throwing
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             // Verify first row rendered
             let output = ConsoleHarness.toString terminal
@@ -1762,7 +1971,15 @@ module TestTablePerformance =
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             let output = ConsoleHarness.toString terminal
             output |> shouldContainText "0"
@@ -1803,7 +2020,15 @@ module TestTablePerformance =
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce worldFreezer () haveFrameworkHandleFocus renderState processWorld vdom ActivationResolver.none
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
 
             let output = ConsoleHarness.toString terminal
             output |> shouldContainText "C0"

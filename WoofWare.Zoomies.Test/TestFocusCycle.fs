@@ -118,6 +118,7 @@ module TestFocusCycle =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -140,6 +141,7 @@ module TestFocusCycle =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -162,6 +164,7 @@ module TestFocusCycle =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -183,6 +186,7 @@ module TestFocusCycle =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -204,6 +208,7 @@ module TestFocusCycle =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -225,6 +230,7 @@ module TestFocusCycle =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -246,6 +252,7 @@ module TestFocusCycle =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -267,6 +274,7 @@ module TestFocusCycle =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -288,6 +296,7 @@ module TestFocusCycle =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -309,6 +318,7 @@ module TestFocusCycle =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -330,6 +340,7 @@ module TestFocusCycle =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -409,6 +420,7 @@ module TestFocusCycle =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -431,6 +443,7 @@ module TestFocusCycle =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -453,6 +466,7 @@ module TestFocusCycle =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -475,6 +489,7 @@ module TestFocusCycle =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -497,6 +512,7 @@ module TestFocusCycle =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -519,6 +535,7 @@ module TestFocusCycle =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -541,6 +558,7 @@ module TestFocusCycle =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -618,6 +636,7 @@ module TestFocusCycle =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -640,6 +659,7 @@ module TestFocusCycle =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -662,6 +682,7 @@ module TestFocusCycle =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             // Focus should remain on the element with shared-key, even though it's a different element
             expect {
@@ -741,6 +762,7 @@ module TestFocusCycle =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -763,6 +785,7 @@ module TestFocusCycle =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -785,6 +808,7 @@ module TestFocusCycle =
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             // The element is no longer in the focusable list.
             // Vdom construction sees that on the previous tick, that element was focused, so it displays as focused.
@@ -809,6 +833,7 @@ more      [☐]   |
                     processWorld
                     vdom
                     ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -873,6 +898,7 @@ more      [☐]   |
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             expect {
@@ -904,6 +930,7 @@ This is focusable text                                                          
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             // Assert that focus moved to the text element
@@ -938,6 +965,7 @@ This is focusable text                                                          
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             // Assert that focus moved to the checkbox
@@ -972,6 +1000,7 @@ This is focusable text                                                          
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             expect {
@@ -1050,6 +1079,7 @@ This is focusable text                                                          
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             expect {
@@ -1074,6 +1104,7 @@ This is focusable text                                                          
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             expect {
@@ -1098,6 +1129,7 @@ This is focusable text                                                          
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             expect {
@@ -1122,6 +1154,7 @@ This is focusable text                                                          
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             expect {
@@ -1146,6 +1179,7 @@ This is focusable text                                                          
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             expect {
@@ -1218,6 +1252,7 @@ This is focusable text                                                          
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             expect {
@@ -1242,6 +1277,7 @@ This is focusable text                                                          
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             expect {
@@ -1266,6 +1302,7 @@ This is focusable text                                                          
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             expect {
@@ -1290,6 +1327,7 @@ This is focusable text                                                          
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             expect {
@@ -1314,6 +1352,7 @@ This is focusable text                                                          
                 processWorld
                 vdom
                 ActivationResolver.none
+                (fun () -> false)
             |> ignore<FakeUnit>
 
             expect {

@@ -115,7 +115,15 @@ module TestBordered =
 
             // First render: fill with X's
             let mutable state =
-                App.pumpOnce worldFreezer false (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    false
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -136,7 +144,15 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
             // Second render: show keyed Bordered
             // The border should be drawn, and the X's should be cleared
             state <-
-                App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -186,7 +202,15 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
 
             // First render: long text
             let mutable state =
-                App.pumpOnce worldFreezer true (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    true
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -207,7 +231,15 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
             // Second render: short text
             // Border bounds unchanged, child bounds unchanged, but content shrinks
             state <-
-                App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -261,7 +293,15 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
 
             // First render: long text
             let mutable state =
-                App.pumpOnce worldFreezer true (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    true
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
@@ -281,7 +321,15 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
 
             // Second render: short text
             state <-
-                App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    (fun _ -> true)
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
 
             expect {
                 snapshot
