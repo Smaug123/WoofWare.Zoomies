@@ -99,7 +99,7 @@ module internal Layout =
             max 1 totalLines
 
     /// Measure a text content node
-    let private measureText (text : string) (constraints : MeasureConstraints) : MeasuredSize =
+    let private measureText (text : string) (wrap : bool) (constraints : MeasureConstraints) : MeasuredSize =
         // Normalize line endings for consistent measurement
         let text = text.Replace("\r\n", "\n").Replace ("\r", "\n")
 
@@ -122,24 +122,41 @@ module internal Layout =
         // Clamp preferred width to constraint
         let constrainedPreferredWidth = min longestLineWidth constraints.MaxWidth
 
+        // When not wrapping, height is just the number of explicit newlines + 1
+        let noWrapLineCount =
+            if String.IsNullOrEmpty text then
+                1
+            else
+                let lines = text.Split '\n'
+                max 1 lines.Length
+
         {
             MinWidth = constrainedMinWidth
             PreferredWidth = constrainedPreferredWidth
             MaxWidth = None // Can grow arbitrarily wide
             MinHeightForWidth =
                 fun w ->
-                    let safeWidth = max 1 w
-                    let wrappedLines = wordWrapCount text safeWidth
-                    max 1 wrappedLines
+                    if wrap then
+                        let safeWidth = max 1 w
+                        let wrappedLines = wordWrapCount text safeWidth
+                        max 1 wrappedLines
+                    else
+                        noWrapLineCount
             PreferredHeightForWidth =
                 fun w ->
-                    let safeWidth = max 1 w
-                    let wrappedLines = wordWrapCount text safeWidth
-                    max 1 wrappedLines
+                    if wrap then
+                        let safeWidth = max 1 w
+                        let wrappedLines = wordWrapCount text safeWidth
+                        max 1 wrappedLines
+                    else
+                        noWrapLineCount
             MaxHeightForWidth =
                 fun w ->
-                    let safeWidth = max 1 w
-                    Some (wordWrapCount text safeWidth)
+                    if wrap then
+                        let safeWidth = max 1 w
+                        Some (wordWrapCount text safeWidth)
+                    else
+                        Some noWrapLineCount
         }
 
     /// Measure a bordered container
@@ -646,10 +663,10 @@ module internal Layout =
         : MeasuredNode<DesiredBounds>
         =
         match vdom with
-        | UnkeyedVdom.TextContent (text, _style, _alignment, _focused) ->
+        | UnkeyedVdom.TextContent (text, _style, _alignment, _focused, wrap) ->
             {
                 Vdom = Vdom.Unkeyed vdom
-                Measured = measureText text constraints
+                Measured = measureText text wrap constraints
                 Children = []
             }
         | UnkeyedVdom.Empty ->
@@ -739,9 +756,9 @@ module internal Layout =
         match measured.Vdom with
         | Vdom.Keyed (KeyedVdom (key, unkeyedVdom)) ->
             match unkeyedVdom with
-            | UnkeyedVdom.TextContent (text, style, alignment, focused) ->
+            | UnkeyedVdom.TextContent (text, style, alignment, focused, wrap) ->
                 {
-                    Vdom = Vdom.Keyed (KeyedVdom (key, UnkeyedVdom.TextContent (text, style, alignment, focused)))
+                    Vdom = Vdom.Keyed (KeyedVdom (key, UnkeyedVdom.TextContent (text, style, alignment, focused, wrap)))
                     VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = []
@@ -842,9 +859,9 @@ module internal Layout =
                 }
         | Vdom.Unkeyed unkeyedVdom ->
             match unkeyedVdom with
-            | UnkeyedVdom.TextContent (text, style, alignment, focused) ->
+            | UnkeyedVdom.TextContent (text, style, alignment, focused, wrap) ->
                 {
-                    Vdom = Vdom.Unkeyed (UnkeyedVdom.TextContent (text, style, alignment, focused))
+                    Vdom = Vdom.Unkeyed (UnkeyedVdom.TextContent (text, style, alignment, focused, wrap))
                     VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = []

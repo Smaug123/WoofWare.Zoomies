@@ -9,7 +9,11 @@ type TextBox =
     /// <param name="content">The text content to display.</param>
     /// <param name="cursorPos">The cursor position (character index, 0 to content.Length inclusive), or -1 to show no cursor.</param>
     /// <param name="isFocused">Whether the textbox should render as focused (with cursor visible and inverted style).</param>
-    static member make' (content : string, cursorPos : int, isFocused : bool) : Vdom<DesiredBounds> =
+    /// <param name="wrap">
+    /// If true (the default), text wraps to the next line when it reaches the edge of the bounds.
+    /// If false, text is truncated at the edge of the bounds and does not wrap.
+    /// </param>
+    static member make' (content : string, cursorPos : int, isFocused : bool, ?wrap : bool) : Vdom<DesiredBounds> =
         // Reserved-width cursor: always allocate space for cursor marker
         // This maintains constant width across focus states (zero layout jitter)
         let displayText, style =
@@ -29,7 +33,7 @@ type TextBox =
                 // Invalid cursor position: just show content
                 (content, CellStyle.none)
 
-        Vdom.styledText (displayText, style) |> Vdom.withTag "textbox"
+        Vdom.styledText (displayText, style, ?wrap = wrap) |> Vdom.withTag "textbox"
 
     /// <summary>Framework-integrated TextBox with automatic focus handling.</summary>
     /// <param name="ctx">The VdomContext for checking focus state.</param>
@@ -42,6 +46,10 @@ type TextBox =
     /// <param name="isInitiallyFocused">
     /// Set to `true` to have this element be focused from the very first tick.
     /// </param>
+    /// <param name="wrap">
+    /// If true (the default), text wraps to the next line when it reaches the edge of the bounds.
+    /// If false, text is truncated at the edge of the bounds and does not wrap.
+    /// </param>
     /// <remarks>
     /// This component automatically handles focus visual state by consulting the VdomContext.
     /// You must also provide an ActivationResolver to `App.run` to handle text editing events.
@@ -53,10 +61,14 @@ type TextBox =
             content : string,
             cursorPos : int,
             ?isFirstToFocus : bool,
-            ?isInitiallyFocused : bool
+            ?isInitiallyFocused : bool,
+            ?wrap : bool
         )
         : Vdom<DesiredBounds>
         =
         let isFocused = VdomContext.focusedKey ctx = Some key
-        let textbox = TextBox.make' (content, cursorPos, isFocused) |> Vdom.withKey key
+
+        let textbox =
+            TextBox.make' (content, cursorPos, isFocused, ?wrap = wrap) |> Vdom.withKey key
+
         Vdom.withFocusTracking (textbox, ?isFirstToFocus = isFirstToFocus, ?isInitiallyFocused = isInitiallyFocused)

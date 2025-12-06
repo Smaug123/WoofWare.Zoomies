@@ -202,9 +202,13 @@ module Render =
                 // Keyed nodes with same reference - reuse previous
                 | Vdom.Keyed (KeyedVdom (key1, vdom1)), Vdom.Keyed (KeyedVdom (key2, vdom2)) when key1 = key2 ->
                     match vdom1, vdom2 with
-                    | UnkeyedVdom.TextContent (text1, style1, align1, focus1),
-                      UnkeyedVdom.TextContent (text2, style2, align2, focus2) when
-                        text1 = text2 && style1 = style2 && align1 = align2 && focus1 = focus2
+                    | UnkeyedVdom.TextContent (text1, style1, align1, focus1, wrap1),
+                      UnkeyedVdom.TextContent (text2, style2, align2, focus2, wrap2) when
+                        text1 = text2
+                        && style1 = style2
+                        && align1 = align2
+                        && focus1 = focus2
+                        && wrap1 = wrap2
                         ->
                         // Repopulate keyToNode for reused keyed node
                         keyToNode.[key1] <- prev
@@ -320,9 +324,13 @@ module Render =
                             None
                     | _ -> None
                 // Unkeyed leaf nodes
-                | Vdom.Unkeyed (UnkeyedVdom.TextContent (text1, style1, align1, focus1)),
-                  Vdom.Unkeyed (UnkeyedVdom.TextContent (text2, style2, align2, focus2)) when
-                    text1 = text2 && style1 = style2 && align1 = align2 && focus1 = focus2
+                | Vdom.Unkeyed (UnkeyedVdom.TextContent (text1, style1, align1, focus1, wrap1)),
+                  Vdom.Unkeyed (UnkeyedVdom.TextContent (text2, style2, align2, focus2, wrap2)) when
+                    text1 = text2
+                    && style1 = style2
+                    && align1 = align2
+                    && focus1 = focus2
+                    && wrap1 = wrap2
                     ->
                     Some prev
                 | Vdom.Unkeyed UnkeyedVdom.Empty, Vdom.Unkeyed UnkeyedVdom.Empty ->
@@ -938,7 +946,7 @@ module Render =
 
             renderToBuffer dirty prevChild node.OverlaidChildren.[0]
 
-        | UnkeyedVdom.TextContent (content, style, alignment, focus) ->
+        | UnkeyedVdom.TextContent (content, style, alignment, focus, wrap) ->
             // TODO: can do better here if we can compute a more efficient diff
             // TODO: work out how to display this differently when it has focus
             clearBoundsWithSpaces dirty bounds
@@ -976,7 +984,7 @@ module Render =
                                     setAtRelativeOffset dirty bounds x y (ValueSome cell)
                                     x <- x + 1
                 | ContentAlignment.TopLeft ->
-                    // Render from top-left, wrapping to next line
+                    // Render from top-left
                     // Normalize line endings: CRLF -> LF, lone CR -> LF
                     let content = content.Replace("\r\n", "\n").Replace ("\r", "\n")
                     let mutable index = 0
@@ -1006,11 +1014,17 @@ module Render =
                             currX <- currX + 1
 
                             if currX = bounds.Width then
-                                currX <- 0
-                                currY <- currY + 1
+                                if wrap then
+                                    // Wrap to next line
+                                    currX <- 0
+                                    currY <- currY + 1
 
-                                if currY >= bounds.Height then
-                                    index <- content.Length
+                                    if currY >= bounds.Height then
+                                        index <- content.Length
+                                else
+                                    // Truncate: skip remaining characters until newline
+                                    while index + 1 < content.Length && content.Chars (index + 1) <> '\n' do
+                                        index <- index + 1
 
                         index <- index + 1
 

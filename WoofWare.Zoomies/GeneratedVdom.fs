@@ -22,7 +22,12 @@ type UnkeyedVdomCataCase<'Vdom, 'KeyedVdom, 'UnkeyedVdom> =
 
     /// How to operate on the TextContent case
     abstract TextContent :
-        content : string -> style : CellStyle -> alignment : ContentAlignment -> focused : bool -> 'UnkeyedVdom
+        content : string ->
+        style : CellStyle ->
+        alignment : ContentAlignment ->
+        focused : bool ->
+        wrap : bool ->
+            'UnkeyedVdom
 
     /// How to operate on the Focusable case
     abstract Focusable : isFirstToFocus : bool -> isInitiallyFocused : bool -> 'KeyedVdom -> 'UnkeyedVdom
@@ -101,8 +106,8 @@ module UnkeyedVdomCata =
                     instructions.Add (Instruction.UnkeyedVdom_PanelSplit (arg0_0, arg1_0))
                     instructions.Add (Instruction.Process__Vdom child1)
                     instructions.Add (Instruction.Process__Vdom child2)
-                | UnkeyedVdom.TextContent (content, style, alignment, focused) ->
-                    cata.UnkeyedVdom.TextContent content style alignment focused
+                | UnkeyedVdom.TextContent (content, style, alignment, focused, wrap) ->
+                    cata.UnkeyedVdom.TextContent content style alignment focused wrap
                     |> unkeyedVdomStack.Add
                 | UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, arg2_0) ->
                     instructions.Add (Instruction.UnkeyedVdom_Focusable (isFirstToFocus, isInitiallyFocused))

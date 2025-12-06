@@ -1358,7 +1358,7 @@ module TestTableMeasurements =
                                     Run = fun rect -> child1.Run rect |> Option.orElse (child2.Run rect)
                                 }
 
-                        member _.TextContent _content _style _alignment _focused =
+                        member _.TextContent _content _style _alignment _focused _wrap =
                             {
                                 Run = fun _ -> None
                             }
