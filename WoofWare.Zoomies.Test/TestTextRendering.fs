@@ -384,3 +384,130 @@ Line3               |
                 return ConsoleHarness.toString terminal
             }
         }
+
+    [<TestCase("\n")>]
+    [<TestCase("\r")>]
+    [<TestCase("\r\n")>]
+    let ``wordWrapCount correctly counts explicit newlines for layout measurement`` (newline : string) =
+        task {
+            // Regression test: wordWrapCount was splitting on \n as a word separator
+            // but not incrementing line count for explicit newlines.
+            // This caused text with multiple lines to be measured as needing only 1 line,
+            // leading to truncation in auto-split layouts.
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 10)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Multi-line text that should be measured as needing 5 lines
+                let multiLineText =
+                    String.concat newline [ "Line 1" ; "Line 2" ; "Line 3" ; "Line 4" ; "Line 5" ]
+
+                let text = Vdom.textContent multiLineText
+
+                // Put it in an auto split with another component
+                // If measurement is correct, text gets 5 lines, footer gets 1 line
+                let footer = Vdom.textContent "Footer"
+                Vdom.panelSplitAuto (SplitDirection.Horizontal, text, footer)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                (FakeUnit.fake ())
+                (fun _ -> true)
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+            |> ignore<FakeUnit>
+
+            // All 5 lines of text should be visible, plus the footer
+            expect {
+                snapshot
+                    @"
+Line 1              |
+Line 2              |
+Line 3              |
+Line 4              |
+Line 5              |
+Footer              |
+                    |
+                    |
+                    |
+                    |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``wordWrapCount correctly counts empty lines from consecutive newlines`` () =
+        task {
+            // Test that blank lines (from \n\n) are counted correctly
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 8)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Text with blank lines - should be measured as 5 lines total
+                // (Para1, blank, Para2, blank, Para3)
+                let textWithBlanks = "Para1\n\nPara2\n\nPara3"
+                let text = Vdom.textContent textWithBlanks
+
+                let footer = Vdom.textContent "Footer"
+                Vdom.panelSplitAuto (SplitDirection.Horizontal, text, footer)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                (FakeUnit.fake ())
+                (fun _ -> true)
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+            |> ignore<FakeUnit>
+
+            expect {
+                snapshot
+                    @"
+Para1               |
+                    |
+Para2               |
+                    |
+Para3               |
+Footer              |
+                    |
+                    |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
