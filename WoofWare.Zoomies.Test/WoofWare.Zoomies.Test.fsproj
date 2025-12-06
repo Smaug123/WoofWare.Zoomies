@@ -25,6 +25,10 @@
     <Compile Include="TestCatamorphism.fs" />
     <Compile Include="TestDebugDump.fs" />
     <Compile Include="TestRender.fs" />
+    <Compile Include="TestPanelSplit.fs" />
+    <Compile Include="TestBordered.fs" />
+    <Compile Include="TestTextRendering.fs" />
+    <Compile Include="TestCheckbox.fs" />
     <Compile Include="TestFocusCycle.fs" />
     <Compile Include="TestCollapsible.fs" />
     <Compile Include="TestProgressBar.fs" />
