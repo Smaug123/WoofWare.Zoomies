@@ -28,10 +28,10 @@ module internal Layout =
             Children : ArrangedNode list
         }
 
-    /// Helper: count lines after word-wrapping
+    /// Helper: count wrapped lines for a single line of text (no newlines)
     /// Precondition: width >= 1
-    let private wordWrapCount (text : string) (width : int) : int =
-        let words = text.Split ([| ' ' ; '\t' ; '\n' |], StringSplitOptions.None)
+    let private wordWrapCountSingleLine (line : string) (width : int) : int =
+        let words = line.Split ([| ' ' ; '\t' |], StringSplitOptions.None)
 
         if words.Length = 0 then
             1
@@ -77,21 +77,50 @@ module internal Layout =
 
             lineCount
 
+    /// Helper: count lines after word-wrapping, respecting explicit newlines
+    /// Precondition: width >= 1
+    let private wordWrapCount (text : string) (width : int) : int =
+        // Normalize line endings: CRLF -> LF, lone CR -> LF
+        let text = text.Replace("\r\n", "\n").Replace ("\r", "\n")
+        let lines = text.Split '\n'
+
+        if lines.Length = 0 then
+            1
+        else
+            let mutable totalLines = 0
+
+            for line in lines do
+                if String.IsNullOrEmpty line then
+                    // Empty line counts as 1
+                    totalLines <- totalLines + 1
+                else
+                    totalLines <- totalLines + wordWrapCountSingleLine line width
+
+            max 1 totalLines
+
     /// Measure a text content node
     let private measureText (text : string) (constraints : MeasureConstraints) : MeasuredSize =
+        // Normalize line endings for consistent measurement
+        let text = text.Replace("\r\n", "\n").Replace ("\r", "\n")
+
         let longestWord =
             if String.IsNullOrEmpty text then
                 1
             else
                 text.Split [| ' ' ; '\t' ; '\n' |] |> Seq.map String.length |> Seq.fold max 1
 
-        let fullLineWidth = max 1 text.Length
+        // Preferred width is the longest line, not the total text length
+        let longestLineWidth =
+            if String.IsNullOrEmpty text then
+                1
+            else
+                text.Split '\n' |> Seq.map String.length |> Seq.fold max 1
 
         // Respect MaxWidth constraint when reporting MinWidth
         let constrainedMinWidth = min longestWord constraints.MaxWidth
 
         // Clamp preferred width to constraint
-        let constrainedPreferredWidth = min fullLineWidth constraints.MaxWidth
+        let constrainedPreferredWidth = min longestLineWidth constraints.MaxWidth
 
         {
             MinWidth = constrainedMinWidth
