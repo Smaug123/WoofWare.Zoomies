@@ -902,6 +902,8 @@ module Render =
                 match alignment with
                 | ContentAlignment.Centered ->
                     // Center the text horizontally and vertically within bounds
+                    // Normalize line endings: CRLF -> LF, lone CR -> LF
+                    let content = content.Replace("\r\n", "\n").Replace ("\r", "\n")
                     let lines = content.Split '\n'
                     let lineCount = lines.Length
                     // Vertically center the block of lines
@@ -929,6 +931,8 @@ module Render =
                                     x <- x + 1
                 | ContentAlignment.TopLeft ->
                     // Render from top-left, wrapping to next line
+                    // Normalize line endings: CRLF -> LF, lone CR -> LF
+                    let content = content.Replace("\r\n", "\n").Replace ("\r", "\n")
                     let mutable index = 0
                     let mutable currX = 0
                     let mutable currY = 0
