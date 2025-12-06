@@ -2864,3 +2864,199 @@ OnlyThis            |
                 return ConsoleHarness.toString terminal
             }
         }
+
+    [<Test>]
+    let ``CRLF line endings are normalized to LF in TopLeft alignment`` () =
+        task {
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Text with CRLF line endings - the \r should not be rendered as a visible character
+                Vdom.textContent "Line1\r\nLine2\r\nLine3"
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                (FakeUnit.fake ())
+                (fun _ -> true)
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+            |> ignore<FakeUnit>
+
+            expect {
+                snapshot
+                    @"
+Line1               |
+Line2               |
+Line3               |
+                    |
+                    |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``standalone CR is normalized to LF in TopLeft alignment`` () =
+        task {
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Text with old Mac-style CR line endings - should be treated as newlines
+                Vdom.textContent "Line1\rLine2\rLine3"
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                (FakeUnit.fake ())
+                (fun _ -> true)
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+            |> ignore<FakeUnit>
+
+            expect {
+                snapshot
+                    @"
+Line1               |
+Line2               |
+Line3               |
+                    |
+                    |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``CRLF line endings are normalized to LF in Centered alignment`` () =
+        task {
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Text with CRLF line endings and Centered alignment
+                Vdom.textContent ("AAA\r\nBBB\r\nCCC", alignment = ContentAlignment.Centered)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                (FakeUnit.fake ())
+                (fun _ -> true)
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+            |> ignore<FakeUnit>
+
+            expect {
+                snapshot
+                    @"
+                    |
+        AAA         |
+        BBB         |
+        CCC         |
+                    |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``standalone CR is normalized to LF in Centered alignment`` () =
+        task {
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Text with old Mac-style CR line endings and Centered alignment
+                Vdom.textContent ("AAA\rBBB\rCCC", alignment = ContentAlignment.Centered)
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                (FakeUnit.fake ())
+                (fun _ -> true)
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+            |> ignore<FakeUnit>
+
+            expect {
+                snapshot
+                    @"
+                    |
+        AAA         |
+        BBB         |
+        CCC         |
+                    |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
