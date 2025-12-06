@@ -56,6 +56,16 @@ type WorldProcessor<'appEvent, 'userState> =
         events : ReadOnlySpan<WorldStateChange<'appEvent>> * previousRenderState : VdomContext * 'userState ->
             ProcessWorldResult<'userState>
 
+/// Handle to a running application, providing tasks for lifecycle events.
+type AppHandle =
+    {
+        /// Completes when the app has finished initial setup and rendered for the first time.
+        Ready : Task
+        /// Completes when the app has finished running (either normally or due to cancellation).
+        /// This task will fault if the app throws an exception.
+        Finished : Task
+    }
+
 [<RequireQualifiedAccess>]
 module App =
 
@@ -307,7 +317,9 @@ module App =
     /// for as long as this task is running.
     /// Cancel the CancellationToken to cause the render loop to quit and to unhook all these state listeners.
     ///
-    /// The resulting Task faults if any user logic raises an exception.
+    /// Returns an AppHandle with:
+    /// - Ready: completes when initial setup is done and first render is complete
+    /// - Finished: completes when the app exits (faults if user logic raises an exception)
     let run'<'state, 'appEvent when 'state : equality>
         (terminate : CancellationToken)
         (console : IConsole)
@@ -320,105 +332,120 @@ module App =
         (vdom : VdomContext -> 'state -> Vdom<DesiredBounds>)
         (resolveActivation : ActivationResolver<'appEvent, 'state>)
         (debugWriter : StreamWriter option)
-        : Task
+        : AppHandle
         =
         // RunContinuationsAsynchronously so that we don't force continuation on the UI thread.
         // I want to make sure the UI thread could in principle be torn down once execution of the UI has finished.
         // Synchronous continuations would run on that thread.
+        let ready = TaskCompletionSource TaskCreationOptions.RunContinuationsAsynchronously
+
         let complete =
             TaskCompletionSource TaskCreationOptions.RunContinuationsAsynchronously
 
         let _thread =
             fun () ->
-                // TODO: react to changes in dimension
-                use renderState = RenderState.make console getUtcNow debugWriter
+                try
+                    // TODO: react to changes in dimension
+                    use renderState = RenderState.make console getUtcNow debugWriter
 
-                RenderState.enterAlternateScreen renderState
-                RenderState.registerMouseMode renderState
-                RenderState.registerBracketedPaste renderState
-                RenderState.setCursorInvisible renderState
+                    RenderState.enterAlternateScreen renderState
+                    RenderState.registerMouseMode renderState
+                    RenderState.registerBracketedPaste renderState
+                    RenderState.setCursorInvisible renderState
 
-                let mutable cancels = 0
+                    let mutable cancels = 0
 
-                let ctrlCHandler =
-                    ConsoleCancelEventHandler (fun _ args ->
-                        // Double-ctrlc to exit immediately
-                        if Interlocked.Increment &cancels = 1 then
-                            args.Cancel <- true
-                    )
+                    let ctrlCHandler =
+                        ConsoleCancelEventHandler (fun _ args ->
+                            // Double-ctrlc to exit immediately
+                            if Interlocked.Increment &cancels = 1 then
+                                args.Cancel <- true
+                        )
 
-                ctrlC.Register ctrlCHandler
+                    ctrlC.Register ctrlCHandler
 
-                let mutable listener = None
+                    let mutable listener = None
 
-                let exc =
-                    try
-                        let mutable currentState = processNoChanges initialState renderState vdom
+                    let exc =
+                        try
+                            let mutable currentState = processNoChanges initialState renderState vdom
 
-                        let listener' = worldFreezer ()
+                            let listener' = worldFreezer ()
 
-                        use _ =
-                            try
-                                PosixSignalRegistration.Create (
-                                    PosixSignal.SIGWINCH,
-                                    fun _ -> listener'.NotifyTerminalResize ()
-                                )
-                            with :? PlatformNotSupportedException ->
-                                // SIGWINCH not supported on this platform (e.g., Windows).
-                                // Recall that the `use` syntax is special-cased to not throw on null!
-                                null
+                            use _ =
+                                try
+                                    PosixSignalRegistration.Create (
+                                        PosixSignal.SIGWINCH,
+                                        fun _ -> listener'.NotifyTerminalResize ()
+                                    )
+                                with :? PlatformNotSupportedException ->
+                                    // SIGWINCH not supported on this platform (e.g., Windows).
+                                    // Recall that the `use` syntax is special-cased to not throw on null!
+                                    null
 
-                        listener <- Some listener'
-                        let processWorld = processWorld listener'
+                            listener <- Some listener'
+                            let processWorld = processWorld listener'
 
-                        let isCancelled () =
-                            cancels > 0 || terminate.IsCancellationRequested
+                            let isCancelled () =
+                                cancels > 0 || terminate.IsCancellationRequested
 
-                        while not (isCancelled ()) do
-                            currentState <-
-                                pumpOnce
-                                    listener'
-                                    currentState
-                                    haveFrameworkHandleFocus
-                                    renderState
-                                    processWorld
-                                    vdom
-                                    resolveActivation
-                                    isCancelled
+                            // Signal that we're ready: initial setup complete, first render done
+                            ready.SetResult ()
 
-                        None
-                    with e ->
-                        Some e
+                            while not (isCancelled ()) do
+                                currentState <-
+                                    pumpOnce
+                                        listener'
+                                        currentState
+                                        haveFrameworkHandleFocus
+                                        renderState
+                                        processWorld
+                                        vdom
+                                        resolveActivation
+                                        isCancelled
 
-                ctrlC.Unregister ctrlCHandler
+                            None
+                        with e ->
+                            // If we fail before signaling ready, signal failure there too
+                            ready.TrySetException e |> ignore
+                            Some e
 
-                match listener with
-                | None -> ()
-                | Some listener ->
-                    // ANALYZER: synchronous blocking call allowed: we're on a dedicated thread, so can't deadlock.
-                    (listener :> IAsyncDisposable).DisposeAsync().GetAwaiter().GetResult ()
+                    ctrlC.Unregister ctrlCHandler
 
-                // Ideally the terminal emulator has a completely self-contained state in the alternate buffer,
-                // which means our LIFO ordering here is confined to the alternate buffer, correctly leaving the
-                // main buffer in whatever state it was in before we started executing.
-                // According to the LLMs, some terminals *don't* confine state to the alternate buffer, but in that
-                // case this order is still correct: we'll leave the cursor visible when such a terminal leaks cursor
-                // visibility out into the main buffer.
-                RenderState.setCursorVisible renderState
-                RenderState.unregisterBracketedPaste renderState
-                RenderState.unregisterMouseMode renderState
-                RenderState.exitAlternateScreen renderState
+                    match listener with
+                    | None -> ()
+                    | Some listener ->
+                        // ANALYZER: synchronous blocking call allowed: we're on a dedicated thread, so can't deadlock.
+                        (listener :> IAsyncDisposable).DisposeAsync().GetAwaiter().GetResult ()
 
-                match exc with
-                | None -> complete.SetResult ()
-                | Some exc ->
-                    // report critical exceptions to the user *after* disabling the alternate buffer, so they can
-                    // actually see them
-                    complete.SetException exc
+                    // Ideally the terminal emulator has a completely self-contained state in the alternate buffer,
+                    // which means our LIFO ordering here is confined to the alternate buffer, correctly leaving the
+                    // main buffer in whatever state it was in before we started executing.
+                    // According to the LLMs, some terminals *don't* confine state to the alternate buffer, but in that
+                    // case this order is still correct: we'll leave the cursor visible when such a terminal leaks cursor
+                    // visibility out into the main buffer.
+                    RenderState.setCursorVisible renderState
+                    RenderState.unregisterBracketedPaste renderState
+                    RenderState.unregisterMouseMode renderState
+                    RenderState.exitAlternateScreen renderState
+
+                    match exc with
+                    | None -> complete.SetResult ()
+                    | Some exc ->
+                        // report critical exceptions to the user *after* disabling the alternate buffer, so they can
+                        // actually see them
+                        complete.SetException exc
+                with e ->
+                    // Ensure lifecycle tasks complete even if setup or cleanup fails
+                    ready.TrySetException e |> ignore
+                    complete.TrySetException e |> ignore
             |> Thread
             |> _.Start()
 
-        complete.Task
+        {
+            Ready = ready.Task
+            Finished = complete.Task
+        }
 
     let run<'state, 'appEvent when 'state : equality>
         (getEnv : string -> string option)
@@ -427,7 +454,7 @@ module App =
         (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'state>)
         (vdom : VdomContext -> 'state -> Vdom<DesiredBounds>)
         (resolveActivation : ActivationResolver<'appEvent, 'state>)
-        : Task
+        : AppHandle
         =
         // Check if debug logging is enabled
         let debugWriter =

@@ -142,5 +142,5 @@ module Program =
 
     [<EntryPoint>]
     let main _argv =
-        (FileBrowser.run getEnv).Wait ()
+        (FileBrowser.run getEnv).Finished.Wait ()
         0
