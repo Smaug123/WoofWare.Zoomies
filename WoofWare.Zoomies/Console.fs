@@ -33,6 +33,11 @@ module IConsole =
         // Buffer all writes and flush once per frame to minimize syscalls
         let buffer = StringBuilder ()
 
+        // Track the current terminal colors to avoid redundant color changes.
+        // These are updated as we execute operations and reset to defaults at flush.
+        let mutable currentBackground = Console.BackgroundColor
+        let mutable currentForeground = Console.ForegroundColor
+
         {
             BackgroundColor = fun () -> Console.BackgroundColor
             ForegroundColor = fun () -> Console.ForegroundColor
@@ -41,17 +46,29 @@ module IConsole =
             ColorMode = colorMode
             Execute =
                 fun o ->
-                    TerminalOp.execute
-                        colorMode
-                        Console.BackgroundColor
-                        Console.ForegroundColor
-                        (buffer.Append >> ignore)
-                        o
+                    let struct (newBg, newFg) =
+                        TerminalOp.execute colorMode currentBackground currentForeground (buffer.Append >> ignore) o
+
+                    currentBackground <- newBg
+                    currentForeground <- newFg
             Flush =
                 fun () ->
+                    // Reset colors to terminal defaults before flushing, if we changed them
+                    if currentBackground <> Console.BackgroundColor then
+                        buffer.Append (ConsoleColor.toBackgroundEscapeCode Console.BackgroundColor)
+                        |> ignore
+
+                    if currentForeground <> Console.ForegroundColor then
+                        buffer.Append (ConsoleColor.toForegroundEscapeCode Console.ForegroundColor)
+                        |> ignore
+
                     if buffer.Length > 0 then
                         Console.Write (buffer.ToString ())
                         buffer.Clear () |> ignore
+
+                    // Reset tracked state to match terminal defaults for next frame
+                    currentBackground <- Console.BackgroundColor
+                    currentForeground <- Console.ForegroundColor
         }
 
     let defaultForTests =
