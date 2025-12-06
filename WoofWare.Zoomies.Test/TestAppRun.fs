@@ -96,6 +96,13 @@ module TestAppRun =
             enterAltScreenIndex.IsSome |> shouldEqual true
             registerIndex.Value > enterAltScreenIndex.Value |> shouldEqual true
 
+            // Verify order: Register should come after RegisterMouseMode
+            let registerMouseModeIndex =
+                opsList |> List.tryFindIndex (fun op -> op = TerminalOp.RegisterMouseMode)
+
+            registerMouseModeIndex.IsSome |> shouldEqual true
+            registerIndex.Value > registerMouseModeIndex.Value |> shouldEqual true
+
             // Verify order: Unregister should come before ExitAlternateScreen
             let exitAltScreenIndex =
                 opsList |> List.tryFindIndex (fun op -> op = TerminalOp.ExitAlternateScreen)
