@@ -108,8 +108,8 @@ module TestTextBox =
                 snapshot
                     @"
 |                                       |
-                                        |
               [  Submit  ]              |
+                                        |
 "
 
                 return ConsoleHarness.toString terminal
@@ -127,8 +127,8 @@ module TestTextBox =
                 snapshot
                     @"
                                         |
-                                        |
               [[ Submit ]]              |
+                                        |
 "
 
                 return ConsoleHarness.toString terminal

@@ -2585,9 +2585,10 @@ Left                               Right|
         }
 
     [<Test>]
-    let ``panelSplitAutoExpand horizontal gives all excess height to first component`` () =
+    let ``panelSplitAutoExpand horizontal respects max height constraints`` () =
         task {
-            // Test horizontal split - first component should get all excess height
+            // Test horizontal split - when both components have max height constraints,
+            // they are clamped and excess space is unused
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 10)
 
             let world = MockWorld.make ()
@@ -2600,9 +2601,11 @@ Left                               Right|
                     world.ReadKey
 
             let vdom (_ : VdomContext) (_ : FakeUnit) =
-                // Both components have preferred height of 1
+                // Both components have preferred height of 1 and max height of 1 (text content)
                 // Total preferred = 2, available = 10, so excess = 8
-                // With panelSplitAutoExpand, Top gets all 8 excess (height=9), Bottom stays at 1
+                // With panelSplitAutoExpand, Top would get all excess, but max height clamps it to 1
+                // Bottom also has max height 1, so gets clamped to 1
+                // The 8 rows of excess are unused container space
                 let top = Vdom.textContent "Top"
                 let bottom = Vdom.textContent "Bottom"
 
@@ -2625,12 +2628,8 @@ Left                               Right|
                 ActivationResolver.none
             |> ignore<FakeUnit>
 
-            // NOTE: Current behavior shows Top and Bottom each at 1 row with excess unused.
-            // This may be because text content's max height constraint limits expansion.
-            // The horizontal split gives Top its preferred height (1) + excess (8) = 9 rows allocated,
-            // but text content renders at the top of its bounds without filling, so we see:
-            // Row 0: Top (in the 9-row Top region), Rows 1-8: blank (still Top region), Row 9: Bottom
-            // TODO: Investigate if this is the intended behavior or if there's a layout bug.
+            // Both Top and Bottom have max height of 1, so each gets exactly 1 row.
+            // The remaining 8 rows are unused container space (not assigned to either child).
             expect {
                 snapshot
                     @"
@@ -2697,13 +2696,169 @@ Bottom              |
             |> ignore<FakeUnit>
 
             // Each should get exactly their preferred width: Left=4, Right=5
-            // Total = 9, leaving 31 unused (rendered as spaces in the Left area since it comes first)
+            // Total = 9, leaving 31 as unassigned container space to the right of both children
             expect {
                 snapshot
                     @"
 LeftRight                               |
                                         |
                                         |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``horizontal AutoWeighted clamps second child height to its max`` () =
+        task {
+            // Regression test for: second child's height was not clamped to maxHeight
+            // With a 10-row container and two 1-row max-height children,
+            // the second child should get 1 row (clamped), not 9 rows (unclamped)
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 10)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // First child has max height 1 (text content) and weight 0
+                // Second child has max height 1 (text content) and weight 1 (gets excess)
+                // Even though second child wants excess, it should be clamped to max height 1
+                let top = Vdom.textContent "Top"
+                let bottom = Vdom.textContent "Bottom"
+
+                // Use AutoWeighted with first=0, second=1 so second child would get all excess
+                Vdom.panelSplit (
+                    SplitDirection.Horizontal,
+                    SplitBehaviour.AutoWeighted (ExpansionWeight.Fixed 0.0, ExpansionWeight.Fixed 1.0),
+                    top,
+                    bottom
+                )
+                |> Vdom.Unkeyed
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                (FakeUnit.fake ())
+                (fun _ -> true)
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+            |> ignore<FakeUnit>
+
+            // Second child should be clamped to 1 row despite wanting all excess
+            // Top on row 0, Bottom on row 1, rows 2-9 are unused (cleared)
+            expect {
+                snapshot
+                    @"
+Top                 |
+Bottom              |
+                    |
+                    |
+                    |
+                    |
+                    |
+                    |
+                    |
+                    |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``PanelSplit clears unallocated container space when children don't fill bounds`` () =
+        task {
+            // Regression test for: unallocated container space was not cleared
+            // When both children have max heights that don't fill the container,
+            // the remaining space should be cleared (not show stale content)
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            // State: true = show full content, false = show minimal content
+            let vdom (_ : VdomContext) (showContent : bool) =
+                if showContent then
+                    // First render: show content that fills the container
+                    let top = Vdom.textContent "Line1"
+                    let middle = Vdom.textContent "Line2"
+                    let bottom = Vdom.textContent "Line3"
+
+                    Vdom.panelSplitAuto (
+                        SplitDirection.Horizontal,
+                        top,
+                        Vdom.panelSplitAuto (SplitDirection.Horizontal, middle, bottom)
+                    )
+                else
+                    // Second render: show less content (children don't fill container)
+                    // The old "Line2" and "Line3" should be cleared
+                    let top = Vdom.textContent "OnlyThis"
+                    Vdom.panelSplitAuto (SplitDirection.Horizontal, top, Vdom.empty)
+
+            let processWorld =
+                { new WorldProcessor<unit, bool> with
+                    member _.ProcessWorld (worldChanges, _, state) =
+                        // Toggle state when any key is pressed
+                        let newState = if worldChanges.Length > 0 then not state else state
+                        ProcessWorldResult.make newState
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let mutable state = true
+
+            // First render with content
+            state <-
+                App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+
+            expect {
+                snapshot
+                    @"
+Line1               |
+Line2               |
+Line3               |
+                    |
+                    |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
+            // Press any key to toggle state and trigger re-render with less content
+            world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
+
+            state <-
+                App.pumpOnce worldFreezer state (fun _ -> true) renderState processWorld vdom ActivationResolver.none
+
+            // "Line2" and "Line3" should be cleared, only "OnlyThis" remains
+            expect {
+                snapshot
+                    @"
+OnlyThis            |
+                    |
+                    |
+                    |
+                    |
 "
 
                 return ConsoleHarness.toString terminal

@@ -90,8 +90,8 @@ module TestButton =
                 snapshot
                     @"
 Hello, World!                           |
-                                        |
             [  Flip Text  ]             |
+                                        |
 "
 
                 return ConsoleHarness.toString terminal
@@ -105,8 +105,8 @@ Hello, World!                           |
                 snapshot
                     @"
 Hello, World!                           |
-                                        |
             [[ Flip Text ]]             |
+                                        |
 "
 
                 return ConsoleHarness.toString terminal
@@ -120,8 +120,8 @@ Hello, World!                           |
                 snapshot
                     @"
 Goodbye, World!                         |
-                                        |
             [* Flip Text *]             |
+                                        |
 "
 
                 return ConsoleHarness.toString terminal
@@ -135,8 +135,8 @@ Goodbye, World!                         |
                 snapshot
                     @"
 Hello, World!                           |
-                                        |
             [* Flip Text *]             |
+                                        |
 "
 
                 return ConsoleHarness.toString terminal
@@ -239,8 +239,8 @@ Hello, World!                           |
                 snapshot
                     @"
 Last clicked: None                                |
-                                                  |
  [[ Button 1 ]]  [  Button 2  ]   [  Button 3  ]  |
+                                                  |
 "
 
                 return ConsoleHarness.toString terminal
@@ -254,8 +254,8 @@ Last clicked: None                                |
                 snapshot
                     @"
 Last clicked: Button 1                            |
-                                                  |
  [* Button 1 *]  [  Button 2  ]   [  Button 3  ]  |
+                                                  |
 "
 
                 return ConsoleHarness.toString terminal
@@ -269,8 +269,8 @@ Last clicked: Button 1                            |
                 snapshot
                     @"
 Last clicked: Button 1                            |
-                                                  |
   * Button 1 *   [[ Button 2 ]]   [  Button 3  ]  |
+                                                  |
 "
 
                 return ConsoleHarness.toString terminal
@@ -284,8 +284,8 @@ Last clicked: Button 1                            |
                 snapshot
                     @"
 Last clicked: Button 2                            |
-                                                  |
   * Button 1 *   [* Button 2 *]   [  Button 3  ]  |
+                                                  |
 "
 
                 return ConsoleHarness.toString terminal
@@ -299,8 +299,8 @@ Last clicked: Button 2                            |
                 snapshot
                     @"
 Last clicked: Button 2                            |
-                                                  |
   * Button 1 *    * Button 2 *    [[ Button 3 ]]  |
+                                                  |
 "
 
                 return ConsoleHarness.toString terminal
@@ -314,8 +314,8 @@ Last clicked: Button 2                            |
                 snapshot
                     @"
 Last clicked: Button 3                            |
-                                                  |
   * Button 1 *    * Button 2 *    [* Button 3 *]  |
+                                                  |
 "
 
                 return ConsoleHarness.toString terminal
@@ -329,8 +329,8 @@ Last clicked: Button 3                            |
                 snapshot
                     @"
 Last clicked: Button 3                            |
-                                                  |
  [* Button 1 *]   * Button 2 *     * Button 3 *   |
+                                                  |
 "
 
                 return ConsoleHarness.toString terminal
@@ -393,8 +393,8 @@ Last clicked: Button 3                            |
                 snapshot
                     @"
 Hello, World!                           |
-                                        |
             [[ Flip Text ]]             |
+                                        |
 "
 
                 return ConsoleHarness.toString terminal
@@ -408,8 +408,8 @@ Hello, World!                           |
                 snapshot
                     @"
 Goodbye, World!                         |
-                                        |
             [* Flip Text *]             |
+                                        |
 "
 
                 return ConsoleHarness.toString terminal
@@ -426,8 +426,8 @@ Goodbye, World!                         |
                 snapshot
                     @"
 Goodbye, World!                         |
-                                        |
             [* Flip Text *]             |
+                                        |
 "
 
                 return ConsoleHarness.toString terminal
@@ -440,8 +440,8 @@ Goodbye, World!                         |
                 snapshot
                     @"
 Goodbye, World!                         |
-                                        |
             [[ Flip Text ]]             |
+                                        |
 "
 
                 return ConsoleHarness.toString terminal

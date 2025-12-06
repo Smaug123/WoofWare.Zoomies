@@ -1074,7 +1074,15 @@ module internal Layout =
 
                             let remainder = bounds.Height - (minH1 + minH2)
                             let h1 = minH1 + int (float remainder * p)
-                            (h1, bounds.Height - h1)
+
+                            let h2 = bounds.Height - h1
+
+                            let h2 =
+                                match maxH2 with
+                                | Some m -> min h2 m
+                                | None -> h2
+
+                            (h1, h2)
                         else
                             // Have excess beyond maxes - distribute according to weights
                             let resolvedWeight1 =
@@ -1102,7 +1110,14 @@ module internal Layout =
                                     | Some m -> min h1 m
                                     | None -> h1
 
-                                (h1, bounds.Height - h1)
+                                let h2 = bounds.Height - h1
+
+                                let h2 =
+                                    match maxH2 with
+                                    | Some m -> min h2 m
+                                    | None -> h2
+
+                                (h1, h2)
 
             let bounds1 =
                 {
