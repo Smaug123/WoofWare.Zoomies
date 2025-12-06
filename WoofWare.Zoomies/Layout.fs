@@ -944,6 +944,8 @@ module internal Layout =
                 | SplitBehaviour.AutoWeighted (weight1, weight2) ->
                     let totalPref = m1.PreferredWidth + m2.PreferredWidth
                     let minSum = m1.MinWidth + m2.MinWidth
+                    let maxW1 = m1.MaxWidth
+                    let maxW2 = m2.MaxWidth
 
                     if bounds.Width < minSum then
                         // Can't satisfy minimums - scale proportionally by minimum requirements
@@ -960,29 +962,97 @@ module internal Layout =
                         // Satisfy minimums, distribute remainder by ratio
                         let remainder = bounds.Width - minSum
                         let w1 = m1.MinWidth + int (float remainder * p)
-                        (w1, bounds.Width - w1)
+                        // Clamp w1 to max width constraint
+                        let w1 =
+                            match maxW1 with
+                            | Some m -> min w1 m
+                            | None -> w1
+                        // Calculate w2 after clamping w1 so it can absorb saved space
+                        let w2 = bounds.Width - w1
+                        // Clamp w2 to max width constraint
+                        let w2 =
+                            match maxW2 with
+                            | Some m -> min w2 m
+                            | None -> w2
+
+                        (w1, w2)
                     else // bounds.Width > totalPref
                         // More than preferences - distribute excess according to weights
-                        let resolvedWeight1 =
-                            match weight1 with
-                            | ExpansionWeight.FromContent -> float m1.PreferredWidth
-                            | ExpansionWeight.Fixed w -> w
+                        // BUT respect max width constraints
 
-                        let resolvedWeight2 =
-                            match weight2 with
-                            | ExpansionWeight.FromContent -> float m2.PreferredWidth
-                            | ExpansionWeight.Fixed w -> w
+                        // Clamp preferences to maxes
+                        let effectivePrefW1 =
+                            match maxW1 with
+                            | Some m -> min m1.PreferredWidth m
+                            | None -> m1.PreferredWidth
 
-                        let totalWeight = resolvedWeight1 + resolvedWeight2
+                        let effectivePrefW2 =
+                            match maxW2 with
+                            | Some m -> min m2.PreferredWidth m
+                            | None -> m2.PreferredWidth
 
-                        if totalWeight = 0.0 then
-                            // Neither component wants excess - each gets preferred
-                            (m1.PreferredWidth, m2.PreferredWidth)
+                        let effectiveTotalPref = effectivePrefW1 + effectivePrefW2
+
+                        if bounds.Width <= effectiveTotalPref then
+                            // Even after clamping to maxes, we're at or below total
+                            // Distribute as normal
+                            let p =
+                                if effectiveTotalPref = 0 then
+                                    0.5
+                                else
+                                    float effectivePrefW1 / float effectiveTotalPref
+
+                            let remainder = bounds.Width - (m1.MinWidth + m2.MinWidth)
+                            let w1 = m1.MinWidth + int (float remainder * p)
+                            // Clamp w1 to max width constraint
+                            let w1 =
+                                match maxW1 with
+                                | Some m -> min w1 m
+                                | None -> w1
+                            // Calculate w2 after clamping w1 so it can absorb saved space
+                            let w2 = bounds.Width - w1
+                            // Clamp w2 to max width constraint
+                            let w2 =
+                                match maxW2 with
+                                | Some m -> min w2 m
+                                | None -> w2
+
+                            (w1, w2)
                         else
-                            let extraSpace = bounds.Width - totalPref
-                            let extraFor1 = int (float extraSpace * (resolvedWeight1 / totalWeight))
-                            let w1 = m1.PreferredWidth + extraFor1
-                            (w1, bounds.Width - w1)
+                            // Have excess beyond maxes - distribute according to weights
+                            let resolvedWeight1 =
+                                match weight1 with
+                                | ExpansionWeight.FromContent -> float effectivePrefW1
+                                | ExpansionWeight.Fixed w -> w
+
+                            let resolvedWeight2 =
+                                match weight2 with
+                                | ExpansionWeight.FromContent -> float effectivePrefW2
+                                | ExpansionWeight.Fixed w -> w
+
+                            let totalWeight = resolvedWeight1 + resolvedWeight2
+
+                            if totalWeight = 0.0 then
+                                // Neither component wants excess - each gets effective preferred
+                                (effectivePrefW1, effectivePrefW2)
+                            else
+                                let extraSpace = bounds.Width - effectiveTotalPref
+                                let extraFor1 = int (float extraSpace * (resolvedWeight1 / totalWeight))
+                                let w1 = effectivePrefW1 + extraFor1
+                                // Clamp w1 to max if it exists (shouldn't exceed it, but just to be safe)
+                                let w1 =
+                                    match maxW1 with
+                                    | Some m -> min w1 m
+                                    | None -> w1
+
+                                let w2 = bounds.Width - w1
+
+                                let w2 =
+                                    match maxW2 with
+                                    | Some m -> min w2 m
+                                    | None -> w2
+
+                                (w1, w2)
 
             let bounds1 =
                 {

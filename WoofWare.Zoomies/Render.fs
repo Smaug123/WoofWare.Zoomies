@@ -709,9 +709,9 @@ module Render =
                     let weightStr w =
                         match w with
                         | ExpansionWeight.FromContent -> "FromContent"
-                        | ExpansionWeight.Fixed f -> $"Fixed({f})"
+                        | ExpansionWeight.Fixed f -> $"Fixed ({f})"
 
-                    $"AutoWeighted({weightStr w1}, {weightStr w2})"
+                    $"AutoWeighted ({weightStr w1}, {weightStr w2})"
 
             fprintf writer $"PanelSplit(%s{dirStr}, %s{behavStr})"
         | Vdom.Unkeyed (UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, _)) ->

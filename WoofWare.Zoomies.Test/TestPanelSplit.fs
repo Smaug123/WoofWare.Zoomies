@@ -1386,6 +1386,118 @@ OnlyThis            |
         }
 
     [<Test>]
+    let ``vertical AutoWeighted clamps width to MaxWidth like horizontal clamps height`` () =
+        task {
+            // Regression test for: vertical AutoWeighted does not clamp widths to MaxWidth
+            // but horizontal AutoWeighted does clamp heights to MaxHeight.
+            // This test verifies that both dimensions are handled symmetrically.
+            //
+            // Setup:
+            // - First child: minW=10, prefW=30, maxW=12
+            // - Second child: minW=1, prefW=10, maxW=None
+            // - Container width = 20
+            //
+            // Measurement phase clamps first child's PreferredWidth to MaxWidth:
+            // - m1.PreferredWidth = min(30, 12) = 12
+            // - m2.PreferredWidth = 10
+            // - totalPref = 22, minSum = 11
+            //
+            // bounds.Width=20 is in the "between" branch (11 <= 20 <= 22).
+            // Without the fix:
+            // - p = 12/22 = 0.545
+            // - remainder = 20 - 11 = 9
+            // - w1 = 10 + int(9 * 0.545) = 14 (EXCEEDS maxW=12!)
+            //
+            // With the fix, w1 should be clamped to min(14, 12) = 12.
+            let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : VdomContext) (_ : FakeUnit) =
+                // Create first child with maxWidth=12 using FlexibleContent
+                // The proportional calculation will give it 14 columns, which exceeds maxWidth
+                let leftMeasure (_ : MeasureConstraints) =
+                    {
+                        MinWidth = 10
+                        PreferredWidth = 30
+                        MaxWidth = Some 12
+                        MinHeightForWidth = fun _ -> 1
+                        PreferredHeightForWidth = fun _ -> 1
+                        MaxHeightForWidth = fun _ -> None
+                    }
+
+                let leftRender (bounds : Rectangle) =
+                    // Render "L" repeated to show how many columns we got
+                    Vdom.textContent (String.replicate bounds.Width "L")
+
+                let left = Vdom.flexibleContent leftMeasure leftRender
+
+                // Second child has lower prefWidth
+                let rightMeasure (_ : MeasureConstraints) =
+                    {
+                        MinWidth = 1
+                        PreferredWidth = 10
+                        MaxWidth = None
+                        MinHeightForWidth = fun _ -> 1
+                        PreferredHeightForWidth = fun _ -> 1
+                        MaxHeightForWidth = fun _ -> None
+                    }
+
+                let rightRender (bounds : Rectangle) =
+                    Vdom.textContent (String.replicate bounds.Width "R")
+
+                let right = Vdom.flexibleContent rightMeasure rightRender
+
+                // Use vertical AutoWeighted with default weights
+                Vdom.panelSplit (
+                    SplitDirection.Vertical,
+                    SplitBehaviour.AutoWeighted (ExpansionWeight.FromContent, ExpansionWeight.FromContent),
+                    left,
+                    right
+                )
+                |> Vdom.Unkeyed
+
+            let processWorld =
+                { new WorldProcessor<unit, FakeUnit> with
+                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                (FakeUnit.fake ())
+                (fun _ -> true)
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+            |> ignore<FakeUnit>
+
+            // First child should be clamped to 12 columns (its maxWidth)
+            // So we should see LLLLLLLLLLLL (12 L's) followed by RRRRRRRR (8 R's)
+            expect {
+                snapshot
+                    @"
+LLLLLLLLLLLLRRRRRRRR|
+                    |
+                    |
+                    |
+                    |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
     let ``horizontal AutoWeighted clamps first child height to its max`` () =
         task {
             // Regression test for: first child's height was not clamped to maxHeight

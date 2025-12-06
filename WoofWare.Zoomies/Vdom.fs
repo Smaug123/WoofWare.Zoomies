@@ -289,7 +289,8 @@ type Vdom =
     /// <summary>Creates a split panel where components share space based on their content preferences.</summary>
     /// <remarks>
     /// Space is divided proportionally to each component's preferred width (for vertical splits) or height (for horizontal splits).
-    /// Both excess space and insufficient space are distributed proportionally to content preferences.
+    /// Excess space is distributed proportionally to content preferences.
+    /// Insufficient space (when total available is below the sum of minimums) is distributed proportionally to minimum requirements.
     /// </remarks>
     /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
     /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
@@ -307,7 +308,8 @@ type Vdom =
     /// <summary>Creates a split panel where components share space based on their content preferences.</summary>
     /// <remarks>
     /// Space is divided proportionally to each component's preferred width (for vertical splits) or height (for horizontal splits).
-    /// Both excess space and insufficient space are distributed proportionally to content preferences.
+    /// Excess space is distributed proportionally to content preferences.
+    /// Insufficient space (when total available is below the sum of minimums) is distributed proportionally to minimum requirements.
     /// </remarks>
     /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
     /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
@@ -319,7 +321,8 @@ type Vdom =
     /// <summary>Creates a split panel where components share space based on their content preferences.</summary>
     /// <remarks>
     /// Space is divided proportionally to each component's preferred width (for vertical splits) or height (for horizontal splits).
-    /// Both excess space and insufficient space are distributed proportionally to content preferences.
+    /// Excess space is distributed proportionally to content preferences.
+    /// Insufficient space (when total available is below the sum of minimums) is distributed proportionally to minimum requirements.
     /// </remarks>
     /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
     /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
@@ -331,7 +334,8 @@ type Vdom =
     /// <summary>Creates a split panel where components share space based on their content preferences.</summary>
     /// <remarks>
     /// Space is divided proportionally to each component's preferred width (for vertical splits) or height (for horizontal splits).
-    /// Both excess space and insufficient space are distributed proportionally to content preferences.
+    /// Excess space is distributed proportionally to content preferences.
+    /// Insufficient space (when total available is below the sum of minimums) is distributed proportionally to minimum requirements.
     /// </remarks>
     /// <param name="d">Determines whether components are arranged left/right (<c>Vertical</c>, first component is left)
     /// or top/bottom (<c>Horizontal</c>, first component is top).</param>
