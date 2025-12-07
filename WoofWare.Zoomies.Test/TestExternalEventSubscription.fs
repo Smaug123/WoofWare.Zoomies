@@ -47,6 +47,16 @@ module TestExternalEventSubscription =
             member _.Dispose () =
                 disposed.TrySetResult () |> ignore<bool>
 
+    /// Wrapper that tracks whether Dispose was called on the underlying IDisposable.
+    type TrackingDisposable (inner : IDisposable) =
+        let mutable wasDisposed = false
+        member _.WasDisposed = wasDisposed
+
+        interface IDisposable with
+            member _.Dispose () =
+                wasDisposed <- true
+                inner.Dispose ()
+
 
     [<Test>]
     let ``Timer example`` () =
@@ -54,6 +64,8 @@ module TestExternalEventSubscription =
             /// So that the test harness can control the passage of time, we maintain a way to exfiltrate timers from the
             /// WorldProcessor.
             let mutable globalTimer = None
+            /// To verify that the subscription itself (not just the timer) is disposed
+            let mutable globalSubscription : TrackingDisposable option = None
 
             let processWorld (world : IWorldBridge<TimerAppEvent>) =
                 { new WorldProcessor<TimerAppEvent, TimerState> with
@@ -71,10 +83,12 @@ module TestExternalEventSubscription =
                                 | Some _ -> failwith "only should have got one StartTimer"
 
                                 let subscription = world.SubscribeEvent timer.Elapsed (fun _ -> TimerTick)
+                                let trackedSubscription = new TrackingDisposable (subscription)
+                                globalSubscription <- Some trackedSubscription
 
                                 newState <-
                                     { newState with
-                                        TimerSubscription = Some subscription
+                                        TimerSubscription = Some (trackedSubscription :> IDisposable)
                                     }
 
                             | WorldStateChange.ApplicationEvent StopTimer ->
@@ -255,6 +269,8 @@ module TestExternalEventSubscription =
             match globalTimer with
             | Some timer ->
                 timer.Disposal.IsCompleted |> shouldEqual false
+                // Subscription should not be disposed yet
+                globalSubscription.Value.WasDisposed |> shouldEqual false
 
                 state <-
                     App.pumpOnce
@@ -272,7 +288,10 @@ module TestExternalEventSubscription =
                 // Verify the subscription is torn down in state
                 state.TimerSubscription |> shouldEqual None
 
-                // Verify that triggering after disposal throws, proving the subscription is truly gone
+                // Verify the subscription itself (not just the timer) was disposed
+                globalSubscription.Value.WasDisposed |> shouldEqual true
+
+                // Verify that triggering after disposal throws, proving the timer is truly gone
                 Assert.Throws<ObjectDisposedException> (fun () -> timer.Trigger ())
                 |> ignore<ObjectDisposedException>
 
