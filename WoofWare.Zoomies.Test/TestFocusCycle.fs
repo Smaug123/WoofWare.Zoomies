@@ -39,7 +39,7 @@ module TestFocusCycle =
                     Seq.zip this.Checkboxes other.Checkboxes |> Seq.forall (fun (x, y) -> x = y)
             | _ -> failwith "bad"
 
-    let vdom (vdomContext : VdomContext) (state : State) =
+    let vdom (vdomContext : IVdomContext<_>) (state : State) =
         List.init
             4
             (fun i ->
@@ -78,7 +78,7 @@ module TestFocusCycle =
                             match s with
                             | WorldStateChange.Keystroke c ->
                                 if c.KeyChar = ' ' then
-                                    match VdomContext.focusedKey renderState with
+                                    match renderState.FocusedKey with
                                     | None ->
                                         // pressed space while nothing focused
                                         ()
@@ -106,7 +106,7 @@ module TestFocusCycle =
                             }
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
             let mutable currentState = state
 
             currentState <-
@@ -382,7 +382,7 @@ module TestFocusCycle =
                             match s with
                             | WorldStateChange.Keystroke c ->
                                 if c.KeyChar = ' ' then
-                                    match VdomContext.focusedKey renderState with
+                                    match renderState.FocusedKey with
                                     | None -> ()
                                     | Some focused ->
                                         // a hack just to make the test smaller; in real life you should more explicitly
@@ -408,7 +408,7 @@ module TestFocusCycle =
                             }
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
             let mutable currentState = state
 
             currentState <-
@@ -587,7 +587,7 @@ module TestFocusCycle =
             // State tracks which element to render at a given key
             let haveFrameworkHandleFocus _ = true
 
-            let vdom (vdomContext : VdomContext) (renderCheckbox1 : bool) =
+            let vdom (vdomContext : IVdomContext<_>) (renderCheckbox1 : bool) =
                 let sharedKey = NodeKey.make "shared-key"
                 let unsharedKey = NodeKey.make "unshared-key"
 
@@ -624,7 +624,7 @@ module TestFocusCycle =
                         ProcessWorldResult.make renderCheckbox1
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
             let mutable renderCheckbox1 = true
 
             renderCheckbox1 <-
@@ -702,8 +702,8 @@ module TestFocusCycle =
 
             let world = MockWorld.make ()
 
-            let vdom (vdomContext : VdomContext) (tick : int) =
-                let currentFocus = VdomContext.focusedKey vdomContext
+            let vdom (vdomContext : IVdomContext<_>) (tick : int) =
+                let currentFocus = vdomContext.FocusedKey
                 let sharedKey = NodeKey.make "shared-key"
 
                 match tick with
@@ -751,7 +751,7 @@ module TestFocusCycle =
                 }
 
             let mutable renderFocusable = 0
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             renderFocusable <-
                 App.pumpOnce
@@ -862,8 +862,8 @@ more      [☐]   |
             let textKey = NodeKey.make "focusable-text"
             let checkboxKey = NodeKey.make "checkbox"
 
-            let vdom (vdomContext : VdomContext) (_ : FakeUnit) =
-                let currentFocus = VdomContext.focusedKey vdomContext
+            let vdom (vdomContext : IVdomContext<_>) (_ : FakeUnit) =
+                let currentFocus = vdomContext.FocusedKey
 
                 let text =
                     Vdom.textContent ("This is focusable text", isFocused = (currentFocus = Some textKey))
@@ -888,7 +888,7 @@ more      [☐]   |
                         ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -1036,7 +1036,7 @@ This is focusable text                                                          
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (vdomContext : VdomContext) (_ : FakeUnit) =
+            let vdom (vdomContext : IVdomContext<_>) (_ : FakeUnit) =
                 let checkbox1Key = NodeKey.make "checkbox1"
                 let checkbox2Key = NodeKey.make "checkbox2"
                 let checkbox3Key = NodeKey.make "checkbox3"
@@ -1069,7 +1069,7 @@ This is focusable text                                                          
                         ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -1208,7 +1208,7 @@ This is focusable text                                                          
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (vdomContext : VdomContext) (_ : FakeUnit) =
+            let vdom (vdomContext : IVdomContext<_>) (_ : FakeUnit) =
                 let checkbox1Key = NodeKey.make "checkbox1"
                 let checkbox2Key = NodeKey.make "checkbox2"
                 let checkbox3Key = NodeKey.make "checkbox3"
@@ -1241,7 +1241,7 @@ This is focusable text                                                          
                         ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             // First render: checkbox2 should start with focus (marked with isInitiallyFocused=true)
             App.pumpOnce

@@ -22,13 +22,13 @@ module TestCheckbox =
                     WindowHeight = fun _ -> 5
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             let checkboxKey = NodeKey.make "checkbox"
 
             // Create a vdom where the checkbox has focus and is allocated bounds with Height=0
             // We use an absolute split to force the checkbox into a zero-height allocation
-            let vdom (vdomContext : VdomContext) (_ : FakeUnit) =
+            let vdom (vdomContext : IVdomContext<_>) (_ : FakeUnit) =
                 let topContent = Vdom.textContent "top"
 
                 let checkbox = Components.Checkbox.make (vdomContext, checkboxKey, false)

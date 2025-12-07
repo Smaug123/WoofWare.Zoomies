@@ -103,7 +103,7 @@ module TestExternalEventSubscription =
                         ProcessWorldResult.make newState
                 }
 
-            let vdom (_ : VdomContext) (state : TimerState) = Vdom.textContent $"%i{state.Counter}"
+            let vdom (_ : IVdomContext<_>) (state : TimerState) = Vdom.textContent $"%i{state.Counter}"
 
             let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 1)
             let renderState = RenderState.make console MockTime.getStaticUtcNow None

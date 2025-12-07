@@ -75,9 +75,9 @@ module TestBatchProcessing =
                             |> ProcessWorldResult.withRerender (toProcess - 1)
                 }
 
-            let vdom (_vdomContext : VdomContext) (_state : ImmutableArray<char>) = Vdom.textContent ""
+            let vdom (_vdomContext : IVdomContext<_>) (_state : ImmutableArray<char>) = Vdom.textContent ""
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<obj> console MockTime.getStaticUtcNow None
             let mutable currentState = initialState
 
             // Keep pumping until all events are processed
@@ -224,7 +224,7 @@ module TestBatchProcessing =
                     member _.ProcessWorld (inputs, vdomContext, state) =
                         let mutable newState =
                             { state with
-                                LastFocusedKey = VdomContext.focusedKey vdomContext
+                                LastFocusedKey = vdomContext.FocusedKey
                             }
 
                         let mutable shouldRerender = false
@@ -263,7 +263,7 @@ module TestBatchProcessing =
 
             let mutable vdomRenderCount = 0
 
-            let vdom (vdomContext : VdomContext) (_state : ModeSwitchingState) =
+            let vdom (vdomContext : IVdomContext<_>) (_state : ModeSwitchingState) =
                 vdomRenderCount <- vdomRenderCount + 1
 
                 let checkbox0 =
@@ -274,7 +274,7 @@ module TestBatchProcessing =
 
                 Vdom.panelSplitAbsolute (SplitDirection.Vertical, -3, checkbox0, checkbox1)
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<obj> console MockTime.getStaticUtcNow None
             let mutable currentState = initialState
 
             // Initial render
@@ -474,11 +474,11 @@ module TestBatchProcessing =
                                 ProcessWorldResult.make newState
                     }
 
-                let vdom (_vdomContext : VdomContext) (_state : char list) =
+                let vdom (_vdomContext : IVdomContext<_>) (_state : char list) =
                     vdomRenderCount <- vdomRenderCount + 1
                     Vdom.textContent ""
 
-                let renderState = RenderState.make console MockTime.getStaticUtcNow None
+                let renderState = RenderState.make<obj> console MockTime.getStaticUtcNow None
                 let mutable currentState = []
 
                 // Initial render

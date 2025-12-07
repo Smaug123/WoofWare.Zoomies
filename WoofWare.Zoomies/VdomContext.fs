@@ -5,14 +5,16 @@ open System.Collections.Generic
 
 /// Context provided to vdom construction, containing information about the layout of the previous render cycle.
 /// This is mutable (although you aren't given the tools to mutate it), so don't persist it.
-type VdomContext =
-    private
+type VdomContext<'appEvent> =
+    internal
         {
             mutable _FocusedKey : NodeKey option
             mutable _TerminalBounds : Rectangle
-            mutable IsDirty : bool
+            mutable _IsDirty : bool
             _LastActivationTimes : Dictionary<NodeKey, DateTime>
             _GetUtcNow : unit -> DateTime
+            /// Events posted by components during rendering, to be processed after layout is complete.
+            _PostLayoutEvents : ResizeArray<'appEvent>
         }
 
 [<RequireQualifiedAccess>]
@@ -22,60 +24,62 @@ module VdomContext =
     [<Literal>]
     let RECENT_ACTIVATION_TIMEOUT_MS = 500.0
 
-    let internal empty (getUtcNow : unit -> DateTime) (terminalBounds : Rectangle) =
+    let internal empty<'appEvent> (getUtcNow : unit -> DateTime) (terminalBounds : Rectangle) : VdomContext<'appEvent> =
         {
             _TerminalBounds = terminalBounds
             _FocusedKey = None
-            IsDirty = true
+            _IsDirty = true
             _LastActivationTimes = Dictionary<NodeKey, DateTime> ()
             _GetUtcNow = getUtcNow
+            _PostLayoutEvents = ResizeArray ()
         }
 
-    let internal setFocusedKey (key : NodeKey option) (v : VdomContext) =
+    let internal setFocusedKey<'appEvent> (key : NodeKey option) (v : VdomContext<'appEvent>) =
         if v._FocusedKey <> key then
-            v.IsDirty <- true
+            v._IsDirty <- true
             v._FocusedKey <- key
 
-    let internal setTerminalBounds (tb : Rectangle) (v : VdomContext) =
+    let internal setTerminalBounds<'appEvent> (tb : Rectangle) (v : VdomContext<'appEvent>) =
         if v._TerminalBounds <> tb then
-            v.IsDirty <- true
+            v._IsDirty <- true
             v._TerminalBounds <- tb
 
-    let internal markClean (v : VdomContext) = v.IsDirty <- false
+    let internal markClean<'appEvent> (v : VdomContext<'appEvent>) = v._IsDirty <- false
 
-    let internal markDirty (v : VdomContext) = v.IsDirty <- true
+    let internal markDirty<'appEvent> (v : VdomContext<'appEvent>) = v._IsDirty <- true
 
-    let internal isDirty (v : VdomContext) = v.IsDirty
+    let internal isDirty<'appEvent> (v : VdomContext<'appEvent>) = v._IsDirty
 
     /// Get the dimensions of the terminal (on the previous render).
-    let terminalBounds (v : VdomContext) : Rectangle = v._TerminalBounds
+    let terminalBounds<'appEvent> (v : VdomContext<'appEvent>) : Rectangle = v._TerminalBounds
+
     /// Get the NodeKey of the Vdom element, if any, which was focused in the last render.
     /// If you're not using the automatic focus handling mechanism, this is always None.
-    let focusedKey (v : VdomContext) : NodeKey option = v._FocusedKey
+    let focusedKey<'appEvent> (v : VdomContext<'appEvent>) : NodeKey option = v._FocusedKey
 
     /// Note that this time does *not* participate in dirtiness tracking. Hopefully we get Bonsai eventually so we can
     /// do that.
-    let getUtcNow (ctx : VdomContext) = ctx._GetUtcNow ()
+    let getUtcNow<'appEvent> (ctx : VdomContext<'appEvent>) = ctx._GetUtcNow ()
 
     /// Returns true if the node with the given key was activated within the
     /// visual feedback window (approximately 500ms).
-    let wasRecentlyActivated (key : NodeKey) (ctx : VdomContext) : bool =
+    let wasRecentlyActivated<'appEvent> (key : NodeKey) (ctx : VdomContext<'appEvent>) : bool =
         match ctx._LastActivationTimes.TryGetValue key with
         | true, time -> (getUtcNow ctx - time).TotalMilliseconds < RECENT_ACTIVATION_TIMEOUT_MS
         | false, _ -> false
 
     /// Record that a node was just activated.
-    let internal recordActivation (key : NodeKey) (ctx : VdomContext) : unit =
+    let internal recordActivation<'appEvent> (key : NodeKey) (ctx : VdomContext<'appEvent>) : unit =
         ctx._LastActivationTimes.[key] <- getUtcNow ctx
-        ctx.IsDirty <- true
+        ctx._IsDirty <- true
 
     /// Clear activation state for a key.
-    let internal clearActivation (key : NodeKey) (ctx : VdomContext) : unit =
+    let internal clearActivation<'appEvent> (key : NodeKey) (ctx : VdomContext<'appEvent>) : unit =
         if ctx._LastActivationTimes.Remove key then
-            ctx.IsDirty <- true
+            ctx._IsDirty <- true
 
     /// Remove any activation records that have expired, marking the context dirty if anything changes.
-    let internal pruneExpiredActivations (ctx : VdomContext) : unit =
+    let internal pruneExpiredActivations<'appEvent> (ctx : VdomContext<'appEvent>) : unit =
         let now = getUtcNow ctx
 
         // The docs are very explicit.
@@ -92,4 +96,46 @@ module VdomContext =
                 removed <- true
 
         if removed then
-            ctx.IsDirty <- true
+            ctx._IsDirty <- true
+
+    /// Drain all post-layout events, returning them and clearing the internal list.
+    /// Returns an empty array if no events were posted.
+    let internal drainPostLayoutEvents<'appEvent> (ctx : VdomContext<'appEvent>) : 'appEvent[] =
+        if ctx._PostLayoutEvents.Count = 0 then
+            Array.empty
+        else
+            let events = ctx._PostLayoutEvents.ToArray ()
+            ctx._PostLayoutEvents.Clear ()
+            events
+
+    /// Create a typed IVdomContext<'appEvent> wrapper around this VdomContext.
+    /// This allows components to post type-safe layout events.
+    let asTyped<'appEvent> (ctx : VdomContext<'appEvent>) : IVdomContext<'appEvent> =
+        { new IVdomContext<'appEvent> with
+            member _.TerminalBounds = ctx._TerminalBounds
+            member _.FocusedKey = ctx._FocusedKey
+            member _.GetUtcNow () = ctx._GetUtcNow ()
+
+            member _.WasRecentlyActivated key =
+                match ctx._LastActivationTimes.TryGetValue key with
+                | true, time -> (ctx._GetUtcNow () - time).TotalMilliseconds < RECENT_ACTIVATION_TIMEOUT_MS
+                | false, _ -> false
+
+            member _.PostLayoutEvent event =
+                ctx._PostLayoutEvents.Add event
+                ctx._IsDirty <- true
+        }
+
+    /// Create a base IVdomContext wrapper around this VdomContext.
+    /// This is for passing to ProcessWorld where components don't need to post events.
+    let asBase<'appEvent> (ctx : VdomContext<'appEvent>) : IVdomContext =
+        { new IVdomContext with
+            member _.TerminalBounds = ctx._TerminalBounds
+            member _.FocusedKey = ctx._FocusedKey
+            member _.GetUtcNow () = ctx._GetUtcNow ()
+
+            member _.WasRecentlyActivated key =
+                match ctx._LastActivationTimes.TryGetValue key with
+                | true, time -> (ctx._GetUtcNow () - time).TotalMilliseconds < RECENT_ACTIVATION_TIMEOUT_MS
+                | false, _ -> false
+        }
