@@ -713,6 +713,184 @@ module TestScrollBar =
             }
         }
 
+    [<Test>]
+    let ``horizontal scroll bar constrained width at start`` () =
+        task {
+            // Scroll bar requests track length 10, but only gets width 8
+            // 10 items, viewport 2, offset 0
+            // Expected: thumb adapts to actual width 8, positioned at start
+            // Thumb size = max(1, int((2/10) * 8)) = max(1, 1) = 1 char
+            // At offset 0: thumb at position 0
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+                ScrollBar.make
+                    ScrollBarOrientation.Horizontal
+                    {
+                        TotalItems = 10
+                        ViewportSize = 2
+                        Offset = 0
+                        TrackLength = 10
+                    }
+
+            // Console is only 8 wide, scroll bar should adapt
+            let console, terminal = ConsoleHarness.make' (fun () -> 8) (fun () -> 2)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = false
+
+            let processWorld =
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
+
+            expect {
+                snapshot
+                    @"
+█░░░░░░░|
+        |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``horizontal scroll bar constrained width at end`` () =
+        task {
+            // Scroll bar requests track length 10, but only gets width 8
+            // 10 items, viewport 2, offset 8 (max)
+            // Expected: thumb adapts to actual width 8, positioned at end
+            // Thumb size = 1, at max offset thumb should be at position 7
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+                ScrollBar.make
+                    ScrollBarOrientation.Horizontal
+                    {
+                        TotalItems = 10
+                        ViewportSize = 2
+                        Offset = 8
+                        TrackLength = 10
+                    }
+
+            // Console is only 8 wide, scroll bar should adapt
+            let console, terminal = ConsoleHarness.make' (fun () -> 8) (fun () -> 2)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = false
+
+            let processWorld =
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
+
+            expect {
+                snapshot
+                    @"
+░░░░░░░█|
+        |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``horizontal scroll bar constrained width at middle`` () =
+        task {
+            // Scroll bar requests track length 10, but only gets width 8
+            // 10 items, viewport 2, offset 4 (middle)
+            // Expected: thumb adapts to actual width 8, positioned in middle
+            // Thumb size = 1, thumbStart = (4/8) * (8-1) = 3.5 -> 3, thumb at position 3
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+                ScrollBar.make
+                    ScrollBarOrientation.Horizontal
+                    {
+                        TotalItems = 10
+                        ViewportSize = 2
+                        Offset = 4
+                        TrackLength = 10
+                    }
+
+            // Console is only 8 wide, scroll bar should adapt
+            let console, terminal = ConsoleHarness.make' (fun () -> 8) (fun () -> 2)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = false
+
+            let processWorld =
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
+
+            expect {
+                snapshot
+                    @"
+░░░█░░░░|
+        |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
     /// Render a horizontal scroll bar to a string (just the scroll bar characters, no trailing spaces)
     let private renderHorizontalScrollBar (scrollParams : ScrollBarParams) : string =
         let width = scrollParams.TrackLength
