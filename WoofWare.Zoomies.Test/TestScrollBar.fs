@@ -1,6 +1,8 @@
 namespace WoofWare.Zoomies.Test
 
 open NUnit.Framework
+open FsCheck
+open FsUnitTyped
 open WoofWare.Expect
 open WoofWare.Zoomies
 open WoofWare.Zoomies.Components
@@ -710,3 +712,253 @@ module TestScrollBar =
                 return ConsoleHarness.toString terminal
             }
         }
+
+    /// Render a horizontal scroll bar to a string (just the scroll bar characters, no trailing spaces)
+    let private renderHorizontalScrollBar (scrollParams : ScrollBarParams) : string =
+        let width = scrollParams.TrackLength
+        let height = 1
+        let console, terminal = ConsoleHarness.make' (fun () -> width) (fun () -> height)
+        let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+        Render.oneStep renderState () (fun () -> ScrollBar.make ScrollBarOrientation.Horizontal scrollParams)
+
+        // Extract just the rendered row (without the trailing | from ConsoleHarness.toString)
+        let fullString = ConsoleHarness.toString terminal
+        // ConsoleHarness.toString returns "\n<row>|\n", so extract the row
+        let lines = fullString.Split '\n'
+        // lines[0] is empty (leading newline), lines[1] is "<chars>|"
+        lines.[1].TrimEnd '|'
+
+    /// Render a vertical scroll bar to a string array (one string per row)
+    let private renderVerticalScrollBar (scrollParams : ScrollBarParams) : string[] =
+        let width = 1
+        let height = scrollParams.TrackLength
+        let console, terminal = ConsoleHarness.make' (fun () -> width) (fun () -> height)
+        let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+        Render.oneStep renderState () (fun () -> ScrollBar.make ScrollBarOrientation.Vertical scrollParams)
+
+        // Extract the rendered column
+        let fullString = ConsoleHarness.toString terminal
+        let lines = fullString.Split '\n'
+        // lines[0] is empty, then lines[1..height] are "<char>|"
+        [| for i in 1..height -> lines.[i].TrimEnd '|' |]
+
+    [<Test>]
+    let ``property: horizontal scroll bar at offset 0 starts with thumb`` () =
+        let property (viewportSize : PositiveInt) (extraItems : PositiveInt) (trackLength : PositiveInt) =
+            // Construct valid inputs: totalItems > viewportSize to ensure scrollable content
+            let viewportSize = viewportSize.Get
+            let totalItems = viewportSize + extraItems.Get
+            let trackLength = max 1 trackLength.Get
+
+            let rendered =
+                renderHorizontalScrollBar
+                    {
+                        TotalItems = totalItems
+                        ViewportSize = viewportSize
+                        Offset = 0
+                        TrackLength = trackLength
+                    }
+
+            rendered.[0] |> shouldEqual '█'
+
+        Check.One (propConfig, property)
+
+    [<Test>]
+    let ``property: horizontal scroll bar at max offset ends with thumb`` () =
+        let property (viewportSize : PositiveInt) (extraItems : PositiveInt) (trackLength : PositiveInt) =
+            // Construct valid inputs: totalItems > viewportSize to ensure scrollable content
+            let viewportSize = viewportSize.Get
+            let totalItems = viewportSize + extraItems.Get
+            let trackLength = max 1 trackLength.Get
+            let maxOffset = totalItems - viewportSize
+
+            let rendered =
+                renderHorizontalScrollBar
+                    {
+                        TotalItems = totalItems
+                        ViewportSize = viewportSize
+                        Offset = maxOffset
+                        TrackLength = trackLength
+                    }
+
+            rendered.[rendered.Length - 1] |> shouldEqual '█'
+
+        Check.One (propConfig, property)
+
+    [<Test>]
+    let ``property: vertical scroll bar at offset 0 starts with thumb`` () =
+        let property (viewportSize : PositiveInt) (extraItems : PositiveInt) (trackLength : PositiveInt) =
+            // Construct valid inputs: totalItems > viewportSize to ensure scrollable content
+            let viewportSize = viewportSize.Get
+            let totalItems = viewportSize + extraItems.Get
+            let trackLength = max 1 trackLength.Get
+
+            let rendered =
+                renderVerticalScrollBar
+                    {
+                        TotalItems = totalItems
+                        ViewportSize = viewportSize
+                        Offset = 0
+                        TrackLength = trackLength
+                    }
+
+            rendered.[0] |> shouldEqual "█"
+
+        Check.One (propConfig, property)
+
+    [<Test>]
+    let ``property: vertical scroll bar at max offset ends with thumb`` () =
+        let property (viewportSize : PositiveInt) (extraItems : PositiveInt) (trackLength : PositiveInt) =
+            // Construct valid inputs: totalItems > viewportSize to ensure scrollable content
+            let viewportSize = viewportSize.Get
+            let totalItems = viewportSize + extraItems.Get
+            let trackLength = max 1 trackLength.Get
+            let maxOffset = totalItems - viewportSize
+
+            let rendered =
+                renderVerticalScrollBar
+                    {
+                        TotalItems = totalItems
+                        ViewportSize = viewportSize
+                        Offset = maxOffset
+                        TrackLength = trackLength
+                    }
+
+            rendered.[rendered.Length - 1] |> shouldEqual "█"
+
+        Check.One (propConfig, property)
+
+    [<Test>]
+    let ``property: horizontal scroll bar contains only thumb and track characters`` () =
+        let property
+            (viewportSize : PositiveInt)
+            (totalItems : PositiveInt)
+            (offset : NonNegativeInt)
+            (trackLength : PositiveInt)
+            =
+            let rendered =
+                renderHorizontalScrollBar
+                    {
+                        TotalItems = totalItems.Get
+                        ViewportSize = viewportSize.Get
+                        Offset = offset.Get
+                        TrackLength = trackLength.Get
+                    }
+
+            rendered |> Seq.forall (fun c -> c = '█' || c = '░') |> shouldEqual true
+
+        Check.One (propConfig, property)
+
+    [<Test>]
+    let ``property: horizontal scroll bar has exactly requested track length`` () =
+        let property
+            (viewportSize : PositiveInt)
+            (totalItems : PositiveInt)
+            (offset : NonNegativeInt)
+            (trackLength : PositiveInt)
+            =
+            let trackLength = trackLength.Get
+
+            let rendered =
+                renderHorizontalScrollBar
+                    {
+                        TotalItems = totalItems.Get
+                        ViewportSize = viewportSize.Get
+                        Offset = offset.Get
+                        TrackLength = trackLength
+                    }
+
+            rendered.Length |> shouldEqual trackLength
+
+        Check.One (propConfig, property)
+
+    [<Test>]
+    let ``property: horizontal scroll bar has at least one thumb character`` () =
+        let property
+            (viewportSize : PositiveInt)
+            (totalItems : PositiveInt)
+            (offset : NonNegativeInt)
+            (trackLength : PositiveInt)
+            =
+            let rendered =
+                renderHorizontalScrollBar
+                    {
+                        TotalItems = totalItems.Get
+                        ViewportSize = viewportSize.Get
+                        Offset = offset.Get
+                        TrackLength = trackLength.Get
+                    }
+
+            rendered |> Seq.exists (fun c -> c = '█') |> shouldEqual true
+
+        Check.One (propConfig, property)
+
+    [<Test>]
+    let ``property: when viewport >= total, entire horizontal scroll bar is thumb`` () =
+        let property (extraViewport : NonNegativeInt) (totalItems : PositiveInt) (trackLength : PositiveInt) =
+            // Construct: viewportSize >= totalItems
+            let totalItems = totalItems.Get
+            let viewportSize = totalItems + extraViewport.Get
+            let trackLength = trackLength.Get
+
+            let rendered =
+                renderHorizontalScrollBar
+                    {
+                        TotalItems = totalItems
+                        ViewportSize = viewportSize
+                        Offset = 0
+                        TrackLength = trackLength
+                    }
+
+            rendered |> Seq.forall (fun c -> c = '█') |> shouldEqual true
+
+        Check.One (propConfig, property)
+
+    [<Test>]
+    let ``property: thumb count is between 1 and track length inclusive`` () =
+        let property
+            (viewportSize : PositiveInt)
+            (totalItems : PositiveInt)
+            (offset : NonNegativeInt)
+            (trackLength : PositiveInt)
+            =
+            let trackLength = trackLength.Get
+
+            let rendered =
+                renderHorizontalScrollBar
+                    {
+                        TotalItems = totalItems.Get
+                        ViewportSize = viewportSize.Get
+                        Offset = offset.Get
+                        TrackLength = trackLength
+                    }
+
+            let thumbCount = rendered |> Seq.filter (fun c -> c = '█') |> Seq.length
+            (thumbCount >= 1 && thumbCount <= trackLength) |> shouldEqual true
+
+        Check.One (propConfig, property)
+
+    [<Test>]
+    let ``property: vertical scroll bar has exactly requested track length`` () =
+        let property
+            (viewportSize : PositiveInt)
+            (totalItems : PositiveInt)
+            (offset : NonNegativeInt)
+            (trackLength : PositiveInt)
+            =
+            let trackLength = trackLength.Get
+
+            let rendered =
+                renderVerticalScrollBar
+                    {
+                        TotalItems = totalItems.Get
+                        ViewportSize = viewportSize.Get
+                        Offset = offset.Get
+                        TrackLength = trackLength
+                    }
+
+            rendered.Length |> shouldEqual trackLength
+
+        Check.One (propConfig, property)
