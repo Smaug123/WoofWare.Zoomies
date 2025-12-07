@@ -270,7 +270,9 @@ module TestExternalEventSubscription =
             | Some timer ->
                 timer.Disposal.IsCompleted |> shouldEqual false
                 // Subscription should not be disposed yet
-                globalSubscription.Value.WasDisposed |> shouldEqual false
+                match globalSubscription with
+                | None -> failwith "should be subscribed"
+                | Some globalSubscription -> globalSubscription.WasDisposed |> shouldEqual false
 
                 state <-
                     App.pumpOnce
@@ -289,7 +291,9 @@ module TestExternalEventSubscription =
                 state.TimerSubscription |> shouldEqual None
 
                 // Verify the subscription itself (not just the timer) was disposed
-                globalSubscription.Value.WasDisposed |> shouldEqual true
+                match globalSubscription with
+                | None -> failwith "should be subscribed"
+                | Some globalSubscription -> globalSubscription.WasDisposed |> shouldEqual true
 
                 // Verify that triggering after disposal throws, proving the timer is truly gone
                 Assert.Throws<ObjectDisposedException> (fun () -> timer.Trigger ())
