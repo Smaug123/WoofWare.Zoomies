@@ -268,6 +268,26 @@ module TestExternalEventSubscription =
                         (fun () -> false)
 
                 do! timer.Disposal
-                ()
+
+                // Verify the subscription is torn down in state
+                state.TimerSubscription |> shouldEqual None
+
+                // Verify that triggering after disposal throws, proving the subscription is truly gone
+                Assert.Throws<ObjectDisposedException> (fun () -> timer.Trigger ())
+                |> ignore<ObjectDisposedException>
+
+                // Pump once more and verify counter didn't increment from any stale tick
+                state <-
+                    App.pumpOnce
+                        worldFreezer
+                        state
+                        (fun _ -> true)
+                        renderState
+                        processWorld
+                        vdom
+                        ActivationResolver.none
+                        (fun () -> false)
+
+                state.Counter |> shouldEqual 2
             | None -> failwith "expected a timer to be running"
         }
