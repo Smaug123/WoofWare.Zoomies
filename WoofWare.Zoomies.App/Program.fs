@@ -62,6 +62,9 @@ module FileBrowser =
     let multiSelectKey = NodeKey.make "file-list"
     let loadButtonKey = NodeKey.make "loadButton"
 
+    /// Captures the latest MultiSelectionState from the view render, including viewport-aware auto-scrolling.
+    let private latestListState = ref MultiSelectionState.AtStart
+
     let loadFileAsync (generation : int) (worldBridge : IWorldBridge<_>) (filepath : string) : unit Task =
         task {
             try
@@ -97,14 +100,14 @@ module FileBrowser =
                                 selectedFiles <- Set.add entry.FullPath selectedFiles
 
                     | WorldStateChange.ApplicationEvent CursorUp ->
-                        // Move cursor and ensure it's visible (using estimated viewport height)
-                        let moved = listState.MoveUp state.Files.Length
-                        listState <- moved.EnsureVisible 10
+                        // Use the viewport-aware state from the last render, then move cursor.
+                        // Auto-scrolling will be handled by MultiSelection.make in the next render.
+                        listState <- latestListState.Value.MoveUp state.Files.Length
 
                     | WorldStateChange.ApplicationEvent CursorDown ->
-                        // Move cursor and ensure it's visible (using estimated viewport height)
-                        let moved = listState.MoveDown state.Files.Length
-                        listState <- moved.EnsureVisible 10
+                        // Use the viewport-aware state from the last render, then move cursor.
+                        // Auto-scrolling will be handled by MultiSelection.make in the next render.
+                        listState <- latestListState.Value.MoveDown state.Files.Length
 
                     | WorldStateChange.ApplicationEvent LoadButtonClicked ->
                         if not isLoading && Set.count selectedFiles = 1 then
@@ -157,7 +160,12 @@ module FileBrowser =
                             }
                         )
 
-                    (MultiSelection.make (ctx, multiSelectKey, items, state.ListState, isFirstToFocus = true)).Vdom
+                    let result =
+                        MultiSelection.make (ctx, multiSelectKey, items, state.ListState, isFirstToFocus = true)
+
+                    // Capture the state with viewport-aware auto-scrolling for use in ProcessWorld
+                    latestListState.Value <- result.State
+                    result.Vdom
 
             let buttonLabel =
                 match Set.count state.SelectedFiles with

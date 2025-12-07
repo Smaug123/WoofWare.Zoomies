@@ -5,7 +5,8 @@ open WoofWare.Zoomies
 /// An item in a multi-selection list.
 type MultiSelectionItem<'id> =
     {
-        /// Unique identifier for this item, used for focus tracking and activation.
+        /// Unique identifier for this item, for the caller's use (e.g., correlating items with external state).
+        /// Not used internally by the component; the list is a single focusable unit with index-based cursor navigation.
         Id : 'id
         /// The label displayed next to the checkbox.
         Label : string
@@ -254,7 +255,9 @@ type MultiSelection =
                             [| checkbox ; label |]
                         )
 
-                    Table.make listKey cells [| Column.Fixed 3 ; Column.Proportion 1.0 |] [||]
+                    // Use a derived key for the inner table to avoid collision with the outer focusable key
+                    let tableKey = NodeKey.makeTableCellKey listKey -1 None None None
+                    Table.make tableKey cells [| Column.Fixed 3 ; Column.Proportion 1.0 |] [||]
 
             // Register the list itself as focusable (not individual items)
             let content = Vdom.flexibleContent measure render |> Vdom.withTag "multi-selection"
