@@ -100,3 +100,13 @@ module ActivationResolver =
                     Some (makeEvent (InsertChar keystroke.KeyChar))
                 | _ -> None
         )
+
+    /// Create a resolver for a multi-selection list.
+    /// Toggles items on Space/Enter for any of the provided keys.
+    let multiSelection (keys : NodeKey[]) (onToggle : NodeKey -> 'e) : ActivationResolver<'e, 's> =
+        ActivationResolver (fun k keystroke _ ->
+            if isActivationKey keystroke && Array.contains k keys then
+                Some (onToggle k)
+            else
+                None
+        )

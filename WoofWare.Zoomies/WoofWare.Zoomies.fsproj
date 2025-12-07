@@ -63,6 +63,7 @@
     <Compile Include="Components\LabelledCheckbox.fs" />
     <Compile Include="Components\ProgressBar.fs" />
     <Compile Include="Components\Table.fs" />
+    <Compile Include="Components\MultiSelection.fs" />
     <Compile Include="Components\TextBox.fs" />
     <Compile Include="Components\TextBoxHelpers.fs" />
     <None Include="..\README.md">

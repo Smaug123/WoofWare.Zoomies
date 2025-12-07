@@ -35,6 +35,7 @@
     <Compile Include="TestButton.fs" />
     <Compile Include="TestTextBox.fs" />
     <Compile Include="TestTable.fs" />
+    <Compile Include="TestMultiSelection.fs" />
     <Compile Include="TestActivationWithPartialBatch.fs" />
     <Compile Include="TestBatchProcessing.fs" />
     <Compile Include="TestFlexibleContent.fs" />
