@@ -89,3 +89,37 @@ module TestOrderedSet =
             set.Count = 0 && (items |> List.forall (fun x -> not (set.Contains (x))))
 
         Check.One (propConfig, property)
+
+    [<Test>]
+    let ``ToSeq is empty after Clear`` () =
+        let property (items : int list) =
+            let set = OrderedSet<int> ()
+            items |> List.iter (fun x -> set.Add (x) |> ignore<bool>)
+            set.Clear ()
+            set.ToSeq () |> Seq.isEmpty
+
+        Check.One (propConfig, property)
+
+    type OrderedSetOp = | Add of int
+
+    let private applyOps (ops : OrderedSetOp list) (set : OrderedSet<int>) =
+        for op in ops do
+            match op with
+            | Add x -> set.Add (x) |> ignore<bool>
+
+    [<Test>]
+    let ``operations after Clear are equivalent to operations on fresh set`` () =
+        let property (opsBefore : OrderedSetOp list) (opsAfter : OrderedSetOp list) =
+            let setClearThenOps = OrderedSet<int> ()
+            applyOps opsBefore setClearThenOps
+            setClearThenOps.Clear ()
+            applyOps opsAfter setClearThenOps
+
+            let setFresh = OrderedSet<int> ()
+            applyOps opsAfter setFresh
+
+            let seqAfterClear = setClearThenOps.ToSeq () |> Seq.toList
+            let seqFresh = setFresh.ToSeq () |> Seq.toList
+            seqAfterClear = seqFresh && setClearThenOps.Count = setFresh.Count
+
+        Check.One (propConfig, property)
