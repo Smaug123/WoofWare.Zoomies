@@ -1,0 +1,108 @@
+namespace WoofWare.Zoomies.Components
+
+open WoofWare.Zoomies
+
+/// Orientation for scroll bars.
+[<RequireQualifiedAccess>]
+type ScrollBarOrientation =
+    /// Vertical scroll bar (thumb moves up/down).
+    | Vertical
+    /// Horizontal scroll bar (thumb moves left/right).
+    | Horizontal
+
+/// Scroll bar component for indicating scroll position within scrollable content.
+[<RequireQualifiedAccess>]
+module ScrollBar =
+
+    /// <summary>Creates a scroll bar component.</summary>
+    /// <param name="orientation">Whether the scroll bar is vertical or horizontal.</param>
+    /// <param name="totalItems">Total number of scrollable items/units.</param>
+    /// <param name="viewportSize">Number of items visible in the viewport at once.</param>
+    /// <param name="offset">Index of the first visible item (0-based).</param>
+    /// <param name="trackLength">Length of the scroll bar track in characters.</param>
+    /// <remarks>
+    /// The scroll bar uses Unicode block characters:
+    /// - Track: ░ (U+2591)
+    /// - Thumb: █ (U+2588)
+    ///
+    /// When totalItems is less than or equal to viewportSize (no scrolling needed),
+    /// the entire track is shown as thumb to indicate all content is visible.
+    ///
+    /// Invalid inputs are handled gracefully:
+    /// - Non-positive totalItems: renders empty track
+    /// - Non-positive viewportSize: treated as 1
+    /// - Negative offset: treated as 0
+    /// - Offset beyond content: clamped to valid range
+    /// - Non-positive trackLength: treated as 1
+    /// </remarks>
+    let make
+        (orientation : ScrollBarOrientation)
+        (totalItems : int)
+        (viewportSize : int)
+        (offset : int)
+        (trackLength : int)
+        : Vdom<DesiredBounds>
+        =
+        // Sanitize inputs
+        let trackLength = max 1 trackLength
+        let viewportSize = max 1 viewportSize
+
+        if totalItems <= 0 then
+            // No content: render empty track
+            let track = System.String ('░', trackLength)
+
+            match orientation with
+            | ScrollBarOrientation.Horizontal -> Vdom.textContent (track, wrap = false)
+            | ScrollBarOrientation.Vertical ->
+                // For vertical, we need to stack characters vertically
+                let lines = Array.create trackLength "░"
+                Vdom.textContent (System.String.Join ("\n", lines), wrap = false)
+        else if totalItems <= viewportSize then
+            // All content visible: render full thumb
+            let thumb = System.String ('█', trackLength)
+
+            match orientation with
+            | ScrollBarOrientation.Horizontal -> Vdom.textContent (thumb, wrap = false)
+            | ScrollBarOrientation.Vertical ->
+                let lines = Array.create trackLength "█"
+                Vdom.textContent (System.String.Join ("\n", lines), wrap = false)
+        else
+            // Normal scrolling case
+            let offset = max 0 (min offset (totalItems - viewportSize))
+
+            // Calculate thumb size: proportional to viewport/total ratio, minimum 1
+            let thumbRatio = float viewportSize / float totalItems
+            let thumbSize = max 1 (int (thumbRatio * float trackLength))
+
+            // Calculate thumb position: proportional to offset within scrollable range
+            let scrollableRange = totalItems - viewportSize
+            let thumbPositionRatio = float offset / float scrollableRange
+            // Ensure thumb stays within track bounds
+            let maxThumbStart = trackLength - thumbSize
+            let thumbStart = int (thumbPositionRatio * float maxThumbStart)
+            let thumbStart = max 0 (min thumbStart maxThumbStart)
+
+            match orientation with
+            | ScrollBarOrientation.Horizontal ->
+                let chars =
+                    [|
+                        for i in 0 .. trackLength - 1 do
+                            if i >= thumbStart && i < thumbStart + thumbSize then
+                                '█'
+                            else
+                                '░'
+                    |]
+
+                Vdom.textContent (System.String chars, wrap = false)
+            | ScrollBarOrientation.Vertical ->
+                let lines =
+                    [|
+                        for i in 0 .. trackLength - 1 do
+                            if i >= thumbStart && i < thumbStart + thumbSize then
+                                "█"
+                            else
+                                "░"
+                    |]
+
+                Vdom.textContent (System.String.Join ("\n", lines), wrap = false)
+        |> Vdom.withTag "scroll-bar"

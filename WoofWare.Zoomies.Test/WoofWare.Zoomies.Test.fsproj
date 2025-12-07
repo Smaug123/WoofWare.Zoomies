@@ -32,6 +32,7 @@
     <Compile Include="TestFocusCycle.fs" />
     <Compile Include="TestCollapsible.fs" />
     <Compile Include="TestProgressBar.fs" />
+    <Compile Include="TestScrollBar.fs" />
     <Compile Include="TestButton.fs" />
     <Compile Include="TestTextBox.fs" />
     <Compile Include="TestTable.fs" />
