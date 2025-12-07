@@ -10,16 +10,28 @@ type ScrollBarOrientation =
     /// Horizontal scroll bar (thumb moves left/right).
     | Horizontal
 
+/// Parameters for creating a scroll bar, as passed to ScrollBar.make.
+[<Struct>]
+type ScrollBarParams =
+    {
+        /// Total number of scrollable items/units - those visible in the viewport plus those which
+        /// are logically offscreen.
+        TotalItems : int
+        /// Number of items visible in the viewport right now.
+        ViewportSize : int
+        /// Index of the first visible item (0-based) within `TotalItems`.
+        Offset : int
+        /// Length of the scroll bar track in cells.
+        TrackLength : int
+    }
+
 /// Scroll bar component for indicating scroll position within scrollable content.
 [<RequireQualifiedAccess>]
 module ScrollBar =
 
     /// <summary>Creates a scroll bar component.</summary>
     /// <param name="orientation">Whether the scroll bar is vertical or horizontal.</param>
-    /// <param name="totalItems">Total number of scrollable items/units.</param>
-    /// <param name="viewportSize">Number of items visible in the viewport at once.</param>
-    /// <param name="offset">Index of the first visible item (0-based).</param>
-    /// <param name="trackLength">Length of the scroll bar track in characters.</param>
+    /// <param name="scrollParams">Scroll bar parameters.</param>
     /// <remarks>
     /// The scroll bar uses Unicode block characters:
     /// - Track: ░ (U+2591)
@@ -35,17 +47,11 @@ module ScrollBar =
     /// - Offset beyond content: clamped to valid range
     /// - Non-positive trackLength: treated as 1
     /// </remarks>
-    let make
-        (orientation : ScrollBarOrientation)
-        (totalItems : int)
-        (viewportSize : int)
-        (offset : int)
-        (trackLength : int)
-        : Vdom<DesiredBounds>
-        =
+    let make (orientation : ScrollBarOrientation) (scrollParams : ScrollBarParams) : Vdom<DesiredBounds> =
         // Sanitize inputs
-        let trackLength = max 1 trackLength
-        let viewportSize = max 1 viewportSize
+        let trackLength = max 1 scrollParams.TrackLength
+        let viewportSize = max 1 scrollParams.ViewportSize
+        let totalItems = scrollParams.TotalItems
 
         if totalItems <= 0 then
             // No content: render empty track
@@ -68,7 +74,7 @@ module ScrollBar =
                 Vdom.textContent (System.String.Join ("\n", lines), wrap = false)
         else
             // Normal scrolling case
-            let offset = max 0 (min offset (totalItems - viewportSize))
+            let offset = max 0 (min scrollParams.Offset (totalItems - viewportSize))
 
             // Calculate thumb size: proportional to viewport/total ratio, minimum 1
             let thumbRatio = float viewportSize / float totalItems

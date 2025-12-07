@@ -24,7 +24,14 @@ module TestScrollBar =
         task {
             // 20 items, viewport of 5, offset 0, track length 10
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
-                ScrollBar.make ScrollBarOrientation.Horizontal 20 5 0 10
+                ScrollBar.make
+                    ScrollBarOrientation.Horizontal
+                    {
+                        TotalItems = 20
+                        ViewportSize = 5
+                        Offset = 0
+                        TrackLength = 10
+                    }
 
             let console, terminal = ConsoleHarness.make' (fun () -> 15) (fun () -> 2)
 
@@ -72,7 +79,14 @@ module TestScrollBar =
         task {
             // 20 items, viewport of 5, offset 7 (roughly middle), track length 10
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
-                ScrollBar.make ScrollBarOrientation.Horizontal 20 5 7 10
+                ScrollBar.make
+                    ScrollBarOrientation.Horizontal
+                    {
+                        TotalItems = 20
+                        ViewportSize = 5
+                        Offset = 7
+                        TrackLength = 10
+                    }
 
             let console, terminal = ConsoleHarness.make' (fun () -> 15) (fun () -> 2)
 
@@ -120,7 +134,14 @@ module TestScrollBar =
         task {
             // 20 items, viewport of 5, offset 15 (max), track length 10
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
-                ScrollBar.make ScrollBarOrientation.Horizontal 20 5 15 10
+                ScrollBar.make
+                    ScrollBarOrientation.Horizontal
+                    {
+                        TotalItems = 20
+                        ViewportSize = 5
+                        Offset = 15
+                        TrackLength = 10
+                    }
 
             let console, terminal = ConsoleHarness.make' (fun () -> 15) (fun () -> 2)
 
@@ -168,7 +189,14 @@ module TestScrollBar =
         task {
             // 20 items, viewport of 5, offset 0, track length 10
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
-                ScrollBar.make ScrollBarOrientation.Vertical 20 5 0 10
+                ScrollBar.make
+                    ScrollBarOrientation.Vertical
+                    {
+                        TotalItems = 20
+                        ViewportSize = 5
+                        Offset = 0
+                        TrackLength = 10
+                    }
 
             let console, terminal = ConsoleHarness.make' (fun () -> 5) (fun () -> 12)
 
@@ -226,7 +254,14 @@ module TestScrollBar =
         task {
             // 20 items, viewport of 5, offset 7, track length 10
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
-                ScrollBar.make ScrollBarOrientation.Vertical 20 5 7 10
+                ScrollBar.make
+                    ScrollBarOrientation.Vertical
+                    {
+                        TotalItems = 20
+                        ViewportSize = 5
+                        Offset = 7
+                        TrackLength = 10
+                    }
 
             let console, terminal = ConsoleHarness.make' (fun () -> 5) (fun () -> 12)
 
@@ -284,7 +319,14 @@ module TestScrollBar =
         task {
             // 20 items, viewport of 5, offset 15, track length 10
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
-                ScrollBar.make ScrollBarOrientation.Vertical 20 5 15 10
+                ScrollBar.make
+                    ScrollBarOrientation.Vertical
+                    {
+                        TotalItems = 20
+                        ViewportSize = 5
+                        Offset = 15
+                        TrackLength = 10
+                    }
 
             let console, terminal = ConsoleHarness.make' (fun () -> 5) (fun () -> 12)
 
@@ -342,7 +384,14 @@ module TestScrollBar =
         task {
             // 5 items, viewport of 10 (larger than content), track length 10
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
-                ScrollBar.make ScrollBarOrientation.Horizontal 5 10 0 10
+                ScrollBar.make
+                    ScrollBarOrientation.Horizontal
+                    {
+                        TotalItems = 5
+                        ViewportSize = 10
+                        Offset = 0
+                        TrackLength = 10
+                    }
 
             let console, terminal = ConsoleHarness.make' (fun () -> 15) (fun () -> 2)
 
@@ -389,7 +438,14 @@ module TestScrollBar =
     let ``scroll bar with zero total items`` () =
         task {
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
-                ScrollBar.make ScrollBarOrientation.Horizontal 0 5 0 10
+                ScrollBar.make
+                    ScrollBarOrientation.Horizontal
+                    {
+                        TotalItems = 0
+                        ViewportSize = 5
+                        Offset = 0
+                        TrackLength = 10
+                    }
 
             let console, terminal = ConsoleHarness.make' (fun () -> 15) (fun () -> 2)
 
@@ -438,7 +494,14 @@ module TestScrollBar =
             // 20 items, viewport of 5, offset 100 (way beyond), track length 10
             // Should clamp to max valid offset (15)
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
-                ScrollBar.make ScrollBarOrientation.Horizontal 20 5 100 10
+                ScrollBar.make
+                    ScrollBarOrientation.Horizontal
+                    {
+                        TotalItems = 20
+                        ViewportSize = 5
+                        Offset = 100
+                        TrackLength = 10
+                    }
 
             let console, terminal = ConsoleHarness.make' (fun () -> 15) (fun () -> 2)
 
@@ -486,7 +549,14 @@ module TestScrollBar =
         task {
             // Should clamp to 0
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
-                ScrollBar.make ScrollBarOrientation.Horizontal 20 5 -5 10
+                ScrollBar.make
+                    ScrollBarOrientation.Horizontal
+                    {
+                        TotalItems = 20
+                        ViewportSize = 5
+                        Offset = -5
+                        TrackLength = 10
+                    }
 
             let console, terminal = ConsoleHarness.make' (fun () -> 15) (fun () -> 2)
 
@@ -535,7 +605,14 @@ module TestScrollBar =
             // 10 items, viewport of 8, offset 1, track length 10
             // Thumb should be large (80% of track)
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
-                ScrollBar.make ScrollBarOrientation.Horizontal 10 8 1 10
+                ScrollBar.make
+                    ScrollBarOrientation.Horizontal
+                    {
+                        TotalItems = 10
+                        ViewportSize = 8
+                        Offset = 1
+                        TrackLength = 10
+                    }
 
             let console, terminal = ConsoleHarness.make' (fun () -> 15) (fun () -> 2)
 
@@ -584,7 +661,14 @@ module TestScrollBar =
             // 100 items, viewport of 5, offset 50, track length 10
             // Thumb should be small (5% of track, minimum 1)
             let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
-                ScrollBar.make ScrollBarOrientation.Horizontal 100 5 50 10
+                ScrollBar.make
+                    ScrollBarOrientation.Horizontal
+                    {
+                        TotalItems = 100
+                        ViewportSize = 5
+                        Offset = 50
+                        TrackLength = 10
+                    }
 
             let console, terminal = ConsoleHarness.make' (fun () -> 15) (fun () -> 2)
 
