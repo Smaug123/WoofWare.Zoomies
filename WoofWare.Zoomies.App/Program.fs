@@ -68,7 +68,7 @@ module FileBrowser =
                 let! content = File.ReadAllTextAsync filepath
                 return FileLoaded (content, generation) |> worldBridge.PostEvent
             with e ->
-                FileLoadError (e.Message, generation) |> worldBridge.PostEvent
+                return FileLoadError (e.Message, generation) |> worldBridge.PostEvent
         }
 
     let processWorld (worldBridge : IWorldBridge<AppEvent>) =
