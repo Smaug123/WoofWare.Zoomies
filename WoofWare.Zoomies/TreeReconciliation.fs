@@ -59,8 +59,18 @@ module internal TreeReconciliation =
                             keyToNode.[key1] <- prev
                             Some prev
                         else
-                            // Child changed, will create new parent below
-                            None
+                            // Child changed, build new parent with already-computed child
+                            let result =
+                                {
+                                    Bounds = arranged.Bounds
+                                    OverlaidChildren = [ newChild ]
+                                    VDomSource = originalVdom
+                                    Self = arranged.Vdom
+                                    ArrangedSource = Some arranged
+                                }
+
+                            keyToNode.[key1] <- result
+                            Some result
                     | UnkeyedVdom.PanelSplit (dir1, behav1, child1a, child1b),
                       UnkeyedVdom.PanelSplit (dir2, behav2, _, _) when
                         dir1 = dir2 && behav1 = behav2 && prev.OverlaidChildren.Length >= 2
@@ -97,8 +107,18 @@ module internal TreeReconciliation =
                             keyToNode.[key1] <- prev
                             Some prev
                         else
-                            // Child changed, will create new parent below
-                            None
+                            // At least one child changed, build new parent with already-computed children
+                            let result =
+                                {
+                                    Bounds = arranged.Bounds
+                                    OverlaidChildren = [ newChild1 ; newChild2 ]
+                                    VDomSource = originalVdom
+                                    Self = arranged.Vdom
+                                    ArrangedSource = Some arranged
+                                }
+
+                            keyToNode.[key1] <- result
+                            Some result
                     | UnkeyedVdom.Focusable _, UnkeyedVdom.Focusable _ ->
                         // Focusable nodes have complex focus registration logic
                         // Skip early cutoff and use normal path to avoid issues
@@ -122,8 +142,18 @@ module internal TreeReconciliation =
                             keyToNode.[key1] <- prev
                             Some prev
                         else
-                            // Child changed, will create new parent below
-                            None
+                            // Child changed, build new parent with already-computed child
+                            let result =
+                                {
+                                    Bounds = arranged.Bounds
+                                    OverlaidChildren = [ newChild ]
+                                    VDomSource = originalVdom
+                                    Self = arranged.Vdom
+                                    ArrangedSource = Some arranged
+                                }
+
+                            keyToNode.[key1] <- result
+                            Some result
                     | UnkeyedVdom.FlexibleContent _, UnkeyedVdom.FlexibleContent _ when prev.OverlaidChildren.Length > 0 ->
                         // FlexibleContent is a transparent container - check if the child changed
                         let prevChild = prev.OverlaidChildren.[0]
@@ -143,8 +173,18 @@ module internal TreeReconciliation =
                             keyToNode.[key1] <- prev
                             Some prev
                         else
-                            // Child changed, will create new parent below
-                            None
+                            // Child changed, build new parent with already-computed child
+                            let result =
+                                {
+                                    Bounds = arranged.Bounds
+                                    OverlaidChildren = [ newChild ]
+                                    VDomSource = originalVdom
+                                    Self = arranged.Vdom
+                                    ArrangedSource = Some arranged
+                                }
+
+                            keyToNode.[key1] <- result
+                            Some result
                     | _ -> None
                 // Unkeyed leaf nodes
                 | Vdom.Unkeyed (UnkeyedVdom.TextContent (text1, style1, align1, focus1, wrap1)),
@@ -180,8 +220,15 @@ module internal TreeReconciliation =
                         // Child unchanged, reuse parent
                         Some prev
                     else
-                        // Child changed, will create new parent below
-                        None
+                        // Child changed, build new parent with already-computed child
+                        Some
+                            {
+                                Bounds = arranged.Bounds
+                                OverlaidChildren = [ newChild ]
+                                VDomSource = originalVdom
+                                Self = arranged.Vdom
+                                ArrangedSource = Some arranged
+                            }
                 | Vdom.Unkeyed (UnkeyedVdom.PanelSplit (dir1, behav1, child1a, child1b)),
                   Vdom.Unkeyed (UnkeyedVdom.PanelSplit (dir2, behav2, _, _)) when
                     dir1 = dir2 && behav1 = behav2 && prev.OverlaidChildren.Length >= 2
@@ -217,8 +264,15 @@ module internal TreeReconciliation =
                         // Both children unchanged, reuse parent
                         Some prev
                     else
-                        // At least one child changed, will create new parent below
-                        None
+                        // At least one child changed, build new parent with already-computed children
+                        Some
+                            {
+                                Bounds = arranged.Bounds
+                                OverlaidChildren = [ newChild1 ; newChild2 ]
+                                VDomSource = originalVdom
+                                Self = arranged.Vdom
+                                ArrangedSource = Some arranged
+                            }
                 | Vdom.Unkeyed (UnkeyedVdom.Focusable _), Vdom.Unkeyed (UnkeyedVdom.Focusable _) ->
                     // Focusable nodes have complex focus registration logic
                     // Skip early cutoff and use normal path to avoid issues
@@ -243,8 +297,15 @@ module internal TreeReconciliation =
                         // Child unchanged, reuse parent
                         Some prev
                     else
-                        // Child changed, will create new parent below
-                        None
+                        // Child changed, build new parent with already-computed child
+                        Some
+                            {
+                                Bounds = arranged.Bounds
+                                OverlaidChildren = [ newChild ]
+                                VDomSource = originalVdom
+                                Self = arranged.Vdom
+                                ArrangedSource = Some arranged
+                            }
                 | Vdom.Unkeyed (UnkeyedVdom.FlexibleContent _), Vdom.Unkeyed (UnkeyedVdom.FlexibleContent _) when
                     prev.OverlaidChildren.Length > 0
                     ->
@@ -265,8 +326,15 @@ module internal TreeReconciliation =
                         // Child unchanged, reuse parent
                         Some prev
                     else
-                        // Child changed, will create new parent below
-                        None
+                        // Child changed, build new parent with already-computed child
+                        Some
+                            {
+                                Bounds = arranged.Bounds
+                                OverlaidChildren = [ newChild ]
+                                VDomSource = originalVdom
+                                Self = arranged.Vdom
+                                ArrangedSource = Some arranged
+                            }
                 | _ -> None
             | _ -> None
 
