@@ -8,7 +8,9 @@ open WoofWare.Zoomies
 open WoofWare.Zoomies.Components
 
 type AppEvent =
-    | ToggleFile of NodeKey
+    | ToggleFile of index : int
+    | CursorUp
+    | CursorDown
     | LoadButtonClicked
     | FileLoaded of content : string * generation : int
     | FileLoadError of error : string * generation : int
@@ -27,6 +29,7 @@ type State =
         FileContent : string option
         IsLoading : bool
         Generation : int
+        ListState : MultiSelectionState
     }
 
     static member Initial =
@@ -52,10 +55,11 @@ type State =
             FileContent = None
             IsLoading = false
             Generation = 0
+            ListState = MultiSelectionState.AtStart
         }
 
 module FileBrowser =
-    let multiSelectPrefix = NodeKey.make "file-list"
+    let multiSelectKey = NodeKey.make "file-list"
     let loadButtonKey = NodeKey.make "loadButton"
 
     let loadFileAsync (generation : int) (worldBridge : IWorldBridge<_>) (filepath : string) : unit Task =
@@ -74,6 +78,7 @@ module FileBrowser =
                 let mutable fileContent = state.FileContent
                 let mutable isLoading = state.IsLoading
                 let mutable generation = state.Generation
+                let mutable listState = state.ListState
 
                 for change in changes do
                     match change with
@@ -81,17 +86,25 @@ module FileBrowser =
                     | WorldStateChange.Keystroke _
                     | WorldStateChange.Paste _ -> ()
 
-                    | WorldStateChange.ApplicationEvent (ToggleFile key) ->
-                        // Find the file entry with this key
-                        let fileEntry = state.Files |> Array.tryFind (fun f -> f.Key = key)
+                    | WorldStateChange.ApplicationEvent (ToggleFile index) ->
+                        // Toggle the file at the given index
+                        if index >= 0 && index < state.Files.Length then
+                            let entry = state.Files.[index]
 
-                        match fileEntry with
-                        | Some entry ->
                             if Set.contains entry.FullPath selectedFiles then
                                 selectedFiles <- Set.remove entry.FullPath selectedFiles
                             else
                                 selectedFiles <- Set.add entry.FullPath selectedFiles
-                        | None -> ()
+
+                    | WorldStateChange.ApplicationEvent CursorUp ->
+                        // Move cursor and ensure it's visible (using estimated viewport height)
+                        let moved = listState.MoveUp state.Files.Length
+                        listState <- moved.EnsureVisible 10
+
+                    | WorldStateChange.ApplicationEvent CursorDown ->
+                        // Move cursor and ensure it's visible (using estimated viewport height)
+                        let moved = listState.MoveDown state.Files.Length
+                        listState <- moved.EnsureVisible 10
 
                     | WorldStateChange.ApplicationEvent LoadButtonClicked ->
                         if not isLoading && Set.count selectedFiles = 1 then
@@ -122,6 +135,7 @@ module FileBrowser =
                         FileContent = fileContent
                         IsLoading = isLoading
                         Generation = generation
+                        ListState = listState
                     }
         }
 
@@ -143,7 +157,7 @@ module FileBrowser =
                             }
                         )
 
-                    MultiSelection.make (ctx, multiSelectPrefix, items, isFirstToFocus = true)
+                    (MultiSelection.make (ctx, multiSelectKey, items, state.ListState, isFirstToFocus = true)).Vdom
 
             let buttonLabel =
                 match Set.count state.SelectedFiles with
@@ -171,12 +185,14 @@ module FileBrowser =
         Vdom.panelSplitProportion (SplitDirection.Vertical, 0.3, leftPane, rightPane)
 
     let resolver : ActivationResolver<AppEvent, State> =
-        // File keys are determined at startup and don't change
-        let fileKeys = State.Initial.Files |> Array.map _.Key
-
         ActivationResolver.combine
             [
-                ActivationResolver.multiSelection fileKeys ToggleFile
+                ActivationResolver.multiSelection
+                    multiSelectKey
+                    (fun s -> s.ListState.CursorIndex)
+                    CursorUp
+                    CursorDown
+                    ToggleFile
                 ActivationResolver.button loadButtonKey LoadButtonClicked
             ]
 

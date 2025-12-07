@@ -101,12 +101,28 @@ module ActivationResolver =
                 | _ -> None
         )
 
-    /// Create a resolver for a multi-selection list.
-    /// Toggles items on Space/Enter for any of the provided keys.
-    let multiSelection (keys : NodeKey[]) (onToggle : NodeKey -> 'e) : ActivationResolver<'e, 's> =
-        ActivationResolver (fun k keystroke _ ->
-            if isActivationKey keystroke && Array.contains k keys then
-                Some (onToggle k)
-            else
+    /// Create a resolver for a multi-selection list with cursor navigation.
+    /// The list is a single focusable unit; arrow keys navigate the cursor,
+    /// Space toggles the item at the cursor position.
+    /// - Up arrow: returns onCursorUp event
+    /// - Down arrow: returns onCursorDown event
+    /// - Space: returns onToggle event with current cursor index
+    let multiSelection
+        (listKey : NodeKey)
+        (getCursorIndex : 's -> int)
+        (onCursorUp : 'e)
+        (onCursorDown : 'e)
+        (onToggle : int -> 'e)
+        : ActivationResolver<'e, 's>
+        =
+        ActivationResolver (fun k keystroke state ->
+            if k <> listKey then
                 None
+            else
+                match keystroke.Key with
+                | ConsoleKey.UpArrow when keystroke.Modifiers = ConsoleModifiers.None -> Some onCursorUp
+                | ConsoleKey.DownArrow when keystroke.Modifiers = ConsoleModifiers.None -> Some onCursorDown
+                | ConsoleKey.Spacebar when keystroke.Modifiers = ConsoleModifiers.None ->
+                    Some (onToggle (getCursorIndex state))
+                | _ -> None
         )
