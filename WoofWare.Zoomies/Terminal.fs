@@ -44,43 +44,64 @@ type TerminalOp =
 
 [<RequireQualifiedAccess>]
 module TerminalOp =
+    /// Execute a terminal operation, returning the new current colors.
+    /// Colors are only emitted when they differ from the current state.
     let execute
         (colorMode : ColorMode)
         (currentBackground : ConsoleColor)
         (currentForeground : ConsoleColor)
         (consoleWrite : string -> unit)
         (o : TerminalOp)
-        : unit
+        : struct (ConsoleColor * ConsoleColor)
         =
         match o with
         | TerminalOp.WriteRun (text, backgroundColor, textColor) ->
-            let backgroundEscape =
+            let newBackground =
                 match colorMode, backgroundColor with
                 | ColorMode.Color, ValueSome bg when bg <> currentBackground ->
-                    Some (ConsoleColor.toBackgroundEscapeCode bg, ConsoleColor.toBackgroundEscapeCode currentBackground)
-                | _ -> None
+                    consoleWrite (ConsoleColor.toBackgroundEscapeCode bg)
+                    bg
+                | ColorMode.Color, ValueSome bg -> bg
+                | _ -> currentBackground
 
-            let foregroundEscape =
+            let newForeground =
                 match colorMode, textColor with
                 | ColorMode.Color, ValueSome fg when fg <> currentForeground ->
-                    Some (ConsoleColor.toForegroundEscapeCode fg, ConsoleColor.toForegroundEscapeCode currentForeground)
-                | _ -> None
+                    consoleWrite (ConsoleColor.toForegroundEscapeCode fg)
+                    fg
+                | ColorMode.Color, ValueSome fg -> fg
+                | _ -> currentForeground
 
-            backgroundEscape |> Option.iter (fst >> consoleWrite)
-            foregroundEscape |> Option.iter (fst >> consoleWrite)
             consoleWrite text
-            foregroundEscape |> Option.iter (snd >> consoleWrite)
-            backgroundEscape |> Option.iter (snd >> consoleWrite)
-        | TerminalOp.MoveCursor (x, y) -> consoleWrite $"\x1B[%d{y + 1};%d{x + 1}H"
+            struct (newBackground, newForeground)
+        | TerminalOp.MoveCursor (x, y) ->
+            consoleWrite $"\x1B[%d{y + 1};%d{x + 1}H"
+            struct (currentBackground, currentForeground)
         | TerminalOp.SetCursorVisibility visible ->
             if visible then
                 consoleWrite "\x1B[?25h"
             else
                 consoleWrite "\x1B[?25l"
-        | TerminalOp.ClearScreen -> consoleWrite "\x1B[2J"
-        | TerminalOp.EnterAlternateScreen -> consoleWrite "\x1B[?1049h"
-        | TerminalOp.ExitAlternateScreen -> consoleWrite "\x1B[?1049l"
-        | TerminalOp.RegisterMouseMode -> consoleWrite "\u001b[?1000;1006h"
-        | TerminalOp.UnregisterMouseMode -> consoleWrite "\u001b[?1000;1006l"
-        | TerminalOp.RegisterBracketedPaste -> consoleWrite "\u001b[?2004h"
-        | TerminalOp.UnregisterBracketedPaste -> consoleWrite "\u001b[?2004l"
+
+            struct (currentBackground, currentForeground)
+        | TerminalOp.ClearScreen ->
+            consoleWrite "\x1B[2J"
+            struct (currentBackground, currentForeground)
+        | TerminalOp.EnterAlternateScreen ->
+            consoleWrite "\x1B[?1049h"
+            struct (currentBackground, currentForeground)
+        | TerminalOp.ExitAlternateScreen ->
+            consoleWrite "\x1B[?1049l"
+            struct (currentBackground, currentForeground)
+        | TerminalOp.RegisterMouseMode ->
+            consoleWrite "\u001b[?1000;1006h"
+            struct (currentBackground, currentForeground)
+        | TerminalOp.UnregisterMouseMode ->
+            consoleWrite "\u001b[?1000;1006l"
+            struct (currentBackground, currentForeground)
+        | TerminalOp.RegisterBracketedPaste ->
+            consoleWrite "\u001b[?2004h"
+            struct (currentBackground, currentForeground)
+        | TerminalOp.UnregisterBracketedPaste ->
+            consoleWrite "\u001b[?2004l"
+            struct (currentBackground, currentForeground)
