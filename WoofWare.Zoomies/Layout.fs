@@ -745,6 +745,14 @@ module internal Layout =
                     MaxHeightForWidth = measured.MaxHeightForWidth
                 }
 
+            // Post-conditions: verify MeasuredSize invariants are maintained
+            assert (clampedMeasured.MinWidth >= 0)
+            assert (clampedMeasured.MinWidth <= clampedMeasured.PreferredWidth)
+
+            match clampedMeasured.MaxWidth with
+            | Some m -> assert (clampedMeasured.PreferredWidth <= m)
+            | None -> ()
+
             {
                 Vdom = Vdom.Unkeyed vdom
                 Measured = clampedMeasured
@@ -1075,6 +1083,11 @@ module internal Layout =
 
                             (w1, w2)
 
+            // Post-conditions: both dimensions non-negative and sum doesn't exceed available space
+            // (sum can be less than bounds.Width when max constraints are hit in AutoWeighted)
+            assert (w1 >= 0 && w2 >= 0)
+            assert (w1 + w2 <= bounds.Width)
+
             let bounds1 =
                 {
                     TopLeftX = bounds.TopLeftX
@@ -1202,6 +1215,11 @@ module internal Layout =
                                 | None -> h2
 
                             (h1, h2)
+
+            // Post-conditions: both dimensions non-negative and sum doesn't exceed available space
+            // (sum can be less than bounds.Height when max constraints are hit in AutoWeighted)
+            assert (h1 >= 0 && h2 >= 0)
+            assert (h1 + h2 <= bounds.Height)
 
             let bounds1 =
                 {

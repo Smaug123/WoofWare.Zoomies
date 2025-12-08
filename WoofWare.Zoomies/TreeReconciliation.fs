@@ -42,6 +42,7 @@ module internal TreeReconciliation =
                         Some prev
                     | UnkeyedVdom.Bordered child1, UnkeyedVdom.Bordered _ when prev.OverlaidChildren.Length > 0 ->
                         // Recursively check child
+                        assert (arranged.Children.Length >= 1)
                         let prevChild = prev.OverlaidChildren.[0]
 
                         let newChild =
@@ -76,6 +77,7 @@ module internal TreeReconciliation =
                         dir1 = dir2 && behav1 = behav2 && prev.OverlaidChildren.Length >= 2
                         ->
                         // Recursively check both children
+                        assert (arranged.Children.Length >= 2)
                         let prevChild1 = prev.OverlaidChildren.[0]
                         let prevChild2 = prev.OverlaidChildren.[1]
 
@@ -125,6 +127,7 @@ module internal TreeReconciliation =
                         None
                     | UnkeyedVdom.Tag _, UnkeyedVdom.Tag _ when prev.OverlaidChildren.Length > 0 ->
                         // Tag is a transparent container - check if the child changed
+                        assert (arranged.Children.Length >= 1)
                         let prevChild = prev.OverlaidChildren.[0]
 
                         let newChild =
@@ -156,6 +159,7 @@ module internal TreeReconciliation =
                             Some result
                     | UnkeyedVdom.FlexibleContent _, UnkeyedVdom.FlexibleContent _ when prev.OverlaidChildren.Length > 0 ->
                         // FlexibleContent is a transparent container - check if the child changed
+                        assert (arranged.Children.Length >= 1)
                         let prevChild = prev.OverlaidChildren.[0]
 
                         let newChild =
@@ -204,6 +208,7 @@ module internal TreeReconciliation =
                     prev.OverlaidChildren.Length > 0
                     ->
                     // Recursively check child
+                    assert (arranged.Children.Length >= 1)
                     let prevChild = prev.OverlaidChildren.[0]
 
                     let newChild =
@@ -234,6 +239,7 @@ module internal TreeReconciliation =
                     dir1 = dir2 && behav1 = behav2 && prev.OverlaidChildren.Length >= 2
                     ->
                     // Recursively check both children
+                    assert (arranged.Children.Length >= 2)
                     let prevChild1 = prev.OverlaidChildren.[0]
                     let prevChild2 = prev.OverlaidChildren.[1]
 
@@ -281,6 +287,7 @@ module internal TreeReconciliation =
                     prev.OverlaidChildren.Length > 0
                     ->
                     // Tag is a transparent container - check if the child changed
+                    assert (arranged.Children.Length >= 1)
                     let prevChild = prev.OverlaidChildren.[0]
 
                     let newChild =
@@ -310,6 +317,7 @@ module internal TreeReconciliation =
                     prev.OverlaidChildren.Length > 0
                     ->
                     // FlexibleContent is a transparent container - check if the child changed
+                    assert (arranged.Children.Length >= 1)
                     let prevChild = prev.OverlaidChildren.[0]
 
                     let newChild =
@@ -347,6 +355,8 @@ module internal TreeReconciliation =
             | Vdom.Keyed (KeyedVdom (_, unkeyedVdom)) ->
                 match unkeyedVdom with
                 | UnkeyedVdom.Bordered child ->
+                    assert (arranged.Children.Length >= 1)
+
                     let prevChild =
                         match previousRender with
                         | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
@@ -363,6 +373,8 @@ module internal TreeReconciliation =
                             child
                     ]
                 | UnkeyedVdom.PanelSplit (_, _, child1, child2) ->
+                    assert (arranged.Children.Length >= 2)
+
                     let prevChild1, prevChild2 =
                         match previousRender with
                         | Some prev when prev.OverlaidChildren.Length >= 2 ->
@@ -397,6 +409,8 @@ module internal TreeReconciliation =
                     if isInitiallyFocused && initiallyFocusedKey.Value.IsNone then
                         initiallyFocusedKey.Value <- Some key
 
+                    assert (arranged.Children.Length >= 1)
+
                     let prevChild =
                         match previousRender with
                         | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
@@ -414,6 +428,8 @@ module internal TreeReconciliation =
                     ]
                 | UnkeyedVdom.Tag (_, _) ->
                     // Tag is a transparent container - render the single child
+                    assert (arranged.Children.Length >= 1)
+
                     let prevChild =
                         match previousRender with
                         | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
@@ -431,6 +447,8 @@ module internal TreeReconciliation =
                     ]
                 | UnkeyedVdom.FlexibleContent _ ->
                     // FlexibleContent is a transparent container - render the single child
+                    assert (arranged.Children.Length >= 1)
+
                     let prevChild =
                         match previousRender with
                         | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
@@ -451,6 +469,8 @@ module internal TreeReconciliation =
             | Vdom.Unkeyed unkeyedVdom ->
                 match unkeyedVdom with
                 | UnkeyedVdom.Bordered child ->
+                    assert (arranged.Children.Length >= 1)
+
                     let prevChild =
                         match previousRender with
                         | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
@@ -467,6 +487,8 @@ module internal TreeReconciliation =
                             child
                     ]
                 | UnkeyedVdom.PanelSplit (_, _, child1, child2) ->
+                    assert (arranged.Children.Length >= 2)
+
                     let prevChild1, prevChild2 =
                         match previousRender with
                         | Some prev when prev.OverlaidChildren.Length >= 2 ->
@@ -501,6 +523,8 @@ module internal TreeReconciliation =
                     if isInitiallyFocused && initiallyFocusedKey.Value.IsNone then
                         initiallyFocusedKey.Value <- Some key
 
+                    assert (arranged.Children.Length >= 1)
+
                     let prevChild =
                         match previousRender with
                         | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
@@ -518,6 +542,8 @@ module internal TreeReconciliation =
                     ]
                 | UnkeyedVdom.Tag (_, _) ->
                     // Tag is a transparent container - render the single child
+                    assert (arranged.Children.Length >= 1)
+
                     let prevChild =
                         match previousRender with
                         | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
@@ -535,6 +561,8 @@ module internal TreeReconciliation =
                     ]
                 | UnkeyedVdom.FlexibleContent _ ->
                     // FlexibleContent is a transparent container - render the single child
+                    assert (arranged.Children.Length >= 1)
+
                     let prevChild =
                         match previousRender with
                         | Some prev when prev.OverlaidChildren.Length > 0 -> Some prev.OverlaidChildren.[0]
