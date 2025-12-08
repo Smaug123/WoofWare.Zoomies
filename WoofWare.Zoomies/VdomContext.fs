@@ -17,13 +17,23 @@ type VdomContext<'appEvent> =
             _PostLayoutEvents : ResizeArray<'appEvent>
         }
 
+    interface IVdomContext<'appEvent> with
+        member this.TerminalBounds = this._TerminalBounds
+        member this.FocusedKey = this._FocusedKey
+        member this.GetUtcNow () = this._GetUtcNow ()
+
+        member this.WasRecentlyActivated key =
+            match this._LastActivationTimes.TryGetValue key with
+            | true, time ->
+                (this._GetUtcNow () - time).TotalMilliseconds < VdomContextConstants.RECENT_ACTIVATION_TIMEOUT_MS
+            | false, _ -> false
+
+        member this.PostLayoutEvent event =
+            this._PostLayoutEvents.Add event
+            this._IsDirty <- true
+
 [<RequireQualifiedAccess>]
 module VdomContext =
-    /// Number of milliseconds you get after activation of an activatable component like Button, before which the
-    /// framework considers `VdomContext.wasRecentlyActivated` to expire.
-    [<Literal>]
-    let RECENT_ACTIVATION_TIMEOUT_MS = 500.0
-
     let internal empty<'appEvent> (getUtcNow : unit -> DateTime) (terminalBounds : Rectangle) : VdomContext<'appEvent> =
         {
             _TerminalBounds = terminalBounds
@@ -65,7 +75,7 @@ module VdomContext =
     /// visual feedback window (approximately 500ms).
     let wasRecentlyActivated<'appEvent> (key : NodeKey) (ctx : VdomContext<'appEvent>) : bool =
         match ctx._LastActivationTimes.TryGetValue key with
-        | true, time -> (getUtcNow ctx - time).TotalMilliseconds < RECENT_ACTIVATION_TIMEOUT_MS
+        | true, time -> (getUtcNow ctx - time).TotalMilliseconds < VdomContextConstants.RECENT_ACTIVATION_TIMEOUT_MS
         | false, _ -> false
 
     /// Record that a node was just activated.
@@ -91,7 +101,10 @@ module VdomContext =
         let mutable removed = false
 
         for KeyValue (key, time) in ctx._LastActivationTimes do
-            if (now - time).TotalMilliseconds >= RECENT_ACTIVATION_TIMEOUT_MS then
+            if
+                (now - time).TotalMilliseconds
+                >= VdomContextConstants.RECENT_ACTIVATION_TIMEOUT_MS
+            then
                 ctx._LastActivationTimes.Remove key |> ignore<bool>
                 removed <- true
 
@@ -108,34 +121,10 @@ module VdomContext =
             ctx._PostLayoutEvents.Clear ()
             events
 
-    /// Create a typed IVdomContext<'appEvent> wrapper around this VdomContext.
+    /// Get a typed IVdomContext<'appEvent> view of this VdomContext.
     /// This allows components to post type-safe layout events.
-    let asTyped<'appEvent> (ctx : VdomContext<'appEvent>) : IVdomContext<'appEvent> =
-        { new IVdomContext<'appEvent> with
-            member _.TerminalBounds = ctx._TerminalBounds
-            member _.FocusedKey = ctx._FocusedKey
-            member _.GetUtcNow () = ctx._GetUtcNow ()
+    let asTyped<'appEvent> (ctx : VdomContext<'appEvent>) : IVdomContext<'appEvent> = ctx
 
-            member _.WasRecentlyActivated key =
-                match ctx._LastActivationTimes.TryGetValue key with
-                | true, time -> (ctx._GetUtcNow () - time).TotalMilliseconds < RECENT_ACTIVATION_TIMEOUT_MS
-                | false, _ -> false
-
-            member _.PostLayoutEvent event =
-                ctx._PostLayoutEvents.Add event
-                ctx._IsDirty <- true
-        }
-
-    /// Create a base IVdomContext wrapper around this VdomContext.
+    /// Get a base IVdomContext view of this VdomContext.
     /// This is for passing to ProcessWorld where components don't need to post events.
-    let asBase<'appEvent> (ctx : VdomContext<'appEvent>) : IVdomContext =
-        { new IVdomContext with
-            member _.TerminalBounds = ctx._TerminalBounds
-            member _.FocusedKey = ctx._FocusedKey
-            member _.GetUtcNow () = ctx._GetUtcNow ()
-
-            member _.WasRecentlyActivated key =
-                match ctx._LastActivationTimes.TryGetValue key with
-                | true, time -> (ctx._GetUtcNow () - time).TotalMilliseconds < RECENT_ACTIVATION_TIMEOUT_MS
-                | false, _ -> false
-        }
+    let asBase<'appEvent> (ctx : VdomContext<'appEvent>) : IVdomContext = ctx

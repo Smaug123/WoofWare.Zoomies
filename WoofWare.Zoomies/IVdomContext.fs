@@ -2,6 +2,13 @@ namespace WoofWare.Zoomies
 
 open System
 
+[<RequireQualifiedAccess>]
+module VdomContextConstants =
+    /// Number of milliseconds you get after activation of an activatable component like Button, before which the
+    /// framework considers `VdomContext.wasRecentlyActivated` to expire.
+    [<Literal>]
+    let RECENT_ACTIVATION_TIMEOUT_MS = 500.0
+
 /// Base interface for VdomContext - used by components that don't need to post layout events.
 /// This provides read-only access to context information like terminal bounds and focus state.
 type IVdomContext =

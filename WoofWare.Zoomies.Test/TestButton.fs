@@ -544,7 +544,7 @@ Goodbye, World!                         |
 
             // See how the button press evolves over time. Wait til just before the timer elapses:
 
-            clock.Advance (TimeSpan.FromMilliseconds (VdomContext.RECENT_ACTIVATION_TIMEOUT_MS - 0.01))
+            clock.Advance (TimeSpan.FromMilliseconds (VdomContextConstants.RECENT_ACTIVATION_TIMEOUT_MS - 0.01))
             |> ignore<DateTime>
 
             state <-
