@@ -478,9 +478,7 @@ module TestWorldFreezer =
         let prop = Prop.forAll (Arb.fromGen chunkingInputGen) chunkingInvariantProperty
         Check.One (propConfig, prop)
 
-    [<Test>]
-    let ``Property: the same sequence of inputs results in the same sequence of outputs, ESC bracket`` () =
-        let chunkingInputGen =
+    let chunkingInputGenEscBracket =
             gen {
                 let! rest = Gen.listOf ansiCharGen
                 let! changes = Gen.listOf (Gen.choose (0, 15))
@@ -493,8 +491,76 @@ module TestWorldFreezer =
                     }
             }
 
-        let prop = Prop.forAll (Arb.fromGen chunkingInputGen) chunkingInvariantProperty
+
+    [<Test>]
+    let ``Property: the same sequence of inputs results in the same sequence of outputs, ESC bracket`` () =
+        let prop = Prop.forAll (Arb.fromGen chunkingInputGenEscBracket) chunkingInvariantProperty
         Check.One (propConfig, prop)
+
+        (*
+       System.Exception : Falsifiable, after 7834 tests (0 shrinks) (12957137506611089187,7377520863933791071)
+Last step was invoked with size of 79 and seed of (3856024818419232693,5423926211778887271):
+Original:
+{ InputChar1 = '\027'
+  InputRest =
+   ['['; 'C'; 'D'; 'Q'; ' '; '<'; '['; ';'; 'a'; '<'; 'K'; '('; '9'; '3'; 'M';
+    '0'; '\027'; '3'; ' '; '/'; '/'; 'L'; '4'; '~'; '('; '.'; '6'; '['; ';';
+    '\027'; '['; '2'; '0'; '0'; '~'; ' '; 's'; 'A'; ':'; '2'; '3'; '0'; '('; ' ';
+    '7'; 'h'; ':'; '2']
+  ChangesPerChunk = [8; 7; 10; 15; 6; 5; 7; 6; 1; 9; 5; 12; 9; 11; 10; 4] }
+with exception:
+NUnit.Framework.AssertionException:   Assert.That(, )
+  Expected: < '\u001b', '[', 'C', 'D', 'Q', ' ', '<', '[', ';', 'a'... > or < '\u001b', '[', 'C', 'D', 'Q', ' ', '<', '[', ';', 'a'... >
+  But was:  < '\u001b', '[', 'C', 'D', 'Q', ' ', '<', '[', ';', 'a'... >
+   at FsUnitTyped.TopLevelOperators.shouldEqual[a](a expected, a actual)
+   at WoofWare.Zoomies.Test.TestWorldFreezer.computeExpected(ChunkingInput input) in /Users/patrick/Documents/GitHub/WoofWare.Zoomies3/WoofWare.Zoomies.Test/TestWorldFreezer.fs:line 252
+   at WoofWare.Zoomies.Test.TestWorldFreezer.chunkingInvariantProperty(ChunkingInput input) in /Users/patrick/Documents/GitHub/WoofWare.Zoomies3/WoofWare.Zoomies.Test/TestWorldFreezer.fs:line 261
+   at WoofWare.Zoomies.Test.TestWorldFreezer.prop@496-1.Invoke(ChunkingInput input)
+   at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)
+   at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)
+   at System.Lazy`1.CreateValue()
+   at FsCheck.Testable.Prop.safeForce[a](Lazy`1 body) in C:\Users\kurts\Projects\FsCheck\src\FsCheck\Testable.fs:line 156
+   at FsCheck.Testable.evaluate[a,b](FSharpFunc`2 body, a a, IArbMap arbMap) in C:\Users\kurts\Projects\FsCheck\src\FsCheck\Testable.fs:line 177
+   at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)
+   at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)
+   at System.Lazy`1.CreateValue()
+   at FsCheck.Internals.Shrink.map@27.Invoke(Unit unitVar) in C:\Users\kurts\Projects\FsCheck\src\FsCheck\Internals.Shrink.fs:line 27
+   at System.Lazy`1.ViaFactory(LazyThreadSafetyMode mode)
+   at System.Lazy`1.ExecutionAndPublication(LazyHelper executionAndPublication, Boolean useDefaultConstructor)
+   at System.Lazy`1.CreateValue()
+   at FsCheck.Internals.Shrink.join[T](Shrink`1 _arg1)
+   at FsCheck.FSharp.Gen.Map@46.Invoke(Int32 s, Rnd r0) in C:\Users\kurts\Projects\FsCheck\src\FsCheck\FSharp.Gen.fs:line 48
+   at FsCheck.FSharp.Gen.Map@46.Invoke(Int32 s, Rnd r0) in C:\Users\kurts\Projects\FsCheck\src\FsCheck\FSharp.Gen.fs:line 47
+   at FsCheck.Runner.testSingle(Gen`1 generator, Double newSize, Rnd seed) in C:\Users\kurts\Projects\FsCheck\src\FsCheck\Runner.fs:line 227
+   at Microsoft.FSharp.Collections.Internal.IEnumerator.map@128.DoMoveNext(b& curr) in D:\a\_work\1\s\src\FSharp.Core\seq.fs:line 130
+   at Microsoft.FSharp.Collections.Internal.IEnumerator.MapEnumerator`1.System.Collections.IEnumerator.MoveNext() in D:\a\_work\1\s\src\FSharp.Core\seq.fs:line 113
+   at Microsoft.FSharp.Core.CompilerServices.RuntimeHelpers.takeOuter@319[T,TResult](ConcatEnumerator`2 x, Unit unitVar0) in D:\a\_work\1\s\src\FSharp.Core\seqcore.fs:line 320
+   at FsCheck.Internals.Common.loop@51-1.GenerateNext(IEnumerable`1& next)
+   at Microsoft.FSharp.Core.CompilerServices.GeneratedSequenceBase`1.MoveNextImpl() in D:\a\_work\1\s\src\FSharp.Core\seqcore.fs:line 488
+   at FsCheck.Internals.Common.takeWhilePlusLast@59.GenerateNext(IEnumerable`1& next)
+   at Microsoft.FSharp.Core.CompilerServices.GeneratedSequenceBase`1.MoveNextImpl() in D:\a\_work\1\s\src\FSharp.Core\seqcore.fs:line 488
+   at Microsoft.FSharp.Collections.SeqModule.Fold[T,TState](FSharpFunc`2 folder, TState state, IEnumerable`1 source) in D:\a\_work\1\s\src\FSharp.Core\seq.fs:line 906
+   at FsCheck.Runner.runner[a](Config config, a prop) in C:\Users\kurts\Projects\FsCheck\src\FsCheck\Runner.fs:line 415
+   at WoofWare.Zoomies.Test.TestWorldFreezer.Property: the same sequence of inputs results in the same sequence of outputs, ESC bracket() in /Users/patrick/Documents/GitHub/WoofWare.Zoomies3/WoofWare.Zoomies.Test/TestWorldFreezer.fs:line 497
+
+        *)
+
+    [<TestCase (3856024818419232693UL,5423926211778887271UL, 79)>]
+    let ``Property: the same sequence of inputs results in the same sequence of outputs, ESC bracket, regressions`` (seed : uint64, gamma : uint64, size : int) =
+        let prop = Prop.forAll (Arb.fromGen chunkingInputGenEscBracket) chunkingInvariantProperty
+        Check.One (Config.QuickThrowOnFailure.WithReplay (seed, gamma, size), prop)
+
+    [<Test>]
+    let ``Explicit failing case from FsCheck`` () =
+          let input = {
+              ChunkingInput.InputChar1 = '\u001B'
+              InputRest = ['['; 'C'; 'D'; 'Q'; ' '; '<'; '['; ';'; 'a'; '<'; 'K'; '('; '9'; '3'; 'M';
+                           '0'; '\027'; '3'; ' '; '/'; '/'; 'L'; '4'; '~'; '('; '.'; '6'; '['; ';';
+                           '\027'; '['; '2'; '0'; '0'; '~'; ' '; 's'; 'A'; ':'; '2'; '3'; '0'; '('; ' ';
+                           '7'; 'h'; ':'; '2']
+              ChangesPerChunk = [8; 7; 10; 15; 6; 5; 7; 6; 1; 9; 5; 12; 9; 11; 10; 4]
+          }
+          chunkingInvariantProperty input
 
     [<Test>]
     let ``Property: the same sequence of inputs results in the same sequence of outputs, ESC bracket angle`` () =
