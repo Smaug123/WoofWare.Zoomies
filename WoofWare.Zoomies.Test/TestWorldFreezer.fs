@@ -478,23 +478,34 @@ module TestWorldFreezer =
         let prop = Prop.forAll (Arb.fromGen chunkingInputGen) chunkingInvariantProperty
         Check.One (propConfig, prop)
 
+    let chunkingInputGenEscBracket =
+        gen {
+            let! rest = Gen.listOf ansiCharGen
+            let! changes = Gen.listOf (Gen.choose (0, 15))
+
+            return
+                {
+                    InputChar1 = '\u001B'
+                    InputRest = '[' :: rest
+                    ChangesPerChunk = changes
+                }
+        }
+
     [<Test>]
     let ``Property: the same sequence of inputs results in the same sequence of outputs, ESC bracket`` () =
-        let chunkingInputGen =
-            gen {
-                let! rest = Gen.listOf ansiCharGen
-                let! changes = Gen.listOf (Gen.choose (0, 15))
+        let prop =
+            Prop.forAll (Arb.fromGen chunkingInputGenEscBracket) chunkingInvariantProperty
 
-                return
-                    {
-                        InputChar1 = '\u001B'
-                        InputRest = '[' :: rest
-                        ChangesPerChunk = changes
-                    }
-            }
-
-        let prop = Prop.forAll (Arb.fromGen chunkingInputGen) chunkingInvariantProperty
         Check.One (propConfig, prop)
+
+    [<TestCase(3856024818419232693UL, 5423926211778887271UL, 79)>]
+    let ``Property: the same sequence of inputs results in the same sequence of outputs, ESC bracket, regressions``
+        (seed : uint64, gamma : uint64, size : int)
+        =
+        let prop =
+            Prop.forAll (Arb.fromGen chunkingInputGenEscBracket) chunkingInvariantProperty
+
+        Check.One (Config.QuickThrowOnFailure.WithReplay (seed, gamma, size), prop)
 
     [<Test>]
     let ``Property: the same sequence of inputs results in the same sequence of outputs, ESC bracket angle`` () =

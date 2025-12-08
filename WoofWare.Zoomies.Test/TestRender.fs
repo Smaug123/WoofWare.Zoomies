@@ -458,6 +458,19 @@ only displayed when checked                this one is focusable!               
         // Should only be called once
         setCursorInvisibleCount |> shouldEqual 1
 
+        // Count how many SetCursorVisibility true operations were emitted
+        let setCursorVisibleCount =
+            terminalOps
+            |> Seq.filter (
+                function
+                | TerminalOp.SetCursorVisibility true -> true
+                | _ -> false
+            )
+            |> Seq.length
+
+        // Should also be called once (to restore cursor visibility after render)
+        setCursorVisibleCount |> shouldEqual 1
+
     [<Test>]
     let ``layoutOf works for unchanged keyed nodes across multiple renders`` () =
         let terminalOps = ResizeArray ()
@@ -486,12 +499,41 @@ only displayed when checked                this one is focusable!               
         let layout1 = RenderState.layoutOf key renderState
         layout1.IsSome |> shouldEqual true
 
+        // Count the writes from the first render
+        let firstRenderWriteCount =
+            terminalOps
+            |> Seq.filter (
+                function
+                | TerminalOp.WriteRun _ -> true
+                | _ -> false
+            )
+            |> Seq.length
+
+        terminalOps.Clear ()
+
         // Second render with the same vdom (should trigger early cutoff on the keyed node)
         Render.oneStep renderState (FakeUnit.fake ()) vdom
 
         // layoutOf should still work after second render, even though early cutoff was taken
         let layout2 = RenderState.layoutOf key renderState
         layout2.IsSome |> shouldEqual true
+
+        // Verify early-cutoff was taken: second render should produce fewer writes
+        // (specifically, no writes since the keyed content is unchanged)
+        let secondRenderWriteCount =
+            terminalOps
+            |> Seq.filter (
+                function
+                | TerminalOp.WriteRun _ -> true
+                | _ -> false
+            )
+            |> Seq.length
+
+        // First render must have had writes
+        firstRenderWriteCount |> shouldBeGreaterThan 0
+
+        // Second render should have no writes due to early-cutoff
+        secondRenderWriteCount |> shouldEqual 0
 
     [<Test>]
     let ``Vdom.empty allows right justification`` () =
