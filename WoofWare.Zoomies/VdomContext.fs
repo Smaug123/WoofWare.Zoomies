@@ -122,9 +122,7 @@ module VdomContext =
             events
 
     /// Get a typed IVdomContext<'appEvent> view of this VdomContext.
-    /// This allows components to post type-safe layout events.
-    let asTyped<'appEvent> (ctx : VdomContext<'appEvent>) : IVdomContext<'appEvent> = ctx
+    let internal asTyped<'appEvent> (ctx : VdomContext<'appEvent>) : IVdomContext<'appEvent> = ctx
 
     /// Get a base IVdomContext view of this VdomContext.
-    /// This is for passing to ProcessWorld where components don't need to post events.
-    let asBase<'appEvent> (ctx : VdomContext<'appEvent>) : IVdomContext = ctx
+    let internal asBase<'appEvent> (ctx : VdomContext<'appEvent>) : IVdomContext = ctx
