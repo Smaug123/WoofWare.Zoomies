@@ -22,20 +22,11 @@ module TestTextRendering =
         task {
             // Regression test for: "Text rendering does not handle zero-size bounds"
             // With Width=0 (from a proportion split), rendering can write off-bounds and throw
-            let terminalOps = ResizeArray<TerminalOp> ()
-
-            // Use a very small terminal width so that after splitting, one side has 0 width
-            let console =
-                { IConsole.defaultForTests with
-                    Execute = fun x -> terminalOps.Add x
-                    WindowWidth = fun _ -> 1
-                    WindowHeight = fun _ -> 5
-                }
-
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            // Using width=1, a 0.5 split gives left=floor(0.5*1)=0 width, right=1 width
+            let console, terminal = ConsoleHarness.make' (fun () -> 1) (fun () -> 5)
 
             // Create a vdom where text content has Width=0
-            // With a terminal width of 1 and a 50/50 split, each side gets 0 or 1 width
+            // With a terminal width of 1 and a 50/50 split, left gets 0 width, right gets 1 width
             let vdom (_ : VdomContext) (_ : FakeUnit) =
                 let leftText = Vdom.textContent "some text content"
                 let rightText = Vdom.textContent "other text"
@@ -56,6 +47,8 @@ module TestTextRendering =
                     world.KeyAvailable
                     world.ReadKey
 
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
             // This should not throw an IndexOutOfRangeException
             App.pumpOnce
                 worldFreezer
@@ -67,6 +60,21 @@ module TestTextRendering =
                 ActivationResolver.none
                 (fun () -> false)
             |> ignore<FakeUnit>
+
+            // Assert: only right side content is visible (proving left has 0 width)
+            // If layout ever enforced a minimum width, this snapshot would change
+            expect {
+                snapshot
+                    @"
+o|
+t|
+h|
+e|
+r|
+"
+
+                return ConsoleHarness.toString terminal
+            }
         }
 
     [<TestCase true>]
@@ -75,27 +83,18 @@ module TestTextRendering =
         task {
             // Regression test for: "Text rendering does not handle zero-size bounds"
             // Test the keyed branch of text rendering
-            let terminalOps = ResizeArray<TerminalOp> ()
-
-            // Use a very small terminal width so that after splitting, one side has 0 width
-            let console =
-                { IConsole.defaultForTests with
-                    Execute = fun x -> terminalOps.Add x
-                    WindowWidth = fun _ -> 1
-                    WindowHeight = fun _ -> 5
-                }
-
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            // Using width=1, a 0.5 split gives left=floor(0.5*1)=0 width, right=1 width
+            let console, terminal = ConsoleHarness.make' (fun () -> 1) (fun () -> 5)
 
             let textKey = NodeKey.make "text"
 
             // Create a vdom where keyed text content has Width=0
-            // With a terminal width of 1 and a 50/50 split, each side gets 0 or 1 width
+            // With a terminal width of 1 and a 50/50 split, left gets 0 width, right gets 1 width
             let vdom (_ : VdomContext) (_ : FakeUnit) =
                 let leftText = Vdom.textContent "some text content"
                 let rightText = Vdom.textContent "other text"
 
-                // Split with 0.5 proportion so that one side gets 0 width
+                // Split with 0.5 proportion so that left side gets 0 width
                 if leftIsKeyed then
                     Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, Vdom.withKey textKey leftText, rightText)
                 else
@@ -115,6 +114,8 @@ module TestTextRendering =
                     world.KeyAvailable
                     world.ReadKey
 
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
             // This should not throw an IndexOutOfRangeException
             App.pumpOnce
                 worldFreezer
@@ -126,6 +127,22 @@ module TestTextRendering =
                 ActivationResolver.none
                 (fun () -> false)
             |> ignore<FakeUnit>
+
+            // Assert: only right side content is visible (proving left has 0 width)
+            // If layout ever enforced a minimum width, this snapshot would change
+            // The snapshot is the same regardless of which side is keyed
+            expect {
+                snapshot
+                    @"
+o|
+t|
+h|
+e|
+r|
+"
+
+                return ConsoleHarness.toString terminal
+            }
         }
 
     [<Test>]
