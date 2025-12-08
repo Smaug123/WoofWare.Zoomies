@@ -85,6 +85,9 @@ module App =
         : 'state * bool
         =
         let ctx = RenderState.vdomContext renderState
+        // Caller must mark clean before calling; PostLayoutEvent can only set dirty during vdom construction,
+        // and processWorld receives IVdomContext (not IVdomContext<'appEvent>) so cannot post events.
+        assert (not (VdomContext.isDirty ctx))
         let mutable currentState = state
         let mutable iterations = 0
         let mutable continueLoop = true
