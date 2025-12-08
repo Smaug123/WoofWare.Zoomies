@@ -42,7 +42,7 @@ module TestBatchProcessing =
             let mutable totalProcessed = 0
 
             let processWorld =
-                { new WorldProcessor<obj, ImmutableArray<char>> with
+                { new WorldProcessor<unit, ImmutableArray<char>> with
                     member _.ProcessWorld (inputs, _renderState, state) =
                         let batchSize =
                             if List.isEmpty batchSizes then
@@ -77,7 +77,7 @@ module TestBatchProcessing =
 
             let vdom (_vdomContext : IVdomContext<_>) (_state : ImmutableArray<char>) = Vdom.textContent ""
 
-            let renderState = RenderState.make<obj> console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
             let mutable currentState = initialState
 
             // Keep pumping until all events are processed
@@ -220,7 +220,7 @@ module TestBatchProcessing =
             let mutable switchModeAfterNextEvent = false
 
             let processWorld =
-                { new WorldProcessor<obj, ModeSwitchingState> with
+                { new WorldProcessor<unit, ModeSwitchingState> with
                     member _.ProcessWorld (inputs, vdomContext, state) =
                         let mutable newState =
                             { state with
@@ -274,7 +274,7 @@ module TestBatchProcessing =
 
                 Vdom.panelSplitAbsolute (SplitDirection.Vertical, -3, checkbox0, checkbox1)
 
-            let renderState = RenderState.make<obj> console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
             let mutable currentState = initialState
 
             // Initial render
@@ -446,7 +446,7 @@ module TestBatchProcessing =
                 let mutable batchIndex = 0
 
                 let processWorld =
-                    { new WorldProcessor<obj, char list> with
+                    { new WorldProcessor<unit, char list> with
                         member _.ProcessWorld (inputs, _vdomContext, state) =
                             // Process only batchSize events from this batch, then request Rerender
                             let batchSize =
@@ -478,7 +478,7 @@ module TestBatchProcessing =
                     vdomRenderCount <- vdomRenderCount + 1
                     Vdom.textContent ""
 
-                let renderState = RenderState.make<obj> console MockTime.getStaticUtcNow None
+                let renderState = RenderState.make console MockTime.getStaticUtcNow None
                 let mutable currentState = []
 
                 // Initial render
