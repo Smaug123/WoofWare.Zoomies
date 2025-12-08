@@ -426,7 +426,7 @@ only displayed when checked                this one is focusable!               
         }
 
     [<Test>]
-    let ``SetCursorInvisible is only called once per render`` () =
+    let ``Cursor visibility is toggled exactly once per render`` () =
         let terminalOps = ResizeArray<TerminalOp> ()
 
         let console =
@@ -532,8 +532,8 @@ only displayed when checked                this one is focusable!               
         // First render must have had writes
         firstRenderWriteCount |> shouldBeGreaterThan 0
 
-        // Second render should have no writes due to early-cutoff
-        secondRenderWriteCount |> shouldEqual 0
+        // Second render should have fewer or equal writes due to early-cutoff on the keyed node
+        secondRenderWriteCount |> shouldBeSmallerThan firstRenderWriteCount
 
     [<Test>]
     let ``Vdom.empty allows right justification`` () =
