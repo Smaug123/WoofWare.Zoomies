@@ -78,6 +78,9 @@ module TestCheckbox =
                 (fun () -> false)
             |> ignore<FakeUnit>
 
+            // Verify focus actually moved to the checkbox
+            RenderState.focusedKey renderState |> shouldEqual (Some checkboxKey)
+
             // Check that the checkbox has bounds with Height=0
             let checkboxLayout = RenderState.layoutOf checkboxKey renderState
             checkboxLayout.IsSome |> shouldEqual true
