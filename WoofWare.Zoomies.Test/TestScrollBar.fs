@@ -893,7 +893,8 @@ module TestScrollBar =
 
     /// Render a horizontal scroll bar to a string (just the scroll bar characters, no trailing spaces)
     let private renderHorizontalScrollBar (scrollParams : ScrollBarParams) : string =
-        let width = scrollParams.TrackLength
+        // Use max 1 to match ScrollBar clamping behaviour for non-positive track lengths
+        let width = max 1 scrollParams.TrackLength
         let height = 1
         let console, terminal = ConsoleHarness.make' (fun () -> width) (fun () -> height)
         let renderState = RenderState.make console MockTime.getStaticUtcNow None
@@ -910,7 +911,8 @@ module TestScrollBar =
     /// Render a vertical scroll bar to a string array (one string per row)
     let private renderVerticalScrollBar (scrollParams : ScrollBarParams) : string[] =
         let width = 1
-        let height = scrollParams.TrackLength
+        // Use max 1 to match ScrollBar clamping behaviour for non-positive track lengths
+        let height = max 1 scrollParams.TrackLength
         let console, terminal = ConsoleHarness.make' (fun () -> width) (fun () -> height)
         let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
@@ -1138,5 +1140,387 @@ module TestScrollBar =
                     }
 
             rendered.Length |> shouldEqual trackLength
+
+        Check.One (propConfig, property)
+
+    // Invalid input tests for clamping behaviour
+
+    [<Test>]
+    let ``scroll bar with zero viewport size is treated as 1`` () =
+        task {
+            // Zero viewport should be clamped to 1
+            // 20 items, viewport 0 (treated as 1), offset 0, track length 10
+            // Thumb size = max(1, int((1/20) * 10)) = 1
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+                ScrollBar.make
+                    ScrollBarOrientation.Horizontal
+                    {
+                        TotalItems = 20
+                        ViewportSize = 0
+                        Offset = 0
+                        TrackLength = 10
+                    }
+
+            let console, terminal = ConsoleHarness.make' (fun () -> 15) (fun () -> 2)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = false
+
+            let processWorld =
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
+
+            expect {
+                snapshot
+                    @"
+█░░░░░░░░░     |
+               |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``scroll bar with negative viewport size is treated as 1`` () =
+        task {
+            // Negative viewport should be clamped to 1
+            // 20 items, viewport -5 (treated as 1), offset 10, track length 10
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+                ScrollBar.make
+                    ScrollBarOrientation.Horizontal
+                    {
+                        TotalItems = 20
+                        ViewportSize = -5
+                        Offset = 10
+                        TrackLength = 10
+                    }
+
+            let console, terminal = ConsoleHarness.make' (fun () -> 15) (fun () -> 2)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = false
+
+            let processWorld =
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
+
+            expect {
+                snapshot
+                    @"
+░░░░█░░░░░     |
+               |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``scroll bar with zero track length is treated as 1`` () =
+        task {
+            // Zero track length should be clamped to 1
+            // 20 items, viewport 5, offset 0, track length 0 (treated as 1)
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+                ScrollBar.make
+                    ScrollBarOrientation.Horizontal
+                    {
+                        TotalItems = 20
+                        ViewportSize = 5
+                        Offset = 0
+                        TrackLength = 0
+                    }
+
+            let console, terminal = ConsoleHarness.make' (fun () -> 15) (fun () -> 2)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = false
+
+            let processWorld =
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
+
+            expect {
+                snapshot
+                    @"
+█              |
+               |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``scroll bar with negative track length is treated as 1`` () =
+        task {
+            // Negative track length should be clamped to 1
+            // 20 items, viewport 5, offset 15, track length -10 (treated as 1)
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+                ScrollBar.make
+                    ScrollBarOrientation.Horizontal
+                    {
+                        TotalItems = 20
+                        ViewportSize = 5
+                        Offset = 15
+                        TrackLength = -10
+                    }
+
+            let console, terminal = ConsoleHarness.make' (fun () -> 15) (fun () -> 2)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = false
+
+            let processWorld =
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
+
+            expect {
+                snapshot
+                    @"
+█              |
+               |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``vertical scroll bar with zero viewport size`` () =
+        task {
+            // Zero viewport in vertical orientation
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+                ScrollBar.make
+                    ScrollBarOrientation.Vertical
+                    {
+                        TotalItems = 20
+                        ViewportSize = 0
+                        Offset = 0
+                        TrackLength = 5
+                    }
+
+            let console, terminal = ConsoleHarness.make' (fun () -> 5) (fun () -> 7)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = false
+
+            let processWorld =
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
+
+            expect {
+                snapshot
+                    @"
+█    |
+░    |
+░    |
+░    |
+░    |
+     |
+     |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``vertical scroll bar with zero track length`` () =
+        task {
+            // Zero track length in vertical orientation
+            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+                ScrollBar.make
+                    ScrollBarOrientation.Vertical
+                    {
+                        TotalItems = 20
+                        ViewportSize = 5
+                        Offset = 0
+                        TrackLength = 0
+                    }
+
+            let console, terminal = ConsoleHarness.make' (fun () -> 5) (fun () -> 3)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = false
+
+            let processWorld =
+                { new WorldProcessor<unit, State> with
+                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                }
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                ()
+                haveFrameworkHandleFocus
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
+
+            expect {
+                snapshot
+                    @"
+█    |
+     |
+     |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``property: non-positive viewport is clamped to 1`` () =
+        let property (viewportNonPositive : NegativeInt) (totalItems : PositiveInt) (trackLength : PositiveInt) =
+            let totalItems = totalItems.Get
+            let trackLength = trackLength.Get
+
+            let rendered =
+                renderHorizontalScrollBar
+                    {
+                        TotalItems = totalItems
+                        ViewportSize = viewportNonPositive.Get
+                        Offset = 0
+                        TrackLength = trackLength
+                    }
+
+            // Should render normally with effective viewport of 1
+            rendered.Length |> shouldEqual trackLength
+            rendered |> Seq.exists (fun c -> c = '█') |> shouldEqual true
+
+        Check.One (propConfig, property)
+
+    [<Test>]
+    let ``property: non-positive track length is clamped to 1`` () =
+        let property (viewportSize : PositiveInt) (totalItems : PositiveInt) (trackLengthNonPositive : NegativeInt) =
+            let rendered =
+                renderHorizontalScrollBar
+                    {
+                        TotalItems = totalItems.Get
+                        ViewportSize = viewportSize.Get
+                        Offset = 0
+                        TrackLength = trackLengthNonPositive.Get
+                    }
+
+            // Should render with effective track length of 1
+            rendered.Length |> shouldEqual 1
+            rendered |> shouldEqual "█"
 
         Check.One (propConfig, property)
