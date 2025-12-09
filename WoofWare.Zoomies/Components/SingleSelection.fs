@@ -2,23 +2,21 @@ namespace WoofWare.Zoomies.Components
 
 open WoofWare.Zoomies
 
-/// An item in a multi-selection list.
-type MultiSelectionItem<'id> =
+/// An item in a single-selection list.
+type SingleSelectionItem<'id> =
     {
         /// Unique identifier for this item, for the caller's use (e.g., correlating items with external state).
         /// Not used internally by the component; the list is a single focusable unit with index-based cursor navigation.
         Id : 'id
-        /// The label displayed next to the checkbox.
+        /// The label displayed next to the radio button.
         Label : string
-        /// Whether this item is currently selected (checked).
-        IsSelected : bool
     }
 
 [<RequireQualifiedAccess>]
-type MultiSelection =
+type SingleSelection =
 
     /// Low-level rendering without framework integration.
-    /// Each item specifies its own focus state (cursor highlight).
+    /// Each item specifies its own focus and selection state.
     /// Virtualizes rendering: only items within the viewport are rendered.
     /// The state is not automatically adjusted; caller is responsible for ensuring
     /// the cursor is visible via EnsureVisible.
@@ -26,22 +24,28 @@ type MultiSelection =
         (keyPrefix : NodeKey, items : SelectionListItem'[], state : SelectionListState)
         : SelectionListResult
         =
-        SelectionList.makeInternal "multi-selection" Checkbox.make' keyPrefix items state
+        SelectionList.makeInternal "single-selection" RadioButton.make' keyPrefix items state
 
     /// Framework-integrated version with cursor-based navigation.
     /// The list is a single focusable unit; use arrows to navigate within,
-    /// Space to toggle items. Tab moves to/from the list as a whole.
+    /// Space to select an item. Tab moves to/from the list as a whole.
     /// Virtualizes rendering: only items within the viewport are rendered.
     /// Cursor highlight only shows when the list has focus.
     ///
     /// The component posts onViewportRendered during render with the viewport height.
     /// Handle this event in ProcessWorld to call state.EnsureVisible(viewportHeight)
     /// and keep the cursor visible.
+    ///
+    /// Note: This component uses the same ActivationResolver as MultiSelection
+    /// (ActivationResolver.selectionList). The difference is semantic: in MultiSelection,
+    /// Space toggles the item; in SingleSelection, Space selects the item (your ProcessWorld
+    /// handler should set the selection to the cursor index rather than toggling).
     static member make<'appEvent>
         (
             ctx : IVdomContext<'appEvent>,
             listKey : NodeKey,
-            items : MultiSelectionItem<NodeKey>[],
+            items : SingleSelectionItem<NodeKey>[],
+            selectedIndex : int option,
             state : SelectionListState,
             onViewportRendered : SelectionListViewportInfo -> 'appEvent,
             ?isFirstToFocus : bool
@@ -58,11 +62,14 @@ type MultiSelection =
             let listHasFocus = ctx.FocusedKey = Some listKey
             // Clamp cursor to valid range
             let cursorIndex = max 0 (min state.CursorIndex (totalItems - 1))
+            // Clamp selectedIndex to valid range
+            let selectedIndex =
+                selectedIndex |> Option.map (fun i -> max 0 (min i (totalItems - 1)))
 
             let measure (constraints : MeasureConstraints) : MeasuredSize =
-                // Each item is 1 line tall, 3 chars for checkbox + label
+                // Each item is 1 line tall, 3 chars for radio button + label
                 {
-                    MinWidth = 4 // Minimum: checkbox (3) + at least 1 char
+                    MinWidth = 4 // Minimum: radio button (3) + at least 1 char
                     PreferredWidth = constraints.MaxWidth // Take available width
                     MaxWidth = None
                     MinHeightForWidth = fun _ -> 1 // Show at least 1 item
@@ -105,10 +112,12 @@ type MultiSelection =
                             let globalIdx = offset + visibleIdx
                             // Show cursor highlight only when list has focus AND this is the cursor item
                             let isCursor = listHasFocus && globalIdx = cursorIndex
+                            // Show selection indicator for the selected item
+                            let isSelected = selectedIndex = Some globalIdx
 
-                            let checkbox = Checkbox.make' (item.IsSelected, isCursor)
+                            let radioButton = RadioButton.make' (isSelected, isCursor)
                             let label = Vdom.textContent item.Label
-                            [| checkbox ; label |]
+                            [| radioButton ; label |]
                         )
 
                     // Use a derived key for the inner table to avoid collision with the outer focusable key
@@ -116,7 +125,7 @@ type MultiSelection =
                     Table.make tableKey cells [| Column.Fixed 3 ; Column.Proportion 1.0 |] [||]
 
             // Register the list itself as focusable (not individual items)
-            let content = Vdom.flexibleContent measure render |> Vdom.withTag "multi-selection"
+            let content = Vdom.flexibleContent measure render |> Vdom.withTag "single-selection"
             let focusable = content |> Vdom.withKey listKey
 
             {

@@ -8,10 +8,10 @@ open WoofWare.Zoomies
 open WoofWare.Zoomies.Components
 
 type AppEvent =
-    | ToggleFile of index : int
+    | SelectFile of index : int
     | CursorUp
     | CursorDown
-    | ViewportInfo of MultiSelectionViewportInfo
+    | ViewportInfo of SelectionListViewportInfo
     | LoadButtonClicked
     | FileLoaded of content : string * generation : int
     | FileLoadError of error : string * generation : int
@@ -26,11 +26,11 @@ type FileEntry =
 type State =
     {
         Files : FileEntry[]
-        SelectedFiles : Set<string>
+        SelectedFileIndex : int option
         FileContent : string option
         IsLoading : bool
         Generation : int
-        ListState : MultiSelectionState
+        ListState : SelectionListState
     }
 
     static member Initial =
@@ -52,15 +52,15 @@ type State =
 
         {
             Files = files
-            SelectedFiles = Set.empty
+            SelectedFileIndex = None
             FileContent = None
             IsLoading = false
             Generation = 0
-            ListState = MultiSelectionState.AtStart
+            ListState = SelectionListState.AtStart
         }
 
 module FileBrowser =
-    let multiSelectKey = NodeKey.make "file-list"
+    let fileListKey = NodeKey.make "file-list"
     let loadButtonKey = NodeKey.make "loadButton"
 
     let loadFileAsync (generation : int) (worldBridge : IWorldBridge<_>) (filepath : string) : unit Task =
@@ -75,7 +75,7 @@ module FileBrowser =
     let processWorld (worldBridge : IWorldBridge<AppEvent>) =
         { new WorldProcessor<AppEvent, State> with
             member _.ProcessWorld (changes, _prevVdom, state) =
-                let mutable selectedFiles = state.SelectedFiles
+                let mutable selectedFileIndex = state.SelectedFileIndex
                 let mutable fileContent = state.FileContent
                 let mutable isLoading = state.IsLoading
                 let mutable generation = state.Generation
@@ -87,15 +87,10 @@ module FileBrowser =
                     | WorldStateChange.Keystroke _
                     | WorldStateChange.Paste _ -> ()
 
-                    | WorldStateChange.ApplicationEvent (ToggleFile index) ->
-                        // Toggle the file at the given index
+                    | WorldStateChange.ApplicationEvent (SelectFile index) ->
+                        // Select the file at the given index
                         if index >= 0 && index < state.Files.Length then
-                            let entry = state.Files.[index]
-
-                            if Set.contains entry.FullPath selectedFiles then
-                                selectedFiles <- Set.remove entry.FullPath selectedFiles
-                            else
-                                selectedFiles <- Set.add entry.FullPath selectedFiles
+                            selectedFileIndex <- Some index
 
                     | WorldStateChange.ApplicationEvent CursorUp -> listState <- listState.MoveUp state.Files.Length
 
@@ -106,12 +101,14 @@ module FileBrowser =
                         listState <- listState.EnsureVisible info.ViewportHeight
 
                     | WorldStateChange.ApplicationEvent LoadButtonClicked ->
-                        if not isLoading && Set.count selectedFiles = 1 then
-                            let selectedPath = Set.minElement selectedFiles
+                        match selectedFileIndex with
+                        | Some index when not isLoading && index >= 0 && index < state.Files.Length ->
+                            let selectedPath = state.Files.[index].FullPath
                             isLoading <- true
                             fileContent <- None
                             generation <- generation + 1
                             loadFileAsync generation worldBridge selectedPath |> ignore<Task<unit>>
+                        | _ -> ()
 
                     | WorldStateChange.ApplicationEvent (FileLoaded (content, gen)) ->
                         if generation = gen then
@@ -130,7 +127,7 @@ module FileBrowser =
                 ProcessWorldResult.make
                     {
                         Files = state.Files
-                        SelectedFiles = selectedFiles
+                        SelectedFileIndex = selectedFileIndex
                         FileContent = fileContent
                         IsLoading = isLoading
                         Generation = generation
@@ -152,14 +149,14 @@ module FileBrowser =
                             {
                                 Id = entry.Key
                                 Label = entry.Name
-                                IsSelected = Set.contains entry.FullPath state.SelectedFiles
                             }
                         )
 
-                    (MultiSelection.make (
+                    (SingleSelection.make (
                         ctx,
-                        multiSelectKey,
+                        fileListKey,
                         items,
+                        state.SelectedFileIndex,
                         state.ListState,
                         ViewportInfo,
                         isFirstToFocus = true
@@ -167,10 +164,9 @@ module FileBrowser =
                         .Vdom
 
             let buttonLabel =
-                match Set.count state.SelectedFiles with
-                | 0 -> "Select a file"
-                | 1 -> "Load selected file"
-                | n -> $"{n} files selected"
+                match state.SelectedFileIndex with
+                | None -> "Select a file"
+                | Some _ -> "Load selected file"
 
             let button = Button.make (ctx, loadButtonKey, buttonLabel)
 
@@ -180,12 +176,11 @@ module FileBrowser =
 
         let rightPane =
             let content =
-                match state.IsLoading, state.FileContent, Set.count state.SelectedFiles with
+                match state.IsLoading, state.FileContent, state.SelectedFileIndex with
                 | true, _, _ -> "Loading..."
                 | false, Some content, _ -> content
-                | false, None, 0 -> "Select a file and press the button to view its contents."
-                | false, None, 1 -> "Press the button to load the selected file."
-                | false, None, n -> $"You have {n} files selected. Select exactly one to view its contents."
+                | false, None, None -> "Select a file and press the button to view its contents."
+                | false, None, Some _ -> "Press the button to load the selected file."
 
             Vdom.textContent content |> Vdom.bordered
 
@@ -194,12 +189,12 @@ module FileBrowser =
     let resolver : ActivationResolver<AppEvent, State> =
         ActivationResolver.combine
             [
-                ActivationResolver.multiSelection
-                    multiSelectKey
+                ActivationResolver.selectionList
+                    fileListKey
                     (fun s -> s.ListState.CursorIndex)
                     CursorUp
                     CursorDown
-                    ToggleFile
+                    SelectFile
                 ActivationResolver.button loadButtonKey LoadButtonClicked
             ]
 

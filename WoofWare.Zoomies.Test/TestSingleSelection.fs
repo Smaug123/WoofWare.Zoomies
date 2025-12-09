@@ -9,7 +9,7 @@ open FsUnitTyped
 
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
-module TestMultiSelection =
+module TestSingleSelection =
     [<OneTimeSetUp>]
     let setUp () =
         // GlobalBuilderConfig.enterBulkUpdateMode ()
@@ -21,7 +21,7 @@ module TestMultiSelection =
 
     type State =
         {
-            Selected : Set<string>
+            SelectedIndex : int option
         }
 
     /// Simple event type for tests that only need viewport tracking
@@ -30,13 +30,13 @@ module TestMultiSelection =
     let itemAKey = NodeKey.make "item-a"
     let itemBKey = NodeKey.make "item-b"
     let itemCKey = NodeKey.make "item-c"
-    let multiSelectPrefix = NodeKey.make "multi-select"
+    let singleSelectPrefix = NodeKey.make "single-select"
 
     [<Test>]
-    let ``empty multi-selection`` () =
+    let ``empty single-selection`` () =
         task {
             let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
-                (MultiSelection.make' (multiSelectPrefix, [||], SelectionListState.AtStart)).Vdom
+                (SingleSelection.make' (singleSelectPrefix, [||], SelectionListState.AtStart)).Vdom
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
 
@@ -61,7 +61,7 @@ module TestMultiSelection =
             App.pumpOnce
                 worldFreezer
                 {
-                    Selected = Set.empty
+                    SelectedIndex = None
                 }
                 haveFrameworkHandleFocus
                 renderState
@@ -86,11 +86,11 @@ module TestMultiSelection =
         }
 
     [<Test>]
-    let ``multi-selection with three items none selected`` () =
+    let ``single-selection with three items none selected`` () =
         task {
             let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
-                (MultiSelection.make' (
-                    multiSelectPrefix,
+                (SingleSelection.make' (
+                    singleSelectPrefix,
                     [|
                         {
                             Label = "Option A"
@@ -135,7 +135,7 @@ module TestMultiSelection =
             App.pumpOnce
                 worldFreezer
                 {
-                    Selected = Set.empty
+                    SelectedIndex = None
                 }
                 haveFrameworkHandleFocus
                 renderState
@@ -148,9 +148,9 @@ module TestMultiSelection =
             expect {
                 snapshot
                     @"
- ☐ Option A                   |
- ☐ Option B                   |
- ☐ Option C                   |
+ ○ Option A                   |
+ ○ Option B                   |
+ ○ Option C                   |
                               |
                               |
 "
@@ -160,25 +160,25 @@ module TestMultiSelection =
         }
 
     [<Test>]
-    let ``multi-selection with some items selected`` () =
+    let ``single-selection with one item selected`` () =
         task {
             let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
-                (MultiSelection.make' (
-                    multiSelectPrefix,
+                (SingleSelection.make' (
+                    singleSelectPrefix,
                     [|
                         {
                             Label = "Option A"
-                            IsSelected = true
-                            IsFocused = false
-                        }
-                        {
-                            Label = "Option B"
                             IsSelected = false
                             IsFocused = false
                         }
                         {
-                            Label = "Option C"
+                            Label = "Option B"
                             IsSelected = true
+                            IsFocused = false
+                        }
+                        {
+                            Label = "Option C"
+                            IsSelected = false
                             IsFocused = false
                         }
                     |],
@@ -209,7 +209,7 @@ module TestMultiSelection =
             App.pumpOnce
                 worldFreezer
                 {
-                    Selected = Set.empty
+                    SelectedIndex = Some 1
                 }
                 haveFrameworkHandleFocus
                 renderState
@@ -222,9 +222,9 @@ module TestMultiSelection =
             expect {
                 snapshot
                     @"
- ☑ Option A                   |
- ☐ Option B                   |
- ☑ Option C                   |
+ ○ Option A                   |
+ ◉ Option B                   |
+ ○ Option C                   |
                               |
                               |
 "
@@ -234,11 +234,11 @@ module TestMultiSelection =
         }
 
     [<Test>]
-    let ``multi-selection with focused item`` () =
+    let ``single-selection with focused item`` () =
         task {
             let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
-                (MultiSelection.make' (
-                    multiSelectPrefix,
+                (SingleSelection.make' (
+                    singleSelectPrefix,
                     [|
                         {
                             Label = "Option A"
@@ -283,7 +283,7 @@ module TestMultiSelection =
             App.pumpOnce
                 worldFreezer
                 {
-                    Selected = Set.empty
+                    SelectedIndex = None
                 }
                 haveFrameworkHandleFocus
                 renderState
@@ -296,9 +296,9 @@ module TestMultiSelection =
             expect {
                 snapshot
                     @"
- ☐ Option A                   |
-[☐]Option B                   |
- ☐ Option C                   |
+ ○ Option A                   |
+[○]Option B                   |
+ ○ Option C                   |
                               |
                               |
 "
@@ -308,15 +308,15 @@ module TestMultiSelection =
         }
 
     [<Test>]
-    let ``multi-selection with focused and selected item`` () =
+    let ``single-selection with focused and selected item`` () =
         task {
             let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
-                (MultiSelection.make' (
-                    multiSelectPrefix,
+                (SingleSelection.make' (
+                    singleSelectPrefix,
                     [|
                         {
                             Label = "Option A"
-                            IsSelected = true
+                            IsSelected = false
                             IsFocused = false
                         }
                         {
@@ -357,7 +357,7 @@ module TestMultiSelection =
             App.pumpOnce
                 worldFreezer
                 {
-                    Selected = Set.empty
+                    SelectedIndex = Some 1
                 }
                 haveFrameworkHandleFocus
                 renderState
@@ -370,9 +370,9 @@ module TestMultiSelection =
             expect {
                 snapshot
                     @"
- ☑ Option A                   |
-[☑]Option B                   |
- ☐ Option C                   |
+ ○ Option A                   |
+[◉]Option B                   |
+ ○ Option C                   |
                               |
                               |
 "
@@ -382,32 +382,30 @@ module TestMultiSelection =
         }
 
     [<Test>]
-    let ``multi-selection with framework integration and focus cycling`` () =
+    let ``single-selection with framework integration and focus cycling`` () =
         task {
-            let makeItems (state : State) =
+            let makeItems () =
                 [|
                     {
                         Id = itemAKey
                         Label = "Option A"
-                        IsSelected = Set.contains "a" state.Selected
                     }
                     {
                         Id = itemBKey
                         Label = "Option B"
-                        IsSelected = Set.contains "b" state.Selected
                     }
                     {
                         Id = itemCKey
                         Label = "Option C"
-                        IsSelected = Set.contains "c" state.Selected
                     }
                 |]
 
             let vdom (ctx : IVdomContext<SimpleViewportEvent>) (state : State) : Vdom<DesiredBounds> =
-                (MultiSelection.make (
+                (SingleSelection.make (
                     ctx,
-                    multiSelectPrefix,
-                    makeItems state,
+                    singleSelectPrefix,
+                    makeItems (),
+                    state.SelectedIndex,
                     SelectionListState.AtStart,
                     SimpleViewportInfo,
                     isFirstToFocus = true
@@ -440,7 +438,7 @@ module TestMultiSelection =
             App.pumpOnce
                 worldFreezer
                 {
-                    Selected = Set.empty
+                    SelectedIndex = None
                 }
                 haveFrameworkHandleFocus
                 renderState
@@ -456,7 +454,7 @@ module TestMultiSelection =
             App.pumpOnce
                 worldFreezer
                 {
-                    Selected = Set.empty
+                    SelectedIndex = None
                 }
                 haveFrameworkHandleFocus
                 renderState
@@ -469,9 +467,9 @@ module TestMultiSelection =
             expect {
                 snapshot
                     @"
-[☐]Option A                   |
- ☐ Option B                   |
- ☐ Option C                   |
+[○]Option A                   |
+ ○ Option B                   |
+ ○ Option C                   |
                               |
                               |
 "
@@ -480,57 +478,54 @@ module TestMultiSelection =
             }
         }
 
-    type ToggleListEvent =
-        | ToggleCursorUp
-        | ToggleCursorDown
-        | ToggleItem of int
-        | ToggleViewportInfo of SelectionListViewportInfo
+    type SelectListEvent =
+        | SelectCursorUp
+        | SelectCursorDown
+        | SelectItem of int
+        | SelectViewportInfo of SelectionListViewportInfo
 
-    type ToggleListState =
+    type SelectListState =
         {
-            Selected : Set<string>
+            SelectedIndex : int option
             ListState : SelectionListState
         }
 
     [<Test>]
-    let ``multi-selection activation toggles items`` () =
+    let ``single-selection activation selects items`` () =
         task {
             let files =
                 [|
                     {|
                         Id = itemAKey
                         Label = "Option A"
-                        FileId = "a"
                     |}
                     {|
                         Id = itemBKey
                         Label = "Option B"
-                        FileId = "b"
                     |}
                     {|
                         Id = itemCKey
                         Label = "Option C"
-                        FileId = "c"
                     |}
                 |]
 
-            let makeItems (s : ToggleListState) =
+            let makeItems () =
                 files
                 |> Array.map (fun f ->
                     {
                         Id = f.Id
                         Label = f.Label
-                        IsSelected = Set.contains f.FileId s.Selected
                     }
                 )
 
-            let vdom (ctx : IVdomContext<ToggleListEvent>) (s : ToggleListState) : Vdom<DesiredBounds> =
-                (MultiSelection.make (
+            let vdom (ctx : IVdomContext<SelectListEvent>) (s : SelectListState) : Vdom<DesiredBounds> =
+                (SingleSelection.make (
                     ctx,
-                    multiSelectPrefix,
-                    makeItems s,
+                    singleSelectPrefix,
+                    makeItems (),
+                    s.SelectedIndex,
                     s.ListState,
-                    ToggleViewportInfo,
+                    SelectViewportInfo,
                     isFirstToFocus = true
                 ))
                     .Vdom
@@ -549,35 +544,30 @@ module TestMultiSelection =
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<ToggleListEvent, ToggleListState> with
+                { new WorldProcessor<SelectListEvent, SelectListState> with
                     member _.ProcessWorld (inputs, renderState, s) =
                         let mutable newState = s
 
                         for input in inputs do
                             match input with
-                            | WorldStateChange.ApplicationEvent (ToggleItem index) ->
+                            | WorldStateChange.ApplicationEvent (SelectItem index) ->
                                 if index >= 0 && index < files.Length then
-                                    let fileId = files.[index].FileId
-
+                                    // Single selection: just set to this index
                                     newState <-
                                         { newState with
-                                            Selected =
-                                                if Set.contains fileId newState.Selected then
-                                                    Set.remove fileId newState.Selected
-                                                else
-                                                    Set.add fileId newState.Selected
+                                            SelectedIndex = Some index
                                         }
-                            | WorldStateChange.ApplicationEvent ToggleCursorUp ->
+                            | WorldStateChange.ApplicationEvent SelectCursorUp ->
                                 newState <-
                                     { newState with
                                         ListState = newState.ListState.MoveUp files.Length
                                     }
-                            | WorldStateChange.ApplicationEvent ToggleCursorDown ->
+                            | WorldStateChange.ApplicationEvent SelectCursorDown ->
                                 newState <-
                                     { newState with
                                         ListState = newState.ListState.MoveDown files.Length
                                     }
-                            | WorldStateChange.ApplicationEvent (ToggleViewportInfo info) ->
+                            | WorldStateChange.ApplicationEvent (SelectViewportInfo info) ->
                                 newState <-
                                     { newState with
                                         ListState = newState.ListState.EnsureVisible info.ViewportHeight
@@ -589,17 +579,17 @@ module TestMultiSelection =
 
             let resolver =
                 ActivationResolver.selectionList
-                    multiSelectPrefix
+                    singleSelectPrefix
                     (fun s -> s.ListState.CursorIndex)
-                    ToggleCursorUp
-                    ToggleCursorDown
-                    ToggleItem
+                    SelectCursorUp
+                    SelectCursorDown
+                    SelectItem
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            let initialState : ToggleListState =
+            let initialState : SelectListState =
                 {
-                    Selected = Set.empty
+                    SelectedIndex = None
                     ListState = SelectionListState.AtStart
                 }
 
@@ -629,7 +619,7 @@ module TestMultiSelection =
                     resolver
                     (fun () -> false)
 
-            // Press Space to toggle first item (cursor is at 0)
+            // Press Space to select first item (cursor is at 0)
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
             state <-
@@ -646,9 +636,9 @@ module TestMultiSelection =
             expect {
                 snapshot
                     @"
-[☑]Option A                   |
- ☐ Option B                   |
- ☐ Option C                   |
+[◉]Option A                   |
+ ○ Option B                   |
+ ○ Option C                   |
                               |
                               |
 "
@@ -658,11 +648,196 @@ module TestMultiSelection =
         }
 
     [<Test>]
-    let ``multi-selection with long labels`` () =
+    let ``single-selection changes selection when different item selected`` () =
+        task {
+            let files =
+                [|
+                    {|
+                        Id = itemAKey
+                        Label = "Option A"
+                    |}
+                    {|
+                        Id = itemBKey
+                        Label = "Option B"
+                    |}
+                    {|
+                        Id = itemCKey
+                        Label = "Option C"
+                    |}
+                |]
+
+            let makeItems () =
+                files
+                |> Array.map (fun f ->
+                    {
+                        Id = f.Id
+                        Label = f.Label
+                    }
+                )
+
+            let vdom (ctx : IVdomContext<SelectListEvent>) (s : SelectListState) : Vdom<DesiredBounds> =
+                (SingleSelection.make (
+                    ctx,
+                    singleSelectPrefix,
+                    makeItems (),
+                    s.SelectedIndex,
+                    s.ListState,
+                    SelectViewportInfo,
+                    isFirstToFocus = true
+                ))
+                    .Vdom
+
+            let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = true
+
+            let processWorld =
+                { new WorldProcessor<SelectListEvent, SelectListState> with
+                    member _.ProcessWorld (inputs, renderState, s) =
+                        let mutable newState = s
+
+                        for input in inputs do
+                            match input with
+                            | WorldStateChange.ApplicationEvent (SelectItem index) ->
+                                if index >= 0 && index < files.Length then
+                                    newState <-
+                                        { newState with
+                                            SelectedIndex = Some index
+                                        }
+                            | WorldStateChange.ApplicationEvent SelectCursorUp ->
+                                newState <-
+                                    { newState with
+                                        ListState = newState.ListState.MoveUp files.Length
+                                    }
+                            | WorldStateChange.ApplicationEvent SelectCursorDown ->
+                                newState <-
+                                    { newState with
+                                        ListState = newState.ListState.MoveDown files.Length
+                                    }
+                            | WorldStateChange.ApplicationEvent (SelectViewportInfo info) ->
+                                newState <-
+                                    { newState with
+                                        ListState = newState.ListState.EnsureVisible info.ViewportHeight
+                                    }
+                            | _ -> ()
+
+                        ProcessWorldResult.make newState
+                }
+
+            let resolver =
+                ActivationResolver.selectionList
+                    singleSelectPrefix
+                    (fun s -> s.ListState.CursorIndex)
+                    SelectCursorUp
+                    SelectCursorDown
+                    SelectItem
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            // Start with Option A selected
+            let initialState : SelectListState =
+                {
+                    SelectedIndex = Some 0
+                    ListState = SelectionListState.AtStart
+                }
+
+            // Initial render
+            let mutable state =
+                App.pumpOnce
+                    worldFreezer
+                    initialState
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
+
+            // Tab to focus the list
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
+
+            // Down arrow twice to move cursor to Option C
+            world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.DownArrow, false, false, false))
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
+
+            world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.DownArrow, false, false, false))
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
+
+            // Press Space to select Option C (cursor is at 2)
+            world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
+
+            // Option A should no longer be selected, Option C should be selected
+            expect {
+                snapshot
+                    @"
+ ○ Option A                   |
+ ○ Option B                   |
+[◉]Option C                   |
+                              |
+                              |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
+    let ``single-selection with long labels`` () =
         task {
             let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
-                (MultiSelection.make' (
-                    multiSelectPrefix,
+                (SingleSelection.make' (
+                    singleSelectPrefix,
                     [|
                         {
                             Label = "A very long option label that might wrap"
@@ -702,7 +877,7 @@ module TestMultiSelection =
             App.pumpOnce
                 worldFreezer
                 {
-                    Selected = Set.empty
+                    SelectedIndex = Some 0
                 }
                 haveFrameworkHandleFocus
                 renderState
@@ -716,8 +891,8 @@ module TestMultiSelection =
                 snapshot
                     @"
    A very long option lab|
- ☑ el that might wrap    |
-[☐]Short                 |
+ ◉ el that might wrap    |
+[○]Short                 |
                          |
                          |
 "
@@ -735,8 +910,8 @@ module TestMultiSelection =
         task {
             // 5 items in a viewport that can only show 3 lines
             let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
-                (MultiSelection.make' (
-                    multiSelectPrefix,
+                (SingleSelection.make' (
+                    singleSelectPrefix,
                     [|
                         {
                             Label = "Item 1"
@@ -791,7 +966,7 @@ module TestMultiSelection =
             App.pumpOnce
                 worldFreezer
                 {
-                    Selected = Set.empty
+                    SelectedIndex = None
                 }
                 haveFrameworkHandleFocus
                 renderState
@@ -805,9 +980,9 @@ module TestMultiSelection =
             expect {
                 snapshot
                     @"
- ☐ Item 1                     |
- ☐ Item 2                     |
- ☐ Item 3                     |
+ ○ Item 1                     |
+ ○ Item 2                     |
+ ○ Item 3                     |
 "
 
                 return ConsoleHarness.toString terminal
@@ -819,8 +994,8 @@ module TestMultiSelection =
         task {
             // 5 items, scroll offset at 2, viewport of 3
             let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
-                (MultiSelection.make' (
-                    multiSelectPrefix,
+                (SingleSelection.make' (
+                    singleSelectPrefix,
                     [|
                         {
                             Label = "Item 1"
@@ -875,7 +1050,7 @@ module TestMultiSelection =
             App.pumpOnce
                 worldFreezer
                 {
-                    Selected = Set.empty
+                    SelectedIndex = None
                 }
                 haveFrameworkHandleFocus
                 renderState
@@ -889,9 +1064,9 @@ module TestMultiSelection =
             expect {
                 snapshot
                     @"
- ☐ Item 3                     |
- ☐ Item 4                     |
- ☐ Item 5                     |
+ ○ Item 3                     |
+ ○ Item 4                     |
+ ○ Item 5                     |
 "
 
                 return ConsoleHarness.toString terminal
@@ -901,11 +1076,12 @@ module TestMultiSelection =
     type ArrowTestEvent =
         | CursorUpEvt
         | CursorDownEvt
-        | ToggleEvt of int
+        | SelectEvt of int
         | ArrowViewportInfo of SelectionListViewportInfo
 
     type ArrowTestState =
         {
+            SelectedIndex : int option
             ListState : SelectionListState
         }
 
@@ -919,35 +1095,31 @@ module TestMultiSelection =
                     {
                         Id = NodeKey.make "item-1"
                         Label = "Item 1"
-                        IsSelected = false
                     }
                     {
                         Id = NodeKey.make "item-2"
                         Label = "Item 2"
-                        IsSelected = false
                     }
                     {
                         Id = NodeKey.make "item-3"
                         Label = "Item 3"
-                        IsSelected = false
                     }
                     {
                         Id = NodeKey.make "item-4"
                         Label = "Item 4"
-                        IsSelected = false
                     }
                     {
                         Id = NodeKey.make "item-5"
                         Label = "Item 5"
-                        IsSelected = false
                     }
                 |]
 
             let vdom (ctx : IVdomContext<ArrowTestEvent>) (s : ArrowTestState) : Vdom<DesiredBounds> =
-                (MultiSelection.make (
+                (SingleSelection.make (
                     ctx,
-                    multiSelectPrefix,
+                    singleSelectPrefix,
                     makeItems (),
+                    s.SelectedIndex,
                     s.ListState,
                     ArrowViewportInfo,
                     isFirstToFocus = true
@@ -984,7 +1156,11 @@ module TestMultiSelection =
                                     { newState with
                                         ListState = newState.ListState.MoveDown 5
                                     }
-                            | WorldStateChange.ApplicationEvent (ToggleEvt _) -> ()
+                            | WorldStateChange.ApplicationEvent (SelectEvt index) ->
+                                newState <-
+                                    { newState with
+                                        SelectedIndex = Some index
+                                    }
                             | WorldStateChange.ApplicationEvent (ArrowViewportInfo info) ->
                                 newState <-
                                     { newState with
@@ -997,16 +1173,17 @@ module TestMultiSelection =
 
             let resolver =
                 ActivationResolver.selectionList
-                    multiSelectPrefix
+                    singleSelectPrefix
                     (fun s -> s.ListState.CursorIndex)
                     CursorUpEvt
                     CursorDownEvt
-                    ToggleEvt
+                    SelectEvt
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
             let initialState : ArrowTestState =
                 {
+                    SelectedIndex = None
                     ListState = SelectionListState.AtStart
                 }
 
@@ -1055,9 +1232,9 @@ module TestMultiSelection =
             expect {
                 snapshot
                     @"
- ☐ Item 3                     |
- ☐ Item 4                     |
-[☐]Item 5                     |
+ ○ Item 3                     |
+ ○ Item 4                     |
+[○]Item 5                     |
 "
 
                 return ConsoleHarness.toString terminal
@@ -1080,8 +1257,8 @@ module TestMultiSelection =
 
             // Render with no focus (simulating focus having left the list)
             let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
-                (MultiSelection.make' (
-                    multiSelectPrefix,
+                (SingleSelection.make' (
+                    singleSelectPrefix,
                     [|
                         {
                             Label = "Item 1"
@@ -1136,7 +1313,7 @@ module TestMultiSelection =
             App.pumpOnce
                 worldFreezer
                 {
-                    Selected = Set.empty
+                    SelectedIndex = None
                 }
                 haveFrameworkHandleFocus
                 renderState
@@ -1150,9 +1327,9 @@ module TestMultiSelection =
             expect {
                 snapshot
                     @"
- ☐ Item 3                     |
- ☐ Item 4                     |
- ☐ Item 5                     |
+ ○ Item 3                     |
+ ○ Item 4                     |
+ ○ Item 5                     |
 "
 
                 return ConsoleHarness.toString terminal
@@ -1162,11 +1339,12 @@ module TestMultiSelection =
     type NoDanceEvent =
         | NoDanceCursorUp
         | NoDanceCursorDown
-        | NoDanceToggle of int
+        | NoDanceSelect of int
         | NoDanceViewportInfo of SelectionListViewportInfo
 
     type NoDanceState =
         {
+            SelectedIndex : int option
             ListState : SelectionListState
         }
 
@@ -1180,32 +1358,35 @@ module TestMultiSelection =
                     {
                         Id = NodeKey.make "item-1"
                         Label = "Item 1"
-                        IsSelected = false
                     }
                     {
                         Id = NodeKey.make "item-2"
                         Label = "Item 2"
-                        IsSelected = false
                     }
                     {
                         Id = NodeKey.make "item-3"
                         Label = "Item 3"
-                        IsSelected = false
                     }
                     {
                         Id = NodeKey.make "item-4"
                         Label = "Item 4"
-                        IsSelected = false
                     }
                     {
                         Id = NodeKey.make "item-5"
                         Label = "Item 5"
-                        IsSelected = false
                     }
                 |]
 
             let vdom (ctx : IVdomContext<NoDanceEvent>) (s : NoDanceState) : Vdom<DesiredBounds> =
-                (MultiSelection.make (ctx, multiSelectPrefix, makeItems (), s.ListState, NoDanceViewportInfo)).Vdom
+                (SingleSelection.make (
+                    ctx,
+                    singleSelectPrefix,
+                    makeItems (),
+                    s.SelectedIndex,
+                    s.ListState,
+                    NoDanceViewportInfo
+                ))
+                    .Vdom
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 3)
 
@@ -1237,7 +1418,11 @@ module TestMultiSelection =
                                     { newState with
                                         ListState = newState.ListState.MoveDown 5
                                     }
-                            | WorldStateChange.ApplicationEvent (NoDanceToggle _) -> ()
+                            | WorldStateChange.ApplicationEvent (NoDanceSelect index) ->
+                                newState <-
+                                    { newState with
+                                        SelectedIndex = Some index
+                                    }
                             | WorldStateChange.ApplicationEvent (NoDanceViewportInfo info) ->
                                 // EnsureVisible won't change scroll if cursor is already visible
                                 newState <-
@@ -1251,17 +1436,18 @@ module TestMultiSelection =
 
             let resolver =
                 ActivationResolver.selectionList
-                    multiSelectPrefix
+                    singleSelectPrefix
                     (fun s -> s.ListState.CursorIndex)
                     NoDanceCursorUp
                     NoDanceCursorDown
-                    NoDanceToggle
+                    NoDanceSelect
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
             // Start with scroll at 1, cursor at 1 (showing items 2, 3, 4 with cursor on item 2)
             let initialState : NoDanceState =
                 {
+                    SelectedIndex = None
                     ListState =
                         {
                             ScrollOffset = 1
@@ -1318,9 +1504,9 @@ module TestMultiSelection =
             expect {
                 snapshot
                     @"
- ☐ Item 2                     |
-[☐]Item 3                     |
- ☐ Item 4                     |
+ ○ Item 2                     |
+[○]Item 3                     |
+ ○ Item 4                     |
 "
 
                 return ConsoleHarness.toString terminal
@@ -1382,11 +1568,12 @@ module TestMultiSelection =
     type ViewportAwareEvent =
         | ViewportAwareCursorUp
         | ViewportAwareCursorDown
-        | ViewportAwareToggle of int
+        | ViewportAwareSelect of int
         | ViewportAwareViewportInfo of SelectionListViewportInfo
 
     type ViewportAwareState =
         {
+            SelectedIndex : int option
             ListState : SelectionListState
         }
 
@@ -1405,35 +1592,31 @@ module TestMultiSelection =
                     {
                         Id = NodeKey.make "item-1"
                         Label = "Item 1"
-                        IsSelected = false
                     }
                     {
                         Id = NodeKey.make "item-2"
                         Label = "Item 2"
-                        IsSelected = false
                     }
                     {
                         Id = NodeKey.make "item-3"
                         Label = "Item 3"
-                        IsSelected = false
                     }
                     {
                         Id = NodeKey.make "item-4"
                         Label = "Item 4"
-                        IsSelected = false
                     }
                     {
                         Id = NodeKey.make "item-5"
                         Label = "Item 5"
-                        IsSelected = false
                     }
                 |]
 
             let vdom (ctx : IVdomContext<ViewportAwareEvent>) (s : ViewportAwareState) : Vdom<DesiredBounds> =
-                (MultiSelection.make (
+                (SingleSelection.make (
                     ctx,
-                    multiSelectPrefix,
+                    singleSelectPrefix,
                     makeItems (),
+                    s.SelectedIndex,
                     s.ListState,
                     ViewportAwareViewportInfo,
                     isFirstToFocus = true
@@ -1471,7 +1654,11 @@ module TestMultiSelection =
                                     { newState with
                                         ListState = newState.ListState.MoveDown 5
                                     }
-                            | WorldStateChange.ApplicationEvent (ViewportAwareToggle _) -> ()
+                            | WorldStateChange.ApplicationEvent (ViewportAwareSelect index) ->
+                                newState <-
+                                    { newState with
+                                        SelectedIndex = Some index
+                                    }
                             | WorldStateChange.ApplicationEvent (ViewportAwareViewportInfo info) ->
                                 // Use the viewport height from the render to ensure cursor is visible
                                 newState <-
@@ -1485,16 +1672,17 @@ module TestMultiSelection =
 
             let resolver =
                 ActivationResolver.selectionList
-                    multiSelectPrefix
+                    singleSelectPrefix
                     (fun s -> s.ListState.CursorIndex)
                     ViewportAwareCursorUp
                     ViewportAwareCursorDown
-                    ViewportAwareToggle
+                    ViewportAwareSelect
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
             let initialState : ViewportAwareState =
                 {
+                    SelectedIndex = None
                     ListState = SelectionListState.AtStart
                 }
 
@@ -1549,9 +1737,9 @@ module TestMultiSelection =
             expect {
                 snapshot
                     @"
- ☐ Item 3                     |
- ☐ Item 4                     |
-[☐]Item 5                     |
+ ○ Item 3                     |
+ ○ Item 4                     |
+[○]Item 5                     |
 "
 
                 return ConsoleHarness.toString terminal
