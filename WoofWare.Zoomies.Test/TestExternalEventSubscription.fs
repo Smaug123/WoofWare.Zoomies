@@ -8,6 +8,7 @@ open WoofWare.Zoomies
 open WoofWare.Expect
 
 [<TestFixture>]
+[<Parallelizable(ParallelScope.All)>]
 module TestExternalEventSubscription =
     type TimerAppEvent =
         | TimerTick
