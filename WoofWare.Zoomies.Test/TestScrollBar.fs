@@ -25,7 +25,7 @@ module TestScrollBar =
     let ``horizontal scroll bar at start`` () =
         task {
             // 20 items, viewport of 5, offset 0, track length 10
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Horizontal
                     {
@@ -80,7 +80,7 @@ module TestScrollBar =
     let ``horizontal scroll bar at middle`` () =
         task {
             // 20 items, viewport of 5, offset 7 (roughly middle), track length 10
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Horizontal
                     {
@@ -135,7 +135,7 @@ module TestScrollBar =
     let ``horizontal scroll bar at end`` () =
         task {
             // 20 items, viewport of 5, offset 15 (max), track length 10
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Horizontal
                     {
@@ -190,7 +190,7 @@ module TestScrollBar =
     let ``vertical scroll bar at start`` () =
         task {
             // 20 items, viewport of 5, offset 0, track length 10
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Vertical
                     {
@@ -255,7 +255,7 @@ module TestScrollBar =
     let ``vertical scroll bar at middle`` () =
         task {
             // 20 items, viewport of 5, offset 7, track length 10
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Vertical
                     {
@@ -320,7 +320,7 @@ module TestScrollBar =
     let ``vertical scroll bar at end`` () =
         task {
             // 20 items, viewport of 5, offset 15, track length 10
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Vertical
                     {
@@ -385,7 +385,7 @@ module TestScrollBar =
     let ``scroll bar when all content visible`` () =
         task {
             // 5 items, viewport of 10 (larger than content), track length 10
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Horizontal
                     {
@@ -439,7 +439,7 @@ module TestScrollBar =
     [<Test>]
     let ``scroll bar with zero total items`` () =
         task {
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Horizontal
                     {
@@ -495,7 +495,7 @@ module TestScrollBar =
         task {
             // 20 items, viewport of 5, offset 100 (way beyond), track length 10
             // Should clamp to max valid offset (15)
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Horizontal
                     {
@@ -550,7 +550,7 @@ module TestScrollBar =
     let ``scroll bar with negative offset`` () =
         task {
             // Should clamp to 0
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Horizontal
                     {
@@ -606,7 +606,7 @@ module TestScrollBar =
         task {
             // 10 items, viewport of 8, offset 1, track length 10
             // Thumb should be large (80% of track)
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Horizontal
                     {
@@ -662,7 +662,7 @@ module TestScrollBar =
         task {
             // 100 items, viewport of 5, offset 50, track length 10
             // Thumb should be small (5% of track, minimum 1)
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Horizontal
                     {
@@ -721,7 +721,7 @@ module TestScrollBar =
             // Expected: thumb adapts to actual width 8, positioned at start
             // Thumb size = max(1, int((2/10) * 8)) = max(1, 1) = 1 char
             // At offset 0: thumb at position 0
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Horizontal
                     {
@@ -780,7 +780,7 @@ module TestScrollBar =
             // 10 items, viewport 2, offset 8 (max)
             // Expected: thumb adapts to actual width 8, positioned at end
             // Thumb size = 1, at max offset thumb should be at position 7
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Horizontal
                     {
@@ -839,7 +839,7 @@ module TestScrollBar =
             // 10 items, viewport 2, offset 4 (middle)
             // Expected: thumb adapts to actual width 8, positioned in middle
             // Thumb size = 1, thumbStart = (4/8) * (8-1) = 3.5 -> 3, thumb at position 3
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Horizontal
                     {
@@ -1151,7 +1151,7 @@ module TestScrollBar =
             // Zero viewport should be clamped to 1
             // 20 items, viewport 0 (treated as 1), offset 0, track length 10
             // Thumb size = max(1, int((1/20) * 10)) = 1
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Horizontal
                     {
@@ -1207,7 +1207,7 @@ module TestScrollBar =
         task {
             // Negative viewport should be clamped to 1
             // 20 items, viewport -5 (treated as 1), offset 10, track length 10
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Horizontal
                     {
@@ -1263,7 +1263,7 @@ module TestScrollBar =
         task {
             // Zero track length should be clamped to 1
             // 20 items, viewport 5, offset 0, track length 0 (treated as 1)
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Horizontal
                     {
@@ -1319,7 +1319,7 @@ module TestScrollBar =
         task {
             // Negative track length should be clamped to 1
             // 20 items, viewport 5, offset 15, track length -10 (treated as 1)
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Horizontal
                     {
@@ -1374,7 +1374,7 @@ module TestScrollBar =
     let ``vertical scroll bar with zero viewport size`` () =
         task {
             // Zero viewport in vertical orientation
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Vertical
                     {
@@ -1434,7 +1434,7 @@ module TestScrollBar =
     let ``vertical scroll bar with zero track length`` () =
         task {
             // Zero track length in vertical orientation
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Vertical
                     {
@@ -1489,7 +1489,7 @@ module TestScrollBar =
     [<Test>]
     let ``property: non-positive viewport is clamped to 1`` () =
         let property (viewport : PositiveInt) (totalItems : PositiveInt) (trackLength : PositiveInt) =
-            let viewportNonPositive = -(trackLength.Get - 1)
+            let viewportNonPositive = -(viewport.Get - 1)
             let totalItems = totalItems.Get
             let trackLength = trackLength.Get
 
