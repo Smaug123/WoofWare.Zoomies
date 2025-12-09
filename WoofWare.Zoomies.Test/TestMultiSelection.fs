@@ -24,6 +24,9 @@ module TestMultiSelection =
             Selected : Set<string>
         }
 
+    /// Simple event type for tests that only need viewport tracking
+    type SimpleViewportEvent = | SimpleViewportInfo of MultiSelectionViewportInfo
+
     let itemAKey = NodeKey.make "item-a"
     let itemBKey = NodeKey.make "item-b"
     let itemCKey = NodeKey.make "item-c"
@@ -400,12 +403,13 @@ module TestMultiSelection =
                     }
                 |]
 
-            let vdom (ctx : IVdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<SimpleViewportEvent>) (state : State) : Vdom<DesiredBounds> =
                 (MultiSelection.make (
                     ctx,
                     multiSelectPrefix,
                     makeItems state,
                     MultiSelectionState.AtStart,
+                    SimpleViewportInfo,
                     isFirstToFocus = true
                 ))
                     .Vdom
@@ -424,8 +428,10 @@ module TestMultiSelection =
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                { new WorldProcessor<SimpleViewportEvent, State> with
+                    member _.ProcessWorld (inputs, renderState, state) =
+                        // Viewport events don't affect state in this test (all items visible)
+                        ProcessWorldResult.make state
                 }
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
@@ -498,12 +504,13 @@ module TestMultiSelection =
                     }
                 |]
 
-            let vdom (ctx : IVdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<SimpleViewportEvent>) (state : State) : Vdom<DesiredBounds> =
                 (MultiSelection.make (
                     ctx,
                     multiSelectPrefix,
                     makeItems state,
                     MultiSelectionState.AtStart,
+                    SimpleViewportInfo,
                     isFirstToFocus = true
                 ))
                     .Vdom
@@ -522,8 +529,10 @@ module TestMultiSelection =
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                { new WorldProcessor<SimpleViewportEvent, State> with
+                    member _.ProcessWorld (inputs, renderState, state) =
+                        // Viewport events don't affect state in this test (all items visible)
+                        ProcessWorldResult.make state
                 }
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
@@ -573,12 +582,13 @@ module TestMultiSelection =
             }
         }
 
-    type ListEvent =
-        | Toggle of index : int
-        | CursorUp
-        | CursorDown
+    type ToggleListEvent =
+        | ToggleCursorUp
+        | ToggleCursorDown
+        | ToggleItem of int
+        | ToggleViewportInfo of MultiSelectionViewportInfo
 
-    type ListState =
+    type ToggleListState =
         {
             Selected : Set<string>
             ListState : MultiSelectionState
@@ -606,32 +616,26 @@ module TestMultiSelection =
                     |}
                 |]
 
-            let mutable state : ListState =
-                {
-                    Selected = Set.empty
-                    ListState = MultiSelectionState.AtStart
-                }
-
-            let makeItems () =
+            let makeItems (s : ToggleListState) =
                 files
                 |> Array.map (fun f ->
                     {
                         Id = f.Id
                         Label = f.Label
-                        IsSelected = Set.contains f.FileId state.Selected
+                        IsSelected = Set.contains f.FileId s.Selected
                     }
                 )
 
-            let vdom (ctx : IVdomContext) (s : ListState) : Vdom<DesiredBounds> =
-                let result =
-                    MultiSelection.make (ctx, multiSelectPrefix, makeItems (), s.ListState, isFirstToFocus = true)
-
-                state <-
-                    { state with
-                        ListState = result.State
-                    }
-
-                result.Vdom
+            let vdom (ctx : IVdomContext<ToggleListEvent>) (s : ToggleListState) : Vdom<DesiredBounds> =
+                (MultiSelection.make (
+                    ctx,
+                    multiSelectPrefix,
+                    makeItems s,
+                    s.ListState,
+                    ToggleViewportInfo,
+                    isFirstToFocus = true
+                ))
+                    .Vdom
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
 
@@ -647,13 +651,13 @@ module TestMultiSelection =
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<ListEvent, ListState> with
+                { new WorldProcessor<ToggleListEvent, ToggleListState> with
                     member _.ProcessWorld (inputs, renderState, s) =
                         let mutable newState = s
 
                         for input in inputs do
                             match input with
-                            | WorldStateChange.ApplicationEvent (Toggle index) ->
+                            | WorldStateChange.ApplicationEvent (ToggleItem index) ->
                                 if index >= 0 && index < files.Length then
                                     let fileId = files.[index].FileId
 
@@ -665,19 +669,23 @@ module TestMultiSelection =
                                                 else
                                                     Set.add fileId newState.Selected
                                         }
-                            | WorldStateChange.ApplicationEvent CursorUp ->
+                            | WorldStateChange.ApplicationEvent ToggleCursorUp ->
                                 newState <-
                                     { newState with
                                         ListState = newState.ListState.MoveUp files.Length
                                     }
-                            | WorldStateChange.ApplicationEvent CursorDown ->
+                            | WorldStateChange.ApplicationEvent ToggleCursorDown ->
                                 newState <-
                                     { newState with
                                         ListState = newState.ListState.MoveDown files.Length
                                     }
+                            | WorldStateChange.ApplicationEvent (ToggleViewportInfo info) ->
+                                newState <-
+                                    { newState with
+                                        ListState = newState.ListState.EnsureVisible info.ViewportHeight
+                                    }
                             | _ -> ()
 
-                        state <- newState
                         ProcessWorldResult.make newState
                 }
 
@@ -685,17 +693,23 @@ module TestMultiSelection =
                 ActivationResolver.multiSelection
                     multiSelectPrefix
                     (fun s -> s.ListState.CursorIndex)
-                    CursorUp
-                    CursorDown
-                    Toggle
+                    ToggleCursorUp
+                    ToggleCursorDown
+                    ToggleItem
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
+            let initialState : ToggleListState =
+                {
+                    Selected = Set.empty
+                    ListState = MultiSelectionState.AtStart
+                }
+
             // Initial render
-            state <-
+            let mutable state =
                 App.pumpOnce
                     worldFreezer
-                    state
+                    initialState
                     haveFrameworkHandleFocus
                     renderState
                     processWorld
@@ -990,6 +1004,7 @@ module TestMultiSelection =
         | CursorUpEvt
         | CursorDownEvt
         | ToggleEvt of int
+        | ArrowViewportInfo of MultiSelectionViewportInfo
 
     type ArrowTestState =
         {
@@ -1030,13 +1045,16 @@ module TestMultiSelection =
                     }
                 |]
 
-            let mutable state : ArrowTestState =
-                {
-                    ListState = MultiSelectionState.AtStart
-                }
-
-            let vdom (ctx : IVdomContext) (s : ArrowTestState) : Vdom<DesiredBounds> =
-                (MultiSelection.make (ctx, multiSelectPrefix, makeItems (), s.ListState, isFirstToFocus = true)).Vdom
+            let vdom (ctx : IVdomContext<ArrowTestEvent>) (s : ArrowTestState) : Vdom<DesiredBounds> =
+                (MultiSelection.make (
+                    ctx,
+                    multiSelectPrefix,
+                    makeItems (),
+                    s.ListState,
+                    ArrowViewportInfo,
+                    isFirstToFocus = true
+                ))
+                    .Vdom
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 3)
 
@@ -1051,8 +1069,6 @@ module TestMultiSelection =
 
             let haveFrameworkHandleFocus _ = true
 
-            let viewportHeight = 3 // Known from console setup
-
             let processWorld =
                 { new WorldProcessor<ArrowTestEvent, ArrowTestState> with
                     member _.ProcessWorld (inputs, renderState, s) =
@@ -1061,23 +1077,23 @@ module TestMultiSelection =
                         for input in inputs do
                             match input with
                             | WorldStateChange.ApplicationEvent CursorUpEvt ->
-                                let moved = newState.ListState.MoveUp 5
-
                                 newState <-
                                     { newState with
-                                        ListState = moved.EnsureVisible viewportHeight
+                                        ListState = newState.ListState.MoveUp 5
                                     }
                             | WorldStateChange.ApplicationEvent CursorDownEvt ->
-                                let moved = newState.ListState.MoveDown 5
-
                                 newState <-
                                     { newState with
-                                        ListState = moved.EnsureVisible viewportHeight
+                                        ListState = newState.ListState.MoveDown 5
                                     }
                             | WorldStateChange.ApplicationEvent (ToggleEvt _) -> ()
+                            | WorldStateChange.ApplicationEvent (ArrowViewportInfo info) ->
+                                newState <-
+                                    { newState with
+                                        ListState = newState.ListState.EnsureVisible info.ViewportHeight
+                                    }
                             | _ -> ()
 
-                        state <- newState
                         ProcessWorldResult.make newState
                 }
 
@@ -1091,11 +1107,16 @@ module TestMultiSelection =
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
+            let initialState : ArrowTestState =
+                {
+                    ListState = MultiSelectionState.AtStart
+                }
+
             // Initial render
-            state <-
+            let mutable state =
                 App.pumpOnce
                     worldFreezer
-                    state
+                    initialState
                     haveFrameworkHandleFocus
                     renderState
                     processWorld
@@ -1244,6 +1265,7 @@ module TestMultiSelection =
         | NoDanceCursorUp
         | NoDanceCursorDown
         | NoDanceToggle of int
+        | NoDanceViewportInfo of MultiSelectionViewportInfo
 
     type NoDanceState =
         {
@@ -1284,25 +1306,8 @@ module TestMultiSelection =
                     }
                 |]
 
-            // Start with scroll at 1, cursor at 1 (showing items 2, 3, 4 with cursor on item 2)
-            let mutable state : NoDanceState =
-                {
-                    ListState =
-                        {
-                            ScrollOffset = 1
-                            CursorIndex = 1
-                        }
-                }
-
-            let vdom (ctx : IVdomContext) (s : NoDanceState) : Vdom<DesiredBounds> =
-                let result = MultiSelection.make (ctx, multiSelectPrefix, makeItems (), s.ListState)
-
-                state <-
-                    { state with
-                        ListState = result.State
-                    }
-
-                result.Vdom
+            let vdom (ctx : IVdomContext<NoDanceEvent>) (s : NoDanceState) : Vdom<DesiredBounds> =
+                (MultiSelection.make (ctx, multiSelectPrefix, makeItems (), s.ListState, NoDanceViewportInfo)).Vdom
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 3)
 
@@ -1335,9 +1340,14 @@ module TestMultiSelection =
                                         ListState = newState.ListState.MoveDown 5
                                     }
                             | WorldStateChange.ApplicationEvent (NoDanceToggle _) -> ()
+                            | WorldStateChange.ApplicationEvent (NoDanceViewportInfo info) ->
+                                // EnsureVisible won't change scroll if cursor is already visible
+                                newState <-
+                                    { newState with
+                                        ListState = newState.ListState.EnsureVisible info.ViewportHeight
+                                    }
                             | _ -> ()
 
-                        state <- newState
                         ProcessWorldResult.make newState
                 }
 
@@ -1351,11 +1361,21 @@ module TestMultiSelection =
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
+            // Start with scroll at 1, cursor at 1 (showing items 2, 3, 4 with cursor on item 2)
+            let initialState : NoDanceState =
+                {
+                    ListState =
+                        {
+                            ScrollOffset = 1
+                            CursorIndex = 1
+                        }
+                }
+
             // Initial render (not focused yet, cursor at item 2)
-            state <-
+            let mutable state =
                 App.pumpOnce
                     worldFreezer
-                    state
+                    initialState
                     haveFrameworkHandleFocus
                     renderState
                     processWorld
@@ -1456,3 +1476,186 @@ module TestMultiSelection =
             }
 
         (scrolledState3.EnsureVisible 3).ScrollOffset |> shouldEqual 2
+
+    // =====================================================================
+    // Viewport-aware scrolling with PostLayoutEvent
+    // =====================================================================
+
+    type ViewportAwareEvent =
+        | ViewportAwareCursorUp
+        | ViewportAwareCursorDown
+        | ViewportAwareToggle of int
+        | ViewportAwareViewportInfo of MultiSelectionViewportInfo
+
+    type ViewportAwareState =
+        {
+            ListState : MultiSelectionState
+        }
+
+    [<Test>]
+    let ``viewport-aware scrolling keeps cursor visible using PostLayoutEvent`` () =
+        task {
+            // This test demonstrates the correct approach: use the typed IVdomContext<'appEvent>
+            // with onViewportRendered to post viewport info during render.
+            // The processWorld handler uses this info to call EnsureVisible.
+            //
+            // 5 items in viewport of 3, starting with scroll at 0, cursor at 0
+            // Press down 4 times to reach item 5 (index 4)
+            // With PostLayoutEvent, scroll offset is updated to 2 (items 3, 4, 5 visible)
+            let makeItems () =
+                [|
+                    {
+                        Id = NodeKey.make "item-1"
+                        Label = "Item 1"
+                        IsSelected = false
+                    }
+                    {
+                        Id = NodeKey.make "item-2"
+                        Label = "Item 2"
+                        IsSelected = false
+                    }
+                    {
+                        Id = NodeKey.make "item-3"
+                        Label = "Item 3"
+                        IsSelected = false
+                    }
+                    {
+                        Id = NodeKey.make "item-4"
+                        Label = "Item 4"
+                        IsSelected = false
+                    }
+                    {
+                        Id = NodeKey.make "item-5"
+                        Label = "Item 5"
+                        IsSelected = false
+                    }
+                |]
+
+            let vdom (ctx : IVdomContext<ViewportAwareEvent>) (s : ViewportAwareState) : Vdom<DesiredBounds> =
+                (MultiSelection.make (
+                    ctx,
+                    multiSelectPrefix,
+                    makeItems (),
+                    s.ListState,
+                    ViewportAwareViewportInfo,
+                    isFirstToFocus = true
+                ))
+                    .Vdom
+
+            let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 3)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = true
+
+            // This processWorld handles the viewport event to call EnsureVisible
+            let processWorld =
+                { new WorldProcessor<ViewportAwareEvent, ViewportAwareState> with
+                    member _.ProcessWorld (inputs, renderState, s) =
+                        let mutable newState = s
+
+                        for input in inputs do
+                            match input with
+                            | WorldStateChange.ApplicationEvent ViewportAwareCursorUp ->
+                                newState <-
+                                    { newState with
+                                        ListState = newState.ListState.MoveUp 5
+                                    }
+                            | WorldStateChange.ApplicationEvent ViewportAwareCursorDown ->
+                                newState <-
+                                    { newState with
+                                        ListState = newState.ListState.MoveDown 5
+                                    }
+                            | WorldStateChange.ApplicationEvent (ViewportAwareToggle _) -> ()
+                            | WorldStateChange.ApplicationEvent (ViewportAwareViewportInfo info) ->
+                                // Use the viewport height from the render to ensure cursor is visible
+                                newState <-
+                                    { newState with
+                                        ListState = newState.ListState.EnsureVisible info.ViewportHeight
+                                    }
+                            | _ -> ()
+
+                        ProcessWorldResult.make newState
+                }
+
+            let resolver =
+                ActivationResolver.multiSelection
+                    multiSelectPrefix
+                    (fun s -> s.ListState.CursorIndex)
+                    ViewportAwareCursorUp
+                    ViewportAwareCursorDown
+                    ViewportAwareToggle
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            let initialState : ViewportAwareState =
+                {
+                    ListState = MultiSelectionState.AtStart
+                }
+
+            // Initial render
+            let mutable state =
+                App.pumpOnce
+                    worldFreezer
+                    initialState
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
+
+            // Tab to focus the list
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
+
+            // Down arrow 4 times to reach item 5 (index 4)
+            for _ in 1..4 do
+                world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.DownArrow, false, false, false))
+
+                state <-
+                    App.pumpOnce
+                        worldFreezer
+                        state
+                        haveFrameworkHandleFocus
+                        renderState
+                        processWorld
+                        vdom
+                        resolver
+                        (fun () -> false)
+
+            // Cursor should be at index 4 (item 5)
+            state.ListState.CursorIndex |> shouldEqual 4
+
+            // With PostLayoutEvent, scroll offset should be 2 (showing items 3, 4, 5)
+            state.ListState.ScrollOffset |> shouldEqual 2
+
+            // Visual check: Item 5 should be visible with cursor
+            expect {
+                snapshot
+                    @"
+ ☐ Item 3                     |
+ ☐ Item 4                     |
+[☐]Item 5                     |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }

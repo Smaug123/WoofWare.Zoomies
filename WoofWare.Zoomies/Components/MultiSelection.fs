@@ -103,12 +103,22 @@ type MultiSelectionState =
                 // Cursor already visible - no change
                 this
 
+/// Information about the viewport that the multi-selection list rendered into.
+/// Posted as an event during render so callers can adjust scroll offset.
+[<Struct>]
+type MultiSelectionViewportInfo =
+    {
+        /// The height of the viewport in items.
+        ViewportHeight : int
+    }
+
 /// Result from rendering a multi-selection list.
 type MultiSelectionResult =
     {
         /// The rendered Vdom.
         Vdom : Vdom<DesiredBounds>
-        /// The (potentially updated) state - scroll may adjust to keep cursor visible.
+        /// The state with clamped cursor. Note: scroll adjustment based on viewport
+        /// height is communicated via PostLayoutEvent, not via this field.
         State : MultiSelectionState
     }
 
@@ -174,15 +184,19 @@ type MultiSelection =
     /// Framework-integrated version with cursor-based navigation.
     /// The list is a single focusable unit; use arrows to navigate within,
     /// Space to toggle items. Tab moves to/from the list as a whole.
-    /// Automatically scrolls to keep the cursor visible (minimal scroll).
     /// Virtualizes rendering: only items within the viewport are rendered.
     /// Cursor highlight only shows when the list has focus.
-    static member make
+    ///
+    /// The component posts onViewportRendered during render with the viewport height.
+    /// Handle this event in ProcessWorld to call state.EnsureVisible(viewportHeight)
+    /// and keep the cursor visible.
+    static member make<'appEvent>
         (
-            ctx : IVdomContext,
+            ctx : IVdomContext<'appEvent>,
             listKey : NodeKey,
             items : MultiSelectionItem<NodeKey>[],
             state : MultiSelectionState,
+            onViewportRendered : MultiSelectionViewportInfo -> 'appEvent,
             ?isFirstToFocus : bool
         )
         : MultiSelectionResult
@@ -209,31 +223,26 @@ type MultiSelection =
                     MaxHeightForWidth = fun _ -> Some totalItems // Don't grow beyond what we need
                 }
 
-            // We need to capture the adjusted state from the render pass.
-            // Since render is called during layout, we use a mutable ref to capture the result.
             let stateWithClampedCursor =
                 {
                     ScrollOffset = state.ScrollOffset
                     CursorIndex = cursorIndex
                 }
 
-            let adjustedState = ref stateWithClampedCursor
-
             let render (rect : Rectangle) : Vdom<DesiredBounds> =
                 let viewportHeight = rect.Height
 
-                // Auto-scroll to keep cursor visible
-                let stateAfterAutoScroll = stateWithClampedCursor.EnsureVisible viewportHeight
+                // Post the viewport height so the caller can call EnsureVisible
+                ctx.PostLayoutEvent (
+                    onViewportRendered
+                        {
+                            ViewportHeight = viewportHeight
+                        }
+                )
 
-                // Clamp scroll offset to valid range
+                // Clamp scroll offset to valid range for rendering
                 let maxOffset = max 0 (totalItems - viewportHeight)
-                let offset = max 0 (min stateAfterAutoScroll.ScrollOffset maxOffset)
-
-                adjustedState.Value <-
-                    {
-                        ScrollOffset = offset
-                        CursorIndex = cursorIndex
-                    }
+                let offset = max 0 (min state.ScrollOffset maxOffset)
 
                 let visibleCount = min viewportHeight (totalItems - offset)
 
@@ -265,5 +274,5 @@ type MultiSelection =
 
             {
                 Vdom = Vdom.withFocusTracking (focusable, ?isFirstToFocus = isFirstToFocus)
-                State = adjustedState.Value
+                State = stateWithClampedCursor
             }
