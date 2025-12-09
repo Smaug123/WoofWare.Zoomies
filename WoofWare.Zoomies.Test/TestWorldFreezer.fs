@@ -234,22 +234,25 @@ module TestWorldFreezer =
         let tail = drainChanges wfWhole |> Array.toList
         let entirelyDrained = result @ tail
 
-        // If all events are keystrokes (and there's at least one), verify they match the input.
-        // Empty results are valid (e.g., BeginBracketedPaste just enters paste mode).
-        // Paste events are also valid and don't need to match keystroke-for-keystroke.
-        if
-            not (List.isEmpty entirelyDrained)
-            && entirelyDrained |> List.forall (fun k -> k.IsKeystroke)
-        then
-            let keys =
-                entirelyDrained
-                |> List.map (fun k ->
-                    match k with
-                    | Keystroke x -> x.KeyChar
-                    | _ -> failwith "logic error"
-                )
+        // The emitted keystrokes should always be a subsequence of the input characters.
+        // Some escape sequences are silently consumed (e.g., spurious EndBracketedPaste, or
+        // recognized mouse/paste sequences), but characters are never invented or reordered.
+        let keystrokeChars =
+            entirelyDrained
+            |> List.choose (fun evt ->
+                match evt with
+                | Keystroke k -> Some k.KeyChar
+                | _ -> None
+            )
 
-            keys |> shouldEqual input.Input
+        let rec isSubsequence (sub : char list) (super : char list) =
+            match sub, super with
+            | [], _ -> true
+            | _, [] -> false
+            | x :: xs, y :: ys -> if x = y then isSubsequence xs ys else isSubsequence sub ys
+
+        if not (isSubsequence keystrokeChars input.Input) then
+            failwith $"Keystroke chars %A{keystrokeChars} is not a subsequence of input %A{input.Input}"
 
         result
 
@@ -499,6 +502,7 @@ module TestWorldFreezer =
         Check.One (propConfig, prop)
 
     [<TestCase(3856024818419232693UL, 5423926211778887271UL, 79)>]
+    [<TestCase(1761304542359499027UL, 1080833032316032411UL, 10)>]
     let ``Property: the same sequence of inputs results in the same sequence of outputs, ESC bracket, regressions``
         (seed : uint64, gamma : uint64, size : int)
         =
@@ -506,6 +510,32 @@ module TestWorldFreezer =
             Prop.forAll (Arb.fromGen chunkingInputGenEscBracket) chunkingInvariantProperty
 
         Check.One (Config.QuickThrowOnFailure.WithReplay (seed, gamma, size), prop)
+
+    /// Generator biased toward bracketed paste sequences.
+    /// This helps find bugs involving paste mode entry/exit sequences followed by other characters.
+    let chunkingInputGenBracketedPaste =
+        gen {
+            // Generate the bracketed paste marker (200 for begin, 201 for end)
+            let! pasteCode = Gen.elements [ "200" ; "201" ]
+            let pasteMarker = '[' :: (pasteCode |> Seq.toList) @ [ '~' ]
+            // Generate some trailing characters that follow the paste marker
+            let! trailing = Gen.listOf ansiCharGen
+            let! changes = Gen.listOf (Gen.choose (0, 15))
+
+            return
+                {
+                    InputChar1 = '\u001B'
+                    InputRest = pasteMarker @ trailing
+                    ChangesPerChunk = changes
+                }
+        }
+
+    [<Test>]
+    let ``Property: the same sequence of inputs results in the same sequence of outputs, bracketed paste`` () =
+        let prop =
+            Prop.forAll (Arb.fromGen chunkingInputGenBracketedPaste) chunkingInvariantProperty
+
+        Check.One (propConfig, prop)
 
     [<Test>]
     let ``Property: the same sequence of inputs results in the same sequence of outputs, ESC bracket angle`` () =
