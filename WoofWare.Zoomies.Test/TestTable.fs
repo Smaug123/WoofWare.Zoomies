@@ -23,7 +23,7 @@ module TestTable =
     [<Test>]
     let ``empty table`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 Table.makeContentSized (NodeKey.make "t_") [||]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
@@ -44,7 +44,7 @@ module TestTable =
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -73,7 +73,7 @@ module TestTable =
     [<Test>]
     let ``simple 2x2 content-sized table`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 Table.makeContentSized
                     (NodeKey.make "t_")
                     [|
@@ -99,7 +99,7 @@ module TestTable =
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -128,7 +128,7 @@ A2B2                |
     [<Test>]
     let ``3x2 content-sized table with different cell widths`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 Table.makeContentSized
                     (NodeKey.make "t_")
                     [|
@@ -155,7 +155,7 @@ A2B2                |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -184,7 +184,7 @@ Bob  25                       |
     [<Test>]
     let ``simple 2x2 space-filling table`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 Table.makeSpaceFilling
                     (NodeKey.make "t_")
                     [|
@@ -210,7 +210,7 @@ Bob  25                       |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -239,7 +239,7 @@ A2        B2        |
     [<Test>]
     let ``space-filling table with mismatched column widths`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 Table.makeSpaceFilling
                     (NodeKey.make "t_")
                     [|
@@ -265,7 +265,7 @@ A2        B2        |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -294,7 +294,7 @@ A        B                    |
     [<Test>]
     let ``space-filling table with mismatched row heights`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 Table.makeSpaceFilling
                     (NodeKey.make "t_")
                     [|
@@ -321,7 +321,7 @@ A        B                    |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -357,7 +357,7 @@ Row3                     |
     [<Test>]
     let ``table with fixed column widths`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [|
@@ -385,7 +385,7 @@ Row3                     |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -414,7 +414,7 @@ A    B                        |
     [<Test>]
     let ``table with proportion columns`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [|
@@ -442,7 +442,7 @@ A    B                        |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -471,7 +471,7 @@ A           B       |
     [<Test>]
     let ``ragged rows are padded with empty`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 Table.makeContentSized
                     (NodeKey.make "t_")
                     [|
@@ -498,7 +498,7 @@ A           B       |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -527,7 +527,7 @@ XY                  |
     [<Test>]
     let ``single cell table`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 Table.makeContentSized (NodeKey.make "t_") [| [| Vdom.textContent "Single" |] |]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
@@ -548,7 +548,7 @@ XY                  |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -577,7 +577,7 @@ Single              |
     [<Test>]
     let ``table with fixed row heights`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [|
@@ -606,7 +606,7 @@ Single              |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -640,7 +640,7 @@ Row3                |
     [<Test>]
     let ``table with proportion rows`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [|
@@ -669,7 +669,7 @@ Row3                |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -703,7 +703,7 @@ Bottom              |
     [<Test>]
     let ``table with mixed row specs`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [|
@@ -732,7 +732,7 @@ Bottom              |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -768,7 +768,7 @@ Prop                |
         task {
             // This test verifies the fix for the bug where Array.foldBack2 ignored height
             // for the last row, causing it to absorb all remaining vertical space
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [| [| Vdom.textContent "Row1" |] ; [| Vdom.textContent "Row2" |] |]
@@ -795,7 +795,7 @@ Prop                |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -824,7 +824,7 @@ Row2                |
     [<Test>]
     let ``table with simple keyed cells`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 // Table internally assigns keys to cells based on (row, col) position
                 // This test verifies that tables handle cell content correctly
                 Table.makeContentSized
@@ -849,7 +849,7 @@ Row2                |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -879,7 +879,7 @@ Cell2               |
     // TEST EXPECTATION WAS WRONG: Expected Column.Fixed 15 to span 25 chars (absorbing slack), but it should only span 15 chars
     let ``table with multiline text wrapping in cells`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [|
@@ -910,7 +910,7 @@ Cell2               |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -939,7 +939,7 @@ X    Y                        |
     [<Test>]
     let ``table constrained by terminal size`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 Table.makeContentSized
                     (NodeKey.make "t_")
                     [|
@@ -969,7 +969,7 @@ X    Y                        |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -1000,7 +1000,7 @@ Data1   Data2  |
         task {
             // After sanitization: -0.5 becomes 0.01, so the first column gets ~0.01/(0.01+1.0) ≈ 1% of space
             // With 20 char width and minima of 1 each, column 1 gets ~2 chars, column 2 gets ~18 chars
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [|
@@ -1028,7 +1028,7 @@ Data1   Data2  |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -1061,7 +1061,7 @@ A B                 |
             // Column 1 (0.01) and Column 2 (0.01) share remaining space equally after Column.Content
             // With 30 char width, column 3 (Auto) gets its preferred (2), leaving 28 for columns 1 and 2
             // Columns 1 and 2 each get ~14 chars (minima 4 each + ~10 extra each)
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [|
@@ -1092,7 +1092,7 @@ A B                 |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -1121,7 +1121,7 @@ Col1          Col2          C3|
     [<Test>]
     let ``fewer column specs than columns pads with Auto`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [|
@@ -1149,7 +1149,7 @@ Col1          Col2          C3|
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -1178,7 +1178,7 @@ A    B C                      |
     [<Test>]
     let ``more column specs than columns truncates extras`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [| [| Vdom.textContent "X" ; Vdom.textContent "Y" |] |]
@@ -1203,7 +1203,7 @@ A    B C                      |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -1234,7 +1234,7 @@ X  Y                |
         task {
             // After sanitization, 0.0 becomes 0.01 for all columns
             // With equal proportions, space divides equally: each column gets ~10 chars in a 30-char terminal
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [| [| Vdom.textContent "A" ; Vdom.textContent "B" ; Vdom.textContent "C" |] |]
@@ -1259,7 +1259,7 @@ X  Y                |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -1289,7 +1289,7 @@ A         B         C         |
     [<Test>]
     let ``mixed column specs Auto Fixed and Proportion`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [|
@@ -1321,7 +1321,7 @@ A         B         C         |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -1350,7 +1350,7 @@ X      Y       Z              |
     [<Test>]
     let ``over-constrained columns trigger shrink-to-fit`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [|
@@ -1382,7 +1382,7 @@ X      Y       Z              |
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -1411,7 +1411,7 @@ gColumngColumnngColu|
     [<Test>]
     let ``over-constrained rows trigger shrink-to-fit`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [|
@@ -1443,7 +1443,7 @@ gColumngColumnngColu|
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -1774,7 +1774,7 @@ module TestTableMeasurements =
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [| [| autoCell ; propCell |] |]
@@ -1786,7 +1786,7 @@ module TestTableMeasurements =
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -1897,7 +1897,7 @@ module TestTablePerformance =
                         |]
                 |]
 
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 Table.makeContentSized (NodeKey.make "t_") cells
 
             let console, terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 30)
@@ -1918,7 +1918,7 @@ module TestTablePerformance =
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             // Just verify it renders without throwing
             App.pumpOnce
@@ -1948,7 +1948,7 @@ module TestTablePerformance =
                         |]
                 |]
 
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 Table.makeContentSized (NodeKey.make "t_") cells
 
             let console, terminal = ConsoleHarness.make' (fun () -> 200) (fun () -> 50)
@@ -1969,7 +1969,7 @@ module TestTablePerformance =
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -1997,7 +1997,7 @@ module TestTablePerformance =
                         |]
                 |]
 
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 Table.makeContentSized (NodeKey.make "t_") cells
 
             let console, terminal = ConsoleHarness.make' (fun () -> 400) (fun () -> 20)
@@ -2018,7 +2018,7 @@ module TestTablePerformance =
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer

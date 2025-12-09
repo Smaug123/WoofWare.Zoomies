@@ -30,7 +30,7 @@ module TestRender =
     let tearDown () =
         GlobalBuilderConfig.updateAllSnapshots ()
 
-    let vdom (vdomContext : VdomContext) (state : State) : Vdom<DesiredBounds> =
+    let vdom (vdomContext : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
         let left =
             Vdom.textContent
                 "not praising the praiseworthy keeps people uncompetitive; not prizing rare treasures keeps people from stealing; not looking at the desirable keeps the mind quiet"
@@ -81,13 +81,13 @@ module TestRender =
 
         let state = State.Empty ()
 
-        let renderState = RenderState.make console MockTime.getStaticUtcNow None
+        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
-        Render.oneStep renderState state (vdom (RenderState.vdomContext renderState))
+        Render.oneStep renderState state (vdom (VdomContext.asTyped<unit> (RenderState.vdomContext renderState)))
 
         terminalOps.Clear ()
 
-        Render.oneStep renderState state (vdom (RenderState.vdomContext renderState))
+        Render.oneStep renderState state (vdom (VdomContext.asTyped<unit> (RenderState.vdomContext renderState)))
 
         terminalOps |> shouldBeEmpty
 
@@ -96,7 +96,7 @@ module TestRender =
         let processWorld =
             { new WorldProcessor<unit, State> with
                 member _.ProcessWorld (worldChanges, renderState, state) =
-                    let focusedKey = VdomContext.focusedKey renderState
+                    let focusedKey = renderState.FocusedKey
                     let mutable newState = state
 
                     for change in worldChanges do
@@ -137,7 +137,7 @@ module TestRender =
 
             let mutable state = State.Empty ()
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             state <-
                 App.pumpOnce
@@ -436,7 +436,7 @@ only displayed when checked                this one is focusable!               
                 WindowHeight = fun _ -> 5
             }
 
-        let renderState = RenderState.make console MockTime.getStaticUtcNow None
+        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
         // Create vdom with some content that will result in multiple cells being written
         let vdom =
@@ -480,7 +480,7 @@ only displayed when checked                this one is focusable!               
                 Execute = fun x -> terminalOps.Add x
             }
 
-        let renderState = RenderState.make console MockTime.getStaticUtcNow None
+        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
         let key = NodeKey.make "test-key"
 
@@ -540,7 +540,7 @@ only displayed when checked                this one is focusable!               
         task {
             let console, terminal = ConsoleHarness.make ()
 
-            let vdom (_ : VdomContext) (_ : unit) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : unit) : Vdom<DesiredBounds> =
                 // Use Vdom.empty with panelSplitAbsolute to right-justify content
                 // Negative absolute value gives the right side a fixed width, left side gets the rest
                 // Empty fills the left side, pushing "Right" to the right edge
@@ -551,9 +551,9 @@ only displayed when checked                this one is focusable!               
                     (Vdom.textContent "Right" |> Vdom.withKey (NodeKey.make "content"))
                 )
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
-            Render.oneStep renderState () (vdom (RenderState.vdomContext renderState))
+            Render.oneStep renderState () (vdom (VdomContext.asTyped<unit> (RenderState.vdomContext renderState)))
 
             expect {
                 snapshot

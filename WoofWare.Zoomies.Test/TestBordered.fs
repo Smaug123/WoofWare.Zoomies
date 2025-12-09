@@ -31,7 +31,7 @@ module TestBordered =
                 WindowHeight = fun _ -> 3
             }
 
-        let renderState = RenderState.make console MockTime.getStaticUtcNow None
+        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
         // Create vdom with bordered text that can change
         let vdom (content : string) =
@@ -95,7 +95,7 @@ module TestBordered =
 
             let borderedKey = NodeKey.make "bordered"
 
-            let vdom (vdomContext : VdomContext) (showBordered : bool) =
+            let vdom (vdomContext : IVdomContext<_>) (showBordered : bool) =
                 if showBordered then
                     // A keyed Bordered with small text content
                     // The border should be drawn
@@ -116,7 +116,7 @@ module TestBordered =
                         ProcessWorldResult.make newState
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             // First render: fill with X's
             let mutable state =
@@ -188,7 +188,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (useLongText : bool) =
+            let vdom (_ : IVdomContext<_>) (useLongText : bool) =
                 if useLongText then
                     // Long text filling the bordered area
                     Vdom.textContent (String.replicate 200 "X") |> Vdom.bordered
@@ -203,7 +203,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
                         ProcessWorldResult.make newState
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             // First render: long text
             let mutable state =
@@ -277,7 +277,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
 
             let borderedKey = NodeKey.make "bordered"
 
-            let vdom (_ : VdomContext) (useLongText : bool) =
+            let vdom (_ : IVdomContext<_>) (useLongText : bool) =
                 let bordered =
                     if useLongText then
                         Vdom.textContent (String.replicate 200 "X") |> Vdom.bordered
@@ -294,7 +294,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
                         ProcessWorldResult.make newState
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             // First render: long text
             let mutable state =

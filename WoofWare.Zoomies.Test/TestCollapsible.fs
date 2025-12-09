@@ -29,7 +29,7 @@ module TestCollapsible =
         task {
             let collapsibleKey = NodeKey.make "collapsible"
 
-            let vdom (vdomContext : VdomContext) (state : State) =
+            let vdom (vdomContext : IVdomContext<_>) (state : State) =
                 let childContent = Vdom.textContent "This stuff was hidden"
 
                 Collapsible.make vdomContext collapsibleKey state.CollapsibleState "Collapsible section" childContent
@@ -61,7 +61,7 @@ module TestCollapsible =
                             match s with
                             | WorldStateChange.Keystroke c ->
                                 if c.KeyChar = ' ' then
-                                    match VdomContext.focusedKey renderState with
+                                    match renderState.FocusedKey with
                                     | None -> ()
                                     | Some focused ->
                                         if focused = collapsibleKey then
@@ -81,7 +81,7 @@ module TestCollapsible =
                         ProcessWorldResult.make newState
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
             let mutable currentState = state
 
             // Initial render: collapsed and unfocused
@@ -232,7 +232,7 @@ This stuff was hidden                                       |
 
             let collapsibleKey = NodeKey.make "collapsible"
 
-            let vdom (vdomContext : VdomContext) (state : State) =
+            let vdom (vdomContext : IVdomContext<_>) (state : State) =
                 let childContent =
                     let line1 =
                         Vdom.textContent "Line 1 of content" |> Vdom.withKey (NodeKey.make "line1")
@@ -255,7 +255,7 @@ This stuff was hidden                                       |
                             match s with
                             | WorldStateChange.Keystroke c ->
                                 if c.KeyChar = ' ' then
-                                    match VdomContext.focusedKey renderState with
+                                    match renderState.FocusedKey with
                                     | None -> ()
                                     | Some focused ->
                                         if focused = collapsibleKey then
@@ -275,7 +275,7 @@ This stuff was hidden                                       |
                         ProcessWorldResult.make newState
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
             let mutable currentState = state
 
             // Initial render: collapsed
@@ -379,7 +379,7 @@ Line 2 of content                                           |
 
             let longLabel = "This is a very long label that should wrap onto multiple lines"
 
-            let vdom (vdomContext : VdomContext) (state : State) =
+            let vdom (vdomContext : IVdomContext<_>) (state : State) =
                 let collapsibleKey = NodeKey.make "collapsible"
 
                 let childContent = Vdom.textContent "Child content here"
@@ -397,7 +397,7 @@ Line 2 of content                                           |
                             match s with
                             | WorldStateChange.Keystroke c ->
                                 if c.KeyChar = ' ' then
-                                    match VdomContext.focusedKey renderState with
+                                    match renderState.FocusedKey with
                                     | None -> ()
                                     | Some focused ->
                                         NodeKey.toHumanReadableString focused |> shouldEqual "collapsible"
@@ -419,7 +419,7 @@ Line 2 of content                                           |
                         ProcessWorldResult.make newState
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
             let mutable currentState = state
 
             // Initial render: collapsed and unfocused - long text is truncated but on same line as glyph

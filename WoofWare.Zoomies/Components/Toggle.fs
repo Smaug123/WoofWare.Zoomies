@@ -47,7 +47,7 @@ type Toggle =
     /// </remarks>
     static member make
         (
-            ctx : VdomContext,
+            ctx : IVdomContext,
             key : NodeKey,
             untoggledGlyph : char,
             toggledGlyph : char,
@@ -57,7 +57,7 @@ type Toggle =
         )
         : Vdom<DesiredBounds>
         =
-        let isFocused = VdomContext.focusedKey ctx = Some key
+        let isFocused = ctx.FocusedKey = Some key
 
         let toggle =
             Toggle.make' (untoggledGlyph, toggledGlyph, isToggled, isFocused)

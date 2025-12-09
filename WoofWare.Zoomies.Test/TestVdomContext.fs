@@ -20,7 +20,7 @@ module TestVdomContext =
     [<Test>]
     let ``pruneExpiredActivations removes only expired entries`` () =
         let clock = MockTime.make ()
-        let ctx = VdomContext.empty clock.GetUtcNow bounds
+        let ctx = VdomContext.empty<unit> clock.GetUtcNow bounds
 
         // Record activations at different times
         let key1 = NodeKey.make "key1"
@@ -103,7 +103,7 @@ module TestVdomContext =
     [<Test>]
     let ``pruneExpiredActivations handles removing multiple entries in one pass`` () =
         let clock = MockTime.make ()
-        let ctx = VdomContext.empty clock.GetUtcNow bounds
+        let ctx = VdomContext.empty<unit> clock.GetUtcNow bounds
 
         // Create many activations at the same time
         let keys = [ for i in 1..10 -> NodeKey.make $"key{i}" ]
@@ -135,7 +135,7 @@ module TestVdomContext =
     [<Test>]
     let ``pruneExpiredActivations marks context dirty only when removals occur`` () =
         let clock = MockTime.make ()
-        let ctx = VdomContext.empty clock.GetUtcNow bounds
+        let ctx = VdomContext.empty<unit> clock.GetUtcNow bounds
 
         let key1 = NodeKey.make "key1"
 

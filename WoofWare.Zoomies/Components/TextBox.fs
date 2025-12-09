@@ -56,7 +56,7 @@ type TextBox =
     /// </remarks>
     static member make
         (
-            ctx : VdomContext,
+            ctx : IVdomContext,
             key : NodeKey,
             content : string,
             cursorPos : int,
@@ -66,7 +66,7 @@ type TextBox =
         )
         : Vdom<DesiredBounds>
         =
-        let isFocused = VdomContext.focusedKey ctx = Some key
+        let isFocused = ctx.FocusedKey = Some key
 
         let textbox =
             TextBox.make' (content, cursorPos, isFocused, ?wrap = wrap) |> Vdom.withKey key
