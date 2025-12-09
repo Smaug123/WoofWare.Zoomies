@@ -32,10 +32,10 @@ type IVdomContext =
 ///
 /// Since this interface inherits from IVdomContext, a typed context can be passed
 /// anywhere an untyped IVdomContext is expected.
-type IVdomContext<'appEvent> =
+type IVdomContext<'postLayoutEvent> =
     inherit IVdomContext
 
     /// Post an event to be processed after layout is complete.
     /// This is useful for components that need to communicate state changes based on layout information
-    /// (e.g., viewport-aware scrolling). The event will be fed to ProcessWorld after the current render.
-    abstract PostLayoutEvent : 'appEvent -> unit
+    /// (e.g., viewport-aware scrolling). The event will be fed to ProcessPostLayoutEvents after the current render.
+    abstract PostLayoutEvent : 'postLayoutEvent -> unit

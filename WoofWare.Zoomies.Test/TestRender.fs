@@ -94,7 +94,7 @@ module TestRender =
     [<Test>]
     let ``example 1`` () =
         let processWorld =
-            { new WorldProcessor<unit, State> with
+            { new WorldProcessor<unit, unit, State> with
                 member _.ProcessWorld (worldChanges, renderState, state) =
                     let focusedKey = renderState.FocusedKey
                     let mutable newState = state
@@ -121,6 +121,8 @@ module TestRender =
                         | ApplicationEventException _ -> failwith "no exceptions possible"
 
                     ProcessWorldResult.make newState
+
+                member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
             }
 
         task {

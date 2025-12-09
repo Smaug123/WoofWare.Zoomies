@@ -73,7 +73,7 @@ module FileBrowser =
         }
 
     let processWorld (worldBridge : IWorldBridge<AppEvent>) =
-        { new WorldProcessor<AppEvent, State> with
+        { new WorldProcessor<AppEvent, AppEvent, State> with
             member _.ProcessWorld (changes, _prevVdom, state) =
                 let mutable selectedFileIndex = state.SelectedFileIndex
                 let mutable fileContent = state.FileContent
@@ -133,6 +133,18 @@ module FileBrowser =
                         Generation = generation
                         ListState = listState
                     }
+
+            member _.ProcessPostLayoutEvents (events, _ctx, state) =
+                let mutable listState = state.ListState
+
+                for event in events do
+                    match event with
+                    | ViewportInfo info -> listState <- listState.EnsureVisible info.ViewportHeight
+                    | _ -> ()
+
+                { state with
+                    ListState = listState
+                }
         }
 
     let view (ctx : IVdomContext<AppEvent>) (state : State) : Vdom<DesiredBounds> =

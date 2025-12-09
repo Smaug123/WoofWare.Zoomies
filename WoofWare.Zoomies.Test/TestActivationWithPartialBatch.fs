@@ -54,7 +54,7 @@ module TestActivationWithPartialBatch =
             let mutable processWorldCallCount = 0
 
             let processWorld =
-                { new WorldProcessor<AppEvent, State> with
+                { new WorldProcessor<AppEvent, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) =
                         processWorldCallCount <- processWorldCallCount + 1
                         let mutable newState = state
@@ -94,6 +94,8 @@ module TestActivationWithPartialBatch =
                             |> ProcessWorldResult.withRerender (toProcess - 1)
                         else
                             ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let clock = MockTime.make ()
@@ -180,7 +182,7 @@ module TestActivationWithPartialBatch =
 
             // Always process only 1 event at a time to maximize the chance of hitting the bug
             let processWorld =
-                { new WorldProcessor<AppEvent, State> with
+                { new WorldProcessor<AppEvent, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) =
                         let mutable newState = state
 
@@ -207,6 +209,8 @@ module TestActivationWithPartialBatch =
                             |> ProcessWorldResult.withRerender (toProcess - 1)
                         else
                             ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let clock = MockTime.make ()

@@ -58,7 +58,7 @@ module TestButton =
             let resolver = ActivationResolver.button flipKey FlipText
 
             let processWorld =
-                { new WorldProcessor<AppEvent, State> with
+                { new WorldProcessor<AppEvent, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) =
                         let mutable newState = state
 
@@ -72,6 +72,8 @@ module TestButton =
                             | _ -> ()
 
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let clock = MockTime.make ()
@@ -236,7 +238,7 @@ Hello, World!                           |
                     ]
 
             let processWorld =
-                { new WorldProcessor<MultiButtonEvent, MultiButtonState> with
+                { new WorldProcessor<MultiButtonEvent, unit, MultiButtonState> with
                     member _.ProcessWorld (inputs, renderState, state) =
                         let mutable newState = state
 
@@ -260,6 +262,8 @@ Hello, World!                           |
                             | _ -> ()
 
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let clock = MockTime.make ()
@@ -476,7 +480,7 @@ Last clicked: Button 3                            |
             let resolver = ActivationResolver.button flipKey FlipText
 
             let processWorld =
-                { new WorldProcessor<AppEvent, bool> with
+                { new WorldProcessor<AppEvent, unit, bool> with
                     member _.ProcessWorld (inputs, renderState, state) =
                         let mutable newState = state
 
@@ -486,6 +490,8 @@ Last clicked: Button 3                            |
                             | _ -> ()
 
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let clock = MockTime.make ()

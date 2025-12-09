@@ -14,7 +14,7 @@ type RenderedNode =
             ArrangedSource : Layout.ArrangedNode option
         }
 
-type RenderState<'appEvent> =
+type RenderState<'postLayoutEvent> =
     private
         {
             Console : IConsole
@@ -33,7 +33,7 @@ type RenderState<'appEvent> =
             InitiallyFocusedKey : NodeKey option ref
             /// This gets handed out to users every so often: it's the fragment of state that they will want to
             /// construct the vdom with.
-            VdomContext : VdomContext<'appEvent>
+            VdomContext : VdomContext<'postLayoutEvent>
             /// Debug file writer for layout diagnostics (if WOOFWARE_ZOOMIES_DEBUG_TO_FILE is enabled)
             DebugWriter : IO.StreamWriter option
         }
@@ -46,37 +46,40 @@ type RenderState<'appEvent> =
 
 [<RequireQualifiedAccess>]
 module RenderState =
-    let isCursorVisible<'appEvent> (s : RenderState<'appEvent>) = s.CursorVisible
+    let isCursorVisible<'postLayoutEvent> (s : RenderState<'postLayoutEvent>) = s.CursorVisible
 
-    let setCursorVisible<'appEvent> (s : RenderState<'appEvent>) =
+    let setCursorVisible<'postLayoutEvent> (s : RenderState<'postLayoutEvent>) =
         s.Output (TerminalOp.SetCursorVisibility true)
         s.CursorVisible <- true
 
-    let setCursorInvisible<'appEvent> (s : RenderState<'appEvent>) =
+    let setCursorInvisible<'postLayoutEvent> (s : RenderState<'postLayoutEvent>) =
         s.Output (TerminalOp.SetCursorVisibility false)
         s.CursorVisible <- false
 
-    let clearScreen<'appEvent> (s : RenderState<'appEvent>) = s.Output TerminalOp.ClearScreen
+    let clearScreen<'postLayoutEvent> (s : RenderState<'postLayoutEvent>) = s.Output TerminalOp.ClearScreen
 
-    let enterAlternateScreen<'appEvent> (s : RenderState<'appEvent>) =
+    let enterAlternateScreen<'postLayoutEvent> (s : RenderState<'postLayoutEvent>) =
         s.Output TerminalOp.EnterAlternateScreen
 
-    let exitAlternateScreen<'appEvent> (s : RenderState<'appEvent>) = s.Output TerminalOp.ExitAlternateScreen
+    let exitAlternateScreen<'postLayoutEvent> (s : RenderState<'postLayoutEvent>) =
+        s.Output TerminalOp.ExitAlternateScreen
 
-    let registerMouseMode<'appEvent> (s : RenderState<'appEvent>) = s.Output TerminalOp.RegisterMouseMode
-    let unregisterMouseMode<'appEvent> (s : RenderState<'appEvent>) = s.Output TerminalOp.UnregisterMouseMode
+    let registerMouseMode<'postLayoutEvent> (s : RenderState<'postLayoutEvent>) = s.Output TerminalOp.RegisterMouseMode
 
-    let registerBracketedPaste<'appEvent> (s : RenderState<'appEvent>) =
+    let unregisterMouseMode<'postLayoutEvent> (s : RenderState<'postLayoutEvent>) =
+        s.Output TerminalOp.UnregisterMouseMode
+
+    let registerBracketedPaste<'postLayoutEvent> (s : RenderState<'postLayoutEvent>) =
         s.Output TerminalOp.RegisterBracketedPaste
 
-    let unregisterBracketedPaste<'appEvent> (s : RenderState<'appEvent>) =
+    let unregisterBracketedPaste<'postLayoutEvent> (s : RenderState<'postLayoutEvent>) =
         s.Output TerminalOp.UnregisterBracketedPaste
 
     /// Flush any buffered output to the console.
-    let flush<'appEvent> (s : RenderState<'appEvent>) = s.Console.Flush ()
+    let flush<'postLayoutEvent> (s : RenderState<'postLayoutEvent>) = s.Console.Flush ()
 
     /// Query the rendered bounds of a keyed node
-    let layoutOf<'appEvent> (key : NodeKey) (s : RenderState<'appEvent>) : Rectangle option =
+    let layoutOf<'postLayoutEvent> (key : NodeKey) (s : RenderState<'postLayoutEvent>) : Rectangle option =
         match s.KeyToNode.TryGetValue key with
         | true, node -> Some node.Bounds
         | false, _ -> None
@@ -92,11 +95,11 @@ module RenderState =
             Height = height
         }
 
-    let refreshTerminalSize<'appEvent> (rs : RenderState<'appEvent>) : unit =
+    let refreshTerminalSize<'postLayoutEvent> (rs : RenderState<'postLayoutEvent>) : unit =
         VdomContext.setTerminalBounds (getBounds rs.Console) rs.VdomContext
 
     /// Advance focus to the next focusable node (Tab key)
-    let advanceFocus<'appEvent> (s : RenderState<'appEvent>) : unit =
+    let advanceFocus<'postLayoutEvent> (s : RenderState<'postLayoutEvent>) : unit =
         if s.FocusableKeys.Count = 0 then
             // nothing to do, nothing can ever have focus
             VdomContext.setFocusedKey None s.VdomContext
@@ -123,7 +126,7 @@ module RenderState =
                 | _ -> VdomContext.setFocusedKey (Some s.FocusableKeys.[0]) s.VdomContext
 
     /// Retreat focus to the previous focusable node (Shift+Tab key)
-    let retreatFocus<'appEvent> (s : RenderState<'appEvent>) : unit =
+    let retreatFocus<'postLayoutEvent> (s : RenderState<'postLayoutEvent>) : unit =
         if s.FocusableKeys.Count = 0 then
             // nothing to do, nothing can ever have focus
             VdomContext.setFocusedKey None s.VdomContext
@@ -149,16 +152,17 @@ module RenderState =
                     VdomContext.setFocusedKey (Some firstKey) s.VdomContext
                 | _ -> VdomContext.setFocusedKey (Some s.FocusableKeys.[s.FocusableKeys.Count - 1]) s.VdomContext
 
-    let internal vdomContext<'appEvent> (rs : RenderState<'appEvent>) = rs.VdomContext
+    let internal vdomContext<'postLayoutEvent> (rs : RenderState<'postLayoutEvent>) = rs.VdomContext
 
     /// Get the currently focused key, if any
-    let focusedKey<'appEvent> (rs : RenderState<'appEvent>) : NodeKey option = VdomContext.focusedKey rs.VdomContext
+    let focusedKey<'postLayoutEvent> (rs : RenderState<'postLayoutEvent>) : NodeKey option =
+        VdomContext.focusedKey rs.VdomContext
 
-    let internal make<'appEvent>
+    let internal make<'postLayoutEvent>
         (c : IConsole)
         (getUtcNow : unit -> DateTime)
         (debugWriter : IO.StreamWriter option)
-        : RenderState<'appEvent>
+        : RenderState<'postLayoutEvent>
         =
         let bounds = getBounds c
 
@@ -184,16 +188,19 @@ module RenderState =
         }
 
     // Internal accessors for Render module
-    let internal previousVdom<'appEvent> (rs : RenderState<'appEvent>) = rs.PreviousVdom
+    let internal previousVdom<'postLayoutEvent> (rs : RenderState<'postLayoutEvent>) = rs.PreviousVdom
 
-    let internal setPreviousVdom<'appEvent> (v : RenderedNode option) (rs : RenderState<'appEvent>) =
+    let internal setPreviousVdom<'postLayoutEvent> (v : RenderedNode option) (rs : RenderState<'postLayoutEvent>) =
         rs.PreviousVdom <- v
 
-    let internal buffer<'appEvent> (rs : RenderState<'appEvent>) = rs.Buffer
-    let internal setBuffer<'appEvent> (b : TerminalCell voption[,]) (rs : RenderState<'appEvent>) = rs.Buffer <- b
-    let internal keyToNode<'appEvent> (rs : RenderState<'appEvent>) = rs.KeyToNode
-    let internal focusableKeys<'appEvent> (rs : RenderState<'appEvent>) = rs.FocusableKeys
-    let internal firstToFocusKey<'appEvent> (rs : RenderState<'appEvent>) = rs.FirstToFocusKey
-    let internal initiallyFocusedKey<'appEvent> (rs : RenderState<'appEvent>) = rs.InitiallyFocusedKey
-    let internal debugWriter<'appEvent> (rs : RenderState<'appEvent>) = rs.DebugWriter
-    let internal output<'appEvent> (rs : RenderState<'appEvent>) = rs.Output
+    let internal buffer<'postLayoutEvent> (rs : RenderState<'postLayoutEvent>) = rs.Buffer
+
+    let internal setBuffer<'postLayoutEvent> (b : TerminalCell voption[,]) (rs : RenderState<'postLayoutEvent>) =
+        rs.Buffer <- b
+
+    let internal keyToNode<'postLayoutEvent> (rs : RenderState<'postLayoutEvent>) = rs.KeyToNode
+    let internal focusableKeys<'postLayoutEvent> (rs : RenderState<'postLayoutEvent>) = rs.FocusableKeys
+    let internal firstToFocusKey<'postLayoutEvent> (rs : RenderState<'postLayoutEvent>) = rs.FirstToFocusKey
+    let internal initiallyFocusedKey<'postLayoutEvent> (rs : RenderState<'postLayoutEvent>) = rs.InitiallyFocusedKey
+    let internal debugWriter<'postLayoutEvent> (rs : RenderState<'postLayoutEvent>) = rs.DebugWriter
+    let internal output<'postLayoutEvent> (rs : RenderState<'postLayoutEvent>) = rs.Output

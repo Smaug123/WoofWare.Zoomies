@@ -53,7 +53,7 @@ module TestCollapsible =
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<_, State> with
+                { new WorldProcessor<_, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) =
                         let mutable newState = state
 
@@ -79,6 +79,8 @@ module TestCollapsible =
                             | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
 
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -247,7 +249,7 @@ This stuff was hidden                                       |
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<_, State> with
+                { new WorldProcessor<_, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) =
                         let mutable newState = state
 
@@ -273,6 +275,8 @@ This stuff was hidden                                       |
                             | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
 
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -389,7 +393,7 @@ Line 2 of content                                           |
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<_, State> with
+                { new WorldProcessor<_, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) =
                         let mutable newState = state
 
@@ -417,6 +421,8 @@ Line 2 of content                                           |
                             | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
 
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None

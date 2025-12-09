@@ -19,7 +19,8 @@ module TestScrollBar =
     let tearDown () =
         GlobalBuilderConfig.updateAllSnapshots ()
 
-    type State = unit
+    [<Struct>]
+    type State = | NoState
 
     [<Test>]
     let ``horizontal scroll bar at start`` () =
@@ -49,21 +50,23 @@ module TestScrollBar =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) : State = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                ()
+                NoState
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
+            |> ignore<State>
 
             expect {
                 snapshot
@@ -104,21 +107,23 @@ module TestScrollBar =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) : State = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                ()
+                NoState
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
+            |> ignore<State>
 
             expect {
                 snapshot
@@ -159,21 +164,23 @@ module TestScrollBar =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) : State = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                ()
+                NoState
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
+            |> ignore<State>
 
             expect {
                 snapshot
@@ -214,21 +221,23 @@ module TestScrollBar =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) : State = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                ()
+                NoState
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
+            |> ignore<State>
 
             expect {
                 snapshot
@@ -279,21 +288,23 @@ module TestScrollBar =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) : State = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                ()
+                NoState
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
+            |> ignore<State>
 
             expect {
                 snapshot
@@ -344,21 +355,23 @@ module TestScrollBar =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) : State = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                ()
+                NoState
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
+            |> ignore<State>
 
             expect {
                 snapshot
@@ -409,21 +422,23 @@ module TestScrollBar =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) : State = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                ()
+                NoState
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
+            |> ignore<State>
 
             expect {
                 snapshot
@@ -463,21 +478,23 @@ module TestScrollBar =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) : State = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                ()
+                NoState
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
+            |> ignore<State>
 
             expect {
                 snapshot
@@ -519,21 +536,23 @@ module TestScrollBar =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) : State = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                ()
+                NoState
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
+            |> ignore<State>
 
             expect {
                 snapshot
@@ -574,21 +593,23 @@ module TestScrollBar =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) : State = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                ()
+                NoState
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
+            |> ignore<State>
 
             expect {
                 snapshot
@@ -630,21 +651,23 @@ module TestScrollBar =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) : State = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                ()
+                NoState
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
+            |> ignore<State>
 
             expect {
                 snapshot
@@ -686,21 +709,23 @@ module TestScrollBar =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) : State = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                ()
+                NoState
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
+            |> ignore<State>
 
             expect {
                 snapshot
@@ -746,21 +771,23 @@ module TestScrollBar =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) : State = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                ()
+                NoState
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
+            |> ignore<State>
 
             expect {
                 snapshot
@@ -805,21 +832,23 @@ module TestScrollBar =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) : State = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                ()
+                NoState
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
+            |> ignore<State>
 
             expect {
                 snapshot
@@ -864,21 +893,23 @@ module TestScrollBar =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) : State = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                ()
+                NoState
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
+            |> ignore<State>
 
             expect {
                 snapshot
@@ -1205,21 +1236,23 @@ module TestScrollBar =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) : State = state
                 }
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                ()
+                NoState
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
+            |> ignore<State>
 
             expect {
                 snapshot
@@ -1261,21 +1294,23 @@ module TestScrollBar =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) : State = state
                 }
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                ()
+                NoState
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
+            |> ignore<State>
 
             expect {
                 snapshot
@@ -1317,21 +1352,23 @@ module TestScrollBar =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) : State = state
                 }
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                ()
+                NoState
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
+            |> ignore<State>
 
             expect {
                 snapshot
@@ -1373,21 +1410,23 @@ module TestScrollBar =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) : State = state
                 }
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                ()
+                NoState
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
+            |> ignore<State>
 
             expect {
                 snapshot
@@ -1428,21 +1467,23 @@ module TestScrollBar =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) : State = state
                 }
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                ()
+                NoState
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
+            |> ignore<State>
 
             expect {
                 snapshot
@@ -1488,21 +1529,23 @@ module TestScrollBar =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) : State = state
                 }
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                ()
+                NoState
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
+            |> ignore<State>
 
             expect {
                 snapshot

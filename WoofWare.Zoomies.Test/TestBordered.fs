@@ -109,11 +109,13 @@ module TestBordered =
                     Vdom.textContent "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
             let processWorld =
-                { new WorldProcessor<unit, bool> with
+                { new WorldProcessor<unit, unit, bool> with
                     member _.ProcessWorld (worldChanges, _, state) =
                         // Toggle state on any keystroke
                         let newState = if worldChanges.Length > 0 then not state else state
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -197,10 +199,12 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
                     Vdom.textContent "AAA" |> Vdom.bordered
 
             let processWorld =
-                { new WorldProcessor<unit, bool> with
+                { new WorldProcessor<unit, unit, bool> with
                     member _.ProcessWorld (worldChanges, _, state) =
                         let newState = if worldChanges.Length > 0 then not state else state
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -288,10 +292,12 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
                 bordered |> Vdom.withKey borderedKey |> Vdom.bordered
 
             let processWorld =
-                { new WorldProcessor<unit, bool> with
+                { new WorldProcessor<unit, unit, bool> with
                     member _.ProcessWorld (worldChanges, _, state) =
                         let newState = if worldChanges.Length > 0 then not state else state
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None

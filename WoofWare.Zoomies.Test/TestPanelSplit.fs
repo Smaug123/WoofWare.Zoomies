@@ -110,11 +110,13 @@ module TestPanelSplit =
                     Vdom.textContent "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" |> Vdom.bordered
 
             let processWorld =
-                { new WorldProcessor<unit, bool> with
+                { new WorldProcessor<unit, unit, bool> with
                     member _.ProcessWorld (worldChanges, _, state) =
                         // Toggle state on any keystroke
                         let newState = if worldChanges.Length > 0 then not state else state
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -195,8 +197,9 @@ module TestPanelSplit =
                 Vdom.panelSplitProportion (SplitDirection.Vertical, 0.1, leftText, rightText)
 
             let processWorld =
-                { new WorldProcessor<unit, FakeUnit> with
+                { new WorldProcessor<unit, unit, FakeUnit> with
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let world = MockWorld.make ()
@@ -252,8 +255,9 @@ module TestPanelSplit =
                 Vdom.panelSplitProportion (SplitDirection.Horizontal, 0.1, topText, bottomText)
 
             let processWorld =
-                { new WorldProcessor<unit, FakeUnit> with
+                { new WorldProcessor<unit, unit, FakeUnit> with
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let world = MockWorld.make ()
@@ -312,8 +316,9 @@ module TestPanelSplit =
                 Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
 
             let processWorld =
-                { new WorldProcessor<unit, FakeUnit> with
+                { new WorldProcessor<unit, unit, FakeUnit> with
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -375,8 +380,9 @@ Hello world                                                        Hi           
                 Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
 
             let processWorld =
-                { new WorldProcessor<unit, FakeUnit> with
+                { new WorldProcessor<unit, unit, FakeUnit> with
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -430,8 +436,9 @@ onger piece text her|
                 Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
 
             let processWorld =
-                { new WorldProcessor<unit, FakeUnit> with
+                { new WorldProcessor<unit, unit, FakeUnit> with
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -486,8 +493,9 @@ o   d   |
                 Vdom.panelSplitAuto (SplitDirection.Horizontal, top, bottom)
 
             let processWorld =
-                { new WorldProcessor<unit, FakeUnit> with
+                { new WorldProcessor<unit, unit, FakeUnit> with
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -545,8 +553,9 @@ e multiple lines when rendered          |
                 Vdom.panelSplitAuto (SplitDirection.Horizontal, top, bottom)
 
             let processWorld =
-                { new WorldProcessor<unit, FakeUnit> with
+                { new WorldProcessor<unit, unit, FakeUnit> with
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -599,8 +608,9 @@ nt                            |
                 Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
 
             let processWorld =
-                { new WorldProcessor<unit, FakeUnit> with
+                { new WorldProcessor<unit, unit, FakeUnit> with
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -655,8 +665,9 @@ nt                            |
                 Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
 
             let processWorld =
-                { new WorldProcessor<unit, FakeUnit> with
+                { new WorldProcessor<unit, unit, FakeUnit> with
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -715,10 +726,12 @@ B|
                     Vdom.panelSplitProportion (SplitDirection.Vertical, 0.25, left, right)
 
             let processWorld =
-                { new WorldProcessor<unit, bool> with
+                { new WorldProcessor<unit, unit, bool> with
                     member _.ProcessWorld (worldChanges, _, state) =
                         let newState = if worldChanges.Length > 0 then not state else state
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -818,10 +831,12 @@ AAA                 right                                                       
                 split |> Vdom.withKey splitKey |> Vdom.bordered
 
             let processWorld =
-                { new WorldProcessor<unit, bool> with
+                { new WorldProcessor<unit, unit, bool> with
                     member _.ProcessWorld (worldChanges, _, state) =
                         let newState = if worldChanges.Length > 0 then not state else state
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -893,10 +908,12 @@ AAA                 right                                                       
                     Vdom.panelSplitProportion (SplitDirection.Vertical, 0.3, left, right)
 
             let processWorld =
-                { new WorldProcessor<unit, bool> with
+                { new WorldProcessor<unit, unit, bool> with
                     member _.ProcessWorld (worldChanges, _, state) =
                         let newState = if worldChanges.Length > 0 then not state else state
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -994,8 +1011,9 @@ AAA                 right                                                       
                 Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
 
             let processWorld =
-                { new WorldProcessor<unit, FakeUnit> with
+                { new WorldProcessor<unit, unit, FakeUnit> with
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -1066,8 +1084,9 @@ small               ┌──────────────────┐
                 Vdom.panelSplitAutoExpand (SplitDirection.Vertical, left, right)
 
             let processWorld =
-                { new WorldProcessor<unit, FakeUnit> with
+                { new WorldProcessor<unit, unit, FakeUnit> with
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -1121,8 +1140,9 @@ Left                               Right|
                 Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
 
             let processWorld =
-                { new WorldProcessor<unit, FakeUnit> with
+                { new WorldProcessor<unit, unit, FakeUnit> with
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderStateAuto = RenderState.make consoleAuto MockTime.getStaticUtcNow None
@@ -1214,8 +1234,9 @@ Left                               Right|
                 Vdom.panelSplitAutoExpand (SplitDirection.Horizontal, top, bottom)
 
             let processWorld =
-                { new WorldProcessor<unit, FakeUnit> with
+                { new WorldProcessor<unit, unit, FakeUnit> with
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -1282,8 +1303,9 @@ Bottom              |
                 |> Vdom.Unkeyed
 
             let processWorld =
-                { new WorldProcessor<unit, FakeUnit> with
+                { new WorldProcessor<unit, unit, FakeUnit> with
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -1347,8 +1369,9 @@ LeftRight                               |
                 |> Vdom.Unkeyed
 
             let processWorld =
-                { new WorldProcessor<unit, FakeUnit> with
+                { new WorldProcessor<unit, unit, FakeUnit> with
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -1422,11 +1445,13 @@ Bottom              |
                     Vdom.panelSplitAuto (SplitDirection.Horizontal, top, Vdom.empty)
 
             let processWorld =
-                { new WorldProcessor<unit, bool> with
+                { new WorldProcessor<unit, unit, bool> with
                     member _.ProcessWorld (worldChanges, _, state) =
                         // Toggle state when any key is pressed
                         let newState = if worldChanges.Length > 0 then not state else state
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -1567,8 +1592,9 @@ OnlyThis            |
                 |> Vdom.Unkeyed
 
             let processWorld =
-                { new WorldProcessor<unit, FakeUnit> with
+                { new WorldProcessor<unit, unit, FakeUnit> with
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -1672,8 +1698,9 @@ LLLLLLLLLLLLRRRRRRRR|
                 |> Vdom.Unkeyed
 
             let processWorld =
-                { new WorldProcessor<unit, FakeUnit> with
+                { new WorldProcessor<unit, unit, FakeUnit> with
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None

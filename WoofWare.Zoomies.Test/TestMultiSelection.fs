@@ -52,8 +52,9 @@ module TestMultiSelection =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
@@ -126,8 +127,9 @@ module TestMultiSelection =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
@@ -200,8 +202,9 @@ module TestMultiSelection =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
@@ -274,8 +277,9 @@ module TestMultiSelection =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
@@ -348,8 +352,9 @@ module TestMultiSelection =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
@@ -428,10 +433,12 @@ module TestMultiSelection =
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<SimpleViewportEvent, State> with
+                { new WorldProcessor<SimpleViewportEvent, SimpleViewportEvent, State> with
                     member _.ProcessWorld (inputs, renderState, state) =
                         // Viewport events don't affect state in this test (all items visible)
                         ProcessWorldResult.make state
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
@@ -549,7 +556,7 @@ module TestMultiSelection =
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<ToggleListEvent, ToggleListState> with
+                { new WorldProcessor<ToggleListEvent, ToggleListEvent, ToggleListState> with
                     member _.ProcessWorld (inputs, renderState, s) =
                         let mutable newState = s
 
@@ -585,6 +592,8 @@ module TestMultiSelection =
                             | _ -> ()
 
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let resolver =
@@ -693,8 +702,9 @@ module TestMultiSelection =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
@@ -782,8 +792,9 @@ module TestMultiSelection =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
@@ -866,8 +877,9 @@ module TestMultiSelection =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
@@ -968,7 +980,7 @@ module TestMultiSelection =
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<ArrowTestEvent, ArrowTestState> with
+                { new WorldProcessor<ArrowTestEvent, ArrowTestEvent, ArrowTestState> with
                     member _.ProcessWorld (inputs, renderState, s) =
                         let mutable newState = s
 
@@ -984,15 +996,23 @@ module TestMultiSelection =
                                     { newState with
                                         ListState = newState.ListState.MoveDown 5
                                     }
-                            | WorldStateChange.ApplicationEvent (ToggleEvt _) -> ()
-                            | WorldStateChange.ApplicationEvent (ArrowViewportInfo info) ->
+                            | _ -> ()
+
+                        ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (events, _ctx, s) =
+                        let mutable newState = s
+
+                        for event in events do
+                            match event with
+                            | ArrowViewportInfo info ->
                                 newState <-
                                     { newState with
                                         ListState = newState.ListState.EnsureVisible info.ViewportHeight
                                     }
                             | _ -> ()
 
-                        ProcessWorldResult.make newState
+                        newState
                 }
 
             let resolver =
@@ -1127,8 +1147,9 @@ module TestMultiSelection =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<unit, State> with
+                { new WorldProcessor<unit, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
@@ -1221,7 +1242,7 @@ module TestMultiSelection =
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<NoDanceEvent, NoDanceState> with
+                { new WorldProcessor<NoDanceEvent, NoDanceEvent, NoDanceState> with
                     member _.ProcessWorld (inputs, renderState, s) =
                         let mutable newState = s
 
@@ -1247,6 +1268,8 @@ module TestMultiSelection =
                             | _ -> ()
 
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let resolver =
@@ -1455,7 +1478,7 @@ module TestMultiSelection =
 
             // This processWorld handles the viewport event to call EnsureVisible
             let processWorld =
-                { new WorldProcessor<ViewportAwareEvent, ViewportAwareState> with
+                { new WorldProcessor<ViewportAwareEvent, ViewportAwareEvent, ViewportAwareState> with
                     member _.ProcessWorld (inputs, renderState, s) =
                         let mutable newState = s
 
@@ -1471,8 +1494,16 @@ module TestMultiSelection =
                                     { newState with
                                         ListState = newState.ListState.MoveDown 5
                                     }
-                            | WorldStateChange.ApplicationEvent (ViewportAwareToggle _) -> ()
-                            | WorldStateChange.ApplicationEvent (ViewportAwareViewportInfo info) ->
+                            | _ -> ()
+
+                        ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (events, _ctx, s) =
+                        let mutable newState = s
+
+                        for event in events do
+                            match event with
+                            | ViewportAwareViewportInfo info ->
                                 // Use the viewport height from the render to ensure cursor is visible
                                 newState <-
                                     { newState with
@@ -1480,7 +1511,7 @@ module TestMultiSelection =
                                     }
                             | _ -> ()
 
-                        ProcessWorldResult.make newState
+                        newState
                 }
 
             let resolver =

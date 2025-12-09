@@ -37,8 +37,9 @@ module TestCheckbox =
                 Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 5, topContent, checkbox)
 
             let processWorld =
-                { new WorldProcessor<unit, FakeUnit> with
+                { new WorldProcessor<unit, unit, FakeUnit> with
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let world = MockWorld.make ()
