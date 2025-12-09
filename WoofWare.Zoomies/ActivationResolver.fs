@@ -100,3 +100,29 @@ module ActivationResolver =
                     Some (makeEvent (InsertChar keystroke.KeyChar))
                 | _ -> None
         )
+
+    /// Create a resolver for a multi-selection list with cursor navigation.
+    /// The list is a single focusable unit; arrow keys navigate the cursor,
+    /// Space toggles the item at the cursor position.
+    /// - Up arrow: returns onCursorUp event
+    /// - Down arrow: returns onCursorDown event
+    /// - Space: returns onToggle event with current cursor index
+    let multiSelection
+        (listKey : NodeKey)
+        (getCursorIndex : 's -> int)
+        (onCursorUp : 'e)
+        (onCursorDown : 'e)
+        (onToggle : int -> 'e)
+        : ActivationResolver<'e, 's>
+        =
+        ActivationResolver (fun k keystroke state ->
+            if k <> listKey then
+                None
+            else
+                match keystroke.Key with
+                | ConsoleKey.UpArrow when keystroke.Modifiers = ConsoleModifiers.None -> Some onCursorUp
+                | ConsoleKey.DownArrow when keystroke.Modifiers = ConsoleModifiers.None -> Some onCursorDown
+                | ConsoleKey.Spacebar when keystroke.Modifiers = ConsoleModifiers.None ->
+                    Some (onToggle (getCursorIndex state))
+                | _ -> None
+        )

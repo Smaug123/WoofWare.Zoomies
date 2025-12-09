@@ -1,4 +1,4 @@
-﻿namespace WoofWare.Zoomies
+namespace WoofWare.Zoomies
 
 open System
 open System.IO
@@ -8,31 +8,59 @@ open WoofWare.Zoomies
 open WoofWare.Zoomies.Components
 
 type AppEvent =
-    | TextEdit of TextBoxAction
+    | ToggleFile of index : int
+    | CursorUp
+    | CursorDown
+    | ViewportInfo of MultiSelectionViewportInfo
     | LoadButtonClicked
     | FileLoaded of content : string * generation : int
     | FileLoadError of error : string * generation : int
 
+type FileEntry =
+    {
+        Name : string
+        FullPath : string
+        Key : NodeKey
+    }
+
 type State =
     {
-        PathInput : string
-        CursorPos : int
+        Files : FileEntry[]
+        SelectedFiles : Set<string>
         FileContent : string option
         IsLoading : bool
         Generation : int
+        ListState : MultiSelectionState
     }
 
     static member Initial =
+        let files =
+            try
+                Directory.GetFiles (Environment.CurrentDirectory)
+                |> Array.map (fun path ->
+                    let name = Path.GetFileName path
+
+                    {
+                        Name = name
+                        FullPath = path
+                        Key = NodeKey.make $"file-{name}"
+                    }
+                )
+                |> Array.sortBy _.Name
+            with _ ->
+                [||]
+
         {
-            PathInput = ""
-            CursorPos = 0
+            Files = files
+            SelectedFiles = Set.empty
             FileContent = None
             IsLoading = false
             Generation = 0
+            ListState = MultiSelectionState.AtStart
         }
 
 module FileBrowser =
-    let textBoxKey = NodeKey.make "pathInput"
+    let multiSelectKey = NodeKey.make "file-list"
     let loadButtonKey = NodeKey.make "loadButton"
 
     let loadFileAsync (generation : int) (worldBridge : IWorldBridge<_>) (filepath : string) : unit Task =
@@ -41,42 +69,49 @@ module FileBrowser =
                 let! content = File.ReadAllTextAsync filepath
                 return FileLoaded (content, generation) |> worldBridge.PostEvent
             with e ->
-                FileLoadError (e.Message, generation) |> worldBridge.PostEvent
+                return FileLoadError (e.Message, generation) |> worldBridge.PostEvent
         }
 
     let processWorld (worldBridge : IWorldBridge<AppEvent>) =
         { new WorldProcessor<AppEvent, State> with
             member _.ProcessWorld (changes, _prevVdom, state) =
-                let mutable pathInput = state.PathInput
-                let mutable cursorPos = state.CursorPos
+                let mutable selectedFiles = state.SelectedFiles
                 let mutable fileContent = state.FileContent
                 let mutable isLoading = state.IsLoading
                 let mutable generation = state.Generation
+                let mutable listState = state.ListState
 
                 for change in changes do
                     match change with
                     | WorldStateChange.MouseEvent _
-                    | WorldStateChange.Keystroke _ -> ()
+                    | WorldStateChange.Keystroke _
+                    | WorldStateChange.Paste _ -> ()
 
-                    | WorldStateChange.Paste text ->
-                        // Handle pasted text by inserting it at the cursor position
-                        let newContent, newCursor =
-                            TextBoxHelpers.applyAction pathInput cursorPos (InsertString text)
+                    | WorldStateChange.ApplicationEvent (ToggleFile index) ->
+                        // Toggle the file at the given index
+                        if index >= 0 && index < state.Files.Length then
+                            let entry = state.Files.[index]
 
-                        pathInput <- newContent
-                        cursorPos <- newCursor
+                            if Set.contains entry.FullPath selectedFiles then
+                                selectedFiles <- Set.remove entry.FullPath selectedFiles
+                            else
+                                selectedFiles <- Set.add entry.FullPath selectedFiles
 
-                    | WorldStateChange.ApplicationEvent (TextEdit action) ->
-                        let newContent, newCursor = TextBoxHelpers.applyAction pathInput cursorPos action
-                        pathInput <- newContent
-                        cursorPos <- newCursor
+                    | WorldStateChange.ApplicationEvent CursorUp -> listState <- listState.MoveUp state.Files.Length
+
+                    | WorldStateChange.ApplicationEvent CursorDown -> listState <- listState.MoveDown state.Files.Length
+
+                    | WorldStateChange.ApplicationEvent (ViewportInfo info) ->
+                        // Use the viewport height from the render to ensure cursor is visible
+                        listState <- listState.EnsureVisible info.ViewportHeight
 
                     | WorldStateChange.ApplicationEvent LoadButtonClicked ->
-                        if not isLoading && pathInput.Length > 0 then
+                        if not isLoading && Set.count selectedFiles = 1 then
+                            let selectedPath = Set.minElement selectedFiles
                             isLoading <- true
                             fileContent <- None
                             generation <- generation + 1
-                            loadFileAsync generation worldBridge pathInput |> ignore<Task<unit>>
+                            loadFileAsync generation worldBridge selectedPath |> ignore<Task<unit>>
 
                     | WorldStateChange.ApplicationEvent (FileLoaded (content, gen)) ->
                         if generation = gen then
@@ -94,39 +129,77 @@ module FileBrowser =
 
                 ProcessWorldResult.make
                     {
-                        PathInput = pathInput
-                        CursorPos = cursorPos
+                        Files = state.Files
+                        SelectedFiles = selectedFiles
                         FileContent = fileContent
                         IsLoading = isLoading
                         Generation = generation
+                        ListState = listState
                     }
         }
 
     let view (ctx : IVdomContext<AppEvent>) (state : State) : Vdom<DesiredBounds> =
-        let topPane =
-            let textBox =
-                TextBox.make (ctx, textBoxKey, state.PathInput, state.CursorPos, isInitiallyFocused = true)
-                |> Vdom.bordered
+        let leftPane =
+            let title = Vdom.textContent "Files in current directory:"
 
-            let button = Button.make (ctx, loadButtonKey, "Load")
+            let fileList =
+                if Array.isEmpty state.Files then
+                    Vdom.textContent "(no files found)"
+                else
+                    let items =
+                        state.Files
+                        |> Array.map (fun entry ->
+                            {
+                                Id = entry.Key
+                                Label = entry.Name
+                                IsSelected = Set.contains entry.FullPath state.SelectedFiles
+                            }
+                        )
 
-            Vdom.panelSplitAutoExpand (SplitDirection.Vertical, textBox, button)
+                    (MultiSelection.make (
+                        ctx,
+                        multiSelectKey,
+                        items,
+                        state.ListState,
+                        ViewportInfo,
+                        isFirstToFocus = true
+                    ))
+                        .Vdom
 
-        let bottomPane =
+            let buttonLabel =
+                match Set.count state.SelectedFiles with
+                | 0 -> "Select a file"
+                | 1 -> "Load selected file"
+                | n -> $"{n} files selected"
+
+            let button = Button.make (ctx, loadButtonKey, buttonLabel)
+
+            Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 1, title, fileList)
+            |> fun content -> Vdom.panelSplitAbsolute (SplitDirection.Horizontal, -1, content, button)
+            |> Vdom.bordered
+
+        let rightPane =
             let content =
-                match state.IsLoading, state.FileContent with
-                | true, _ -> "Loading..."
-                | false, Some content -> content
-                | false, None -> "Enter a file path and press Load"
+                match state.IsLoading, state.FileContent, Set.count state.SelectedFiles with
+                | true, _, _ -> "Loading..."
+                | false, Some content, _ -> content
+                | false, None, 0 -> "Select a file and press the button to view its contents."
+                | false, None, 1 -> "Press the button to load the selected file."
+                | false, None, n -> $"You have {n} files selected. Select exactly one to view its contents."
 
             Vdom.textContent content |> Vdom.bordered
 
-        Vdom.panelSplitAuto (SplitDirection.Horizontal, topPane, bottomPane)
+        Vdom.panelSplitProportion (SplitDirection.Vertical, 0.3, leftPane, rightPane)
 
     let resolver : ActivationResolver<AppEvent, State> =
         ActivationResolver.combine
             [
-                ActivationResolver.textBox textBoxKey TextEdit
+                ActivationResolver.multiSelection
+                    multiSelectKey
+                    (fun s -> s.ListState.CursorIndex)
+                    CursorUp
+                    CursorDown
+                    ToggleFile
                 ActivationResolver.button loadButtonKey LoadButtonClicked
             ]
 
