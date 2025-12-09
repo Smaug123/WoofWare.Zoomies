@@ -189,10 +189,7 @@ module FileBrowser =
     let resolver : ActivationResolver<AppEvent, State> =
         ActivationResolver.combine
             [
-                // Note: We use the multiSelection resolver because it has the same
-                // up/down/space behavior. The difference is semantic: in our ProcessWorld,
-                // we set the selection rather than toggling it.
-                ActivationResolver.multiSelection
+                ActivationResolver.selectionList
                     fileListKey
                     (fun s -> s.ListState.CursorIndex)
                     CursorUp

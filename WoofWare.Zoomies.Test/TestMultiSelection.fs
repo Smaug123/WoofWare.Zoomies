@@ -690,7 +690,7 @@ module TestMultiSelection =
                 }
 
             let resolver =
-                ActivationResolver.multiSelection
+                ActivationResolver.selectionList
                     multiSelectPrefix
                     (fun s -> s.ListState.CursorIndex)
                     ToggleCursorUp
@@ -1098,7 +1098,7 @@ module TestMultiSelection =
                 }
 
             let resolver =
-                ActivationResolver.multiSelection
+                ActivationResolver.selectionList
                     multiSelectPrefix
                     (fun s -> s.ListState.CursorIndex)
                     CursorUpEvt
@@ -1352,7 +1352,7 @@ module TestMultiSelection =
                 }
 
             let resolver =
-                ActivationResolver.multiSelection
+                ActivationResolver.selectionList
                     multiSelectPrefix
                     (fun s -> s.ListState.CursorIndex)
                     NoDanceCursorUp
@@ -1586,7 +1586,7 @@ module TestMultiSelection =
                 }
 
             let resolver =
-                ActivationResolver.multiSelection
+                ActivationResolver.selectionList
                     multiSelectPrefix
                     (fun s -> s.ListState.CursorIndex)
                     ViewportAwareCursorUp

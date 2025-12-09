@@ -677,10 +677,8 @@ module TestSingleSelection =
                         ProcessWorldResult.make newState
                 }
 
-            // Note: We reuse the multiSelection resolver since it has the same behavior
-            // (up/down/space). The difference is how the app handles the "toggle" event.
             let resolver =
-                ActivationResolver.multiSelection
+                ActivationResolver.selectionList
                     singleSelectPrefix
                     (fun s -> s.ListState.CursorIndex)
                     SelectCursorUp
@@ -836,7 +834,7 @@ module TestSingleSelection =
                 }
 
             let resolver =
-                ActivationResolver.multiSelection
+                ActivationResolver.selectionList
                     singleSelectPrefix
                     (fun s -> s.ListState.CursorIndex)
                     SelectCursorUp
@@ -1274,7 +1272,7 @@ module TestSingleSelection =
                 }
 
             let resolver =
-                ActivationResolver.multiSelection
+                ActivationResolver.selectionList
                     singleSelectPrefix
                     (fun s -> s.ListState.CursorIndex)
                     CursorUpEvt
@@ -1537,7 +1535,7 @@ module TestSingleSelection =
                 }
 
             let resolver =
-                ActivationResolver.multiSelection
+                ActivationResolver.selectionList
                     singleSelectPrefix
                     (fun s -> s.ListState.CursorIndex)
                     NoDanceCursorUp
@@ -1773,7 +1771,7 @@ module TestSingleSelection =
                 }
 
             let resolver =
-                ActivationResolver.multiSelection
+                ActivationResolver.selectionList
                     singleSelectPrefix
                     (fun s -> s.ListState.CursorIndex)
                     ViewportAwareCursorUp
