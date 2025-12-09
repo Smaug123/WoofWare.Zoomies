@@ -142,7 +142,7 @@ module FileBrowser =
                     }
         }
 
-    let view (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+    let view (ctx : IVdomContext<AppEvent>) (state : State) : Vdom<DesiredBounds> =
         let leftPane =
             let title = Vdom.textContent "Files in current directory:"
 

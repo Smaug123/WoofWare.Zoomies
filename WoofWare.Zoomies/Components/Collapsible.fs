@@ -42,7 +42,7 @@ module Collapsible =
     /// Users should toggle the state (IsExpanded) in response to keystrokes when the component is focused.
     /// </remarks>
     let make
-        (ctx : VdomContext)
+        (ctx : IVdomContext)
         (key : NodeKey)
         (state : State)
         (label : string)

@@ -30,7 +30,7 @@ module TestButton =
         task {
             let flipKey = NodeKey.make "flip-button"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
                 let text =
                     if state.ShowFirstText then
                         "Hello, World!"
@@ -199,7 +199,7 @@ Hello, World!                           |
             let button2Key = NodeKey.make "button2"
             let button3Key = NodeKey.make "button3"
 
-            let vdom (ctx : VdomContext) (state : MultiButtonState) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : MultiButtonState) : Vdom<DesiredBounds> =
                 let statusText = Vdom.textContent $"Last clicked: {state.LastClicked}"
 
                 let button1 =
@@ -450,7 +450,7 @@ Last clicked: Button 3                            |
         task {
             let flipKey = NodeKey.make "flip-button"
 
-            let vdom (ctx : VdomContext) (state : bool) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : bool) : Vdom<DesiredBounds> =
                 let text = if state then "Hello, World!" else "Goodbye, World!"
 
                 let textVdom = Vdom.textContent text
@@ -544,7 +544,7 @@ Goodbye, World!                         |
 
             // See how the button press evolves over time. Wait til just before the timer elapses:
 
-            clock.Advance (TimeSpan.FromMilliseconds (VdomContext.RECENT_ACTIVATION_TIMEOUT_MS - 0.01))
+            clock.Advance (TimeSpan.FromMilliseconds (VdomContextConstants.RECENT_ACTIVATION_TIMEOUT_MS - 0.01))
             |> ignore<DateTime>
 
             state <-

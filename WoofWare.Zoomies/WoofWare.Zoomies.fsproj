@@ -49,6 +49,7 @@
     <Compile Include="Console.fs" />
     <Compile Include="IStopwatch.fs" />
     <Compile Include="WorldFreezer.fs" />
+    <Compile Include="IVdomContext.fs" />
     <Compile Include="VdomContext.fs" />
     <Compile Include="Layout.fs" />
     <Compile Include="VdomBounds.fs" />

@@ -42,7 +42,7 @@ module TestBatchProcessing =
             let mutable totalProcessed = 0
 
             let processWorld =
-                { new WorldProcessor<obj, ImmutableArray<char>> with
+                { new WorldProcessor<unit, ImmutableArray<char>> with
                     member _.ProcessWorld (inputs, _renderState, state) =
                         let batchSize =
                             if List.isEmpty batchSizes then
@@ -75,7 +75,7 @@ module TestBatchProcessing =
                             |> ProcessWorldResult.withRerender (toProcess - 1)
                 }
 
-            let vdom (_vdomContext : VdomContext) (_state : ImmutableArray<char>) = Vdom.textContent ""
+            let vdom (_vdomContext : IVdomContext<_>) (_state : ImmutableArray<char>) = Vdom.textContent ""
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
             let mutable currentState = initialState
@@ -220,11 +220,11 @@ module TestBatchProcessing =
             let mutable switchModeAfterNextEvent = false
 
             let processWorld =
-                { new WorldProcessor<obj, ModeSwitchingState> with
+                { new WorldProcessor<unit, ModeSwitchingState> with
                     member _.ProcessWorld (inputs, vdomContext, state) =
                         let mutable newState =
                             { state with
-                                LastFocusedKey = VdomContext.focusedKey vdomContext
+                                LastFocusedKey = vdomContext.FocusedKey
                             }
 
                         let mutable shouldRerender = false
@@ -263,7 +263,7 @@ module TestBatchProcessing =
 
             let mutable vdomRenderCount = 0
 
-            let vdom (vdomContext : VdomContext) (_state : ModeSwitchingState) =
+            let vdom (vdomContext : IVdomContext<_>) (_state : ModeSwitchingState) =
                 vdomRenderCount <- vdomRenderCount + 1
 
                 let checkbox0 =
@@ -446,7 +446,7 @@ module TestBatchProcessing =
                 let mutable batchIndex = 0
 
                 let processWorld =
-                    { new WorldProcessor<obj, char list> with
+                    { new WorldProcessor<unit, char list> with
                         member _.ProcessWorld (inputs, _vdomContext, state) =
                             // Process only batchSize events from this batch, then request Rerender
                             let batchSize =
@@ -474,7 +474,7 @@ module TestBatchProcessing =
                                 ProcessWorldResult.make newState
                     }
 
-                let vdom (_vdomContext : VdomContext) (_state : char list) =
+                let vdom (_vdomContext : IVdomContext<_>) (_state : char list) =
                     vdomRenderCount <- vdomRenderCount + 1
                     Vdom.textContent ""
 

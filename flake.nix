@@ -73,6 +73,7 @@
             pkgs.xmlstarlet
             pkgs.claude-code
             pkgs.codex
+            pkgs.gnused
           ]
           ++ (
             if pkgs.stdenv.isDarwin

@@ -32,7 +32,7 @@ module TestMultiSelection =
     [<Test>]
     let ``empty multi-selection`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
                 (MultiSelection.make' (multiSelectPrefix, [||], MultiSelectionState.AtStart)).Vdom
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
@@ -85,7 +85,7 @@ module TestMultiSelection =
     [<Test>]
     let ``multi-selection with three items none selected`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
                 (MultiSelection.make' (
                     multiSelectPrefix,
                     [|
@@ -159,7 +159,7 @@ module TestMultiSelection =
     [<Test>]
     let ``multi-selection with some items selected`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
                 (MultiSelection.make' (
                     multiSelectPrefix,
                     [|
@@ -233,7 +233,7 @@ module TestMultiSelection =
     [<Test>]
     let ``multi-selection with focused item`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
                 (MultiSelection.make' (
                     multiSelectPrefix,
                     [|
@@ -307,7 +307,7 @@ module TestMultiSelection =
     [<Test>]
     let ``multi-selection with focused and selected item`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
                 (MultiSelection.make' (
                     multiSelectPrefix,
                     [|
@@ -400,7 +400,7 @@ module TestMultiSelection =
                     }
                 |]
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext) (state : State) : Vdom<DesiredBounds> =
                 (MultiSelection.make (
                     ctx,
                     multiSelectPrefix,
@@ -498,7 +498,7 @@ module TestMultiSelection =
                     }
                 |]
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext) (state : State) : Vdom<DesiredBounds> =
                 (MultiSelection.make (
                     ctx,
                     multiSelectPrefix,
@@ -622,7 +622,7 @@ module TestMultiSelection =
                     }
                 )
 
-            let vdom (ctx : VdomContext) (s : ListState) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext) (s : ListState) : Vdom<DesiredBounds> =
                 let result =
                     MultiSelection.make (ctx, multiSelectPrefix, makeItems (), s.ListState, isFirstToFocus = true)
 
@@ -748,7 +748,7 @@ module TestMultiSelection =
     [<Test>]
     let ``multi-selection with long labels`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
                 (MultiSelection.make' (
                     multiSelectPrefix,
                     [|
@@ -822,7 +822,7 @@ module TestMultiSelection =
     let ``list larger than viewport only shows visible items`` () =
         task {
             // 5 items in a viewport that can only show 3 lines
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
                 (MultiSelection.make' (
                     multiSelectPrefix,
                     [|
@@ -906,7 +906,7 @@ module TestMultiSelection =
     let ``scroll offset shows items starting from offset`` () =
         task {
             // 5 items, scroll offset at 2, viewport of 3
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
                 (MultiSelection.make' (
                     multiSelectPrefix,
                     [|
@@ -1035,7 +1035,7 @@ module TestMultiSelection =
                     ListState = MultiSelectionState.AtStart
                 }
 
-            let vdom (ctx : VdomContext) (s : ArrowTestState) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext) (s : ArrowTestState) : Vdom<DesiredBounds> =
                 (MultiSelection.make (ctx, multiSelectPrefix, makeItems (), s.ListState, isFirstToFocus = true)).Vdom
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 3)
@@ -1160,7 +1160,7 @@ module TestMultiSelection =
             let scrollState = MultiSelectionState.AtOffset 2
 
             // Render with no focus (simulating focus having left the list)
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
                 (MultiSelection.make' (
                     multiSelectPrefix,
                     [|
@@ -1294,7 +1294,7 @@ module TestMultiSelection =
                         }
                 }
 
-            let vdom (ctx : VdomContext) (s : NoDanceState) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext) (s : NoDanceState) : Vdom<DesiredBounds> =
                 let result = MultiSelection.make (ctx, multiSelectPrefix, makeItems (), s.ListState)
 
                 state <-

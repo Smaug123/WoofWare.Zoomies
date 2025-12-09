@@ -337,7 +337,11 @@ module Render =
                             cursorY <- -1
         }
 
-    let oneStep<'state> (renderState : RenderState) (userState : 'state) (compute : 'state -> Vdom<DesiredBounds>) =
+    let oneStep<'state, 'event>
+        (renderState : RenderState<'event>)
+        (userState : 'state)
+        (compute : 'state -> Vdom<DesiredBounds>)
+        =
         let buffer = RenderState.buffer renderState
         let vdomContext = RenderState.vdomContext renderState
 

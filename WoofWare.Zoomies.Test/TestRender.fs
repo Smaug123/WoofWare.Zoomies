@@ -30,7 +30,7 @@ module TestRender =
     let tearDown () =
         GlobalBuilderConfig.updateAllSnapshots ()
 
-    let vdom (vdomContext : VdomContext) (state : State) : Vdom<DesiredBounds> =
+    let vdom (vdomContext : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
         let left =
             Vdom.textContent
                 "not praising the praiseworthy keeps people uncompetitive; not prizing rare treasures keeps people from stealing; not looking at the desirable keeps the mind quiet"
@@ -81,13 +81,13 @@ module TestRender =
 
         let state = State.Empty ()
 
-        let renderState = RenderState.make console MockTime.getStaticUtcNow None
+        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
-        Render.oneStep renderState state (vdom (RenderState.vdomContext renderState))
+        Render.oneStep renderState state (vdom (VdomContext.asTyped<unit> (RenderState.vdomContext renderState)))
 
         terminalOps.Clear ()
 
-        Render.oneStep renderState state (vdom (RenderState.vdomContext renderState))
+        Render.oneStep renderState state (vdom (VdomContext.asTyped<unit> (RenderState.vdomContext renderState)))
 
         terminalOps |> shouldBeEmpty
 
@@ -96,7 +96,7 @@ module TestRender =
         let processWorld =
             { new WorldProcessor<unit, State> with
                 member _.ProcessWorld (worldChanges, renderState, state) =
-                    let focusedKey = VdomContext.focusedKey renderState
+                    let focusedKey = renderState.FocusedKey
                     let mutable newState = state
 
                     for change in worldChanges do
@@ -137,7 +137,7 @@ module TestRender =
 
             let mutable state = State.Empty ()
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             state <-
                 App.pumpOnce
@@ -436,7 +436,7 @@ only displayed when checked                this one is focusable!               
                 WindowHeight = fun _ -> 5
             }
 
-        let renderState = RenderState.make console MockTime.getStaticUtcNow None
+        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
         // Create vdom with some content that will result in multiple cells being written
         let vdom =
@@ -458,6 +458,19 @@ only displayed when checked                this one is focusable!               
         // Should only be called once
         setCursorInvisibleCount |> shouldEqual 1
 
+        // Count how many SetCursorVisibility true operations were emitted
+        let setCursorVisibleCount =
+            terminalOps
+            |> Seq.filter (
+                function
+                | TerminalOp.SetCursorVisibility true -> true
+                | _ -> false
+            )
+            |> Seq.length
+
+        // Should also be called once (to restore cursor visibility after render)
+        setCursorVisibleCount |> shouldEqual 1
+
     [<Test>]
     let ``layoutOf works for unchanged keyed nodes across multiple renders`` () =
         let terminalOps = ResizeArray ()
@@ -467,7 +480,7 @@ only displayed when checked                this one is focusable!               
                 Execute = fun x -> terminalOps.Add x
             }
 
-        let renderState = RenderState.make console MockTime.getStaticUtcNow None
+        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
         let key = NodeKey.make "test-key"
 
@@ -486,6 +499,18 @@ only displayed when checked                this one is focusable!               
         let layout1 = RenderState.layoutOf key renderState
         layout1.IsSome |> shouldEqual true
 
+        // Count the writes from the first render
+        let firstRenderWriteCount =
+            terminalOps
+            |> Seq.filter (
+                function
+                | TerminalOp.WriteRun _ -> true
+                | _ -> false
+            )
+            |> Seq.length
+
+        terminalOps.Clear ()
+
         // Second render with the same vdom (should trigger early cutoff on the keyed node)
         Render.oneStep renderState (FakeUnit.fake ()) vdom
 
@@ -493,12 +518,29 @@ only displayed when checked                this one is focusable!               
         let layout2 = RenderState.layoutOf key renderState
         layout2.IsSome |> shouldEqual true
 
+        // Verify early-cutoff was taken: second render should produce fewer writes
+        // (specifically, no writes since the keyed content is unchanged)
+        let secondRenderWriteCount =
+            terminalOps
+            |> Seq.filter (
+                function
+                | TerminalOp.WriteRun _ -> true
+                | _ -> false
+            )
+            |> Seq.length
+
+        // First render must have had writes
+        firstRenderWriteCount |> shouldBeGreaterThan 0
+
+        // Second render should have no writes due to early-cutoff
+        secondRenderWriteCount |> shouldEqual 0
+
     [<Test>]
     let ``Vdom.empty allows right justification`` () =
         task {
             let console, terminal = ConsoleHarness.make ()
 
-            let vdom (_ : VdomContext) (_ : unit) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : unit) : Vdom<DesiredBounds> =
                 // Use Vdom.empty with panelSplitAbsolute to right-justify content
                 // Negative absolute value gives the right side a fixed width, left side gets the rest
                 // Empty fills the left side, pushing "Right" to the right edge
@@ -509,9 +551,9 @@ only displayed when checked                this one is focusable!               
                     (Vdom.textContent "Right" |> Vdom.withKey (NodeKey.make "content"))
                 )
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
-            Render.oneStep renderState () (vdom (RenderState.vdomContext renderState))
+            Render.oneStep renderState () (vdom (VdomContext.asTyped<unit> (RenderState.vdomContext renderState)))
 
             expect {
                 snapshot

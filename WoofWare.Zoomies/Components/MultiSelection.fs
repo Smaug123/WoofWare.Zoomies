@@ -179,7 +179,7 @@ type MultiSelection =
     /// Cursor highlight only shows when the list has focus.
     static member make
         (
-            ctx : VdomContext,
+            ctx : IVdomContext,
             listKey : NodeKey,
             items : MultiSelectionItem<NodeKey>[],
             state : MultiSelectionState,
@@ -194,7 +194,7 @@ type MultiSelection =
             }
         else
             let totalItems = items.Length
-            let listHasFocus = VdomContext.focusedKey ctx = Some listKey
+            let listHasFocus = ctx.FocusedKey = Some listKey
             // Clamp cursor to valid range
             let cursorIndex = max 0 (min state.CursorIndex (totalItems - 1))
 

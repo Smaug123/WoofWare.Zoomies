@@ -36,7 +36,7 @@ module TestTextBox =
             let textBoxKey = NodeKey.make "textbox"
             let buttonKey = NodeKey.make "button"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
                 let textbox =
                     TextBox.make (
                         ctx,
@@ -159,7 +159,7 @@ module TestTextBox =
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : VdomContext) (_ : ImmutableArray<ConsoleKeyInfo>) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (_ : ImmutableArray<ConsoleKeyInfo>) : Vdom<DesiredBounds> =
                 TextBox.make (ctx, textBoxKey, "", 0, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -262,7 +262,7 @@ module TestTextBox =
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -441,7 +441,7 @@ Hello!|                                 |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -604,7 +604,7 @@ Hello!|                                 |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -802,7 +802,7 @@ Hello!|                                 |
             let textBox1Key = NodeKey.make "textbox1"
             let textBox2Key = NodeKey.make "textbox2"
 
-            let vdom (ctx : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 let textbox1 =
                     TextBox.make (ctx, textBox1Key, "Focused", 3, isInitiallyFocused = true, isFirstToFocus = true)
 
@@ -897,7 +897,7 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -980,7 +980,7 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -1068,7 +1068,7 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -1168,7 +1168,7 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -1266,7 +1266,7 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -1366,7 +1366,7 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -1449,7 +1449,7 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -1532,7 +1532,7 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)

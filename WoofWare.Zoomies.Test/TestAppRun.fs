@@ -44,7 +44,7 @@ module TestAppRun =
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ctx : VdomContext) (_state : unit) : Vdom<DesiredBounds> = Vdom.empty
+            let vdom (_ctx : IVdomContext<_>) (_state : unit) : Vdom<DesiredBounds> = Vdom.empty
 
             let processWorld (_bridge : IWorldBridge<unit>) =
                 { new WorldProcessor<unit, unit> with

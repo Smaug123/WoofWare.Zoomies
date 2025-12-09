@@ -29,7 +29,7 @@ type Checkbox =
     /// It automatically handles focus visual state by consulting the VdomContext.
     /// </remarks>
     static member make
-        (ctx : VdomContext, key : NodeKey, isChecked : bool, ?isFirstToFocus : bool, ?isInitiallyFocused : bool)
+        (ctx : IVdomContext, key : NodeKey, isChecked : bool, ?isFirstToFocus : bool, ?isInitiallyFocused : bool)
         : Vdom<DesiredBounds>
         =
         Toggle.make (
