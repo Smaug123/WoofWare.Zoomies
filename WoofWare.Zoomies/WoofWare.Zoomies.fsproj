@@ -66,6 +66,7 @@
     <Compile Include="Components\ProgressBar.fs" />
     <Compile Include="Components\ScrollBar.fs" />
     <Compile Include="Components\Table.fs" />
+    <Compile Include="Components\SelectionList.fs" />
     <Compile Include="Components\MultiSelection.fs" />
     <Compile Include="Components\SingleSelection.fs" />
     <Compile Include="Components\TextBox.fs" />

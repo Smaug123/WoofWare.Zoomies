@@ -11,7 +11,7 @@ type AppEvent =
     | SelectFile of index : int
     | CursorUp
     | CursorDown
-    | ViewportInfo of SingleSelectionViewportInfo
+    | ViewportInfo of SelectionListViewportInfo
     | LoadButtonClicked
     | FileLoaded of content : string * generation : int
     | FileLoadError of error : string * generation : int
@@ -30,7 +30,7 @@ type State =
         FileContent : string option
         IsLoading : bool
         Generation : int
-        ListState : SingleSelectionState
+        ListState : SelectionListState
     }
 
     static member Initial =
@@ -56,7 +56,7 @@ type State =
             FileContent = None
             IsLoading = false
             Generation = 0
-            ListState = SingleSelectionState.AtStart
+            ListState = SelectionListState.AtStart
         }
 
 module FileBrowser =

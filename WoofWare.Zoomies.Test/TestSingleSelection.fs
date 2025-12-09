@@ -25,7 +25,7 @@ module TestSingleSelection =
         }
 
     /// Simple event type for tests that only need viewport tracking
-    type SimpleViewportEvent = | SimpleViewportInfo of SingleSelectionViewportInfo
+    type SimpleViewportEvent = | SimpleViewportInfo of SelectionListViewportInfo
 
     let itemAKey = NodeKey.make "item-a"
     let itemBKey = NodeKey.make "item-b"
@@ -36,7 +36,7 @@ module TestSingleSelection =
     let ``empty single-selection`` () =
         task {
             let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
-                (SingleSelection.make' (singleSelectPrefix, [||], SingleSelectionState.AtStart)).Vdom
+                (SingleSelection.make' (singleSelectPrefix, [||], SelectionListState.AtStart)).Vdom
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
 
@@ -108,7 +108,7 @@ module TestSingleSelection =
                             IsFocused = false
                         }
                     |],
-                    SingleSelectionState.AtStart
+                    SelectionListState.AtStart
                 ))
                     .Vdom
 
@@ -182,7 +182,7 @@ module TestSingleSelection =
                             IsFocused = false
                         }
                     |],
-                    SingleSelectionState.AtStart
+                    SelectionListState.AtStart
                 ))
                     .Vdom
 
@@ -256,7 +256,7 @@ module TestSingleSelection =
                             IsFocused = false
                         }
                     |],
-                    SingleSelectionState.AtStart
+                    SelectionListState.AtStart
                 ))
                     .Vdom
 
@@ -330,7 +330,7 @@ module TestSingleSelection =
                             IsFocused = false
                         }
                     |],
-                    SingleSelectionState.AtStart
+                    SelectionListState.AtStart
                 ))
                     .Vdom
 
@@ -406,7 +406,7 @@ module TestSingleSelection =
                     singleSelectPrefix,
                     makeItems (),
                     state.SelectedIndex,
-                    SingleSelectionState.AtStart,
+                    SelectionListState.AtStart,
                     SimpleViewportInfo,
                     isFirstToFocus = true
                 ))
@@ -505,7 +505,7 @@ module TestSingleSelection =
                     singleSelectPrefix,
                     makeItems (),
                     state.SelectedIndex,
-                    SingleSelectionState.AtStart,
+                    SelectionListState.AtStart,
                     SimpleViewportInfo,
                     isFirstToFocus = true
                 ))
@@ -582,12 +582,12 @@ module TestSingleSelection =
         | SelectCursorUp
         | SelectCursorDown
         | SelectItem of int
-        | SelectViewportInfo of SingleSelectionViewportInfo
+        | SelectViewportInfo of SelectionListViewportInfo
 
     type SelectListState =
         {
             SelectedIndex : int option
-            ListState : SingleSelectionState
+            ListState : SelectionListState
         }
 
     [<Test>]
@@ -692,7 +692,7 @@ module TestSingleSelection =
             let initialState : SelectListState =
                 {
                     SelectedIndex = None
-                    ListState = SingleSelectionState.AtStart
+                    ListState = SelectionListState.AtStart
                 }
 
             // Initial render
@@ -849,7 +849,7 @@ module TestSingleSelection =
             let initialState : SelectListState =
                 {
                     SelectedIndex = Some 0
-                    ListState = SingleSelectionState.AtStart
+                    ListState = SelectionListState.AtStart
                 }
 
             // Initial render
@@ -952,7 +952,7 @@ module TestSingleSelection =
                             IsFocused = true
                         }
                     |],
-                    SingleSelectionState.AtStart
+                    SelectionListState.AtStart
                 ))
                     .Vdom
 
@@ -1041,7 +1041,7 @@ module TestSingleSelection =
                             IsFocused = false
                         }
                     |],
-                    SingleSelectionState.AtStart
+                    SelectionListState.AtStart
                 ))
                     .Vdom
 
@@ -1125,7 +1125,7 @@ module TestSingleSelection =
                             IsFocused = false
                         }
                     |],
-                    SingleSelectionState.AtOffset 2
+                    SelectionListState.AtOffset 2
                 ))
                     .Vdom
 
@@ -1179,12 +1179,12 @@ module TestSingleSelection =
         | CursorUpEvt
         | CursorDownEvt
         | SelectEvt of int
-        | ArrowViewportInfo of SingleSelectionViewportInfo
+        | ArrowViewportInfo of SelectionListViewportInfo
 
     type ArrowTestState =
         {
             SelectedIndex : int option
-            ListState : SingleSelectionState
+            ListState : SelectionListState
         }
 
     [<Test>]
@@ -1286,7 +1286,7 @@ module TestSingleSelection =
             let initialState : ArrowTestState =
                 {
                     SelectedIndex = None
-                    ListState = SingleSelectionState.AtStart
+                    ListState = SelectionListState.AtStart
                 }
 
             // Initial render
@@ -1355,7 +1355,7 @@ module TestSingleSelection =
             // the scroll position is remembered (because it's user-managed state)
 
             // Start with scroll offset at 2 (showing items 3, 4, 5)
-            let scrollState = SingleSelectionState.AtOffset 2
+            let scrollState = SelectionListState.AtOffset 2
 
             // Render with no focus (simulating focus having left the list)
             let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
@@ -1442,12 +1442,12 @@ module TestSingleSelection =
         | NoDanceCursorUp
         | NoDanceCursorDown
         | NoDanceSelect of int
-        | NoDanceViewportInfo of SingleSelectionViewportInfo
+        | NoDanceViewportInfo of SelectionListViewportInfo
 
     type NoDanceState =
         {
             SelectedIndex : int option
-            ListState : SingleSelectionState
+            ListState : SelectionListState
         }
 
     [<Test>]
@@ -1621,19 +1621,19 @@ module TestSingleSelection =
         // EnsureVisible uses the CursorIndex from state
 
         // Cursor at index 0 with offset 0 - already visible
-        let state0 = SingleSelectionState.AtIndex 0
+        let state0 = SelectionListState.AtIndex 0
         (state0.EnsureVisible 3).ScrollOffset |> shouldEqual 0
 
         // Cursor at index 2 with offset 0, viewport 3 - already visible
-        let state2 = SingleSelectionState.AtIndex 2
+        let state2 = SelectionListState.AtIndex 2
         (state2.EnsureVisible 3).ScrollOffset |> shouldEqual 0
 
         // Cursor at index 3 with offset 0, viewport 3 - need to scroll down
-        let state3 = SingleSelectionState.AtIndex 3
+        let state3 = SelectionListState.AtIndex 3
         (state3.EnsureVisible 3).ScrollOffset |> shouldEqual 1
 
         // Cursor at index 5 with offset 0, viewport 3 - need to scroll down
-        let state5 = SingleSelectionState.AtIndex 5
+        let state5 = SelectionListState.AtIndex 5
         (state5.EnsureVisible 3).ScrollOffset |> shouldEqual 3
 
         // Cursor at index 0 with offset 2 - need to scroll up
@@ -1671,12 +1671,12 @@ module TestSingleSelection =
         | ViewportAwareCursorUp
         | ViewportAwareCursorDown
         | ViewportAwareSelect of int
-        | ViewportAwareViewportInfo of SingleSelectionViewportInfo
+        | ViewportAwareViewportInfo of SelectionListViewportInfo
 
     type ViewportAwareState =
         {
             SelectedIndex : int option
-            ListState : SingleSelectionState
+            ListState : SelectionListState
         }
 
     [<Test>]
@@ -1785,7 +1785,7 @@ module TestSingleSelection =
             let initialState : ViewportAwareState =
                 {
                     SelectedIndex = None
-                    ListState = SingleSelectionState.AtStart
+                    ListState = SelectionListState.AtStart
                 }
 
             // Initial render

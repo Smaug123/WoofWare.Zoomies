@@ -25,7 +25,7 @@ module TestMultiSelection =
         }
 
     /// Simple event type for tests that only need viewport tracking
-    type SimpleViewportEvent = | SimpleViewportInfo of MultiSelectionViewportInfo
+    type SimpleViewportEvent = | SimpleViewportInfo of SelectionListViewportInfo
 
     let itemAKey = NodeKey.make "item-a"
     let itemBKey = NodeKey.make "item-b"
@@ -36,7 +36,7 @@ module TestMultiSelection =
     let ``empty multi-selection`` () =
         task {
             let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
-                (MultiSelection.make' (multiSelectPrefix, [||], MultiSelectionState.AtStart)).Vdom
+                (MultiSelection.make' (multiSelectPrefix, [||], SelectionListState.AtStart)).Vdom
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
 
@@ -108,7 +108,7 @@ module TestMultiSelection =
                             IsFocused = false
                         }
                     |],
-                    MultiSelectionState.AtStart
+                    SelectionListState.AtStart
                 ))
                     .Vdom
 
@@ -182,7 +182,7 @@ module TestMultiSelection =
                             IsFocused = false
                         }
                     |],
-                    MultiSelectionState.AtStart
+                    SelectionListState.AtStart
                 ))
                     .Vdom
 
@@ -256,7 +256,7 @@ module TestMultiSelection =
                             IsFocused = false
                         }
                     |],
-                    MultiSelectionState.AtStart
+                    SelectionListState.AtStart
                 ))
                     .Vdom
 
@@ -330,7 +330,7 @@ module TestMultiSelection =
                             IsFocused = false
                         }
                     |],
-                    MultiSelectionState.AtStart
+                    SelectionListState.AtStart
                 ))
                     .Vdom
 
@@ -408,7 +408,7 @@ module TestMultiSelection =
                     ctx,
                     multiSelectPrefix,
                     makeItems state,
-                    MultiSelectionState.AtStart,
+                    SelectionListState.AtStart,
                     SimpleViewportInfo,
                     isFirstToFocus = true
                 ))
@@ -509,7 +509,7 @@ module TestMultiSelection =
                     ctx,
                     multiSelectPrefix,
                     makeItems state,
-                    MultiSelectionState.AtStart,
+                    SelectionListState.AtStart,
                     SimpleViewportInfo,
                     isFirstToFocus = true
                 ))
@@ -586,12 +586,12 @@ module TestMultiSelection =
         | ToggleCursorUp
         | ToggleCursorDown
         | ToggleItem of int
-        | ToggleViewportInfo of MultiSelectionViewportInfo
+        | ToggleViewportInfo of SelectionListViewportInfo
 
     type ToggleListState =
         {
             Selected : Set<string>
-            ListState : MultiSelectionState
+            ListState : SelectionListState
         }
 
     [<Test>]
@@ -702,7 +702,7 @@ module TestMultiSelection =
             let initialState : ToggleListState =
                 {
                     Selected = Set.empty
-                    ListState = MultiSelectionState.AtStart
+                    ListState = SelectionListState.AtStart
                 }
 
             // Initial render
@@ -777,7 +777,7 @@ module TestMultiSelection =
                             IsFocused = true
                         }
                     |],
-                    MultiSelectionState.AtStart
+                    SelectionListState.AtStart
                 ))
                     .Vdom
 
@@ -866,7 +866,7 @@ module TestMultiSelection =
                             IsFocused = false
                         }
                     |],
-                    MultiSelectionState.AtStart
+                    SelectionListState.AtStart
                 ))
                     .Vdom
 
@@ -950,7 +950,7 @@ module TestMultiSelection =
                             IsFocused = false
                         }
                     |],
-                    MultiSelectionState.AtOffset 2
+                    SelectionListState.AtOffset 2
                 ))
                     .Vdom
 
@@ -1004,11 +1004,11 @@ module TestMultiSelection =
         | CursorUpEvt
         | CursorDownEvt
         | ToggleEvt of int
-        | ArrowViewportInfo of MultiSelectionViewportInfo
+        | ArrowViewportInfo of SelectionListViewportInfo
 
     type ArrowTestState =
         {
-            ListState : MultiSelectionState
+            ListState : SelectionListState
         }
 
     [<Test>]
@@ -1109,7 +1109,7 @@ module TestMultiSelection =
 
             let initialState : ArrowTestState =
                 {
-                    ListState = MultiSelectionState.AtStart
+                    ListState = SelectionListState.AtStart
                 }
 
             // Initial render
@@ -1178,7 +1178,7 @@ module TestMultiSelection =
             // the scroll position is remembered (because it's user-managed state)
 
             // Start with scroll offset at 2 (showing items 3, 4, 5)
-            let scrollState = MultiSelectionState.AtOffset 2
+            let scrollState = SelectionListState.AtOffset 2
 
             // Render with no focus (simulating focus having left the list)
             let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
@@ -1265,11 +1265,11 @@ module TestMultiSelection =
         | NoDanceCursorUp
         | NoDanceCursorDown
         | NoDanceToggle of int
-        | NoDanceViewportInfo of MultiSelectionViewportInfo
+        | NoDanceViewportInfo of SelectionListViewportInfo
 
     type NoDanceState =
         {
-            ListState : MultiSelectionState
+            ListState : SelectionListState
         }
 
     [<Test>]
@@ -1435,19 +1435,19 @@ module TestMultiSelection =
         // EnsureVisible uses the CursorIndex from state
 
         // Cursor at index 0 with offset 0 - already visible
-        let state0 = MultiSelectionState.AtIndex 0
+        let state0 = SelectionListState.AtIndex 0
         (state0.EnsureVisible 3).ScrollOffset |> shouldEqual 0
 
         // Cursor at index 2 with offset 0, viewport 3 - already visible
-        let state2 = MultiSelectionState.AtIndex 2
+        let state2 = SelectionListState.AtIndex 2
         (state2.EnsureVisible 3).ScrollOffset |> shouldEqual 0
 
         // Cursor at index 3 with offset 0, viewport 3 - need to scroll down
-        let state3 = MultiSelectionState.AtIndex 3
+        let state3 = SelectionListState.AtIndex 3
         (state3.EnsureVisible 3).ScrollOffset |> shouldEqual 1
 
         // Cursor at index 5 with offset 0, viewport 3 - need to scroll down
-        let state5 = MultiSelectionState.AtIndex 5
+        let state5 = SelectionListState.AtIndex 5
         (state5.EnsureVisible 3).ScrollOffset |> shouldEqual 3
 
         // Cursor at index 0 with offset 2 - need to scroll up
@@ -1485,11 +1485,11 @@ module TestMultiSelection =
         | ViewportAwareCursorUp
         | ViewportAwareCursorDown
         | ViewportAwareToggle of int
-        | ViewportAwareViewportInfo of MultiSelectionViewportInfo
+        | ViewportAwareViewportInfo of SelectionListViewportInfo
 
     type ViewportAwareState =
         {
-            ListState : MultiSelectionState
+            ListState : SelectionListState
         }
 
     [<Test>]
@@ -1597,7 +1597,7 @@ module TestMultiSelection =
 
             let initialState : ViewportAwareState =
                 {
-                    ListState = MultiSelectionState.AtStart
+                    ListState = SelectionListState.AtStart
                 }
 
             // Initial render
