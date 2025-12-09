@@ -1003,6 +1003,9 @@ This is focusable text                                                          
                 (fun () -> false)
             |> ignore<FakeUnit>
 
+            // Assert that focus moved back to the text element
+            RenderState.focusedKey renderState |> shouldEqual (Some textKey)
+
             expect {
                 snapshot
                     @"
