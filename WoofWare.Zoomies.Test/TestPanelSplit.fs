@@ -31,7 +31,7 @@ module TestPanelSplit =
                 WindowHeight = fun _ -> 3
             }
 
-        let renderState = RenderState.make console MockTime.getStaticUtcNow None
+        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
         // Create vdom with a PanelSplit where a bordered child changes
         // Bordered doesn't repaint its entire area, so we can detect if PanelSplit is adding extra repaints
@@ -93,7 +93,7 @@ module TestPanelSplit =
 
             let splitKey = NodeKey.make "split"
 
-            let vdom (vdomContext : VdomContext) (showSplit : bool) =
+            let vdom (vdomContext : IVdomContext<_>) (showSplit : bool) =
                 if showSplit then
                     // A keyed PanelSplit with small children
                     // The background should be cleared
@@ -117,7 +117,7 @@ module TestPanelSplit =
                         ProcessWorldResult.make newState
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             // First render: fill with X's
             let mutable state =
@@ -180,7 +180,7 @@ module TestPanelSplit =
             // Demonstrates that proportion splits with small terminals can allocate zero width/height
             let console, _ = ConsoleHarness.make' (fun () -> 1) (fun () -> 1)
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             let leftKey = NodeKey.make "left"
             let rightKey = NodeKey.make "right"
@@ -189,7 +189,7 @@ module TestPanelSplit =
             // Terminal width is 1, split at 0.1 proportion
             // This means left gets: int (float 1 * 0.1) = int 0.1 = 0
             // And right gets: 1 - 0 = 1
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 let leftText = Vdom.textContent "left" |> Vdom.withKey leftKey
                 let rightText = Vdom.textContent "right" |> Vdom.withKey rightKey
                 Vdom.panelSplitProportion (SplitDirection.Vertical, 0.1, leftText, rightText)
@@ -237,7 +237,7 @@ module TestPanelSplit =
             // Same as above but for horizontal splits
             let console, _ = ConsoleHarness.make' (fun () -> 10) (fun () -> 2)
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             let topKey = NodeKey.make "top"
             let bottomKey = NodeKey.make "bottom"
@@ -246,7 +246,7 @@ module TestPanelSplit =
             // Terminal height is 2, split at 0.1 proportion
             // This means top gets: int (float 2 * 0.1) = int 0.2 = 0
             // And bottom gets: 2 - 0 = 2
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 let topText = Vdom.textContent "top" |> Vdom.withKey topKey
                 let bottomText = Vdom.textContent "bottom" |> Vdom.withKey bottomKey
                 Vdom.panelSplitProportion (SplitDirection.Horizontal, 0.1, topText, bottomText)
@@ -303,7 +303,7 @@ module TestPanelSplit =
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Create two text components with different preferred widths
                 // "Hello world" has preferred width ~11, "Hi" has preferred width ~2
                 let left = Vdom.textContent "Hello world"
@@ -316,7 +316,7 @@ module TestPanelSplit =
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -364,7 +364,7 @@ Hello world                                                        Hi           
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Long text content that will wrap when space is limited.
                 // The longer one (`left`) has its longest word of length 6, vs the shorter one having longest word
                 // of length 4, so satisfying their minimum requests allocates more space to `left`;
@@ -379,7 +379,7 @@ Hello world                                                        Hi           
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -422,7 +422,7 @@ onger piece text her|
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Words with minimum widths that exceed available space
                 let left = Vdom.textContent "Hello" // min width ~5
                 let right = Vdom.textContent "World" // min width ~5
@@ -434,7 +434,7 @@ onger piece text her|
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -476,7 +476,7 @@ o   d   |
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Short text (prefers 1 line) and longer text (prefers multiple lines)
                 let top = Vdom.textContent "Short"
 
@@ -490,7 +490,7 @@ o   d   |
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -537,7 +537,7 @@ e multiple lines when rendered          |
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Both components want more height than available
                 let top = Vdom.textContent "Top section with some content that wraps around"
                 let bottom = Vdom.textContent "Bottom section also with content"
@@ -549,7 +549,7 @@ e multiple lines when rendered          |
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -590,7 +590,7 @@ nt                            |
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Bordered panels to clearly show space allocation
                 let left = Vdom.textContent "Small" |> Vdom.bordered
 
@@ -603,7 +603,7 @@ nt                            |
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -648,7 +648,7 @@ nt                            |
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 let left = Vdom.textContent "A"
                 let right = Vdom.textContent "B"
 
@@ -659,7 +659,7 @@ nt                            |
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -700,7 +700,7 @@ B|
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (useLargeSplit : bool) =
+            let vdom (_ : IVdomContext<_>) (useLargeSplit : bool) =
                 if useLargeSplit then
                     // 50/50 split - left side filled with X's
                     let left = Vdom.textContent (String.replicate 200 "X")
@@ -721,7 +721,7 @@ B|
                         ProcessWorldResult.make newState
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             // First render: 50/50 split with X's filling the left side
             let mutable state =
@@ -801,7 +801,7 @@ AAA                 right                                                       
 
             let splitKey = NodeKey.make "split"
 
-            let vdom (_ : VdomContext) (useLargeSplit : bool) =
+            let vdom (_ : IVdomContext<_>) (useLargeSplit : bool) =
                 let split =
                     if useLargeSplit then
                         // 50/50 split
@@ -824,7 +824,7 @@ AAA                 right                                                       
                         ProcessWorldResult.make newState
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             // First render: 50/50 split
             let mutable state =
@@ -878,7 +878,7 @@ AAA                 right                                                       
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (useWideLeft : bool) =
+            let vdom (_ : IVdomContext<_>) (useWideLeft : bool) =
                 if useWideLeft then
                     // Left side gets 70% - fill it with X's in a bordered panel
                     let left = Vdom.textContent (String.replicate 500 "X") |> Vdom.bordered
@@ -899,7 +899,7 @@ AAA                 right                                                       
                         ProcessWorldResult.make newState
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             // First render: 70/30 split with X's on the left
             let mutable state =
@@ -965,7 +965,7 @@ AAA                 right                                                       
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Outer Auto split allocates space to its children based on their reported MinWidth
                 let left =
                     // This is the problematic absolute split
@@ -998,7 +998,7 @@ AAA                 right                                                       
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -1056,7 +1056,7 @@ small               ┌──────────────────┐
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // "Left" has preferred width ~4, "Right" has preferred width ~5
                 // Total preferred = 9, available = 40, so excess = 31
                 // With panelSplitAutoExpand, Left should get all 31 excess (width=35), Right stays at 5
@@ -1070,7 +1070,7 @@ small               ┌──────────────────┐
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -1115,7 +1115,7 @@ Left                               Right|
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdomAuto (_ : VdomContext) (_ : FakeUnit) =
+            let vdomAuto (_ : IVdomContext<_>) (_ : FakeUnit) =
                 let left = Vdom.textContent "Left"
                 let right = Vdom.textContent "Right"
                 Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
@@ -1142,7 +1142,7 @@ Left                               Right|
             let consoleExpand, terminalExpand =
                 ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let vdomExpand (_ : VdomContext) (_ : FakeUnit) =
+            let vdomExpand (_ : IVdomContext<_>) (_ : FakeUnit) =
                 let left = Vdom.textContent "Left"
                 let right = Vdom.textContent "Right"
                 Vdom.panelSplitAutoExpand (SplitDirection.Vertical, left, right)
@@ -1202,7 +1202,7 @@ Left                               Right|
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Both components have preferred height of 1 and max height of 1 (text content)
                 // Total preferred = 2, available = 10, so excess = 8
                 // With panelSplitAutoExpand, Top would get all excess, but max height clamps it to 1
@@ -1218,7 +1218,7 @@ Left                               Right|
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -1268,7 +1268,7 @@ Bottom              |
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 let left = Vdom.textContent "Left"
                 let right = Vdom.textContent "Right"
 
@@ -1286,7 +1286,7 @@ Bottom              |
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -1330,7 +1330,7 @@ LeftRight                               |
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // First child has max height 1 (text content) and weight 0
                 // Second child has max height 1 (text content) and weight 1 (gets excess)
                 // Even though second child wants excess, it should be clamped to max height 1
@@ -1351,7 +1351,7 @@ LeftRight                               |
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -1403,7 +1403,7 @@ Bottom              |
                     world.ReadKey
 
             // State: true = show full content, false = show minimal content
-            let vdom (_ : VdomContext) (showContent : bool) =
+            let vdom (_ : IVdomContext<_>) (showContent : bool) =
                 if showContent then
                     // First render: show content that fills the container
                     let top = Vdom.textContent "Line1"
@@ -1429,7 +1429,7 @@ Bottom              |
                         ProcessWorldResult.make newState
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
             let mutable state = true
 
             // First render with content
@@ -1522,7 +1522,7 @@ OnlyThis            |
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Create first child with maxWidth=12 using FlexibleContent
                 // The proportional calculation will give it 14 columns, which exceeds maxWidth
                 let leftMeasure (_ : MeasureConstraints) =
@@ -1571,7 +1571,7 @@ OnlyThis            |
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -1625,7 +1625,7 @@ LLLLLLLLLLLLRRRRRRRR|
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Create first child with maxHeight=2 using FlexibleContent
                 // It has prefHeight=10 but maxHeight=2, so it should be clamped
                 let topMeasure (_ : MeasureConstraints) =
@@ -1676,7 +1676,7 @@ LLLLLLLLLLLLRRRRRRRR|
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer

@@ -27,7 +27,7 @@ module TestTextRendering =
 
             // Create a vdom where text content has Width=0
             // With a terminal width of 1 and a 50/50 split, left gets 0 width, right gets 1 width
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 let leftText = Vdom.textContent "some text content"
                 let rightText = Vdom.textContent "other text"
                 // Split with 0.5 proportion, terminal has width 1, so left gets 0 width
@@ -90,7 +90,7 @@ r|
 
             // Create a vdom where keyed text content has Width=0
             // With a terminal width of 1 and a 50/50 split, left gets 0 width, right gets 1 width
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 let leftText = Vdom.textContent "some text content"
                 let rightText = Vdom.textContent "other text"
 
@@ -162,7 +162,7 @@ r|
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // A 25-character word in a 10-character wide terminal
                 // Should wrap to 3 lines: "AAAAAAAAAA" + "AAAAAAAAAA" + "AAAAA"
                 let longWord = String.replicate 25 "A"
@@ -177,7 +177,7 @@ r|
                     member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -223,7 +223,7 @@ bottom    |
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Text with CRLF line endings - the \r should not be rendered as a visible character
                 Vdom.textContent "Line1\r\nLine2\r\nLine3"
 
@@ -232,7 +232,7 @@ bottom    |
                     member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -273,7 +273,7 @@ Line3               |
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Text with old Mac-style CR line endings - should be treated as newlines
                 Vdom.textContent "Line1\rLine2\rLine3"
 
@@ -282,7 +282,7 @@ Line3               |
                     member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -323,7 +323,7 @@ Line3               |
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Text with CRLF line endings and Centered alignment
                 Vdom.textContent ("AAA\r\nBBB\r\nCCC", alignment = ContentAlignment.Centered)
 
@@ -332,7 +332,7 @@ Line3               |
                     member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -373,7 +373,7 @@ Line3               |
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Text with old Mac-style CR line endings and Centered alignment
                 Vdom.textContent ("AAA\rBBB\rCCC", alignment = ContentAlignment.Centered)
 
@@ -382,7 +382,7 @@ Line3               |
                     member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -429,7 +429,7 @@ Line3               |
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Multi-line text that should be measured as needing 5 lines
                 let multiLineText =
                     String.concat newline [ "Line 1" ; "Line 2" ; "Line 3" ; "Line 4" ; "Line 5" ]
@@ -446,7 +446,7 @@ Line3               |
                     member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -494,7 +494,7 @@ Footer              |
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Text with blank lines - should be measured as 5 lines total
                 // (Para1, blank, Para2, blank, Para3)
                 let textWithBlanks = "Para1\n\nPara2\n\nPara3"
@@ -508,7 +508,7 @@ Footer              |
                     member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -552,7 +552,7 @@ Footer              |
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Text that exceeds width - with wrap=true (default), it wraps
                 Vdom.textContent ("Hello World, this is a long text", wrap = true)
 
@@ -561,7 +561,7 @@ Footer              |
                     member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -602,7 +602,7 @@ xt        |
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Text that exceeds width - with wrap=false, it truncates
                 Vdom.textContent ("Hello World, this is a long text", wrap = false)
 
@@ -611,7 +611,7 @@ xt        |
                     member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -652,7 +652,7 @@ Hello Worl|
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Multi-line text with wrap=false - each line truncates independently
                 Vdom.textContent ("First line is long\nSecond is too\nShort", wrap = false)
 
@@ -661,7 +661,7 @@ Hello Worl|
                     member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -705,7 +705,7 @@ Short     |
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Long text with wrap=false - should only take 1 line in auto layout
                 let text =
                     Vdom.textContent ("This is a very long text that would wrap", wrap = false)
@@ -718,7 +718,7 @@ Short     |
                     member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -762,7 +762,7 @@ Footer    |
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Left side: wrap=true, Right side: wrap=false
                 let longText = "Long text here"
                 let leftText = Vdom.textContent (longText, wrap = true)
@@ -774,7 +774,7 @@ Footer    |
                     member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -817,7 +817,7 @@ here                |
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Long text that exceeds width - with wrap=true and Centered alignment
                 // "ABCDEFGHIJKLMNOPQRSTUVWXYZ" is 26 chars, width is 20
                 // Should wrap to: "ABCDEFGHIJKLMNOPQRST" (20 chars, centered = offset 0)
@@ -829,7 +829,7 @@ here                |
                     member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -872,7 +872,7 @@ ABCDEFGHIJKLMNOPQRST|
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Long text with wrap=false and Centered alignment - should truncate
                 Vdom.textContent ("ABCDEFGHIJKLMNOPQRSTUVWXYZ", alignment = ContentAlignment.Centered, wrap = false)
 
@@ -881,7 +881,7 @@ ABCDEFGHIJKLMNOPQRST|
                     member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -923,7 +923,7 @@ ABCDEFGHIJKLMNOPQRST|
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Multi-line text where some lines need wrapping
                 // Line 1: "Short" (5 chars) - fits, centered
                 // Line 2: "This is too long" (16 chars) - wraps to "This is too " (12) + "long" (4)
@@ -935,7 +935,7 @@ ABCDEFGHIJKLMNOPQRST|
                     member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer

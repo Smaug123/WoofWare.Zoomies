@@ -25,7 +25,7 @@ module TestScrollBar =
     let ``horizontal scroll bar at start`` () =
         task {
             // 20 items, viewport of 5, offset 0, track length 10
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Horizontal
                     {
@@ -53,7 +53,7 @@ module TestScrollBar =
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -80,7 +80,7 @@ module TestScrollBar =
     let ``horizontal scroll bar at middle`` () =
         task {
             // 20 items, viewport of 5, offset 7 (roughly middle), track length 10
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Horizontal
                     {
@@ -108,7 +108,7 @@ module TestScrollBar =
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -135,7 +135,7 @@ module TestScrollBar =
     let ``horizontal scroll bar at end`` () =
         task {
             // 20 items, viewport of 5, offset 15 (max), track length 10
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Horizontal
                     {
@@ -163,7 +163,7 @@ module TestScrollBar =
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -190,7 +190,7 @@ module TestScrollBar =
     let ``vertical scroll bar at start`` () =
         task {
             // 20 items, viewport of 5, offset 0, track length 10
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Vertical
                     {
@@ -218,7 +218,7 @@ module TestScrollBar =
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -255,7 +255,7 @@ module TestScrollBar =
     let ``vertical scroll bar at middle`` () =
         task {
             // 20 items, viewport of 5, offset 7, track length 10
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Vertical
                     {
@@ -283,7 +283,7 @@ module TestScrollBar =
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -320,7 +320,7 @@ module TestScrollBar =
     let ``vertical scroll bar at end`` () =
         task {
             // 20 items, viewport of 5, offset 15, track length 10
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Vertical
                     {
@@ -348,7 +348,7 @@ module TestScrollBar =
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -385,7 +385,7 @@ module TestScrollBar =
     let ``scroll bar when all content visible`` () =
         task {
             // 5 items, viewport of 10 (larger than content), track length 10
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Horizontal
                     {
@@ -413,7 +413,7 @@ module TestScrollBar =
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -439,7 +439,7 @@ module TestScrollBar =
     [<Test>]
     let ``scroll bar with zero total items`` () =
         task {
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Horizontal
                     {
@@ -467,7 +467,7 @@ module TestScrollBar =
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -495,7 +495,7 @@ module TestScrollBar =
         task {
             // 20 items, viewport of 5, offset 100 (way beyond), track length 10
             // Should clamp to max valid offset (15)
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Horizontal
                     {
@@ -523,7 +523,7 @@ module TestScrollBar =
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -550,7 +550,7 @@ module TestScrollBar =
     let ``scroll bar with negative offset`` () =
         task {
             // Should clamp to 0
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Horizontal
                     {
@@ -578,7 +578,7 @@ module TestScrollBar =
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -606,7 +606,7 @@ module TestScrollBar =
         task {
             // 10 items, viewport of 8, offset 1, track length 10
             // Thumb should be large (80% of track)
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Horizontal
                     {
@@ -634,7 +634,7 @@ module TestScrollBar =
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -662,7 +662,7 @@ module TestScrollBar =
         task {
             // 100 items, viewport of 5, offset 50, track length 10
             // Thumb should be small (5% of track, minimum 1)
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Horizontal
                     {
@@ -690,7 +690,7 @@ module TestScrollBar =
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -721,7 +721,7 @@ module TestScrollBar =
             // Expected: thumb adapts to actual width 8, positioned at start
             // Thumb size = max(1, int((2/10) * 8)) = max(1, 1) = 1 char
             // At offset 0: thumb at position 0
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Horizontal
                     {
@@ -750,7 +750,7 @@ module TestScrollBar =
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -780,7 +780,7 @@ module TestScrollBar =
             // 10 items, viewport 2, offset 8 (max)
             // Expected: thumb adapts to actual width 8, positioned at end
             // Thumb size = 1, at max offset thumb should be at position 7
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Horizontal
                     {
@@ -809,7 +809,7 @@ module TestScrollBar =
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -839,7 +839,7 @@ module TestScrollBar =
             // 10 items, viewport 2, offset 4 (middle)
             // Expected: thumb adapts to actual width 8, positioned in middle
             // Thumb size = 1, thumbStart = (4/8) * (8-1) = 3.5 -> 3, thumb at position 3
-            let vdom (_ : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 ScrollBar.make
                     ScrollBarOrientation.Horizontal
                     {
@@ -868,7 +868,7 @@ module TestScrollBar =
                     member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -897,7 +897,7 @@ module TestScrollBar =
         let width = max 1 scrollParams.TrackLength
         let height = 1
         let console, terminal = ConsoleHarness.make' (fun () -> width) (fun () -> height)
-        let renderState = RenderState.make console MockTime.getStaticUtcNow None
+        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
         Render.oneStep renderState () (fun () -> ScrollBar.make ScrollBarOrientation.Horizontal scrollParams)
 
@@ -914,7 +914,7 @@ module TestScrollBar =
         // Use max 1 to match ScrollBar clamping behaviour for non-positive track lengths
         let height = max 1 scrollParams.TrackLength
         let console, terminal = ConsoleHarness.make' (fun () -> width) (fun () -> height)
-        let renderState = RenderState.make console MockTime.getStaticUtcNow None
+        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
         Render.oneStep renderState () (fun () -> ScrollBar.make ScrollBarOrientation.Vertical scrollParams)
 

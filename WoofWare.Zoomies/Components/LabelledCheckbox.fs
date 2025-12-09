@@ -8,7 +8,7 @@ type LabelledCheckbox =
     /// Creates a checkbox with a text label positioned to its right.
     static member make
         (
-            ctx : VdomContext,
+            ctx : IVdomContext,
             label : string,
             key : NodeKey,
             isChecked : bool,
