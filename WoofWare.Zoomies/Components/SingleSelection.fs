@@ -36,7 +36,7 @@ type SingleSelection =
     /// Handle this event in ProcessWorld to call state.EnsureVisible(viewportHeight)
     /// and keep the cursor visible.
     ///
-    /// Note: This component uses the same ActionResolver as MultiSelection
+    /// Note: This component uses the same ActivationResolver as MultiSelection
     /// (ActivationResolver.multiSelection). The difference is semantic: in MultiSelection,
     /// Space toggles the item; in SingleSelection, Space selects the item (your ProcessWorld
     /// handler should set the selection to the cursor index rather than toggling).
