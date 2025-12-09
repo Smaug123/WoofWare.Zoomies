@@ -924,6 +924,36 @@ module TestScrollBar =
         // lines[0] is empty, then lines[1..height] are "<char>|"
         [| for i in 1..height -> lines.[i].TrimEnd '|' |]
 
+    /// Render a horizontal scroll bar with a fixed console width (for testing clamping behaviour)
+    /// This helper does NOT clamp the console size based on TrackLength, allowing us to verify
+    /// that the ScrollBar itself handles non-positive track lengths correctly.
+    let private renderHorizontalScrollBarWithFixedWidth (consoleWidth : int) (scrollParams : ScrollBarParams) : string =
+        let console, terminal = ConsoleHarness.make' (fun () -> consoleWidth) (fun () -> 1)
+        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+
+        Render.oneStep renderState () (fun () -> ScrollBar.make ScrollBarOrientation.Horizontal scrollParams)
+
+        let fullString = ConsoleHarness.toString terminal
+        let lines = fullString.Split '\n'
+        lines.[1].TrimEnd '|'
+
+    /// Render a vertical scroll bar with a fixed console height (for testing clamping behaviour)
+    /// This helper does NOT clamp the console size based on TrackLength, allowing us to verify
+    /// that the ScrollBar itself handles non-positive track lengths correctly.
+    let private renderVerticalScrollBarWithFixedHeight
+        (consoleHeight : int)
+        (scrollParams : ScrollBarParams)
+        : string[]
+        =
+        let console, terminal = ConsoleHarness.make' (fun () -> 1) (fun () -> consoleHeight)
+        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+
+        Render.oneStep renderState () (fun () -> ScrollBar.make ScrollBarOrientation.Vertical scrollParams)
+
+        let fullString = ConsoleHarness.toString terminal
+        let lines = fullString.Split '\n'
+        [| for i in 1..consoleHeight -> lines.[i].TrimEnd '|' |]
+
     [<Test>]
     let ``property: horizontal scroll bar at offset 0 starts with thumb`` () =
         let property (viewportSize : PositiveInt) (extraItems : PositiveInt) (trackLength : PositiveInt) =
@@ -1520,9 +1550,13 @@ module TestScrollBar =
     let ``property: non-positive track length is clamped to 1`` () =
         let property (viewportSize : PositiveInt) (totalItems : PositiveInt) (trackLength : PositiveInt) =
             let trackLengthNonPositive = -(trackLength.Get - 1)
+            // Use a fixed console width of 10 so the test truly verifies ScrollBar's internal clamping
+            // rather than relying on the harness clamping the console size to 1.
+            let fixedConsoleWidth = 10
 
             let rendered =
-                renderHorizontalScrollBar
+                renderHorizontalScrollBarWithFixedWidth
+                    fixedConsoleWidth
                     {
                         TotalItems = totalItems.Get
                         ViewportSize = viewportSize.Get
@@ -1530,8 +1564,10 @@ module TestScrollBar =
                         TrackLength = trackLengthNonPositive
                     }
 
-            // Should render with effective track length of 1
-            rendered.Length |> shouldEqual 1
-            rendered |> shouldEqual "█"
+            // With a 10-wide console but non-positive track length clamped to 1,
+            // the ScrollBar should render exactly 1 thumb character followed by spaces
+            let trimmed = rendered.TrimEnd ' '
+            trimmed.Length |> shouldEqual 1
+            trimmed |> shouldEqual "█"
 
         Check.One (propConfig, property)
