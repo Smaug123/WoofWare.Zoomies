@@ -422,7 +422,7 @@ Line 2 of content                                           |
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
             let mutable currentState = state
 
-            // Initial render: collapsed and unfocused - long text is truncated but on same line as glyph
+            // Initial render: collapsed and unfocused - long label wraps across multiple lines
             currentState <-
                 App.pumpOnce
                     worldFreezer
