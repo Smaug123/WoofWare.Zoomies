@@ -26,7 +26,11 @@ type MultiSelection =
         (keyPrefix : NodeKey, items : SelectionListItem'[], state : SelectionListState)
         : SelectionListResult
         =
-        SelectionList.makeInternal "multi-selection" Checkbox.make' keyPrefix items state
+        // Use TopLeft alignment so checkbox appears on first line of multi-line rows
+        let makeCheckbox (isSelected, isFocused) =
+            Checkbox.make' (isSelected, isFocused, ContentAlignment.TopLeft)
+
+        SelectionList.makeInternal "multi-selection" makeCheckbox keyPrefix items state
 
     /// Framework-integrated version with cursor-based navigation.
     /// The list is a single focusable unit; use arrows to navigate within,
@@ -106,7 +110,8 @@ type MultiSelection =
                             // Show cursor highlight only when list has focus AND this is the cursor item
                             let isCursor = listHasFocus && globalIdx = cursorIndex
 
-                            let checkbox = Checkbox.make' (item.IsSelected, isCursor)
+                            // Use TopLeft alignment so checkbox appears on first line of multi-line rows
+                            let checkbox = Checkbox.make' (item.IsSelected, isCursor, ContentAlignment.TopLeft)
                             let label = Vdom.textContent item.Label
                             [| checkbox ; label |]
                         )

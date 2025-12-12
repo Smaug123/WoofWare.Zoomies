@@ -10,8 +10,9 @@ type Toggle =
     /// <param name="toggledGlyph">The single character to display if the toggle is in the "toggled" state, as determined by <c>isToggled</c>.</param>
     /// <param name="isToggled">True if the toggle should render as if it is in the "toggled" state - e.g. a checkbox that has been checked, or an expansion toggle that has been expanded.</param>
     /// <param name="isFocused">True if the toggle should render as if it currently has focus.</param>
+    /// <param name="alignment">Content alignment within the cell. Defaults to Centered.</param>
     static member make'
-        (untoggledGlyph : char, toggledGlyph : char, isToggled : bool, isFocused : bool)
+        (untoggledGlyph : char, toggledGlyph : char, isToggled : bool, isFocused : bool, ?alignment : ContentAlignment)
         : Vdom<DesiredBounds>
         =
         let glyph = if isToggled then toggledGlyph else untoggledGlyph
@@ -22,8 +23,8 @@ type Toggle =
             else
                 " " + glyph.ToString () + " "
 
-        Vdom.styledText (content, CellStyle.none, ContentAlignment.Centered)
-        |> Vdom.withTag "toggle"
+        let alignment = defaultArg alignment ContentAlignment.Centered
+        Vdom.styledText (content, CellStyle.none, alignment) |> Vdom.withTag "toggle"
 
     /// <summary>Creates a toggle component with custom glyphs.</summary>
     /// <param name="ctx">The VdomContext for checking focus state.</param>
