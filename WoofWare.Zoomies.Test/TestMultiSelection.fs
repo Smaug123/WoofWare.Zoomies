@@ -715,8 +715,8 @@ module TestMultiSelection =
             expect {
                 snapshot
                     @"
-   A very long option lab|
- ☑ el that might wrap    |
+ ☑ A very long option lab|
+   el that might wrap    |
 [☐]Short                 |
                          |
                          |

@@ -160,8 +160,8 @@ module TestRender =
 │ot looking at the desirable keeps the ││                                      │|
 │mind quiet                            ││                                      │|
 └──────────────────────────────────────┘└──────────────────────────────────────┘|
-   Press Space to toggle                                                        |
- ☐                                                                              |
+ ☐ Press Space to toggle                                                        |
+                                                                                |
                                                                                 |
 "
 
@@ -192,8 +192,8 @@ module TestRender =
 │ot looking at the desirable keeps the ││                                      │|
 │mind quiet                            ││                                      │|
 └──────────────────────────────────────┘└──────────────────────────────────────┘|
-   Press Space to toggle                                                        |
-[☐]                                                                             |
+[☐]Press Space to toggle                                                        |
+                                                                                |
                                                                                 |
 "
 
@@ -224,8 +224,8 @@ module TestRender =
 │ot looking at the desirable keeps the ││                                      │|
 │mind quiet                            ││                                      │|
 └──────────────────────────────────────┘└──────────────────────────────────────┘|
-   Press Space to toggle                                                        |
-[☐]                                                                             |
+[☐]Press Space to toggle                                                        |
+                                                                                |
                                                                                 |
 "
 
@@ -253,11 +253,11 @@ module TestRender =
 │not praising the praiseworthy keeps pe││errybody wants to be a bodybuilder, bu│|
 │ople uncompetitive; not prizing rare t││t don't nobody want to lift no heavy-a│|
 └──────────────────────────────────────┘└──────────────────────────────────────┘|
-   Press Space to toggle                                                        |
-[☑]                                                                             |
+[☑]Press Space to toggle                                                        |
                                                                                 |
-only displayed when checked                this one is focusable!               |
-                                         ☐                                      |
+                                                                                |
+only displayed when checked              ☐ this one is focusable!               |
+                                                                                |
                                                                                 |
 "
 
@@ -285,11 +285,11 @@ only displayed when checked                this one is focusable!               
 │not praising the praiseworthy keeps pe││errybody wants to be a bodybuilder, bu│|
 │ople uncompetitive; not prizing rare t││t don't nobody want to lift no heavy-a│|
 └──────────────────────────────────────┘└──────────────────────────────────────┘|
-   Press Space to toggle                                                        |
- ☑                                                                              |
+ ☑ Press Space to toggle                                                        |
                                                                                 |
-only displayed when checked                this one is focusable!               |
-                                        [☐]                                     |
+                                                                                |
+only displayed when checked             [☐]this one is focusable!               |
+                                                                                |
                                                                                 |
 "
 
@@ -317,11 +317,11 @@ only displayed when checked                this one is focusable!               
 │not praising the praiseworthy keeps pe││errybody wants to be a bodybuilder, bu│|
 │ople uncompetitive; not prizing rare t││t don't nobody want to lift no heavy-a│|
 └──────────────────────────────────────┘└──────────────────────────────────────┘|
-   Press Space to toggle                                                        |
- ☑                                                                              |
+ ☑ Press Space to toggle                                                        |
                                                                                 |
-only displayed when checked                this one is focusable!               |
-                                        [☑]                                     |
+                                                                                |
+only displayed when checked             [☑]this one is focusable!               |
+                                                                                |
                                                                                 |
 "
 
@@ -349,11 +349,11 @@ only displayed when checked                this one is focusable!               
 │not praising the praiseworthy keeps pe││errybody wants to be a bodybuilder, bu│|
 │ople uncompetitive; not prizing rare t││t don't nobody want to lift no heavy-a│|
 └──────────────────────────────────────┘└──────────────────────────────────────┘|
-   Press Space to toggle                                                        |
-[☑]                                                                             |
+[☑]Press Space to toggle                                                        |
                                                                                 |
-only displayed when checked                this one is focusable!               |
-                                         ☑                                      |
+                                                                                |
+only displayed when checked              ☑ this one is focusable!               |
+                                                                                |
                                                                                 |
 "
 
@@ -384,8 +384,8 @@ only displayed when checked                this one is focusable!               
 │ot looking at the desirable keeps the ││                                      │|
 │mind quiet                            ││                                      │|
 └──────────────────────────────────────┘└──────────────────────────────────────┘|
-   Press Space to toggle                                                        |
-[☐]                                                                             |
+[☐]Press Space to toggle                                                        |
+                                                                                |
                                                                                 |
 "
 
@@ -413,11 +413,11 @@ only displayed when checked                this one is focusable!               
 │not praising the praiseworthy keeps pe││errybody wants to be a bodybuilder, bu│|
 │ople uncompetitive; not prizing rare t││t don't nobody want to lift no heavy-a│|
 └──────────────────────────────────────┘└──────────────────────────────────────┘|
-   Press Space to toggle                                                        |
-[☑]                                                                             |
+[☑]Press Space to toggle                                                        |
                                                                                 |
-only displayed when checked                this one is focusable!               |
-                                         ☑                                      |
+                                                                                |
+only displayed when checked              ☑ this one is focusable!               |
+                                                                                |
                                                                                 |
 "
 

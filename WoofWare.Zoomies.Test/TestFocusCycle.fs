@@ -123,7 +123,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-   ☐    ☐  ☐  ☐ |
+ ☐      ☐  ☐  ☐ |
 "
 
                 return ConsoleHarness.toString terminal
@@ -146,7 +146,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-   ☐    ☐  ☐  ☐ |
+ ☐      ☐  ☐  ☐ |
 "
 
                 return ConsoleHarness.toString terminal
@@ -169,7 +169,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-  [☐]   ☐  ☐  ☐ |
+[☐]     ☐  ☐  ☐ |
 "
 
                 return ConsoleHarness.toString terminal
@@ -191,7 +191,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-  [☑]   ☐  ☐  ☐ |
+[☑]     ☐  ☐  ☐ |
 "
 
                 return ConsoleHarness.toString terminal
@@ -213,7 +213,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-   ☑   [☐] ☐  ☐ |
+ ☑     [☐] ☐  ☐ |
 "
 
                 return ConsoleHarness.toString terminal
@@ -235,7 +235,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-   ☑   [☑] ☐  ☐ |
+ ☑     [☑] ☐  ☐ |
 "
 
                 return ConsoleHarness.toString terminal
@@ -257,7 +257,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-   ☑    ☑ [☐] ☐ |
+ ☑      ☑ [☐] ☐ |
 "
 
                 return ConsoleHarness.toString terminal
@@ -279,7 +279,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-   ☑    ☑ [☑] ☐ |
+ ☑      ☑ [☑] ☐ |
 "
 
                 return ConsoleHarness.toString terminal
@@ -301,7 +301,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-   ☑    ☑  ☑ [☐]|
+ ☑      ☑  ☑ [☐]|
 "
 
                 return ConsoleHarness.toString terminal
@@ -323,7 +323,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-   ☑    ☑  ☑ [☑]|
+ ☑      ☑  ☑ [☑]|
 "
 
                 return ConsoleHarness.toString terminal
@@ -345,7 +345,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-  [☑]   ☑  ☑  ☑ |
+[☑]     ☑  ☑  ☑ |
 "
 
                 return ConsoleHarness.toString terminal
@@ -425,7 +425,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-   ☐    ☐  ☐  ☐ |
+ ☐      ☐  ☐  ☐ |
 "
 
                 return ConsoleHarness.toString terminal
@@ -448,7 +448,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-  [☐]   ☐  ☐  ☐ |
+[☐]     ☐  ☐  ☐ |
 "
 
                 return ConsoleHarness.toString terminal
@@ -471,7 +471,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-   ☐   [☐] ☐  ☐ |
+ ☐     [☐] ☐  ☐ |
 "
 
                 return ConsoleHarness.toString terminal
@@ -494,7 +494,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-  [☐]   ☐  ☐  ☐ |
+[☐]     ☐  ☐  ☐ |
 "
 
                 return ConsoleHarness.toString terminal
@@ -517,7 +517,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-   ☐    ☐  ☐ [☐]|
+ ☐      ☐  ☐ [☐]|
 "
 
                 return ConsoleHarness.toString terminal
@@ -540,7 +540,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-   ☐    ☐  ☐ [☑]|
+ ☐      ☐  ☐ [☑]|
 "
 
                 return ConsoleHarness.toString terminal
@@ -563,7 +563,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-   ☐    ☐ [☐] ☑ |
+ ☐      ☐ [☐] ☑ |
 "
 
                 return ConsoleHarness.toString terminal
@@ -641,7 +641,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-   ☐       ☐    |
+ ☐       ☐      |
 "
 
                 return ConsoleHarness.toString terminal
@@ -664,7 +664,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-  [☐]      ☐    |
+[☐]      ☐      |
 "
 
                 return ConsoleHarness.toString terminal
@@ -688,7 +688,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-   ☐      [☐]   |
+ ☐      [☐]     |
 "
 
                 return ConsoleHarness.toString terminal
@@ -767,7 +767,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-       ☐        |
+ ☐              |
 "
 
                 return ConsoleHarness.toString terminal
@@ -790,7 +790,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-      [☐]       |
+[☐]             |
 "
 
                 return ConsoleHarness.toString terminal
@@ -815,7 +815,7 @@ module TestFocusCycle =
             expect {
                 snapshot
                     @"
-more      [☐]   |
+more    [☐]     |
 "
 
                 return ConsoleHarness.toString terminal
@@ -907,10 +907,10 @@ more      [☐]   |
 This is focusable text                                                          |
                                                                                 |
                                                                                 |
+ ☐                                                                              |
                                                                                 |
                                                                                 |
                                                                                 |
-                                       ☐                                        |
                                                                                 |
                                                                                 |
                                                                                 |
@@ -942,10 +942,10 @@ This is focusable text                                                          
 This is focusable text                                                          |
                                                                                 |
                                                                                 |
+ ☐                                                                              |
                                                                                 |
                                                                                 |
                                                                                 |
-                                       ☐                                        |
                                                                                 |
                                                                                 |
                                                                                 |
@@ -977,10 +977,10 @@ This is focusable text                                                          
 This is focusable text                                                          |
                                                                                 |
                                                                                 |
+[☐]                                                                             |
                                                                                 |
                                                                                 |
                                                                                 |
-                                      [☐]                                       |
                                                                                 |
                                                                                 |
                                                                                 |
@@ -1012,10 +1012,10 @@ This is focusable text                                                          
 This is focusable text                                                          |
                                                                                 |
                                                                                 |
+ ☐                                                                              |
                                                                                 |
                                                                                 |
                                                                                 |
-                                       ☐                                        |
                                                                                 |
                                                                                 |
                                                                                 |
@@ -1088,8 +1088,8 @@ This is focusable text                                                          
             expect {
                 snapshot
                     @"
+ ☐                         ☐                          ☐                         |
                                                                                 |
-            ☐                          ☐                          ☐             |
                                                                                 |
 "
 
@@ -1113,8 +1113,8 @@ This is focusable text                                                          
             expect {
                 snapshot
                     @"
+ ☐                        [☐]                         ☐                         |
                                                                                 |
-            ☐                         [☐]                         ☐             |
                                                                                 |
 "
 
@@ -1138,8 +1138,8 @@ This is focusable text                                                          
             expect {
                 snapshot
                     @"
+ ☐                         ☐                         [☐]                        |
                                                                                 |
-            ☐                          ☐                         [☐]            |
                                                                                 |
 "
 
@@ -1163,8 +1163,8 @@ This is focusable text                                                          
             expect {
                 snapshot
                     @"
+[☐]                        ☐                          ☐                         |
                                                                                 |
-           [☐]                         ☐                          ☐             |
                                                                                 |
 "
 
@@ -1188,8 +1188,8 @@ This is focusable text                                                          
             expect {
                 snapshot
                     @"
+ ☐                        [☐]                         ☐                         |
                                                                                 |
-            ☐                         [☐]                         ☐             |
                                                                                 |
 "
 
@@ -1261,8 +1261,8 @@ This is focusable text                                                          
             expect {
                 snapshot
                     @"
+ ☐                        [☐]                         ☐                         |
                                                                                 |
-            ☐                         [☐]                         ☐             |
                                                                                 |
 "
 
@@ -1286,8 +1286,8 @@ This is focusable text                                                          
             expect {
                 snapshot
                     @"
+ ☐                         ☐                         [☐]                        |
                                                                                 |
-            ☐                          ☐                         [☐]            |
                                                                                 |
 "
 
@@ -1311,8 +1311,8 @@ This is focusable text                                                          
             expect {
                 snapshot
                     @"
+[☐]                        ☐                          ☐                         |
                                                                                 |
-           [☐]                         ☐                          ☐             |
                                                                                 |
 "
 
@@ -1336,8 +1336,8 @@ This is focusable text                                                          
             expect {
                 snapshot
                     @"
+ ☐                         ☐                         [☐]                        |
                                                                                 |
-            ☐                          ☐                         [☐]            |
                                                                                 |
 "
 
@@ -1361,8 +1361,8 @@ This is focusable text                                                          
             expect {
                 snapshot
                     @"
+ ☐                        [☐]                         ☐                         |
                                                                                 |
-            ☐                         [☐]                         ☐             |
                                                                                 |
 "
 

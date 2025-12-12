@@ -22,7 +22,7 @@ type Toggle =
             else
                 " " + glyph.ToString () + " "
 
-        Vdom.styledText (content, CellStyle.none, ContentAlignment.Centered)
+        Vdom.styledText (content, CellStyle.none, ContentAlignment.TopLeft)
         |> Vdom.withTag "toggle"
 
     /// <summary>Creates a toggle component with custom glyphs.</summary>
