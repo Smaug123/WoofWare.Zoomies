@@ -39,7 +39,7 @@ type State =
     static member Initial =
         let files =
             try
-                Directory.GetFiles (Environment.CurrentDirectory)
+                Directory.GetFiles Environment.CurrentDirectory
                 |> Array.map (fun path ->
                     let name = Path.GetFileName path
 

@@ -111,7 +111,7 @@ module App =
                 // If state changed, we need to render and potentially get more post-layout events
                 if newState <> currentState then
                     currentState <- newState
-                    Render.oneStep renderState currentState (vdom (VdomContext.asTyped ctx))
+                    Render.oneStepNoFlush renderState currentState (vdom (VdomContext.asTyped ctx))
                     VdomContext.markClean ctx
                     iterations <- iterations + 1
                 else
@@ -130,12 +130,13 @@ module App =
         let ctx = RenderState.vdomContext renderState
 
         if VdomContext.isDirty ctx then
-            Render.oneStep renderState state (vdom (VdomContext.asTyped ctx))
+            Render.oneStepNoFlush renderState state (vdom (VdomContext.asTyped ctx))
             VdomContext.markClean ctx
 
             let finalState, _hitLimit =
                 stabilizePostLayoutEvents state renderState processWorld vdom
 
+            Render.flush renderState
             finalState
         else
             state
@@ -264,7 +265,7 @@ module App =
                                     currentState <- processResult.NewState
 
                                     // Re-render for visual feedback
-                                    Render.oneStep renderState currentState (vdom (VdomContext.asTyped ctx))
+                                    Render.oneStepNoFlush renderState currentState (vdom (VdomContext.asTyped ctx))
 
                                     VdomContext.markClean ctx
 
@@ -272,6 +273,7 @@ module App =
                                     let stabilizedState, _hitLimit =
                                         stabilizePostLayoutEvents currentState renderState processWorld vdom
 
+                                    Render.flush renderState
                                     currentState <- stabilizedState
                                     startState <- currentState
 
@@ -321,12 +323,13 @@ module App =
                         startOfBatch <- startOfBatch + truncatedAt + 1
 
             if forceRerender || VdomContext.isDirty ctx || currentState <> startState then
-                Render.oneStep renderState currentState (vdom (VdomContext.asTyped ctx))
+                Render.oneStepNoFlush renderState currentState (vdom (VdomContext.asTyped ctx))
                 VdomContext.markClean ctx
 
                 let stabilizedState, _hitLimit =
                     stabilizePostLayoutEvents currentState renderState processWorld vdom
 
+                Render.flush renderState
                 currentState <- stabilizedState
                 startState <- currentState
 

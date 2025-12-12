@@ -915,3 +915,155 @@ module TestPostLayoutEvents =
             // This is documented behavior - RequestRerender is ignored in stabilization.
             renderCount |> shouldEqual 2 // Initial render + one stabilization render
         }
+
+    type IntermediateFrameEvent = | SwitchToFinalState
+
+    type IntermediateFrameState =
+        {
+            ShowFinal : bool
+        }
+
+        static member Initial =
+            {
+                ShowFinal = false
+            }
+
+    [<Test>]
+    let ``intermediate frames during stabilization are not painted`` () =
+        task {
+            // Track flush events and what was in the buffer at each flush
+            let flushSnapshots = ResizeArray<string> ()
+
+            // Simulate a terminal buffer - writes to same position overwrite
+            let terminalBuffer = Array2D.create 10 80 ' '
+            let mutable cursorX = 0
+            let mutable cursorY = 0
+
+            // Create a console that simulates a real terminal buffer
+            let console : IConsole =
+                {
+                    BackgroundColor = fun () -> ConsoleColor.Black
+                    ForegroundColor = fun () -> ConsoleColor.White
+                    WindowWidth = fun () -> 80
+                    WindowHeight = fun () -> 10
+                    ColorMode = ColorMode.Color
+                    Execute =
+                        fun op ->
+                            match op with
+                            | TerminalOp.MoveCursor (x, y) ->
+                                cursorX <- x
+                                cursorY <- y
+                            | TerminalOp.WriteRun (text, _, _) ->
+                                for ch in text do
+                                    if cursorY >= 0 && cursorY < 10 && cursorX >= 0 && cursorX < 80 then
+                                        terminalBuffer.[cursorY, cursorX] <- ch
+                                        cursorX <- cursorX + 1
+                            | TerminalOp.ClearScreen ->
+                                for y = 0 to 9 do
+                                    for x = 0 to 79 do
+                                        terminalBuffer.[y, x] <- ' '
+                            | _ -> ()
+                    Flush =
+                        fun () ->
+                            // On flush, snapshot the current buffer content
+                            let sb = System.Text.StringBuilder ()
+
+                            for y = 0 to 9 do
+                                for x = 0 to 79 do
+                                    sb.Append terminalBuffer.[y, x] |> ignore
+
+                            flushSnapshots.Add (sb.ToString ())
+                }
+
+            // Component that shows "X" initially, then "Y" after state changes
+            let component'
+                (ctx : IVdomContext<IntermediateFrameEvent>)
+                (state : IntermediateFrameState)
+                : Vdom<DesiredBounds>
+                =
+                let measure (_constraints : MeasureConstraints) =
+                    {
+                        MinWidth = 1
+                        PreferredWidth = 1
+                        MaxWidth = None
+                        MinHeightForWidth = fun _ -> 1
+                        PreferredHeightForWidth = fun _ -> 1
+                        MaxHeightForWidth = fun _ -> None
+                    }
+
+                let render (_bounds : Rectangle) =
+                    if state.ShowFinal then
+                        Vdom.textContent "Y"
+                    else
+                        // First render: show "X" and post event to switch state
+                        ctx.PostLayoutEvent SwitchToFinalState
+                        Vdom.textContent "X"
+
+                Vdom.flexibleContent measure render
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = false
+
+            let processWorld =
+                { new WorldProcessor<unit, IntermediateFrameEvent, IntermediateFrameState> with
+                    member _.ProcessWorld (_inputs, _renderState, state) = ProcessWorldResult.make state
+
+                    member _.ProcessPostLayoutEvents (events, _ctx, state) =
+                        let mutable newState = state
+
+                        for event in events do
+                            match event with
+                            | SwitchToFinalState ->
+                                newState <-
+                                    {
+                                        ShowFinal = true
+                                    }
+
+                        newState
+                }
+
+            let vdom
+                (ctx : IVdomContext<IntermediateFrameEvent>)
+                (state : IntermediateFrameState)
+                : Vdom<DesiredBounds>
+                =
+                component' ctx state
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            // Run one pump cycle - this will:
+            // 1. Initial render: component shows "X", posts SwitchToFinalState event
+            // 2. Stabilization: state changes to ShowFinal=true, re-render shows "Y"
+            // 3. Only after stabilization completes should we flush
+            let _finalState =
+                App.pumpOnce
+                    worldFreezer
+                    IntermediateFrameState.Initial
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
+
+            // There should be exactly one flush (after stabilization completes)
+            if flushSnapshots.Count <> 1 then
+                failwith $"Expected exactly 1 flush but got {flushSnapshots.Count}"
+
+            // The single flushed frame should contain "Y" (final state) but not "X" (intermediate state)
+            let flushedFrame = flushSnapshots.[0]
+
+            if flushedFrame.Contains "X" then
+                failwith $"Intermediate frame was painted! Flushed content contained 'X': {flushedFrame}"
+
+            if not (flushedFrame.Contains "Y") then
+                failwith $"Final frame was not painted! Flushed content did not contain 'Y': {flushedFrame}"
+        }
