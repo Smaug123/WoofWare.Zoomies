@@ -712,7 +712,7 @@ Bottom              |
                         [| Vdom.textContent "Prop" |]
                     |]
                     [||]
-                    [| Row.Fixed 2 ; Row.Content ; Row.Fixed 1 |]
+                    [| Row.Fixed 2 ; Row.Content ; Row.Proportion 1.0 |]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 10)
 
@@ -822,11 +822,10 @@ Row2                |
         }
 
     [<Test>]
-    let ``table with simple keyed cells`` () =
+    let ``table with simple unkeyed cells`` () =
         task {
             let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
-                // Table internally assigns keys to cells based on (row, col) position
-                // This test verifies that tables handle cell content correctly
+                // This test verifies basic table rendering with simple content-sized cells
                 Table.makeContentSized
                     (NodeKey.make "t_")
                     [| [| Vdom.textContent "Cell1" |] ; [| Vdom.textContent "Cell2" |] |]
@@ -1757,10 +1756,10 @@ module TestTableMeasurements =
 
             let measured = VdomBounds.measure table constraints
 
-            // Table should report MinWidth = sum of column mins (~6 + 7 = ~13)
+            // Table should report MinWidth = sum of column mins (6 + 7 = 13)
+            // "nicely" is 6 chars (longest word in autoCell), "PropCol" is 7 chars
             let tableMinWidth = measured.MinWidth
-            // MinWidth should be approximately 13 (longest word in each column)
-            (tableMinWidth >= 10 && tableMinWidth <= 15) |> shouldEqual true
+            tableMinWidth |> shouldEqual 13
 
             // Now render the table at exactly its MinWidth
             // When allocated exactly MinWidth, BOTH columns should get at least their minimums
