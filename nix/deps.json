@@ -25,6 +25,11 @@
     "hash": "sha256-k65ksdOSOGz+meRUUND+yuqJtm5ChaKuaxmRIdKzx2Y="
   },
   {
+    "pname": "fsdocs-tool",
+    "version": "21.0.0",
+    "hash": "sha256-5r1slBupDb53FVjqqs1fJzPIsAunRhOZtiP3RFGGNPg="
+  },
+  {
     "pname": "fsharp-analyzers",
     "version": "0.32.1",
     "hash": "sha256-le6rPnAF7cKGBZ2w8H2u9glK+6rT2ZjiAVnrkH2IhrM="
