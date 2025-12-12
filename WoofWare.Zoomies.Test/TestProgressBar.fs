@@ -37,10 +37,7 @@ module TestProgressBar =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -83,10 +80,7 @@ module TestProgressBar =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -129,10 +123,7 @@ module TestProgressBar =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -179,10 +170,7 @@ module TestProgressBar =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -227,10 +215,7 @@ Loading:[███░░░░░░░] 30%      |
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -279,10 +264,7 @@ Loading:[███░░░░░░░] 30%      |
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -329,10 +311,7 @@ Progress:[██████░░░░]         |
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -375,10 +354,7 @@ Progress:[██████░░░░]         |
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -426,10 +402,7 @@ Progress:[██████░░░░]         |
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -472,10 +445,7 @@ Progress:[██████░░░░]         |
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 

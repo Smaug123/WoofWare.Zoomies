@@ -36,6 +36,7 @@
     <Compile Include="TestButton.fs" />
     <Compile Include="TestTextBox.fs" />
     <Compile Include="TestTable.fs" />
+    <Compile Include="TestVdomMeasure.fs" />
     <Compile Include="TestMultiSelection.fs" />
     <Compile Include="TestSingleSelection.fs" />
     <Compile Include="TestActivationWithPartialBatch.fs" />
