@@ -14,7 +14,7 @@ But I'm not going to force my world view on you: perhaps you have a component th
 You've diligently advertised its minimum size in a `Vdom.flexibleContent`, but the framework hands you back a space that's too small and you would prefer to bail out rather than try and squeeze yourself down further.
 
 You can already solve this problem using `Vdom.flexibleContent` at the top level, if you can predict in advance from the root of the Vdom that some component isn't going to fit; but that involves effectively simulating a layout algorithm yourself inside your VDOM construction code, so we really don't recommend it except in the very simplest cases.
-Instead, you can use [post-layout events](../user_facing/tutorial/post-layout-events.md) from within *any* component, not just the top-level one: during the render, you can signal the emergency to your user state, causing a rerender at the top level (during the stabilisation cycle before you receive any more user input) and potentially completely altering the entire UI before the aborted UI is ever painted.
+Instead, you can use [post-layout events](../tutorial/post-layout-events.md) from within *any* component, not just the top-level one: during the render, you can signal the emergency to your user state, causing a rerender at the top level (during the stabilisation cycle before you receive any more user input) and potentially completely altering the entire UI before the aborted UI is ever painted.
 
 At some point, I hope to provide some sugar for this in the framework, but for now you're on your own implementing this.
 Here's how you can do it.

@@ -20,7 +20,7 @@ We start at the point where something has caused the framework to decide to rere
   * The `Vdom.flexibleContent` component contains a user-provided function which we call, now that we know the exact space we're going to render the Vdom into.
   * The `flexibleContent` now yields a sub-`Vdom` at this point; we loop back to the "measure" phase for that sub-`Vdom` within the measured bounds of the `flexibleContent` node.
   * We keep running this measure/arrange/render loop, on hopefully-successively-decreasing sizes of measured space, until there are no more `flexibleContent`s to resolve.
-1. Optionally: there is a mechanism for the render phase to cause further user state updates and perhaps trigger rerenders; see [Post-Layout Events](../user_facing/tutorial/post-layout-events.md). If a post-layout event causes a user state change, we loop all the way back to the top and rerender.
+1. Optionally: there is a mechanism for the render phase to cause further user state updates and perhaps trigger rerenders; see [Post-Layout Events](../tutorial/post-layout-events.md). If a post-layout event causes a user state change, we loop all the way back to the top and rerender.
 1. Finally, we repaint the screen.
 
 Notably, the constraint solving mechanism is only two-pass: we ask each component how big it wants to be, then we do a single pass to solve the constraints (imperfectly but quickly and predictably), and now we know the layout exactly.

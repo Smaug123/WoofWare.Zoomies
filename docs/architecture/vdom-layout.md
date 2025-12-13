@@ -24,7 +24,7 @@ There are currently three possible ways you can specify a split: by an absolute 
 1. The author's code tells Zoomies it wants this specific Vdom. In that Vdom, components declare their size preferences declaratively: they can choose a minimum, preferred, and maximum size, and they can declare that if they *were* given some amount of width, then they would require some amount of height.
 1. Zoomies traverses the Vdom measuring each component, to collect layout constraints for each: the "measure" phase.
 1. Zoomies solves the constraints and lays out the component in space: the "arrange" phase.
-1. Zoomies renders the Vdom to those rectangles: the "render" phase. (There is a mechanism for the render phase to cause further user state updates and perhaps trigger rerenders; see [Post-Layout Events](../user_facing/tutorial/post-layout-events.md).)
+1. Zoomies renders the Vdom to those rectangles: the "render" phase. (There is a mechanism for the render phase to cause further user state updates and perhaps trigger rerenders; see [Post-Layout Events](../tutorial/post-layout-events.md).)
 
 The constraint solving algorithm is intended to be simple and predictable, being purely top-down (since constraints were collected bottom-up during the measurement phase).
 It accommodates three types of behaviour for a component: "proportion", "absolute", and "auto".
