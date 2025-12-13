@@ -41,13 +41,13 @@ type MultiSelection =
     /// The component posts onViewportRendered during render with the viewport height.
     /// Handle this event in ProcessWorld to call state.EnsureVisible(viewportHeight)
     /// and keep the cursor visible.
-    static member make<'appEvent>
+    static member make<'postLayoutEvent>
         (
-            ctx : IVdomContext<'appEvent>,
+            ctx : IVdomContext<'postLayoutEvent>,
             listKey : NodeKey,
             items : MultiSelectionItem<NodeKey>[],
             state : SelectionListState,
-            onViewportRendered : SelectionListViewportInfo -> 'appEvent,
+            onViewportRendered : SelectionListViewportInfo -> 'postLayoutEvent,
             ?isFirstToFocus : bool
         )
         : SelectionListResult

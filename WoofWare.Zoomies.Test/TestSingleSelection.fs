@@ -385,14 +385,14 @@ module TestSingleSelection =
                     }
                 |]
 
-            let vdom (ctx : IVdomContext<SimpleViewportEvent>) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
                 (SingleSelection.make (
                     ctx,
                     singleSelectPrefix,
                     makeItems (),
                     state.SelectedIndex,
                     SelectionListState.AtStart,
-                    SimpleViewportInfo,
+                    (fun _ -> ()),
                     isFirstToFocus = true
                 ))
                     .Vdom
@@ -411,8 +411,9 @@ module TestSingleSelection =
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<SimpleViewportEvent, State> with
+                { new WorldProcessor<SimpleViewportEvent, unit, State> with
                     member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_, _, state) = state
                 }
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
@@ -465,7 +466,8 @@ module TestSingleSelection =
         | SelectCursorUp
         | SelectCursorDown
         | SelectItem of int
-        | SelectViewportInfo of SelectionListViewportInfo
+
+    type SelectPostLayoutEvent = | SelectViewportInfo of SelectionListViewportInfo
 
     type SelectListState =
         {
@@ -501,7 +503,7 @@ module TestSingleSelection =
                     }
                 )
 
-            let vdom (ctx : IVdomContext<SelectListEvent>) (s : SelectListState) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (s : SelectListState) : Vdom<DesiredBounds> =
                 (SingleSelection.make (
                     ctx,
                     singleSelectPrefix,
@@ -527,7 +529,7 @@ module TestSingleSelection =
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<SelectListEvent, SelectListState> with
+                { new WorldProcessor<SelectListEvent, SelectPostLayoutEvent, SelectListState> with
                     member _.ProcessWorld (inputs, renderState, s) =
                         let mutable newState = s
 
@@ -550,14 +552,20 @@ module TestSingleSelection =
                                     { newState with
                                         ListState = newState.ListState.MoveDown files.Length
                                     }
-                            | WorldStateChange.ApplicationEvent (SelectViewportInfo info) ->
-                                newState <-
-                                    { newState with
-                                        ListState = newState.ListState.EnsureVisible info.ViewportHeight
-                                    }
                             | _ -> ()
 
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (events, _, state) =
+                        let mutable newState = state
+
+                        for (SelectViewportInfo info) in events do
+                            newState <-
+                                { newState with
+                                    ListState = newState.ListState.EnsureVisible info.ViewportHeight
+                                }
+
+                        newState
                 }
 
             let resolver =
@@ -658,7 +666,7 @@ module TestSingleSelection =
                     }
                 )
 
-            let vdom (ctx : IVdomContext<SelectListEvent>) (s : SelectListState) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (s : SelectListState) : Vdom<DesiredBounds> =
                 (SingleSelection.make (
                     ctx,
                     singleSelectPrefix,
@@ -684,7 +692,7 @@ module TestSingleSelection =
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<SelectListEvent, SelectListState> with
+                { new WorldProcessor<SelectListEvent, SelectPostLayoutEvent, SelectListState> with
                     member _.ProcessWorld (inputs, renderState, s) =
                         let mutable newState = s
 
@@ -706,14 +714,20 @@ module TestSingleSelection =
                                     { newState with
                                         ListState = newState.ListState.MoveDown files.Length
                                     }
-                            | WorldStateChange.ApplicationEvent (SelectViewportInfo info) ->
-                                newState <-
-                                    { newState with
-                                        ListState = newState.ListState.EnsureVisible info.ViewportHeight
-                                    }
                             | _ -> ()
 
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (events, _, state) =
+                        let mutable newState = state
+
+                        for (SelectViewportInfo info) in events do
+                            newState <-
+                                { newState with
+                                    ListState = newState.ListState.EnsureVisible info.ViewportHeight
+                                }
+
+                        newState
                 }
 
             let resolver =
@@ -1051,7 +1065,8 @@ module TestSingleSelection =
         | CursorUpEvt
         | CursorDownEvt
         | SelectEvt of int
-        | ArrowViewportInfo of SelectionListViewportInfo
+
+    type ArrowPostLayoutEvent = | ArrowViewportInfo of SelectionListViewportInfo
 
     type ArrowTestState =
         {
@@ -1088,7 +1103,7 @@ module TestSingleSelection =
                     }
                 |]
 
-            let vdom (ctx : IVdomContext<ArrowTestEvent>) (s : ArrowTestState) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (s : ArrowTestState) : Vdom<DesiredBounds> =
                 (SingleSelection.make (
                     ctx,
                     singleSelectPrefix,
@@ -1114,7 +1129,7 @@ module TestSingleSelection =
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<ArrowTestEvent, ArrowTestState> with
+                { new WorldProcessor<ArrowTestEvent, ArrowPostLayoutEvent, ArrowTestState> with
                     member _.ProcessWorld (inputs, renderState, s) =
                         let mutable newState = s
 
@@ -1135,14 +1150,20 @@ module TestSingleSelection =
                                     { newState with
                                         SelectedIndex = Some index
                                     }
-                            | WorldStateChange.ApplicationEvent (ArrowViewportInfo info) ->
-                                newState <-
-                                    { newState with
-                                        ListState = newState.ListState.EnsureVisible info.ViewportHeight
-                                    }
                             | _ -> ()
 
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (events, _, state) =
+                        let mutable newState = state
+
+                        for (ArrowViewportInfo info) in events do
+                            newState <-
+                                { newState with
+                                    ListState = newState.ListState.EnsureVisible info.ViewportHeight
+                                }
+
+                        newState
                 }
 
             let resolver =
@@ -1311,7 +1332,8 @@ module TestSingleSelection =
         | NoDanceCursorUp
         | NoDanceCursorDown
         | NoDanceSelect of int
-        | NoDanceViewportInfo of SelectionListViewportInfo
+
+    type NoDancePostLayoutEvent = | NoDanceViewportInfo of SelectionListViewportInfo
 
     type NoDanceState =
         {
@@ -1348,7 +1370,7 @@ module TestSingleSelection =
                     }
                 |]
 
-            let vdom (ctx : IVdomContext<NoDanceEvent>) (s : NoDanceState) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (s : NoDanceState) : Vdom<DesiredBounds> =
                 (SingleSelection.make (
                     ctx,
                     singleSelectPrefix,
@@ -1373,7 +1395,7 @@ module TestSingleSelection =
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<NoDanceEvent, NoDanceState> with
+                { new WorldProcessor<NoDanceEvent, NoDancePostLayoutEvent, NoDanceState> with
                     member _.ProcessWorld (inputs, renderState, s) =
                         let mutable newState = s
 
@@ -1394,15 +1416,21 @@ module TestSingleSelection =
                                     { newState with
                                         SelectedIndex = Some index
                                     }
-                            | WorldStateChange.ApplicationEvent (NoDanceViewportInfo info) ->
-                                // EnsureVisible won't change scroll if cursor is already visible
-                                newState <-
-                                    { newState with
-                                        ListState = newState.ListState.EnsureVisible info.ViewportHeight
-                                    }
                             | _ -> ()
 
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (events, _, state) =
+                        let mutable newState = state
+
+                        for (NoDanceViewportInfo info) in events do
+                            // EnsureVisible won't change scroll if cursor is already visible
+                            newState <-
+                                { newState with
+                                    ListState = newState.ListState.EnsureVisible info.ViewportHeight
+                                }
+
+                        newState
                 }
 
             let resolver =
@@ -1540,7 +1568,8 @@ module TestSingleSelection =
         | ViewportAwareCursorUp
         | ViewportAwareCursorDown
         | ViewportAwareSelect of int
-        | ViewportAwareViewportInfo of SelectionListViewportInfo
+
+    type ViewportAwarePostLayoutEvent = | ViewportAwareViewportInfo of SelectionListViewportInfo
 
     type ViewportAwareState =
         {
@@ -1582,7 +1611,7 @@ module TestSingleSelection =
                     }
                 |]
 
-            let vdom (ctx : IVdomContext<ViewportAwareEvent>) (s : ViewportAwareState) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (s : ViewportAwareState) : Vdom<DesiredBounds> =
                 (SingleSelection.make (
                     ctx,
                     singleSelectPrefix,
@@ -1609,7 +1638,7 @@ module TestSingleSelection =
 
             // This processWorld handles the viewport event to call EnsureVisible
             let processWorld =
-                { new WorldProcessor<ViewportAwareEvent, ViewportAwareState> with
+                { new WorldProcessor<ViewportAwareEvent, ViewportAwarePostLayoutEvent, ViewportAwareState> with
                     member _.ProcessWorld (inputs, renderState, s) =
                         let mutable newState = s
 
@@ -1630,15 +1659,21 @@ module TestSingleSelection =
                                     { newState with
                                         SelectedIndex = Some index
                                     }
-                            | WorldStateChange.ApplicationEvent (ViewportAwareViewportInfo info) ->
-                                // Use the viewport height from the render to ensure cursor is visible
-                                newState <-
-                                    { newState with
-                                        ListState = newState.ListState.EnsureVisible info.ViewportHeight
-                                    }
                             | _ -> ()
 
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (events, _, state) =
+                        let mutable newState = state
+
+                        for (ViewportAwareViewportInfo info) in events do
+                            // Use the viewport height from the render to ensure cursor is visible
+                            newState <-
+                                { newState with
+                                    ListState = newState.ListState.EnsureVisible info.ViewportHeight
+                                }
+
+                        newState
                 }
 
             let resolver =

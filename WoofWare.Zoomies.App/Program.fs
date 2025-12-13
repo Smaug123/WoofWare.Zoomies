@@ -7,14 +7,17 @@ open System.Threading.Tasks
 open WoofWare.Zoomies
 open WoofWare.Zoomies.Components
 
+/// Events from user input (via ActivationResolver) or async operations (via WorldBridge)
 type AppEvent =
     | SelectFile of index : int
     | CursorUp
     | CursorDown
-    | ViewportInfo of SelectionListViewportInfo
     | LoadButtonClicked
     | FileLoaded of content : string * generation : int
     | FileLoadError of error : string * generation : int
+
+/// Events posted during rendering (via ctx.PostLayoutEvent)
+type PostLayoutEvent = | ViewportInfo of SelectionListViewportInfo
 
 type FileEntry =
     {
@@ -36,7 +39,7 @@ type State =
     static member Initial =
         let files =
             try
-                Directory.GetFiles (Environment.CurrentDirectory)
+                Directory.GetFiles Environment.CurrentDirectory
                 |> Array.map (fun path ->
                     let name = Path.GetFileName path
 
@@ -73,7 +76,7 @@ module FileBrowser =
         }
 
     let processWorld (worldBridge : IWorldBridge<AppEvent>) =
-        { new WorldProcessor<AppEvent, State> with
+        { new WorldProcessor<AppEvent, PostLayoutEvent, State> with
             member _.ProcessWorld (changes, _prevVdom, state) =
                 let mutable selectedFileIndex = state.SelectedFileIndex
                 let mutable fileContent = state.FileContent
@@ -95,10 +98,6 @@ module FileBrowser =
                     | WorldStateChange.ApplicationEvent CursorUp -> listState <- listState.MoveUp state.Files.Length
 
                     | WorldStateChange.ApplicationEvent CursorDown -> listState <- listState.MoveDown state.Files.Length
-
-                    | WorldStateChange.ApplicationEvent (ViewportInfo info) ->
-                        // Use the viewport height from the render to ensure cursor is visible
-                        listState <- listState.EnsureVisible info.ViewportHeight
 
                     | WorldStateChange.ApplicationEvent LoadButtonClicked ->
                         match selectedFileIndex with
@@ -133,9 +132,20 @@ module FileBrowser =
                         Generation = generation
                         ListState = listState
                     }
+
+            member _.ProcessPostLayoutEvents (events, _ctx, state) =
+                let mutable listState = state.ListState
+
+                for event in events do
+                    match event with
+                    | ViewportInfo info -> listState <- listState.EnsureVisible info.ViewportHeight
+
+                { state with
+                    ListState = listState
+                }
         }
 
-    let view (ctx : IVdomContext<AppEvent>) (state : State) : Vdom<DesiredBounds> =
+    let view (ctx : IVdomContext<PostLayoutEvent>) (state : State) : Vdom<DesiredBounds> =
         let leftPane =
             let title = Vdom.textContent "Files in current directory:"
 

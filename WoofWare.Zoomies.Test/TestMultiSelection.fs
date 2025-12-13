@@ -391,14 +391,14 @@ module TestMultiSelection =
             // Create a vdom with the list AND another focusable element so we can cycle
             let buttonKey = NodeKey.make "button"
 
-            let vdom (ctx : IVdomContext<SimpleViewportEvent>) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
                 let list =
                     (MultiSelection.make (
                         ctx,
                         multiSelectPrefix,
                         makeItems state,
                         SelectionListState.AtStart,
-                        SimpleViewportInfo,
+                        (fun _ -> ()),
                         isFirstToFocus = true
                     ))
                         .Vdom
@@ -421,8 +421,9 @@ module TestMultiSelection =
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<SimpleViewportEvent, State> with
+                { new WorldProcessor<SimpleViewportEvent, unit, State> with
                     member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_, _, state) = state
                 }
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
@@ -533,7 +534,8 @@ module TestMultiSelection =
         | ToggleCursorUp
         | ToggleCursorDown
         | ToggleItem of int
-        | ToggleViewportInfo of SelectionListViewportInfo
+
+    type TogglePostLayoutEvent = | ToggleViewportInfo of SelectionListViewportInfo
 
     type ToggleListState =
         {
@@ -573,7 +575,7 @@ module TestMultiSelection =
                     }
                 )
 
-            let vdom (ctx : IVdomContext<ToggleListEvent>) (s : ToggleListState) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (s : ToggleListState) : Vdom<DesiredBounds> =
                 (MultiSelection.make (
                     ctx,
                     multiSelectPrefix,
@@ -598,7 +600,7 @@ module TestMultiSelection =
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<ToggleListEvent, ToggleListState> with
+                { new WorldProcessor<ToggleListEvent, TogglePostLayoutEvent, ToggleListState> with
                     member _.ProcessWorld (inputs, renderState, s) =
                         let mutable newState = s
 
@@ -626,14 +628,20 @@ module TestMultiSelection =
                                     { newState with
                                         ListState = newState.ListState.MoveDown files.Length
                                     }
-                            | WorldStateChange.ApplicationEvent (ToggleViewportInfo info) ->
-                                newState <-
-                                    { newState with
-                                        ListState = newState.ListState.EnsureVisible info.ViewportHeight
-                                    }
                             | _ -> ()
 
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (events, _, state) =
+                        let mutable newState = state
+
+                        for (ToggleViewportInfo info) in events do
+                            newState <-
+                                { newState with
+                                    ListState = newState.ListState.EnsureVisible info.ViewportHeight
+                                }
+
+                        newState
                 }
 
             let resolver =
@@ -943,7 +951,8 @@ module TestMultiSelection =
         | CursorUpEvt
         | CursorDownEvt
         | ToggleEvt of int
-        | ArrowViewportInfo of SelectionListViewportInfo
+
+    type ArrowPostLayoutEvent = | ArrowViewportInfo of SelectionListViewportInfo
 
     type ArrowTestState =
         {
@@ -984,7 +993,7 @@ module TestMultiSelection =
                     }
                 |]
 
-            let vdom (ctx : IVdomContext<ArrowTestEvent>) (s : ArrowTestState) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (s : ArrowTestState) : Vdom<DesiredBounds> =
                 (MultiSelection.make (
                     ctx,
                     multiSelectPrefix,
@@ -1009,7 +1018,7 @@ module TestMultiSelection =
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<ArrowTestEvent, ArrowTestState> with
+                { new WorldProcessor<ArrowTestEvent, ArrowPostLayoutEvent, ArrowTestState> with
                     member _.ProcessWorld (inputs, renderState, s) =
                         let mutable newState = s
 
@@ -1026,14 +1035,20 @@ module TestMultiSelection =
                                         ListState = newState.ListState.MoveDown 5
                                     }
                             | WorldStateChange.ApplicationEvent (ToggleEvt _) -> ()
-                            | WorldStateChange.ApplicationEvent (ArrowViewportInfo info) ->
-                                newState <-
-                                    { newState with
-                                        ListState = newState.ListState.EnsureVisible info.ViewportHeight
-                                    }
                             | _ -> ()
 
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (events, _, state) =
+                        let mutable newState = state
+
+                        for (ArrowViewportInfo info) in events do
+                            newState <-
+                                { newState with
+                                    ListState = newState.ListState.EnsureVisible info.ViewportHeight
+                                }
+
+                        newState
                 }
 
             let resolver =
@@ -1116,7 +1131,8 @@ module TestMultiSelection =
         /// Required by ActivationResolver.selectionList; handler is a no-op since this test
         /// focuses on scroll preservation during focus changes, not item toggling.
         | FocusLeaveToggle of int
-        | FocusLeaveViewportInfo of SelectionListViewportInfo
+
+    type FocusLeavePostLayoutEvent = | FocusLeaveViewportInfo of SelectionListViewportInfo
 
     type FocusLeaveState =
         {
@@ -1164,7 +1180,7 @@ module TestMultiSelection =
 
             let buttonKey = NodeKey.make "button"
 
-            let vdom (ctx : IVdomContext<FocusLeaveEvent>) (s : FocusLeaveState) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<FocusLeavePostLayoutEvent>) (s : FocusLeaveState) : Vdom<DesiredBounds> =
                 let list =
                     (MultiSelection.make (
                         ctx,
@@ -1194,7 +1210,7 @@ module TestMultiSelection =
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<FocusLeaveEvent, FocusLeaveState> with
+                { new WorldProcessor<FocusLeaveEvent, FocusLeavePostLayoutEvent, FocusLeaveState> with
                     member _.ProcessWorld (inputs, renderState, s) =
                         let mutable newState = s
 
@@ -1211,14 +1227,20 @@ module TestMultiSelection =
                                         ListState = newState.ListState.MoveDown 5
                                     }
                             | WorldStateChange.ApplicationEvent (FocusLeaveToggle _) -> ()
-                            | WorldStateChange.ApplicationEvent (FocusLeaveViewportInfo info) ->
-                                newState <-
-                                    { newState with
-                                        ListState = newState.ListState.EnsureVisible info.ViewportHeight
-                                    }
                             | _ -> ()
 
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (events, _, state) =
+                        let mutable newState = state
+
+                        for (FocusLeaveViewportInfo info) in events do
+                            newState <-
+                                { newState with
+                                    ListState = newState.ListState.EnsureVisible info.ViewportHeight
+                                }
+
+                        newState
                 }
 
             let resolver =
@@ -1317,7 +1339,8 @@ module TestMultiSelection =
         | NoDanceCursorUp
         | NoDanceCursorDown
         | NoDanceToggle of int
-        | NoDanceViewportInfo of SelectionListViewportInfo
+
+    type NoDancePostLayoutEvent = | NoDanceViewportInfo of SelectionListViewportInfo
 
     type NoDanceState =
         {
@@ -1358,7 +1381,7 @@ module TestMultiSelection =
                     }
                 |]
 
-            let vdom (ctx : IVdomContext<NoDanceEvent>) (s : NoDanceState) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (s : NoDanceState) : Vdom<DesiredBounds> =
                 (MultiSelection.make (ctx, multiSelectPrefix, makeItems (), s.ListState, NoDanceViewportInfo)).Vdom
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 3)
@@ -1375,7 +1398,7 @@ module TestMultiSelection =
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<NoDanceEvent, NoDanceState> with
+                { new WorldProcessor<NoDanceEvent, NoDancePostLayoutEvent, NoDanceState> with
                     member _.ProcessWorld (inputs, renderState, s) =
                         let mutable newState = s
 
@@ -1392,15 +1415,21 @@ module TestMultiSelection =
                                         ListState = newState.ListState.MoveDown 5
                                     }
                             | WorldStateChange.ApplicationEvent (NoDanceToggle _) -> ()
-                            | WorldStateChange.ApplicationEvent (NoDanceViewportInfo info) ->
-                                // EnsureVisible won't change scroll if cursor is already visible
-                                newState <-
-                                    { newState with
-                                        ListState = newState.ListState.EnsureVisible info.ViewportHeight
-                                    }
                             | _ -> ()
 
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (events, _, state) =
+                        let mutable newState = state
+
+                        for (NoDanceViewportInfo info) in events do
+                            // EnsureVisible won't change scroll if cursor is already visible
+                            newState <-
+                                { newState with
+                                    ListState = newState.ListState.EnsureVisible info.ViewportHeight
+                                }
+
+                        newState
                 }
 
             let resolver =
@@ -1537,7 +1566,8 @@ module TestMultiSelection =
         | ViewportAwareCursorUp
         | ViewportAwareCursorDown
         | ViewportAwareToggle of int
-        | ViewportAwareViewportInfo of SelectionListViewportInfo
+
+    type ViewportAwarePostLayoutEvent = | ViewportAwareViewportInfo of SelectionListViewportInfo
 
     type ViewportAwareState =
         {
@@ -1583,7 +1613,7 @@ module TestMultiSelection =
                     }
                 |]
 
-            let vdom (ctx : IVdomContext<ViewportAwareEvent>) (s : ViewportAwareState) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (s : ViewportAwareState) : Vdom<DesiredBounds> =
                 (MultiSelection.make (
                     ctx,
                     multiSelectPrefix,
@@ -1609,7 +1639,7 @@ module TestMultiSelection =
 
             // This processWorld handles the viewport event to call EnsureVisible
             let processWorld =
-                { new WorldProcessor<ViewportAwareEvent, ViewportAwareState> with
+                { new WorldProcessor<ViewportAwareEvent, ViewportAwarePostLayoutEvent, ViewportAwareState> with
                     member _.ProcessWorld (inputs, renderState, s) =
                         let mutable newState = s
 
@@ -1626,15 +1656,21 @@ module TestMultiSelection =
                                         ListState = newState.ListState.MoveDown 5
                                     }
                             | WorldStateChange.ApplicationEvent (ViewportAwareToggle _) -> ()
-                            | WorldStateChange.ApplicationEvent (ViewportAwareViewportInfo info) ->
-                                // Use the viewport height from the render to ensure cursor is visible
-                                newState <-
-                                    { newState with
-                                        ListState = newState.ListState.EnsureVisible info.ViewportHeight
-                                    }
                             | _ -> ()
 
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (events, _, state) =
+                        let mutable newState = state
+
+                        for (ViewportAwareViewportInfo info) in events do
+                            // Use the viewport height from the render to ensure cursor is visible
+                            newState <-
+                                { newState with
+                                    ListState = newState.ListState.EnsureVisible info.ViewportHeight
+                                }
+
+                        newState
                 }
 
             let resolver =

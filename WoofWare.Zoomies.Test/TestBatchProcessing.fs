@@ -42,7 +42,7 @@ module TestBatchProcessing =
             let mutable totalProcessed = 0
 
             let processWorld =
-                { new WorldProcessor<unit, ImmutableArray<char>> with
+                { new WorldProcessor<unit, unit, ImmutableArray<char>> with
                     member _.ProcessWorld (inputs, _renderState, state) =
                         let batchSize =
                             if List.isEmpty batchSizes then
@@ -73,6 +73,8 @@ module TestBatchProcessing =
                             // Request a new batch after processing 'toProcess' items
                             ProcessWorldResult.make newState
                             |> ProcessWorldResult.withRerender (toProcess - 1)
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let vdom (_vdomContext : IVdomContext<_>) (_state : ImmutableArray<char>) = Vdom.textContent ""
@@ -220,7 +222,7 @@ module TestBatchProcessing =
             let mutable switchModeAfterNextEvent = false
 
             let processWorld =
-                { new WorldProcessor<unit, ModeSwitchingState> with
+                { new WorldProcessor<unit, unit, ModeSwitchingState> with
                     member _.ProcessWorld (inputs, vdomContext, state) =
                         let mutable newState =
                             { state with
@@ -259,6 +261,8 @@ module TestBatchProcessing =
                             |> ProcessWorldResult.withRerender (inputs.Length - 1)
                         else
                             ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let mutable vdomRenderCount = 0
@@ -446,7 +450,7 @@ module TestBatchProcessing =
                 let mutable batchIndex = 0
 
                 let processWorld =
-                    { new WorldProcessor<unit, char list> with
+                    { new WorldProcessor<unit, unit, char list> with
                         member _.ProcessWorld (inputs, _vdomContext, state) =
                             // Process only batchSize events from this batch, then request Rerender
                             let batchSize =
@@ -472,6 +476,8 @@ module TestBatchProcessing =
                                 |> ProcessWorldResult.withRerender (toProcess - 1)
                             else
                                 ProcessWorldResult.make newState
+
+                        member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                     }
 
                 let vdom (_vdomContext : IVdomContext<_>) (_state : char list) =

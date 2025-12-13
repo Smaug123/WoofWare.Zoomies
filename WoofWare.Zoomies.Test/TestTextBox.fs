@@ -32,8 +32,8 @@ module TestTextBox =
 
     /// Common WorldProcessor for tests that use a TextBox with State.
     /// Handles TextEdit events by applying TextBoxHelpers.applyAction.
-    let textBoxProcessor : WorldProcessor<AppEvent, State> =
-        { new WorldProcessor<AppEvent, State> with
+    let textBoxProcessor : WorldProcessor<AppEvent, unit, State> =
+        { new WorldProcessor<AppEvent, unit, State> with
             member _.ProcessWorld (inputs, _renderState, state) =
                 let mutable newState = state
 
@@ -51,6 +51,8 @@ module TestTextBox =
                     | _ -> ()
 
                 ProcessWorldResult.make newState
+
+            member _.ProcessPostLayoutEvents (_, _, state) = state
         }
 
     [<Test>]
@@ -181,7 +183,7 @@ module TestTextBox =
             let resolver = ActivationResolver.none
 
             let processWorld =
-                { new WorldProcessor<AppEvent, ImmutableArray<_>> with
+                { new WorldProcessor<AppEvent, unit, ImmutableArray<_>> with
                     member _.ProcessWorld (inputs, renderState, state) =
                         let mutable newState = state.ToBuilder ()
 
@@ -191,6 +193,8 @@ module TestTextBox =
                             | _ -> ()
 
                         ProcessWorldResult.make (newState.ToImmutable ())
+
+                    member _.ProcessPostLayoutEvents (_, _, state) = state
                 }
 
             let clock = MockTime.make ()
@@ -774,8 +778,9 @@ Hello!|                                 |
                     ]
 
             let processWorld =
-                { new WorldProcessor<AppEvent, State> with
+                { new WorldProcessor<AppEvent, unit, State> with
                     member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_, _, state) = state
                 }
 
             let clock = MockTime.make ()

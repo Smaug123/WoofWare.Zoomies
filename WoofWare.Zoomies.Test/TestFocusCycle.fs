@@ -70,7 +70,7 @@ module TestFocusCycle =
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<_, State> with
+                { new WorldProcessor<_, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) =
                         let mutable newCheckboxes = state.Checkboxes
 
@@ -104,6 +104,8 @@ module TestFocusCycle =
                             {
                                 Checkboxes = newCheckboxes
                             }
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -374,7 +376,7 @@ module TestFocusCycle =
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<_, State> with
+                { new WorldProcessor<_, unit, State> with
                     member _.ProcessWorld (inputs, renderState, checkboxes) =
                         let mutable newCheckboxes = checkboxes.Checkboxes
 
@@ -406,6 +408,8 @@ module TestFocusCycle =
                             {
                                 Checkboxes = newCheckboxes
                             }
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -609,7 +613,7 @@ module TestFocusCycle =
                     Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, checkbox1, checkbox2)
 
             let processWorld =
-                { new WorldProcessor<_, bool> with
+                { new WorldProcessor<_, unit, bool> with
                     member _.ProcessWorld (inputs, _, renderCheckbox1) =
                         let mutable renderCheckbox1 = renderCheckbox1
 
@@ -622,6 +626,8 @@ module TestFocusCycle =
                             | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
 
                         ProcessWorldResult.make renderCheckbox1
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -735,7 +741,7 @@ module TestFocusCycle =
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<_, int> with
+                { new WorldProcessor<_, unit, int> with
                     member _.ProcessWorld (inputs, _, state) =
                         let mutable newState = state
 
@@ -748,6 +754,8 @@ module TestFocusCycle =
                             | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
 
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let mutable renderFocusable = 0
@@ -875,7 +883,7 @@ more      [☐]   |
                 Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 3, text, checkbox)
 
             let processWorld =
-                { new WorldProcessor<unit, FakeUnit> with
+                { new WorldProcessor<unit, unit, FakeUnit> with
                     member _.ProcessWorld (worldChanges, _, state) =
                         for change in worldChanges do
                             match change with
@@ -886,6 +894,8 @@ more      [☐]   |
                             | ApplicationEventException _ -> failwith "no exceptions possible"
 
                         ProcessWorldResult.make state
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -1059,7 +1069,7 @@ This is focusable text                                                          
                 )
 
             let processWorld =
-                { new WorldProcessor<unit, FakeUnit> with
+                { new WorldProcessor<unit, unit, FakeUnit> with
                     member _.ProcessWorld (worldChanges, _, state) =
                         for change in worldChanges do
                             match change with
@@ -1070,6 +1080,8 @@ This is focusable text                                                          
                             | ApplicationEventException _ -> failwith "no exceptions possible"
 
                         ProcessWorldResult.make state
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -1231,7 +1243,7 @@ This is focusable text                                                          
                 )
 
             let processWorld =
-                { new WorldProcessor<unit, FakeUnit> with
+                { new WorldProcessor<unit, unit, FakeUnit> with
                     member _.ProcessWorld (worldChanges, _, state) =
                         for change in worldChanges do
                             match change with
@@ -1242,6 +1254,8 @@ This is focusable text                                                          
                             | ApplicationEventException _ -> failwith "no exceptions possible"
 
                         ProcessWorldResult.make state
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None

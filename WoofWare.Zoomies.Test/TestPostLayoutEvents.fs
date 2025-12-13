@@ -5,6 +5,9 @@ open FsUnitTyped
 open NUnit.Framework
 open WoofWare.Zoomies
 
+[<Struct>]
+type NoState = | NoState
+
 type PostLayoutEvent = | ViewportHeightReported of height : int
 
 type PostLayoutState =
@@ -57,20 +60,21 @@ module TestPostLayoutEvents =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<PostLayoutEvent, PostLayoutState> with
-                    member _.ProcessWorld (inputs, _renderState, state) =
+                { new WorldProcessor<unit, PostLayoutEvent, PostLayoutState> with
+                    member _.ProcessWorld (_inputs, _renderState, state) = ProcessWorldResult.make state
+
+                    member _.ProcessPostLayoutEvents (events, _ctx, state) =
                         let mutable newState = state
 
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent (ViewportHeightReported h) ->
+                        for event in events do
+                            match event with
+                            | ViewportHeightReported h ->
                                 newState <-
                                     { newState with
                                         ReportedViewportHeight = Some h
                                     }
-                            | _ -> ()
 
-                        ProcessWorldResult.make newState
+                        newState
                 }
 
             let vdom (ctx : IVdomContext<PostLayoutEvent>) (_state : PostLayoutState) : Vdom<DesiredBounds> =
@@ -133,14 +137,15 @@ module TestPostLayoutEvents =
             let receivedHeights = ResizeArray<int> ()
 
             let processWorld =
-                { new WorldProcessor<PostLayoutEvent, PostLayoutState> with
-                    member _.ProcessWorld (inputs, _renderState, state) =
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent (ViewportHeightReported h) -> receivedHeights.Add h
-                            | _ -> ()
+                { new WorldProcessor<unit, PostLayoutEvent, PostLayoutState> with
+                    member _.ProcessWorld (_inputs, _renderState, state) = ProcessWorldResult.make state
 
-                        ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (events, _ctx, state) =
+                        for event in events do
+                            match event with
+                            | ViewportHeightReported h -> receivedHeights.Add h
+
+                        state
                 }
 
             let vdom (ctx : IVdomContext<PostLayoutEvent>) (_state : PostLayoutState) : Vdom<DesiredBounds> =
@@ -189,20 +194,21 @@ module TestPostLayoutEvents =
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 15)
 
             let processWorld =
-                { new WorldProcessor<PostLayoutEvent, PostLayoutState> with
-                    member _.ProcessWorld (inputs, _renderState, state) =
+                { new WorldProcessor<unit, PostLayoutEvent, PostLayoutState> with
+                    member _.ProcessWorld (_inputs, _renderState, state) = ProcessWorldResult.make state
+
+                    member _.ProcessPostLayoutEvents (events, _ctx, state) =
                         let mutable newState = state
 
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent (ViewportHeightReported h) ->
+                        for event in events do
+                            match event with
+                            | ViewportHeightReported h ->
                                 newState <-
                                     { newState with
                                         ReportedViewportHeight = Some h
                                     }
-                            | _ -> ()
 
-                        ProcessWorldResult.make newState
+                        newState
                 }
 
             let vdom (ctx : IVdomContext<PostLayoutEvent>) (_state : PostLayoutState) : Vdom<DesiredBounds> =
@@ -279,25 +285,26 @@ module TestPostLayoutEvents =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<ChainedEvent, ChainedStabilizationState> with
-                    member _.ProcessWorld (inputs, _renderState, state) =
+                { new WorldProcessor<unit, ChainedEvent, ChainedStabilizationState> with
+                    member _.ProcessWorld (_inputs, _renderState, state) = ProcessWorldResult.make state
+
+                    member _.ProcessPostLayoutEvents (events, _ctx, state) =
                         let mutable newState = state
 
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent Increment ->
+                        for event in events do
+                            match event with
+                            | Increment ->
                                 newState <-
                                     { newState with
                                         Counter = newState.Counter + 1
                                     }
-                            | WorldStateChange.ApplicationEvent MarkComplete ->
+                            | MarkComplete ->
                                 newState <-
                                     { newState with
                                         StabilizationComplete = true
                                     }
-                            | _ -> ()
 
-                        ProcessWorldResult.make newState
+                        newState
                 }
 
             let targetCount = 5
@@ -372,20 +379,21 @@ module TestPostLayoutEvents =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<InfiniteLoopEvent, InfiniteLoopState> with
-                    member _.ProcessWorld (inputs, _renderState, state) =
+                { new WorldProcessor<unit, InfiniteLoopEvent, InfiniteLoopState> with
+                    member _.ProcessWorld (_inputs, _renderState, state) = ProcessWorldResult.make state
+
+                    member _.ProcessPostLayoutEvents (events, _ctx, state) =
                         let mutable newState = state
 
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent KeepGoing ->
+                        for event in events do
+                            match event with
+                            | KeepGoing ->
                                 newState <-
                                     { newState with
                                         IterationCount = newState.IterationCount + 1
                                     }
-                            | _ -> ()
 
-                        ProcessWorldResult.make newState
+                        newState
                 }
 
             let vdom (ctx : IVdomContext<InfiniteLoopEvent>) (_state : InfiniteLoopState) : Vdom<DesiredBounds> =
@@ -488,17 +496,12 @@ module TestPostLayoutEvents =
             let haveFrameworkHandleFocus _ = false
 
             let processWorld =
-                { new WorldProcessor<OrderingEvent, OrderingState> with
+                { new WorldProcessor<unit, OrderingEvent, OrderingState> with
                     member _.ProcessWorld (inputs, _renderState, state) =
                         let mutable newState = state
 
                         for input in inputs do
                             match input with
-                            | WorldStateChange.ApplicationEvent evt ->
-                                newState <-
-                                    { newState with
-                                        EventLog = newState.EventLog @ [ evt ]
-                                    }
                             | WorldStateChange.Keystroke k when k.Key = ConsoleKey.A ->
                                 newState <-
                                     { newState with
@@ -507,6 +510,17 @@ module TestPostLayoutEvents =
                             | _ -> ()
 
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (events, _ctx, state) =
+                        let mutable newState = state
+
+                        for evt in events do
+                            newState <-
+                                { newState with
+                                    EventLog = newState.EventLog @ [ evt ]
+                                }
+
+                        newState
                 }
 
             let vdom (ctx : IVdomContext<OrderingEvent>) (state : OrderingState) : Vdom<DesiredBounds> =
@@ -589,21 +603,21 @@ module TestPostLayoutEvents =
             let receivedEvents = ResizeArray<int> ()
 
             let processWorld =
-                { new WorldProcessor<int, unit> with
-                    member _.ProcessWorld (inputs, _renderState, state) =
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent n -> receivedEvents.Add n
-                            | _ -> ()
+                { new WorldProcessor<unit, int, NoState> with
+                    member _.ProcessWorld (_inputs, _renderState, state) = ProcessWorldResult.make state
 
-                        ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (events, _ctx, state) =
+                        for n in events do
+                            receivedEvents.Add n
+
+                        state
                 }
 
-            let vdom (ctx : IVdomContext<int>) (_state : unit) : Vdom<DesiredBounds> = orderedComponent ctx
+            let vdom (ctx : IVdomContext<int>) (_state : NoState) : Vdom<DesiredBounds> = orderedComponent ctx
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.processNoChanges () renderState processWorld vdom |> ignore
+            App.processNoChanges NoState renderState processWorld vdom |> ignore<NoState>
 
             // Events should be received in the order they were posted
             receivedEvents |> Seq.toList |> shouldEqual [ 1 ; 2 ; 3 ; 4 ; 5 ]
@@ -642,15 +656,16 @@ module TestPostLayoutEvents =
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
 
             let processWorld =
-                { new WorldProcessor<StateUnchangedEvent, int> with
-                    member _.ProcessWorld (inputs, _renderState, state) =
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent NoOpEvent -> eventProcessCount <- eventProcessCount + 1
-                            | _ -> ()
+                { new WorldProcessor<unit, StateUnchangedEvent, int> with
+                    member _.ProcessWorld (_inputs, _renderState, state) = ProcessWorldResult.make state
+
+                    member _.ProcessPostLayoutEvents (events, _ctx, state) =
+                        for event in events do
+                            match event with
+                            | NoOpEvent -> eventProcessCount <- eventProcessCount + 1
 
                         // Return the same state - no change
-                        ProcessWorldResult.make state
+                        state
                 }
 
             let vdom (ctx : IVdomContext<StateUnchangedEvent>) (_state : int) : Vdom<DesiredBounds> = noOpComponent ctx
@@ -730,7 +745,7 @@ module TestPostLayoutEvents =
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<ActivationEvent, ActivationState> with
+                { new WorldProcessor<ActivationEvent, ActivationEvent, ActivationState> with
                     member _.ProcessWorld (inputs, _renderState, state) =
                         let mutable newState = state
 
@@ -742,7 +757,16 @@ module TestPostLayoutEvents =
                                         ActivationCount = newState.ActivationCount + 1
                                         EventSequence = newState.EventSequence @ [ "activated" ]
                                     }
-                            | WorldStateChange.ApplicationEvent (PostLayoutFromActivation n) ->
+                            | _ -> ()
+
+                        ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (events, _ctx, state) =
+                        let mutable newState = state
+
+                        for event in events do
+                            match event with
+                            | PostLayoutFromActivation n ->
                                 newState <-
                                     { newState with
                                         PostLayoutCount = newState.PostLayoutCount + 1
@@ -750,7 +774,7 @@ module TestPostLayoutEvents =
                                     }
                             | _ -> ()
 
-                        ProcessWorldResult.make newState
+                        newState
                 }
 
             let vdom (ctx : IVdomContext<ActivationEvent>) (state : ActivationState) : Vdom<DesiredBounds> =
@@ -848,27 +872,28 @@ module TestPostLayoutEvents =
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
 
             let processWorld =
-                { new WorldProcessor<RerenderRequestEvent, RerenderRequestState> with
-                    member _.ProcessWorld (inputs, _renderState, state) =
+                { new WorldProcessor<unit, RerenderRequestEvent, RerenderRequestState> with
+                    member _.ProcessWorld (_inputs, _renderState, state) = ProcessWorldResult.make state
+
+                    member _.ProcessPostLayoutEvents (events, _ctx, state) =
                         let mutable newState = state
 
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent EventWithRerender ->
+                        for event in events do
+                            match event with
+                            | EventWithRerender ->
                                 newState <-
                                     { newState with
                                         EventsProcessed = newState.EventsProcessed + 1
                                         RequestedRerenderDuringPostLayout = true
                                     }
-                            | WorldStateChange.ApplicationEvent EventWithoutRerender ->
+                            | EventWithoutRerender ->
                                 newState <-
                                     { newState with
                                         EventsProcessed = newState.EventsProcessed + 1
                                     }
-                            | _ -> ()
 
-                        // Request a rerender - this should be ignored by stabilization
-                        ProcessWorldResult.make newState |> ProcessWorldResult.withRerender 0
+                        // ProcessPostLayoutEvents can't request a rerender - this is by design
+                        newState
                 }
 
             let vdom (ctx : IVdomContext<RerenderRequestEvent>) (state : RerenderRequestState) : Vdom<DesiredBounds> =
@@ -889,4 +914,156 @@ module TestPostLayoutEvents =
             // no more events were posted on subsequent renders, stabilization exited.
             // This is documented behavior - RequestRerender is ignored in stabilization.
             renderCount |> shouldEqual 2 // Initial render + one stabilization render
+        }
+
+    type IntermediateFrameEvent = | SwitchToFinalState
+
+    type IntermediateFrameState =
+        {
+            ShowFinal : bool
+        }
+
+        static member Initial =
+            {
+                ShowFinal = false
+            }
+
+    [<Test>]
+    let ``intermediate frames during stabilization are not painted`` () =
+        task {
+            // Track flush events and what was in the buffer at each flush
+            let flushSnapshots = ResizeArray<string> ()
+
+            // Simulate a terminal buffer - writes to same position overwrite
+            let terminalBuffer = Array2D.create 10 80 ' '
+            let mutable cursorX = 0
+            let mutable cursorY = 0
+
+            // Create a console that simulates a real terminal buffer
+            let console : IConsole =
+                {
+                    BackgroundColor = fun () -> ConsoleColor.Black
+                    ForegroundColor = fun () -> ConsoleColor.White
+                    WindowWidth = fun () -> 80
+                    WindowHeight = fun () -> 10
+                    ColorMode = ColorMode.Color
+                    Execute =
+                        fun op ->
+                            match op with
+                            | TerminalOp.MoveCursor (x, y) ->
+                                cursorX <- x
+                                cursorY <- y
+                            | TerminalOp.WriteRun (text, _, _) ->
+                                for ch in text do
+                                    if cursorY >= 0 && cursorY < 10 && cursorX >= 0 && cursorX < 80 then
+                                        terminalBuffer.[cursorY, cursorX] <- ch
+                                        cursorX <- cursorX + 1
+                            | TerminalOp.ClearScreen ->
+                                for y = 0 to 9 do
+                                    for x = 0 to 79 do
+                                        terminalBuffer.[y, x] <- ' '
+                            | _ -> ()
+                    Flush =
+                        fun () ->
+                            // On flush, snapshot the current buffer content
+                            let sb = System.Text.StringBuilder ()
+
+                            for y = 0 to 9 do
+                                for x = 0 to 79 do
+                                    sb.Append terminalBuffer.[y, x] |> ignore
+
+                            flushSnapshots.Add (sb.ToString ())
+                }
+
+            // Component that shows "X" initially, then "Y" after state changes
+            let component'
+                (ctx : IVdomContext<IntermediateFrameEvent>)
+                (state : IntermediateFrameState)
+                : Vdom<DesiredBounds>
+                =
+                let measure (_constraints : MeasureConstraints) =
+                    {
+                        MinWidth = 1
+                        PreferredWidth = 1
+                        MaxWidth = None
+                        MinHeightForWidth = fun _ -> 1
+                        PreferredHeightForWidth = fun _ -> 1
+                        MaxHeightForWidth = fun _ -> None
+                    }
+
+                let render (_bounds : Rectangle) =
+                    if state.ShowFinal then
+                        Vdom.textContent "Y"
+                    else
+                        // First render: show "X" and post event to switch state
+                        ctx.PostLayoutEvent SwitchToFinalState
+                        Vdom.textContent "X"
+
+                Vdom.flexibleContent measure render
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let haveFrameworkHandleFocus _ = false
+
+            let processWorld =
+                { new WorldProcessor<unit, IntermediateFrameEvent, IntermediateFrameState> with
+                    member _.ProcessWorld (_inputs, _renderState, state) = ProcessWorldResult.make state
+
+                    member _.ProcessPostLayoutEvents (events, _ctx, state) =
+                        let mutable newState = state
+
+                        for event in events do
+                            match event with
+                            | SwitchToFinalState ->
+                                newState <-
+                                    {
+                                        ShowFinal = true
+                                    }
+
+                        newState
+                }
+
+            let vdom
+                (ctx : IVdomContext<IntermediateFrameEvent>)
+                (state : IntermediateFrameState)
+                : Vdom<DesiredBounds>
+                =
+                component' ctx state
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            // Run one pump cycle - this will:
+            // 1. Initial render: component shows "X", posts SwitchToFinalState event
+            // 2. Stabilization: state changes to ShowFinal=true, re-render shows "Y"
+            // 3. Only after stabilization completes should we flush
+            let _finalState =
+                App.pumpOnce
+                    worldFreezer
+                    IntermediateFrameState.Initial
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    ActivationResolver.none
+                    (fun () -> false)
+
+            // There should be exactly one flush (after stabilization completes)
+            if flushSnapshots.Count <> 1 then
+                failwith $"Expected exactly 1 flush but got {flushSnapshots.Count}"
+
+            // The single flushed frame should contain "Y" (final state) but not "X" (intermediate state)
+            let flushedFrame = flushSnapshots.[0]
+
+            if flushedFrame.Contains "X" then
+                failwith $"Intermediate frame was painted! Flushed content contained 'X': {flushedFrame}"
+
+            if not (flushedFrame.Contains "Y") then
+                failwith $"Final frame was not painted! Flushed content did not contain 'Y': {flushedFrame}"
         }

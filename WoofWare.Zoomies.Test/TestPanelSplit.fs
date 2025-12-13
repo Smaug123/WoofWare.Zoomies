@@ -110,11 +110,13 @@ module TestPanelSplit =
                     Vdom.textContent "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" |> Vdom.bordered
 
             let processWorld =
-                { new WorldProcessor<unit, bool> with
+                { new WorldProcessor<unit, unit, bool> with
                     member _.ProcessWorld (worldChanges, _, state) =
                         // Toggle state on any keystroke
                         let newState = if worldChanges.Length > 0 then not state else state
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_, _, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -688,10 +690,12 @@ B|
                     Vdom.panelSplitProportion (SplitDirection.Vertical, 0.25, left, right)
 
             let processWorld =
-                { new WorldProcessor<unit, bool> with
+                { new WorldProcessor<unit, unit, bool> with
                     member _.ProcessWorld (worldChanges, _, state) =
                         let newState = if worldChanges.Length > 0 then not state else state
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_, _, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -791,10 +795,12 @@ AAA                 right                                                       
                 split |> Vdom.withKey splitKey |> Vdom.bordered
 
             let processWorld =
-                { new WorldProcessor<unit, bool> with
+                { new WorldProcessor<unit, unit, bool> with
                     member _.ProcessWorld (worldChanges, _, state) =
                         let newState = if worldChanges.Length > 0 then not state else state
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_, _, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -866,10 +872,12 @@ AAA                 right                                                       
                     Vdom.panelSplitProportion (SplitDirection.Vertical, 0.3, left, right)
 
             let processWorld =
-                { new WorldProcessor<unit, bool> with
+                { new WorldProcessor<unit, unit, bool> with
                     member _.ProcessWorld (worldChanges, _, state) =
                         let newState = if worldChanges.Length > 0 then not state else state
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_, _, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
@@ -1377,11 +1385,13 @@ Bottom              |
                     Vdom.panelSplitAuto (SplitDirection.Horizontal, top, Vdom.empty)
 
             let processWorld =
-                { new WorldProcessor<unit, bool> with
+                { new WorldProcessor<unit, unit, bool> with
                     member _.ProcessWorld (worldChanges, _, state) =
                         // Toggle state when any key is pressed
                         let newState = if worldChanges.Length > 0 then not state else state
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_, _, state) = state
                 }
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
