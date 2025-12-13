@@ -21,13 +21,14 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - name: Install Nix
+        uses: cachix/install-nix-action@v30
         with:
-          dotnet-version: '9.0'
-      - run: dotnet tool restore
-      - run: dotnet build -c Release
-      - run: dotnet fsdocs build --properties Configuration=Release
-      - run: bash scripts/generate-llm-docs.sh
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+      - run: nix develop --command dotnet build -c Release
+      - run: nix run .#fsdocs -- build --properties Configuration=Release
+      - run: nix develop --command bash scripts/generate-llm-docs.sh
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ./output
