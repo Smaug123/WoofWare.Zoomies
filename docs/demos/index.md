@@ -13,7 +13,7 @@ These animated demos show WoofWare.Zoomies components in action. Each demo loops
 
 Demonstrates keyboard navigation between checkboxes and toggling their state with the Space key.
 
-![Checkbox Toggle Demo](../../output/demos/checkbox-toggle.gif)
+![Checkbox Toggle Demo](checkbox-toggle.gif)
 
 **Interactions shown:**
 - Tab to navigate between focusable elements
