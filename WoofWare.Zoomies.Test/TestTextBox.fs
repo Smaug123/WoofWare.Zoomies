@@ -52,7 +52,7 @@ module TestTextBox =
 
                 ProcessWorldResult.make newState
 
-            member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
+            member _.ProcessPostLayoutEvents (_, _, state) = state
         }
 
     [<Test>]
@@ -194,7 +194,7 @@ module TestTextBox =
 
                         ProcessWorldResult.make (newState.ToImmutable ())
 
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
+                    member _.ProcessPostLayoutEvents (_, _, state) = state
                 }
 
             let clock = MockTime.make ()
@@ -779,8 +779,8 @@ Hello!|                                 |
 
             let processWorld =
                 { new WorldProcessor<AppEvent, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
+                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_, _, state) = state
                 }
 
             let clock = MockTime.make ()

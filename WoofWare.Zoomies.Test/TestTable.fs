@@ -18,8 +18,7 @@ module TestTable =
     let tearDown () =
         GlobalBuilderConfig.updateAllSnapshots ()
 
-    [<Struct>]
-    type State = | NoState
+    type State = unit
 
     [<Test>]
     let ``empty table`` () =
@@ -40,24 +39,19 @@ module TestTable =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                NoState
+                ()
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
-            |> ignore<State>
 
             expect {
                 snapshot
@@ -97,24 +91,19 @@ module TestTable =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                NoState
+                ()
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
-            |> ignore<State>
 
             expect {
                 snapshot
@@ -155,24 +144,19 @@ A2B2                |
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                NoState
+                ()
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
-            |> ignore<State>
 
             expect {
                 snapshot
@@ -212,24 +196,19 @@ Bob  25                       |
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                NoState
+                ()
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
-            |> ignore<State>
 
             expect {
                 snapshot
@@ -269,24 +248,19 @@ A2        B2        |
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                NoState
+                ()
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
-            |> ignore<State>
 
             expect {
                 snapshot
@@ -327,24 +301,19 @@ A        B                    |
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                NoState
+                ()
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
-            |> ignore<State>
 
             expect {
                 snapshot
@@ -393,24 +362,19 @@ Row3                     |
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                NoState
+                ()
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
-            |> ignore<State>
 
             expect {
                 snapshot
@@ -452,24 +416,19 @@ A    B                        |
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                NoState
+                ()
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
-            |> ignore<State>
 
             expect {
                 snapshot
@@ -510,24 +469,19 @@ A           B       |
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                NoState
+                ()
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
-            |> ignore<State>
 
             expect {
                 snapshot
@@ -562,24 +516,19 @@ XY                  |
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                NoState
+                ()
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
-            |> ignore<State>
 
             expect {
                 snapshot
@@ -622,24 +571,19 @@ Single              |
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                NoState
+                ()
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
-            |> ignore<State>
 
             expect {
                 snapshot
@@ -687,24 +631,19 @@ Row3                |
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                NoState
+                ()
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
-            |> ignore<State>
 
             expect {
                 snapshot
@@ -737,7 +676,7 @@ Bottom              |
                         [| Vdom.textContent "Prop" |]
                     |]
                     [||]
-                    [| Row.Fixed 2 ; Row.Content ; Row.Fixed 1 |]
+                    [| Row.Fixed 2 ; Row.Content ; Row.Proportion 1.0 |]
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 10)
 
@@ -752,24 +691,19 @@ Bottom              |
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                NoState
+                ()
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
-            |> ignore<State>
 
             expect {
                 snapshot
@@ -817,24 +751,19 @@ Prop                |
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                NoState
+                ()
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
-            |> ignore<State>
 
             expect {
                 snapshot
@@ -851,11 +780,10 @@ Row2                |
         }
 
     [<Test>]
-    let ``table with simple keyed cells`` () =
+    let ``table with simple unkeyed cells`` () =
         task {
             let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
-                // Table internally assigns keys to cells based on (row, col) position
-                // This test verifies that tables handle cell content correctly
+                // This test verifies basic table rendering with simple content-sized cells
                 Table.makeContentSized
                     (NodeKey.make "t_")
                     [| [| Vdom.textContent "Cell1" |] ; [| Vdom.textContent "Cell2" |] |]
@@ -873,24 +801,19 @@ Row2                |
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                NoState
+                ()
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
-            |> ignore<State>
 
             expect {
                 snapshot
@@ -936,24 +859,19 @@ Cell2               |
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                NoState
+                ()
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
-            |> ignore<State>
 
             expect {
                 snapshot
@@ -997,24 +915,19 @@ X    Y                        |
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                NoState
+                ()
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
-            |> ignore<State>
 
             expect {
                 snapshot
@@ -1058,24 +971,19 @@ Data1   Data2  |
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                NoState
+                ()
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
-            |> ignore<State>
 
             expect {
                 snapshot
@@ -1124,24 +1032,19 @@ A B                 |
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                NoState
+                ()
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
-            |> ignore<State>
 
             expect {
                 snapshot
@@ -1183,24 +1086,19 @@ Col1          Col2          C3|
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                NoState
+                ()
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
-            |> ignore<State>
 
             expect {
                 snapshot
@@ -1239,24 +1137,19 @@ A    B C                      |
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                NoState
+                ()
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
-            |> ignore<State>
 
             expect {
                 snapshot
@@ -1297,24 +1190,19 @@ X  Y                |
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                NoState
+                ()
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
-            |> ignore<State>
 
             // After sanitization all become Column.Proportion 0.01, dividing space equally
             expect {
@@ -1361,24 +1249,19 @@ A         B         C         |
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                NoState
+                ()
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
-            |> ignore<State>
 
             expect {
                 snapshot
@@ -1424,24 +1307,19 @@ X      Y       Z              |
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                NoState
+                ()
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
-            |> ignore<State>
 
             expect {
                 snapshot
@@ -1487,24 +1365,19 @@ gColumngColumnngColu|
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                NoState
+                ()
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
-            |> ignore<State>
 
             expect {
                 snapshot
@@ -1808,10 +1681,10 @@ module TestTableMeasurements =
 
             let measured = VdomBounds.measure table constraints
 
-            // Table should report MinWidth = sum of column mins (~6 + 7 = ~13)
+            // Table should report MinWidth = sum of column mins (6 + 7 = 13)
+            // "nicely" is 6 chars (longest word in autoCell), "PropCol" is 7 chars
             let tableMinWidth = measured.MinWidth
-            // MinWidth should be approximately 13 (longest word in each column)
-            (tableMinWidth >= 10 && tableMinWidth <= 15) |> shouldEqual true
+            tableMinWidth |> shouldEqual 13
 
             // Now render the table at exactly its MinWidth
             // When allocated exactly MinWidth, BOTH columns should get at least their minimums
@@ -1832,11 +1705,7 @@ module TestTableMeasurements =
                     [| Column.Content ; Column.Proportion 1.0 |]
                     [||]
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -1849,7 +1718,7 @@ module TestTableMeasurements =
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
-            |> ignore<State>
+            |> ignore
 
             let output = ConsoleHarness.toString terminal
 
@@ -1935,8 +1804,7 @@ module TestTableMeasurements =
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestTablePerformance =
-    [<Struct>]
-    type State = | NoState
+    type State = unit
 
     [<Test>]
     let ``10x10 table renders without errors`` () =
@@ -1966,25 +1834,20 @@ module TestTablePerformance =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             // Just verify it renders without throwing
             App.pumpOnce
                 worldFreezer
-                NoState
+                ()
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
-            |> ignore<State>
 
             // Verify first row rendered
             let output = ConsoleHarness.toString terminal
@@ -2019,24 +1882,19 @@ module TestTablePerformance =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                NoState
+                ()
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
-            |> ignore<State>
 
             let output = ConsoleHarness.toString terminal
             output |> shouldContainText "0"
@@ -2070,169 +1928,20 @@ module TestTablePerformance =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
-                NoState
+                ()
                 haveFrameworkHandleFocus
                 renderState
                 processWorld
                 vdom
                 ActivationResolver.none
                 (fun () -> false)
-            |> ignore<State>
 
             let output = ConsoleHarness.toString terminal
             output |> shouldContainText "C0"
         }
-
-[<TestFixture>]
-[<Parallelizable(ParallelScope.All)>]
-module TestVdomMeasure =
-    [<Test>]
-    let ``VdomBounds.measure returns correct measurements for text content`` () =
-        let vdom = Vdom.textContent "Hello World"
-
-        let constraints =
-            {
-                MaxWidth = 100
-                MaxHeight = 100
-            }
-
-        let measured = VdomBounds.measure vdom constraints
-
-        measured.MinWidth |> shouldEqual 5 // "World" is the longest word
-        measured.PreferredWidth |> shouldEqual 11 // "Hello World" full length
-        measured.MinHeightForWidth 11 |> shouldEqual 1
-        measured.PreferredHeightForWidth 11 |> shouldEqual 1
-
-    [<Test>]
-    let ``VdomBounds.measure handles text wrapping`` () =
-        let vdom = Vdom.textContent "Hello World Test"
-
-        let constraints =
-            {
-                MaxWidth = 100
-                MaxHeight = 100
-            }
-
-        let measured = VdomBounds.measure vdom constraints
-
-        measured.MinWidth |> shouldEqual 5 // "Hello" or "World" is the longest word
-        measured.PreferredWidth |> shouldEqual 16 // Full text length
-
-        // When constrained to 10 chars, should wrap
-        let heightAt10 = measured.PreferredHeightForWidth 10
-
-        (heightAt10 > 1) |> shouldEqual true
-
-    [<Test>]
-    let ``VdomBounds.measure handles bordered content`` () =
-        let innerVdom = Vdom.textContent "Test"
-        let vdom = Vdom.bordered innerVdom
-
-        let constraints =
-            {
-                MaxWidth = 100
-                MaxHeight = 100
-            }
-
-        let measured = VdomBounds.measure vdom constraints
-
-        // Border adds 2 to width (1 on each side)
-        measured.MinWidth |> shouldEqual 6 // 4 + 2 for border
-        measured.PreferredWidth |> shouldEqual 6 // 4 + 2 for border
-
-        // Border adds 2 to height
-        measured.MinHeightForWidth 10 |> shouldEqual 3 // 1 + 2 for border
-
-    [<Test>]
-    let ``VdomBounds.measure handles panel splits`` () =
-        let left = Vdom.textContent "Left"
-        let right = Vdom.textContent "Right"
-
-        let leftKeyed = Vdom.withKey (NodeKey.make "left") left
-        let rightKeyed = Vdom.withKey (NodeKey.make "right") right
-
-        let vdom = Vdom.panelSplitAuto (SplitDirection.Vertical, leftKeyed, rightKeyed)
-
-        let constraints =
-            {
-                MaxWidth = 100
-                MaxHeight = 100
-            }
-
-        let measured = VdomBounds.measure vdom constraints
-
-        // Auto split: MinWidth is sum of both
-        measured.MinWidth |> shouldEqual 9 // 4 + 5 = 9
-        measured.PreferredWidth |> shouldEqual 9
-
-    [<Test>]
-    let ``VdomBounds.measure handles empty vdom`` () =
-        let vdom = Vdom.empty
-
-        let constraints =
-            {
-                MaxWidth = 100
-                MaxHeight = 100
-            }
-
-        let measured = VdomBounds.measure vdom constraints
-
-        measured.MinWidth |> shouldEqual 0
-        measured.PreferredWidth |> shouldEqual 0
-        measured.MinHeightForWidth 10 |> shouldEqual 0
-        measured.PreferredHeightForWidth 10 |> shouldEqual 0
-
-    [<Test>]
-    let ``VdomBounds.measure respects max width constraint`` () =
-        let vdom = Vdom.textContent "This is a very long text that exceeds constraints"
-
-        let constraints =
-            {
-                MaxWidth = 20
-                MaxHeight = 100
-            }
-
-        let measured = VdomBounds.measure vdom constraints
-
-        // Should be clamped to max width
-        (measured.PreferredWidth <= 20) |> shouldEqual true
-        (measured.MinWidth <= 20) |> shouldEqual true
-
-    [<Test>]
-    let ``VdomBounds.measure works with FlexibleContent`` () =
-        let customMeasure (_ : MeasureConstraints) : MeasuredSize =
-            {
-                MinWidth = 5
-                PreferredWidth = 10
-                MaxWidth = Some 20
-                MinHeightForWidth = fun _ -> 2
-                PreferredHeightForWidth = fun _ -> 3
-                MaxHeightForWidth = fun _ -> Some 5
-            }
-
-        let customRender (_ : Rectangle) : Vdom<DesiredBounds> = Vdom.textContent "Custom"
-
-        let vdom = Vdom.flexibleContent customMeasure customRender
-
-        let constraints =
-            {
-                MaxWidth = 100
-                MaxHeight = 100
-            }
-
-        let measured = VdomBounds.measure vdom constraints
-
-        measured.MinWidth |> shouldEqual 5
-        measured.PreferredWidth |> shouldEqual 10
-        measured.MinHeightForWidth 15 |> shouldEqual 2
-        measured.PreferredHeightForWidth 15 |> shouldEqual 3

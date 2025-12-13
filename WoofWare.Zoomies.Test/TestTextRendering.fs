@@ -33,11 +33,7 @@ module TestTextRendering =
                 // Split with 0.5 proportion, terminal has width 1, so left gets 0 width
                 Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, leftText, rightText)
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, FakeUnit> with
-                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let world = MockWorld.make ()
 
@@ -101,11 +97,7 @@ r|
                 else
                     Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, leftText, Vdom.withKey textKey rightText)
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, FakeUnit> with
-                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let world = MockWorld.make ()
 
@@ -174,11 +166,7 @@ r|
                 let bottom = Vdom.textContent "bottom"
                 Vdom.panelSplitAuto (SplitDirection.Horizontal, text, bottom)
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, FakeUnit> with
-                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -230,11 +218,7 @@ bottom    |
                 // Text with CRLF line endings - the \r should not be rendered as a visible character
                 Vdom.textContent "Line1\r\nLine2\r\nLine3"
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, FakeUnit> with
-                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -281,11 +265,7 @@ Line3               |
                 // Text with old Mac-style CR line endings - should be treated as newlines
                 Vdom.textContent "Line1\rLine2\rLine3"
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, FakeUnit> with
-                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -332,11 +312,7 @@ Line3               |
                 // Text with CRLF line endings and Centered alignment
                 Vdom.textContent ("AAA\r\nBBB\r\nCCC", alignment = ContentAlignment.Centered)
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, FakeUnit> with
-                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -383,11 +359,7 @@ Line3               |
                 // Text with old Mac-style CR line endings and Centered alignment
                 Vdom.textContent ("AAA\rBBB\rCCC", alignment = ContentAlignment.Centered)
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, FakeUnit> with
-                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -448,11 +420,7 @@ Line3               |
                 let footer = Vdom.textContent "Footer"
                 Vdom.panelSplitAuto (SplitDirection.Horizontal, text, footer)
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, FakeUnit> with
-                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -511,11 +479,7 @@ Footer              |
                 let footer = Vdom.textContent "Footer"
                 Vdom.panelSplitAuto (SplitDirection.Horizontal, text, footer)
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, FakeUnit> with
-                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -565,11 +529,7 @@ Footer              |
                 // Text that exceeds width - with wrap=true (default), it wraps
                 Vdom.textContent ("Hello World, this is a long text", wrap = true)
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, FakeUnit> with
-                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -616,11 +576,7 @@ xt        |
                 // Text that exceeds width - with wrap=false, it truncates
                 Vdom.textContent ("Hello World, this is a long text", wrap = false)
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, FakeUnit> with
-                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -667,11 +623,7 @@ Hello Worl|
                 // Multi-line text with wrap=false - each line truncates independently
                 Vdom.textContent ("First line is long\nSecond is too\nShort", wrap = false)
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, FakeUnit> with
-                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -725,11 +677,7 @@ Short     |
                 let footer = Vdom.textContent "Footer"
                 Vdom.panelSplitAuto (SplitDirection.Horizontal, text, footer)
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, FakeUnit> with
-                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -782,11 +730,7 @@ Footer    |
                 let rightText = Vdom.textContent (longText, wrap = false)
                 Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, leftText, rightText)
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, FakeUnit> with
-                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -838,11 +782,7 @@ here                |
                 //                 "UVWXYZ" (6 chars, centered = offset 7)
                 Vdom.textContent ("ABCDEFGHIJKLMNOPQRSTUVWXYZ", alignment = ContentAlignment.Centered, wrap = true)
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, FakeUnit> with
-                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -891,11 +831,7 @@ ABCDEFGHIJKLMNOPQRST|
                 // Long text with wrap=false and Centered alignment - should truncate
                 Vdom.textContent ("ABCDEFGHIJKLMNOPQRSTUVWXYZ", alignment = ContentAlignment.Centered, wrap = false)
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, FakeUnit> with
-                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -946,11 +882,7 @@ ABCDEFGHIJKLMNOPQRST|
                 // Line 3: "End" (3 chars) - fits, centered
                 Vdom.textContent ("Short\nThis is too long\nEnd", alignment = ContentAlignment.Centered, wrap = true)
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, FakeUnit> with
-                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 

@@ -44,13 +44,9 @@ module TestAppRun =
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ctx : IVdomContext<_>) (_state : NoState) : Vdom<DesiredBounds> = Vdom.empty
+            let vdom (_ctx : IVdomContext<_>) (_state : unit) : Vdom<DesiredBounds> = Vdom.empty
 
-            let processWorld (_bridge : IWorldBridge<unit>) =
-                { new WorldProcessor<unit, unit, NoState> with
-                    member _.ProcessWorld (_inputs, _renderState, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let processWorld (_bridge : IWorldBridge<unit>) = WorldProcessor.passthrough
 
             let resolver = ActivationResolver.none
 
@@ -63,7 +59,7 @@ module TestAppRun =
                     clock.GetUtcNow
                     ctrlCHandler
                     worldFreezer
-                    NoState
+                    ()
                     (fun _ -> false)
                     processWorld
                     vdom
