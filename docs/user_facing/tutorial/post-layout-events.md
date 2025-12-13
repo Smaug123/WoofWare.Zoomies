@@ -182,7 +182,7 @@ let make (key : NodeKey) (cursor : int) (selectedItems : int Set) (items : unit[
         // At some point I intend reworking node keys so you don't have to lie.
         // For now, we use `-1` because no table is ever going to have a `-1`th
         // row, so this is never going to collide with any other key.
-        let tableKey = TableKey.makeTableCellKey key (-1) None None None
+        let tableKey = NodeKey.makeTableCellKey key (-1) None None None
 
         // Table cells are a ragged array of `Vdom`s.
         let cells =
