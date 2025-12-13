@@ -8,7 +8,7 @@
     <OtherFlags>$(OtherFlags) --reflectionfree</OtherFlags>
     <WarnOn>FS3559</WarnOn>
     <PackageId>WoofWare.Zoomies</PackageId>
-    <PackageProjectUrl>https://Smaug123.github.io/WoofWare.Zoomies</PackageProjectUrl>
+    <PackageProjectUrl>https://smaug123.github.io/WoofWare.Zoomies</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Smaug123/WoofWare.Zoomies</RepositoryUrl>
     <Authors>PatrickStevens</Authors>
     <Copyright>Copyright (c) Patrick Stevens 2025</Copyright>
