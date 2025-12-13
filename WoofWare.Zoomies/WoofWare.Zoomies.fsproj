@@ -14,7 +14,6 @@
     <Copyright>Copyright (c) Patrick Stevens 2025</Copyright>
     <Description>An immediate-mode declarative terminal user interface framework built around manipulating virtual DOMs.</Description>
     <RepositoryType>git</RepositoryType>
-    <RepositoryUrl>https://github.com/Smaug123/WoofWare.Zoomies</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>fsharp;tui;terminal;immediate;vdom;interface;console</PackageTags>

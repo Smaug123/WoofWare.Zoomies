@@ -52,4 +52,4 @@ The subscription pipes `ApplicationEvent`s into the WoofWare.Zoomies world, givi
 ### Example: reacting to your own layout
 
 You can implement a virtualised list (which has to know what is displayed and what is not) by posting events to yourself *during render* (after you know exactly what you're displaying), which you handle in `WorldProcessor.ProcessPostLayoutEvents`.
-See the [post-layout events tutorial](../tutorial/post-layout-events.md) to understand the mechanics of this.
+See the [post-layout events tutorial](../user_facing/tutorial/post-layout-events.md) to understand the mechanics of this.

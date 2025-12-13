@@ -39,4 +39,4 @@ Ultimately, the framework will incorporate something like Jane Street's Bonsai f
 
 ## Licence
 
-MIT. See [LICENSE.md](https://github.com/Smaug123/WoofWare.Zoomies3/blob/main/LICENSE.md).
+MIT. See [LICENSE.md](https://github.com/Smaug123/WoofWare.Zoomies/blob/main/LICENSE.md).

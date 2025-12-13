@@ -26,7 +26,7 @@ You can force a rerender by returning a `ProcessWorldResult` that has `ProcessWo
 This indicates to the framework that you have only partially processed the `WorldStateChange` stream, and will cause a rerender before you are immediately handed the rest of the stream again (that you told us you didn't process).
 (You won't receive any events that you've already processed: the input `Span` starts from the first index you told us was unprocessed.)
 
-# Example: correctly reacting to external events
+## Example: correctly reacting to external events
 
 Say you're writing a polling filesystem watcher, that scans for files in the current working directory on a 1s timer so as to display them in a list.
 In this case, you should set up the timer just before you return a `WorldProcessor`, and register that timer using `IWorldBridge.SubscribeEvent`.

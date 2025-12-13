@@ -14,7 +14,7 @@ echo "" >> "$OUTPUT"
 for dir in how_to explanation architecture; do
   if [ -d "docs/$dir" ]; then
     # Capitalise the directory name for the header
-    header=$(echo "$dir" | sed 's/_/ /g' | sed 's/\b\(.\)/\u\1/g')
+    header=$(echo "$dir" | tr '_' ' ' | awk '{for(i=1;i<=NF;i++){$i=toupper(substr($i,1,1)) substr($i,2)}}1')
     echo "## $header" >> "$OUTPUT"
     echo "" >> "$OUTPUT"
     for f in docs/"$dir"/*.md; do
