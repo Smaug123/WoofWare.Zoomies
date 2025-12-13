@@ -104,11 +104,11 @@ module TestBatchProcessing =
             return currentState |> Seq.toList
         }
 
-    [<TestCase false>]
-    let ``batch processing handles all events in order`` (frameworkHandleFocus : bool) =
-        // Note: This test only runs with frameworkHandleFocus=false because processing tabs
-        // with frameworkHandleFocus=true requires focusable elements in the vdom.
-        // See ``batch processing with framework focus intercepts tabs`` for that case.
+    [<Test>]
+    let ``batch processing handles all events in order`` () =
+        // This test runs with frameworkHandleFocus=false (manual mode).
+        // Processing tabs with frameworkHandleFocus=true requires focusable elements in the vdom;
+        // see ``batch processing with framework focus intercepts tabs`` for that case.
         let property (batchSize1 : int) (batchSizes : int list) (keyChars : char list) =
             task {
                 let batchSizes = (batchSize1 :: batchSizes) |> List.map (fun i -> abs i + 1)
@@ -125,7 +125,7 @@ module TestBatchProcessing =
                                 ConsoleKeyInfo (c, ConsoleKey.NoName, false, false, false)
                         )
 
-                    let! result = processWithBatchStrategy frameworkHandleFocus keystrokes batchSizes
+                    let! result = processWithBatchStrategy false keystrokes batchSizes
 
                     // In manual mode, all characters including tabs pass through
                     return result |> shouldEqual keyChars
@@ -284,29 +284,45 @@ module TestBatchProcessing =
     let ``batch processing with framework focus intercepts tabs`` () =
         // This test exercises the focus-aware batching path by including tabs and
         // verifying they are intercepted by the framework (not passed through to the processor).
-        let property (batchSize1 : int) (batchSizes : int list) (keyChars : char list) =
+        // We inject tabs into the input to guarantee coverage of the tab-interception path.
+        let property
+            (batchSize1 : int)
+            (batchSizes : int list)
+            (nonTabChar : char)
+            (nonTabChars : char list)
+            (tabPositions : int list)
+            =
             task {
                 let batchSizes = (batchSize1 :: batchSizes) |> List.map (fun i -> abs i + 1)
 
-                if List.isEmpty keyChars then
-                    return ()
-                else
-                    let keystrokes =
-                        keyChars
-                        |> List.map (fun c ->
-                            if c = '\t' then
-                                ConsoleKeyInfo (c, ConsoleKey.Tab, false, false, false)
-                            else
-                                ConsoleKeyInfo (c, ConsoleKey.NoName, false, false, false)
-                        )
+                // Construct a non-empty list of non-tab characters
+                let baseChars =
+                    (nonTabChar :: nonTabChars) |> List.map (fun c -> if c = '\t' then 'X' else c)
 
-                    let! result = processWithBatchStrategyAndFocus keystrokes batchSizes
+                // Inject tabs at various positions to guarantee tab coverage
+                let mutable keyChars = baseChars
 
-                    // In framework focus mode, tabs are intercepted for focus cycling
-                    // and don't appear in the processed output
-                    let expected = keyChars |> List.filter (fun c -> c <> '\t')
+                for pos in tabPositions do
+                    let insertPos = abs pos % (keyChars.Length + 1)
 
-                    return result |> shouldEqual expected
+                    keyChars <- List.take insertPos keyChars @ [ '\t' ] @ List.skip insertPos keyChars
+
+                let keystrokes =
+                    keyChars
+                    |> List.map (fun c ->
+                        if c = '\t' then
+                            ConsoleKeyInfo (c, ConsoleKey.Tab, false, false, false)
+                        else
+                            ConsoleKeyInfo (c, ConsoleKey.NoName, false, false, false)
+                    )
+
+                let! result = processWithBatchStrategyAndFocus keystrokes batchSizes
+
+                // In framework focus mode, tabs are intercepted for focus cycling
+                // and don't appear in the processed output
+                let expected = keyChars |> List.filter (fun c -> c <> '\t')
+
+                return result |> shouldEqual expected
             }
 
         Check.One (propConfig, property)
