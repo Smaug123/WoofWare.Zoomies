@@ -28,6 +28,7 @@ jobs:
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
       - run: nix develop --command dotnet build -c Release
       - run: nix run .#fsdocs -- build --properties Configuration=Release
+      - run: nix develop --command bash scripts/generate-demos.sh
       - run: nix develop --command bash scripts/generate-llm-docs.sh
       - uses: actions/upload-pages-artifact@v3
         with:

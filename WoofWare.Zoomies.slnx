@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="WoofWare.Zoomies.App/WoofWare.Zoomies.App.fsproj" />
+  <Project Path="WoofWare.Zoomies.Demos/WoofWare.Zoomies.Demos.fsproj" />
   <Project Path="WoofWare.Zoomies.Test/WoofWare.Zoomies.Test.fsproj" />
   <Project Path="WoofWare.Zoomies/WoofWare.Zoomies.fsproj" />
 </Solution>
