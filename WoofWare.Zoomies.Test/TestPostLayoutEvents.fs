@@ -936,13 +936,12 @@ module TestPostLayoutEvents =
     let ``intermediate frames during stabilization are not painted`` () =
         task {
             // Track what content is flushed to the terminal.
-            // We use a double-buffer approach:
-            // - pendingBuffer: writes accumulate here during a render
-            // - displayBuffer: on Flush, pendingBuffer is copied here (simulating what the user sees)
-            // - flushSnapshots: captures displayBuffer at each flush
+            // - pendingBuffer: writes accumulate here during rendering
+            // - flushSnapshots: on Flush, we snapshot pendingBuffer (capturing what the user would see)
             //
-            // This correctly models how terminals work: writes are buffered until flushed,
-            // so the user only sees complete frames.
+            // This models the key property: the framework only calls Flush after stabilization
+            // completes, so intermediate frames (written to pendingBuffer but overwritten before
+            // Flush) are never visible to the user.
             let flushSnapshots = ResizeArray<string> ()
 
             let pendingBuffer = Array2D.create 10 80 ' '
