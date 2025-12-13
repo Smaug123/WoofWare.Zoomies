@@ -40,14 +40,14 @@ type SingleSelection =
     /// (ActivationResolver.selectionList). The difference is semantic: in MultiSelection,
     /// Space toggles the item; in SingleSelection, Space selects the item (your ProcessWorld
     /// handler should set the selection to the cursor index rather than toggling).
-    static member make<'appEvent>
+    static member make<'postLayoutEvent>
         (
-            ctx : IVdomContext<'appEvent>,
+            ctx : IVdomContext<'postLayoutEvent>,
             listKey : NodeKey,
             items : SingleSelectionItem<NodeKey>[],
             selectedIndex : int option,
             state : SelectionListState,
-            onViewportRendered : SelectionListViewportInfo -> 'appEvent,
+            onViewportRendered : SelectionListViewportInfo -> 'postLayoutEvent,
             ?isFirstToFocus : bool
         )
         : SelectionListResult

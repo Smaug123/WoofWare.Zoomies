@@ -337,7 +337,9 @@ module Render =
                             cursorY <- -1
         }
 
-    let oneStep<'state, 'event>
+    /// Render to the output buffer without flushing to the terminal.
+    /// Call `flush` afterwards to actually paint the result to the screen.
+    let oneStepNoFlush<'state, 'event>
         (renderState : RenderState<'event>)
         (userState : 'state)
         (compute : 'state -> Vdom<DesiredBounds>)
@@ -446,5 +448,14 @@ module Render =
         if haveManipulatedCursor && cursorFlip then
             RenderState.setCursorVisible renderState
 
-        // Flush all buffered output to the console in a single write
-        RenderState.flush renderState
+    /// Flush all buffered output to the console in a single write.
+    let flush<'event> (renderState : RenderState<'event>) = RenderState.flush renderState
+
+    /// Render and flush to the terminal in one step.
+    let oneStep<'state, 'event>
+        (renderState : RenderState<'event>)
+        (userState : 'state)
+        (compute : 'state -> Vdom<DesiredBounds>)
+        =
+        oneStepNoFlush renderState userState compute
+        flush renderState

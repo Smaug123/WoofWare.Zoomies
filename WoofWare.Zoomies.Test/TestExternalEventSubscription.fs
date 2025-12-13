@@ -69,7 +69,7 @@ module TestExternalEventSubscription =
             let mutable globalSubscription : TrackingDisposable option = None
 
             let processWorld (world : IWorldBridge<TimerAppEvent>) =
-                { new WorldProcessor<TimerAppEvent, TimerState> with
+                { new WorldProcessor<TimerAppEvent, unit, TimerState> with
                     member _.ProcessWorld (changes, _, state) =
                         let mutable newState = state
 
@@ -116,6 +116,8 @@ module TestExternalEventSubscription =
                             | _ -> ()
 
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let vdom (_ : IVdomContext<_>) (state : TimerState) = Vdom.textContent $"%i{state.Counter}"
