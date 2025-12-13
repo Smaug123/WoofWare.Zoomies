@@ -36,10 +36,7 @@ module TestCheckbox =
                 // Give the checkbox 0 rows (split at row 5 in a 5-row terminal)
                 Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 5, topContent, checkbox)
 
-            let processWorld =
-                { new WorldProcessor<unit, FakeUnit> with
-                    member _.ProcessWorld (worldChanges, _, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let world = MockWorld.make ()
 

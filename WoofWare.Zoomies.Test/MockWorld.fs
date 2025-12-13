@@ -1,6 +1,18 @@
 namespace WoofWare.Zoomies.Test
 
 open System.Collections.Concurrent
+open WoofWare.Zoomies
+
+/// Test utilities for WorldProcessor
+[<RequireQualifiedAccess>]
+module WorldProcessor =
+
+    /// A WorldProcessor that ignores all events and returns the state unchanged.
+    /// Generic only on state; assumes unit for app events (the overwhelmingly common case).
+    let passthrough<'state> : WorldProcessor<unit, 'state> =
+        { new WorldProcessor<unit, 'state> with
+            member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
+        }
 
 type MockWorld =
     {

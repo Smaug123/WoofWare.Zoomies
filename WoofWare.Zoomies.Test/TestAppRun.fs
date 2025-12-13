@@ -46,10 +46,7 @@ module TestAppRun =
 
             let vdom (_ctx : IVdomContext<_>) (_state : unit) : Vdom<DesiredBounds> = Vdom.empty
 
-            let processWorld (_bridge : IWorldBridge<unit>) =
-                { new WorldProcessor<unit, unit> with
-                    member _.ProcessWorld (_inputs, _renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld (_bridge : IWorldBridge<unit>) = WorldProcessor.passthrough
 
             let resolver = ActivationResolver.none
 
