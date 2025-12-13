@@ -1,3 +1,10 @@
+---
+title: Work Around Cutoff Bugs
+category: How-To Guides
+categoryindex: 2
+index: 3
+---
+
 # How to: work around any automatic cutoff bugs
 
 WoofWare.Zoomies *aggressively* [cuts off execution early](../explanation/cutoff.md) to prevent rerendering.

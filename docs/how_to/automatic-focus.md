@@ -1,3 +1,10 @@
+---
+title: Automatic Focus Tracking
+category: How-To Guides
+categoryindex: 2
+index: 1
+---
+
 # How to: use automatic focus tracking
 
 WoofWare.Zoomies follows the design principle that you should be able to drop down to the lowest levels yourself, if you want to take complete control of the UI.

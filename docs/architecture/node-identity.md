@@ -1,3 +1,10 @@
+---
+title: Node Identity
+category: Architecture
+categoryindex: 4
+index: 2
+---
+
 # Query-Based Node Identity
 
 *(Mostly drafted by Claude as the result of a long design discussion. As of commit 2908a0732989cb775224ab950eb9e542c748ed19, this was the intended future design.)*

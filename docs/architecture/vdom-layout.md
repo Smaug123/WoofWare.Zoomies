@@ -1,6 +1,13 @@
+---
+title: Measure/Arrange Layout
+category: Architecture
+categoryindex: 4
+index: 1
+---
+
 # Measure/Arrange layout system
 
-*The design is originally Sonnet 4.5's with input from Gemini 2.5 Pro. The original design doc it produced is [in the claude-history folder](../claude-history/vdom-layout.md). This current document is free-range and organic.*
+*The design is originally Sonnet 4.5's with input from Gemini 2.5 Pro. This current document is free-range and organic.*
 
 ## What components are subject to layout constraints
 
