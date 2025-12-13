@@ -1258,7 +1258,7 @@ module TestSingleSelection =
     type FocusLeaveEvent =
         | FocusLeaveCursorUp
         | FocusLeaveCursorDown
-        | FocusLeaveSelect of int
+        | FocusLeaveSelect
 
     type FocusLeavePostLayoutEvent = | FocusLeaveViewportInfo of SelectionListViewportInfo
 
@@ -1274,7 +1274,7 @@ module TestSingleSelection =
             // This test verifies that when focus moves away from the list,
             // the scroll position is remembered (because it's user-managed state)
             // We: (1) Tab to focus list, (2) scroll down, (3) Tab to checkbox, (4) verify scroll preserved
-            // We use a horizontal split with a checkbox on the right so Tab can move focus away from the list.
+            // We use a vertical split with a checkbox on the right so Tab can move focus away from the list.
 
             let makeItems () =
                 [|
@@ -1350,11 +1350,7 @@ module TestSingleSelection =
                                     { newState with
                                         ListState = newState.ListState.MoveDown 5
                                     }
-                            | WorldStateChange.ApplicationEvent (FocusLeaveSelect index) ->
-                                newState <-
-                                    { newState with
-                                        SelectedIndex = Some index
-                                    }
+                            | WorldStateChange.ApplicationEvent FocusLeaveSelect -> ()
                             | _ -> ()
 
                         ProcessWorldResult.make newState
@@ -1377,7 +1373,7 @@ module TestSingleSelection =
                     (fun s -> s.ListState.CursorIndex)
                     FocusLeaveCursorUp
                     FocusLeaveCursorDown
-                    FocusLeaveSelect
+                    (fun _ -> FocusLeaveSelect)
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
