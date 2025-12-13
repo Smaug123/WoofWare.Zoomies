@@ -1,3 +1,10 @@
+---
+title: Post-Layout Events
+category: Tutorial
+categoryindex: 1
+index: 1
+---
+
 # Post-layout events
 
 There are several motivating examples for post-layout events.

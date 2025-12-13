@@ -1,3 +1,10 @@
+---
+title: Emergency Rerender
+category: How-To Guides
+categoryindex: 2
+index: 4
+---
+
 # How to deal with an emergency "component could not render into available space" situation
 
 The general philosophy of the WoofWare.Zoomies framework is that components should gracefully do what they can with the space that's assigned to them:

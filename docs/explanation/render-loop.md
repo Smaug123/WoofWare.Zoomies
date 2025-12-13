@@ -1,3 +1,10 @@
+---
+title: The Render Loop
+category: Explanation
+categoryindex: 3
+index: 2
+---
+
 # The render loop
 
 The event loop in WoofWare.Zoomies happens in distinct steps.

@@ -52,6 +52,7 @@
       in {
         fantomas = dotnetTool null "fantomas" (builtins.fromJSON (builtins.readFile ./.config/dotnet-tools.json)).tools.fantomas.version (builtins.head (builtins.filter (elem: elem.pname == "fantomas") deps)).hash;
         fsharp-analyzers = dotnetTool "FSharp.Analyzers.Cli" "fsharp-analyzers" (builtins.fromJSON (builtins.readFile ./.config/dotnet-tools.json)).tools.fsharp-analyzers.version (builtins.head (builtins.filter (elem: elem.pname == "fsharp-analyzers") deps)).hash;
+        fsdocs = dotnetTool "fsdocs" "fsdocs-tool" (builtins.fromJSON (builtins.readFile ./.config/dotnet-tools.json)).tools.fsdocs-tool.version (builtins.head (builtins.filter (elem: elem.pname == "fsdocs-tool") deps)).hash;
         default = pkgs.buildDotnetModule {
           inherit pname version dotnet-sdk dotnet-runtime;
           name = "WoofWare.Zoomies";

@@ -1,3 +1,10 @@
+---
+title: Cutoff
+category: Explanation
+categoryindex: 3
+index: 1
+---
+
 # Cutoff
 
 WoofWare.Zoomies *aggressively* cuts off execution early to prevent rerendering.
