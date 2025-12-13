@@ -775,7 +775,7 @@ Hello!|                                 |
 
             let processWorld =
                 { new WorldProcessor<AppEvent, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
                 }
 
             let clock = MockTime.make ()

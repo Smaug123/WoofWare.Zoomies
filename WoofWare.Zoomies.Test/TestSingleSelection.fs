@@ -51,10 +51,7 @@ module TestSingleSelection =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
@@ -125,10 +122,7 @@ module TestSingleSelection =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
@@ -199,10 +193,7 @@ module TestSingleSelection =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
@@ -273,10 +264,7 @@ module TestSingleSelection =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
@@ -347,10 +335,7 @@ module TestSingleSelection =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
@@ -427,9 +412,7 @@ module TestSingleSelection =
 
             let processWorld =
                 { new WorldProcessor<SimpleViewportEvent, State> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        // Viewport events don't affect state in this test (all items visible)
-                        ProcessWorldResult.make state
+                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
                 }
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
@@ -867,10 +850,7 @@ module TestSingleSelection =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
@@ -956,10 +936,7 @@ module TestSingleSelection =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
@@ -1040,10 +1017,7 @@ module TestSingleSelection =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 

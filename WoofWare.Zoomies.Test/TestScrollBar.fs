@@ -48,10 +48,7 @@ module TestScrollBar =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -103,10 +100,7 @@ module TestScrollBar =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -158,10 +152,7 @@ module TestScrollBar =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -213,10 +204,7 @@ module TestScrollBar =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -278,10 +266,7 @@ module TestScrollBar =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -343,10 +328,7 @@ module TestScrollBar =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -408,10 +390,7 @@ module TestScrollBar =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -462,10 +441,7 @@ module TestScrollBar =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -518,10 +494,7 @@ module TestScrollBar =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -573,10 +546,7 @@ module TestScrollBar =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -629,10 +599,7 @@ module TestScrollBar =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -685,10 +652,7 @@ module TestScrollBar =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -745,10 +709,7 @@ module TestScrollBar =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -804,10 +765,7 @@ module TestScrollBar =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -863,10 +821,7 @@ module TestScrollBar =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
@@ -1204,10 +1159,7 @@ module TestScrollBar =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
@@ -1260,10 +1212,7 @@ module TestScrollBar =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
@@ -1316,10 +1265,7 @@ module TestScrollBar =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
@@ -1372,10 +1318,7 @@ module TestScrollBar =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
@@ -1427,10 +1370,7 @@ module TestScrollBar =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
@@ -1487,10 +1427,7 @@ module TestScrollBar =
 
             let haveFrameworkHandleFocus _ = false
 
-            let processWorld =
-                { new WorldProcessor<unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
-                }
+            let processWorld = WorldProcessor.passthrough
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
