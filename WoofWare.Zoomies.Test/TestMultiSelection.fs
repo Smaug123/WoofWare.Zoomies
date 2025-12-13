@@ -1113,6 +1113,8 @@ module TestMultiSelection =
     type FocusLeaveEvent =
         | FocusLeaveCursorUp
         | FocusLeaveCursorDown
+        /// Required by ActivationResolver.selectionList; handler is a no-op since this test
+        /// focuses on scroll preservation during focus changes, not item toggling.
         | FocusLeaveToggle of int
         | FocusLeaveViewportInfo of SelectionListViewportInfo
 
@@ -1125,7 +1127,11 @@ module TestMultiSelection =
     let ``scroll position preserved when focus leaves list`` () =
         task {
             // This test verifies that when focus moves away from the list,
-            // the scroll position is remembered (because it's user-managed state)
+            // the scroll position is remembered (because it's user-managed state).
+            //
+            // Console height is 4, split 0.75/0.25 -> list gets 3 rows, button gets 1 row.
+            // With 5 items and cursor at index 4, EnsureVisible(3) sets ScrollOffset = 2,
+            // showing items 3, 4, 5 in the 3-row viewport.
 
             let makeItems () =
                 [|

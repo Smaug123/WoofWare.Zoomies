@@ -64,7 +64,8 @@ type MultiSelection =
             let cursorIndex = max 0 (min state.CursorIndex (totalItems - 1))
 
             let measure (constraints : MeasureConstraints) : MeasuredSize =
-                // Each item is 1 line tall, 3 chars for checkbox + label
+                // Items may wrap to multiple lines (checkbox uses TopLeft alignment).
+                // For measurement, we assume 1 line per item as a baseline.
                 {
                     MinWidth = 4 // Minimum: checkbox (3) + at least 1 char
                     PreferredWidth = constraints.MaxWidth // Take available width
