@@ -20,9 +20,7 @@ The lowest-level primitives are available. You can build a TUI using:
 
 ## Documentation
 
-{{fsdocs-list-of-documents}}
-
-See the [API reference documentation](reference/index.html) for full API details.
+See the [API reference documentation](reference/index.html) for full API details, or browse the sidebar for tutorials, how-to guides, and explanations.
 
 ## Philosophy
 
