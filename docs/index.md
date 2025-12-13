@@ -20,30 +20,9 @@ The lowest-level primitives are available. You can build a TUI using:
 
 ## Documentation
 
-### How-To Guides
+{{fsdocs-list-of-documents}}
 
-Practical recipes for common tasks:
-
-- [Use automatic focus tracking](how_to/automatic-focus.md)
-- [Debug the layout algorithm](how_to/debug-layout.md)
-- [Work around cutoff bugs](how_to/work-around-cutoff-bugs.md)
-
-### Explanation
-
-Understand how WoofWare.Zoomies works:
-
-- [Cutoff mechanism](explanation/cutoff.md) - how the framework avoids unnecessary work
-
-### Architecture
-
-Internal design documentation:
-
-- [Measure/Arrange layout system](architecture/vdom-layout.md)
-- [Query-based node identity](architecture/node-identity.md)
-
-### API Reference
-
-See the [reference documentation](reference/index.html) for full API details.
+See the [API reference documentation](reference/index.html) for full API details.
 
 ## Philosophy
 
