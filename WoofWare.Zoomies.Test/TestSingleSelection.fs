@@ -432,6 +432,20 @@ module TestSingleSelection =
                 (fun () -> false)
             |> ignore<State>
 
+            // Verify that initially no item is focused (no brackets around any radio button)
+            expect {
+                snapshot
+                    @"
+ ○ Option A                   |
+ ○ Option B                   |
+ ○ Option C                   |
+                              |
+                              |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
             // Press Tab to focus first item
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
@@ -1241,49 +1255,70 @@ module TestSingleSelection =
             state.ListState.CursorIndex |> shouldEqual 4
         }
 
+    type FocusLeaveEvent =
+        | FocusLeaveCursorUp
+        | FocusLeaveCursorDown
+        | FocusLeaveSelect
+
+    type FocusLeavePostLayoutEvent = | FocusLeaveViewportInfo of SelectionListViewportInfo
+
+    type FocusLeaveState =
+        {
+            SelectedIndex : int option
+            ListState : SelectionListState
+        }
+
     [<Test>]
     let ``scroll position preserved when focus leaves list`` () =
         task {
             // This test verifies that when focus moves away from the list,
             // the scroll position is remembered (because it's user-managed state)
+            // We: (1) Tab to focus list, (2) scroll down, (3) Tab to checkbox, (4) verify scroll preserved
+            // We use a vertical split with a checkbox on the right so Tab can move focus away from the list.
 
-            // Start with scroll offset at 2 (showing items 3, 4, 5)
-            let scrollState = SelectionListState.AtOffset 2
+            let makeItems () =
+                [|
+                    {
+                        Id = NodeKey.make "item-1"
+                        Label = "Item 1"
+                    }
+                    {
+                        Id = NodeKey.make "item-2"
+                        Label = "Item 2"
+                    }
+                    {
+                        Id = NodeKey.make "item-3"
+                        Label = "Item 3"
+                    }
+                    {
+                        Id = NodeKey.make "item-4"
+                        Label = "Item 4"
+                    }
+                    {
+                        Id = NodeKey.make "item-5"
+                        Label = "Item 5"
+                    }
+                |]
 
-            // Render with no focus (simulating focus having left the list)
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
-                (SingleSelection.make' (
-                    singleSelectPrefix,
-                    [|
-                        {
-                            Label = "Item 1"
-                            IsSelected = false
-                            IsFocused = false
-                        }
-                        {
-                            Label = "Item 2"
-                            IsSelected = false
-                            IsFocused = false
-                        }
-                        {
-                            Label = "Item 3"
-                            IsSelected = false
-                            IsFocused = false
-                        }
-                        {
-                            Label = "Item 4"
-                            IsSelected = false
-                            IsFocused = false
-                        }
-                        {
-                            Label = "Item 5"
-                            IsSelected = false
-                            IsFocused = false
-                        }
-                    |],
-                    scrollState
-                ))
-                    .Vdom
+            let checkboxKey = NodeKey.make "checkbox"
+
+            let vdom (ctx : IVdomContext<_>) (s : FocusLeaveState) : Vdom<DesiredBounds> =
+                let list =
+                    (SingleSelection.make (
+                        ctx,
+                        singleSelectPrefix,
+                        makeItems (),
+                        s.SelectedIndex,
+                        s.ListState,
+                        FocusLeaveViewportInfo,
+                        isFirstToFocus = true
+                    ))
+                        .Vdom
+
+                let checkbox = Checkbox.make (ctx, checkboxKey, false)
+
+                // Split: list on left, checkbox on right
+                Vdom.panelSplitProportion (SplitDirection.Vertical, 0.8, list, checkbox)
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 3)
 
@@ -1296,36 +1331,144 @@ module TestSingleSelection =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let haveFrameworkHandleFocus _ = true
 
-            let processWorld = WorldProcessor.passthrough
+            let processWorld =
+                { new WorldProcessor<FocusLeaveEvent, FocusLeavePostLayoutEvent, FocusLeaveState> with
+                    member _.ProcessWorld (inputs, _, s) =
+                        let mutable newState = s
+
+                        for input in inputs do
+                            match input with
+                            | WorldStateChange.ApplicationEvent FocusLeaveCursorUp ->
+                                newState <-
+                                    { newState with
+                                        ListState = newState.ListState.MoveUp 5
+                                    }
+                            | WorldStateChange.ApplicationEvent FocusLeaveCursorDown ->
+                                newState <-
+                                    { newState with
+                                        ListState = newState.ListState.MoveDown 5
+                                    }
+                            | WorldStateChange.ApplicationEvent FocusLeaveSelect -> ()
+                            | _ -> ()
+
+                        ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (events, _, state) =
+                        let mutable newState = state
+
+                        for (FocusLeaveViewportInfo info) in events do
+                            newState <-
+                                { newState with
+                                    ListState = newState.ListState.EnsureVisible info.ViewportHeight
+                                }
+
+                        newState
+                }
+
+            let resolver =
+                ActivationResolver.selectionList
+                    singleSelectPrefix
+                    (fun s -> s.ListState.CursorIndex)
+                    FocusLeaveCursorUp
+                    FocusLeaveCursorDown
+                    (fun _ -> FocusLeaveSelect)
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
-            App.pumpOnce
-                worldFreezer
+            let initialState : FocusLeaveState =
                 {
                     SelectedIndex = None
+                    ListState = SelectionListState.AtStart
                 }
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<State>
 
-            // Scroll position preserved - still showing items 3, 4, 5
+            // Initial render - nothing focused
+            let mutable state =
+                App.pumpOnce
+                    worldFreezer
+                    initialState
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
+
+            // Tab to focus the list (first focusable element)
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
+
+            // Navigate down 4 times to reach item 5 and scroll
+            for _ in 1..4 do
+                world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.DownArrow, false, false, false))
+
+                state <-
+                    App.pumpOnce
+                        worldFreezer
+                        state
+                        haveFrameworkHandleFocus
+                        renderState
+                        processWorld
+                        vdom
+                        resolver
+                        (fun () -> false)
+
+            // Verify we're focused on item 5 and scrolled (showing items 3, 4, 5)
+            // The checkbox is on the right (unfocused, shown as ☐)
             expect {
                 snapshot
                     @"
  ○ Item 3                     |
- ○ Item 4                     |
+ ○ Item 4                 ☐   |
+[○]Item 5                     |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+
+            // Scroll offset should be 2
+            state.ListState.ScrollOffset |> shouldEqual 2
+
+            // Tab to move focus to the checkbox (away from the list)
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+
+            state <-
+                App.pumpOnce
+                    worldFreezer
+                    state
+                    haveFrameworkHandleFocus
+                    renderState
+                    processWorld
+                    vdom
+                    resolver
+                    (fun () -> false)
+
+            // Scroll position preserved - still showing items 3, 4, 5, but now list is unfocused
+            // Checkbox is now focused (shown with brackets around ☐)
+            expect {
+                snapshot
+                    @"
+ ○ Item 3                     |
+ ○ Item 4                [☐]  |
  ○ Item 5                     |
 "
 
                 return ConsoleHarness.toString terminal
             }
+
+            // Verify scroll offset is still 2
+            state.ListState.ScrollOffset |> shouldEqual 2
         }
 
     type NoDanceEvent =
