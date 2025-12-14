@@ -78,9 +78,17 @@ module TestAppRun =
             // Check that we got the expected operations
             let opsList = ops.ToArray () |> Array.toList
 
-            // Helper to find index of a terminal op
+            // Helper to find first index of a terminal op
             let findTerminalOp op =
                 opsList |> List.tryFindIndex (fun consoleOp -> consoleOp = TerminalOp op)
+
+            // Helper to find last index of a terminal op
+            let findLastTerminalOp op =
+                opsList
+                |> List.mapi (fun i consoleOp -> i, consoleOp)
+                |> List.filter (fun (_, consoleOp) -> consoleOp = TerminalOp op)
+                |> List.tryLast
+                |> Option.map fst
 
             // RegisterBracketedPaste should appear early (after EnterAlternateScreen, RegisterMouseMode)
             let registerIndex = findTerminalOp TerminalOp.RegisterBracketedPaste
@@ -110,15 +118,19 @@ module TestAppRun =
             exitAltScreenIndex.IsSome |> shouldEqual true
             unregisterIndex.Value < exitAltScreenIndex.Value |> shouldEqual true
 
-            // Verify SetCursorVisibility true is called during cleanup
-            let setCursorVisibleIndex = findTerminalOp (TerminalOp.SetCursorVisibility true)
+            // Verify SetCursorVisibility true is called during cleanup.
+            // Use findLastTerminalOp because SetCursorVisibility true may also be called during rendering
+            // (e.g., when showing a cursor in a text box). The cleanup SetCursorVisibility true is the last one.
+            let setCursorVisibleIndex = findLastTerminalOp (TerminalOp.SetCursorVisibility true)
             setCursorVisibleIndex.IsSome |> shouldEqual true
+            // The cleanup SetCursorVisibility true must come after startup ops (proving it's in teardown, not setup)
+            setCursorVisibleIndex.Value > registerIndex.Value |> shouldEqual true
 
             // Verify UnregisterMouseMode is called during cleanup
             let unregisterMouseModeIndex = findTerminalOp TerminalOp.UnregisterMouseMode
             unregisterMouseModeIndex.IsSome |> shouldEqual true
 
-            // Verify cleanup order: SetCursorVisibility comes before UnregisterBracketedPaste
+            // Verify cleanup order: SetCursorVisibility true comes before UnregisterBracketedPaste
             setCursorVisibleIndex.Value < unregisterIndex.Value |> shouldEqual true
             // UnregisterBracketedPaste comes before UnregisterMouseMode
             unregisterIndex.Value < unregisterMouseModeIndex.Value |> shouldEqual true
