@@ -836,16 +836,21 @@ module TestPostLayoutEvents =
             }
 
     [<Test>]
-    let ``RequestRerender from post-layout event processing is ignored in stabilization`` () =
+    let ``ProcessPostLayoutEvents has no rerender-request mechanism by design`` () =
         task {
-            // The stabilization loop currently ignores RequestRerender from ProcessWorld.
-            // This test documents that behavior.
+            // This test documents that ProcessPostLayoutEvents returns only state, not a ProcessWorldResult.
+            // Unlike ProcessWorld (which can return RequestRerender), post-layout event processing
+            // has no mechanism to request rerenders - it only returns the new state.
+            //
+            // The stabilization loop re-renders automatically when state changes, so there's no need
+            // for an explicit rerender request. This test verifies that normal stabilization behavior
+            // works correctly: state changes trigger re-renders until no more post-layout events are posted.
 
             let mutable renderCount = 0
 
             let rerenderComponent
                 (ctx : IVdomContext<RerenderRequestEvent>)
-                (state : RerenderRequestState)
+                (_state : RerenderRequestState)
                 : Vdom<DesiredBounds>
                 =
                 let measure (_constraints : MeasureConstraints) =
@@ -861,7 +866,7 @@ module TestPostLayoutEvents =
                 let render (_bounds : Rectangle) =
                     renderCount <- renderCount + 1
 
-                    // Post an event on first render that will request rerender
+                    // Post an event on first render that will cause a state change
                     if renderCount = 1 then
                         ctx.PostLayoutEvent EventWithRerender
 
@@ -892,7 +897,9 @@ module TestPostLayoutEvents =
                                         EventsProcessed = newState.EventsProcessed + 1
                                     }
 
-                        // ProcessPostLayoutEvents can't request a rerender - this is by design
+                        // Note: ProcessPostLayoutEvents returns only 'userState, not ProcessWorldResult.
+                        // There is no mechanism to request a rerender; re-renders happen automatically
+                        // when the returned state differs from the previous state.
                         newState
                 }
 
@@ -908,12 +915,9 @@ module TestPostLayoutEvents =
             finalState.EventsProcessed |> shouldEqual 1
             finalState.RequestedRerenderDuringPostLayout |> shouldEqual true
 
-            // Despite requesting rerender, stabilization proceeded normally
-            // (If RequestRerender was honored, we might see different behavior)
-            // The state changed, so there would have been a re-render, but since
-            // no more events were posted on subsequent renders, stabilization exited.
-            // This is documented behavior - RequestRerender is ignored in stabilization.
-            renderCount |> shouldEqual 2 // Initial render + one stabilization render
+            // State changed, so stabilization triggered a re-render automatically.
+            // No more events were posted on the second render, so stabilization exited.
+            renderCount |> shouldEqual 2 // Initial render + one stabilization render due to state change
         }
 
     type IntermediateFrameEvent = | SwitchToFinalState
@@ -931,15 +935,20 @@ module TestPostLayoutEvents =
     [<Test>]
     let ``intermediate frames during stabilization are not painted`` () =
         task {
-            // Track flush events and what was in the buffer at each flush
+            // Track what content is flushed to the terminal.
+            // - pendingBuffer: writes accumulate here during rendering
+            // - flushSnapshots: on Flush, we snapshot pendingBuffer (capturing what the user would see)
+            //
+            // This models the key property: the framework only calls Flush after stabilization
+            // completes, so intermediate frames (written to pendingBuffer but overwritten before
+            // Flush) are never visible to the user.
             let flushSnapshots = ResizeArray<string> ()
 
-            // Simulate a terminal buffer - writes to same position overwrite
-            let terminalBuffer = Array2D.create 10 80 ' '
+            let pendingBuffer = Array2D.create 10 80 ' '
             let mutable cursorX = 0
             let mutable cursorY = 0
 
-            // Create a console that simulates a real terminal buffer
+            // Create a console that buffers writes until Flush
             let console : IConsole =
                 {
                     BackgroundColor = fun () -> ConsoleColor.Black
@@ -954,23 +963,24 @@ module TestPostLayoutEvents =
                                 cursorX <- x
                                 cursorY <- y
                             | TerminalOp.WriteRun (text, _, _) ->
+                                // Write to pending buffer (not yet visible to user)
                                 for ch in text do
                                     if cursorY >= 0 && cursorY < 10 && cursorX >= 0 && cursorX < 80 then
-                                        terminalBuffer.[cursorY, cursorX] <- ch
+                                        pendingBuffer.[cursorY, cursorX] <- ch
                                         cursorX <- cursorX + 1
                             | TerminalOp.ClearScreen ->
                                 for y = 0 to 9 do
                                     for x = 0 to 79 do
-                                        terminalBuffer.[y, x] <- ' '
+                                        pendingBuffer.[y, x] <- ' '
                             | _ -> ()
                     Flush =
                         fun () ->
-                            // On flush, snapshot the current buffer content
+                            // On flush, snapshot what's being displayed to the user
                             let sb = System.Text.StringBuilder ()
 
                             for y = 0 to 9 do
                                 for x = 0 to 79 do
-                                    sb.Append terminalBuffer.[y, x] |> ignore
+                                    sb.Append pendingBuffer.[y, x] |> ignore
 
                             flushSnapshots.Add (sb.ToString ())
                 }
@@ -1040,9 +1050,9 @@ module TestPostLayoutEvents =
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
             // Run one pump cycle - this will:
-            // 1. Initial render: component shows "X", posts SwitchToFinalState event
-            // 2. Stabilization: state changes to ShowFinal=true, re-render shows "Y"
-            // 3. Only after stabilization completes should we flush
+            // 1. Initial render: component writes "X" to pending buffer, posts SwitchToFinalState event
+            // 2. Stabilization: state changes to ShowFinal=true, re-render writes "Y" to pending buffer
+            // 3. Only after stabilization completes does Flush copy pending buffer to display
             let _finalState =
                 App.pumpOnce
                     worldFreezer
@@ -1059,6 +1069,7 @@ module TestPostLayoutEvents =
                 failwith $"Expected exactly 1 flush but got {flushSnapshots.Count}"
 
             // The single flushed frame should contain "Y" (final state) but not "X" (intermediate state)
+            // This verifies that intermediate renders (before stabilization) are not flushed to the user.
             let flushedFrame = flushSnapshots.[0]
 
             if flushedFrame.Contains "X" then
