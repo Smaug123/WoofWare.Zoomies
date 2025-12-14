@@ -110,6 +110,21 @@ module TestAppRun =
             exitAltScreenIndex.IsSome |> shouldEqual true
             unregisterIndex.Value < exitAltScreenIndex.Value |> shouldEqual true
 
+            // Verify SetCursorVisibility true is called during cleanup
+            let setCursorVisibleIndex = findTerminalOp (TerminalOp.SetCursorVisibility true)
+            setCursorVisibleIndex.IsSome |> shouldEqual true
+
+            // Verify UnregisterMouseMode is called during cleanup
+            let unregisterMouseModeIndex = findTerminalOp TerminalOp.UnregisterMouseMode
+            unregisterMouseModeIndex.IsSome |> shouldEqual true
+
+            // Verify cleanup order: SetCursorVisibility comes before UnregisterBracketedPaste
+            setCursorVisibleIndex.Value < unregisterIndex.Value |> shouldEqual true
+            // UnregisterBracketedPaste comes before UnregisterMouseMode
+            unregisterIndex.Value < unregisterMouseModeIndex.Value |> shouldEqual true
+            // UnregisterMouseMode comes before ExitAlternateScreen
+            unregisterMouseModeIndex.Value < exitAltScreenIndex.Value |> shouldEqual true
+
             // Verify that a flush is called after all shutdown operations
             // This ensures buffered cleanup ops are written to the terminal
             let lastFlushIndex =
@@ -122,4 +137,7 @@ module TestAppRun =
             lastFlushIndex.IsSome |> shouldEqual true
             // The final flush should come after ExitAlternateScreen (the last cleanup operation)
             lastFlushIndex.Value > exitAltScreenIndex.Value |> shouldEqual true
+
+            // Verify the final flush is the very last console action
+            lastFlushIndex.Value |> shouldEqual (opsList.Length - 1)
         }
