@@ -10,11 +10,16 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Compile Include="JustifiedText.fs"/>
         <Compile Include="Program.fs"/>
     </ItemGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\WoofWare.Zoomies\WoofWare.Zoomies.fsproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="WoofWare.KnuthPlass" Version="0.2.2" />
     </ItemGroup>
 
 </Project>

@@ -38,6 +38,7 @@
     <Compile Include="TestActivationWithPartialBatch.fs" />
     <Compile Include="TestBatchProcessing.fs" />
     <Compile Include="TestFlexibleContent.fs" />
+    <Compile Include="TestJustifiedText.fs" />
     <Compile Include="TestWorldFreezer.fs" />
     <Compile Include="TestAppRun.fs" />
   </ItemGroup>
@@ -53,6 +54,7 @@
     <PackageReference Include="NUnit" Version="4.3.2" />
     <PackageReference Include="NUnit3TestAdapter" Version="5.0.0" />
     <PackageReference Include="WoofWare.Expect" Version="0.8.1" />
+    <PackageReference Include="WoofWare.KnuthPlass" Version="0.2.2" />
     <PackageReference Include="WoofWare.Myriad.Plugins" Version="$(WoofWareMyriadPluginVersion)" PrivateAssets="all" />
     <PackageReference Include="Myriad.Sdk" Version="0.8.3" PrivateAssets="all" />
   </ItemGroup>

@@ -1,4 +1,4 @@
-﻿namespace WoofWare.Zoomies
+﻿namespace WoofWare.Zoomies.App
 
 open System
 open System.IO
@@ -115,11 +115,11 @@ module FileBrowser =
         let bottomPane =
             let content =
                 match state.IsLoading, state.FileContent with
-                | true, _ -> "Loading..."
-                | false, Some content -> content
-                | false, None -> "Enter a file path and press Load"
+                | true, _ -> Vdom.textContent "Loading..."
+                | false, Some content -> JustifiedText.make (content, expandToFill = true)
+                | false, None -> Vdom.textContent "Enter a file path and press Load"
 
-            Vdom.textContent content |> Vdom.bordered
+            content |> Vdom.bordered
 
         Vdom.panelSplitAuto (SplitDirection.Horizontal, topPane, bottomPane)
 
