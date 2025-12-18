@@ -1,23 +1,41 @@
 namespace WoofWare.Zoomies.App
 
+open System.Globalization
 open WoofWare.KnuthPlass
 open WoofWare.Zoomies
 
 [<RequireQualifiedAccess>]
 module MonospaceText =
     /// Format text for monospace terminal display using Knuth-Plass line breaking.
-    /// Guarantees no overfull lines (unless a single unhyphenatable word exceeds line width).
+    /// Guarantees no overfull lines - any line exceeding the width is truncated with ellipsis.
     ///
     /// Uses monospace glue (spaces can't stretch/shrink) and high tolerance (accepts underfull lines),
     /// which forces the algorithm to break early rather than produce lines that would overflow.
+    /// Post-processes any remaining overfull lines (e.g., unhyphenatable URLs) with truncation.
     let format (lineWidth : int) (text : string) : string =
-        Text.format
-            (LineBreakOptions.DefaultMonospace (float32 lineWidth))
-            Text.defaultWordWidth
-            Items.monospaceGlue
-            Hyphenation.DEFAULT_PENALTY
-            Hyphenation.simpleEnglish
-            text
+        let formatted =
+            Text.format
+                (LineBreakOptions.DefaultMonospace (float32 lineWidth))
+                Text.defaultWordWidth
+                Items.monospaceGlue
+                Hyphenation.DEFAULT_PENALTY
+                Hyphenation.simpleEnglish
+                text
+
+        // Post-process: truncate any overfull lines with ellipsis
+        let ellipsis = "…" // U+2026, single character width 1
+        let maxContentWidth = lineWidth - 1 // Leave room for ellipsis
+
+        formatted.Split '\n'
+        |> Array.map (fun line ->
+            let info = StringInfo line
+
+            if info.LengthInTextElements > lineWidth then
+                info.SubstringByTextElements (0, maxContentWidth) + ellipsis
+            else
+                line
+        )
+        |> String.concat "\n"
 
 /// Component for displaying text laid out using the Knuth-Plass line-breaking algorithm.
 [<RequireQualifiedAccess>]

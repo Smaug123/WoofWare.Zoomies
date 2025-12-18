@@ -1,5 +1,6 @@
 namespace WoofWare.Zoomies.Test
 
+open System.Globalization
 open NUnit.Framework
 open FsUnitTyped
 open WoofWare.Expect
@@ -9,15 +10,31 @@ open WoofWare.Zoomies
 [<RequireQualifiedAccess>]
 module MonospaceText =
     /// Format text for monospace terminal display using Knuth-Plass line breaking.
-    /// Guarantees no overfull lines (unless a single unhyphenatable word exceeds line width).
+    /// Guarantees no overfull lines - any line exceeding the width is truncated with ellipsis.
     let format (lineWidth : int) (text : string) : string =
-        Text.format
-            (LineBreakOptions.DefaultMonospace (float32 lineWidth))
-            Text.defaultWordWidth
-            Items.monospaceGlue
-            Hyphenation.DEFAULT_PENALTY
-            Hyphenation.simpleEnglish
-            text
+        let formatted =
+            Text.format
+                (LineBreakOptions.DefaultMonospace (float32 lineWidth))
+                Text.defaultWordWidth
+                Items.monospaceGlue
+                Hyphenation.DEFAULT_PENALTY
+                Hyphenation.simpleEnglish
+                text
+
+        // Post-process: truncate any overfull lines with ellipsis
+        let ellipsis = "…" // U+2026, single character width 1
+        let maxContentWidth = lineWidth - 1 // Leave room for ellipsis
+
+        formatted.Split '\n'
+        |> Array.map (fun line ->
+            let info = StringInfo line
+
+            if info.LengthInTextElements > lineWidth then
+                info.SubstringByTextElements (0, maxContentWidth) + ellipsis
+            else
+                line
+        )
+        |> String.concat "\n"
 
 /// JustifiedText component copied from App for testing purposes
 [<RequireQualifiedAccess>]
@@ -204,8 +221,7 @@ ssed in discourse; backward in sentiment; lean, long, dusty, dreary and yet some
             return ConsoleHarness.toString harness
         }
 
-    /// Verify that MonospaceText.format never produces overfull lines
-    /// (unless a single unhyphenatable word exceeds line width).
+    /// Verify that MonospaceText.format never produces overfull lines.
     [<Test>]
     let ``MonospaceText format produces no overfull lines`` () =
         let text =
@@ -220,3 +236,58 @@ ssed in discourse; backward in sentiment; lean, long, dusty, dreary and yet some
                     line.Length <= targetWidth,
                     sprintf "Line '%s' has length %d, exceeds target %d" line line.Length targetWidth
                 )
+
+    /// Verify that unhyphenatable words longer than line width are truncated with ellipsis.
+    [<Test>]
+    let ``MonospaceText truncates long unhyphenatable words with ellipsis`` () =
+        // A word that can't be hyphenated (no vowel-consonant patterns) and exceeds line width
+        let longWord = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" // 52 chars, no hyphenation points
+        let targetWidth = 40
+
+        let formatted = MonospaceText.format targetWidth longWord
+        let lines = formatted.Split '\n'
+
+        // All lines must fit
+        for line in lines do
+            let info = StringInfo line
+
+            Assert.That (
+                info.LengthInTextElements <= targetWidth,
+                sprintf "Line '%s' has %d graphemes, exceeds target %d" line info.LengthInTextElements targetWidth
+            )
+
+        // The truncated line should end with ellipsis
+        let truncatedLine = lines |> Array.find (fun l -> l.Contains "…")
+        truncatedLine |> shouldContainText "…"
+        (StringInfo truncatedLine).LengthInTextElements |> shouldEqual targetWidth
+
+    /// Verify that text exactly at the limit is not truncated.
+    [<Test>]
+    let ``MonospaceText does not truncate text at exact limit`` () =
+        // Single word that fits exactly - won't be broken by Knuth-Plass
+        let text = "abcdefghijklmnopqrstuvwxyzabcdefghijk" // 37 chars
+        (StringInfo text).LengthInTextElements |> shouldEqual 37
+
+        let formatted = MonospaceText.format 40 text
+        formatted |> shouldEqual text
+        formatted |> shouldNotContainText "…"
+
+    /// Verify ellipsis truncation works with multi-byte characters.
+    [<Test>]
+    let ``MonospaceText handles multi-byte characters near truncation point`` () =
+        // Mix of ASCII and emoji - emoji are single graphemes but multi-byte
+        let longWord = "https://example.com/path/with/emoji/🎉🎊🎁"
+        let text = sprintf "Visit %s today!" longWord
+        let targetWidth = 40
+
+        let formatted = MonospaceText.format targetWidth text
+        let lines = formatted.Split '\n'
+
+        // All lines must fit (in grapheme count, not byte count)
+        for line in lines do
+            let info = StringInfo line
+
+            Assert.That (
+                info.LengthInTextElements <= targetWidth,
+                sprintf "Line '%s' has %d graphemes, exceeds target %d" line info.LengthInTextElements targetWidth
+            )
