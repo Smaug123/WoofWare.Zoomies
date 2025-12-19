@@ -41,6 +41,11 @@ type TerminalOp =
     | UnregisterMouseMode
     | RegisterBracketedPaste
     | UnregisterBracketedPaste
+    /// Begin synchronized update (DEC mode 2026). Terminals batch output until EndSynchronizedUpdate.
+    /// Unsupporting terminals ignore this sequence.
+    | BeginSynchronizedUpdate
+    /// End synchronized update (DEC mode 2026). Terminal displays the batched output.
+    | EndSynchronizedUpdate
 
 [<RequireQualifiedAccess>]
 module TerminalOp =
@@ -84,3 +89,5 @@ module TerminalOp =
         | TerminalOp.UnregisterMouseMode -> consoleWrite "\u001b[?1000;1006l"
         | TerminalOp.RegisterBracketedPaste -> consoleWrite "\u001b[?2004h"
         | TerminalOp.UnregisterBracketedPaste -> consoleWrite "\u001b[?2004l"
+        | TerminalOp.BeginSynchronizedUpdate -> consoleWrite "\u001b[?2026h"
+        | TerminalOp.EndSynchronizedUpdate -> consoleWrite "\u001b[?2026l"
