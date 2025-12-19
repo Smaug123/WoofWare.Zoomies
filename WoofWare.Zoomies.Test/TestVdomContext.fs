@@ -20,7 +20,7 @@ module TestVdomContext =
     [<Test>]
     let ``pruneExpiredActivations removes only expired entries`` () =
         let clock = MockTime.make ()
-        let ctx = VdomContext.empty clock.GetUtcNow bounds
+        let ctx = VdomContext.empty<unit> clock.GetUtcNow bounds
 
         // Record activations at different times
         let key1 = NodeKey.make "key1"
@@ -64,8 +64,14 @@ module TestVdomContext =
         // - key4 was activated 100ms ago (not expired)
         clock.Advance (TimeSpan.FromMilliseconds 100.0) |> ignore<DateTime>
 
+        // Mark clean before pruning so we can verify pruning actually removed something
+        VdomContext.markClean ctx
+
         // Prune expired activations - this should remove key1 only
         VdomContext.pruneExpiredActivations ctx
+
+        // Verify pruning actually removed an entry (not just that time elapsed)
+        VdomContext.isDirty ctx |> shouldEqual true
 
         // Verify key1 is gone and others remain
         VdomContext.wasRecentlyActivated key1 ctx |> shouldEqual false
@@ -80,7 +86,13 @@ module TestVdomContext =
         // - key4 was activated 200ms ago (not expired)
         clock.Advance (TimeSpan.FromMilliseconds 100.0) |> ignore<DateTime>
 
+        // Mark clean before pruning so we can verify pruning actually removed something
+        VdomContext.markClean ctx
+
         VdomContext.pruneExpiredActivations ctx
+
+        // Verify pruning actually removed an entry (not just that time elapsed)
+        VdomContext.isDirty ctx |> shouldEqual true
 
         // Verify key2 is now gone too
         VdomContext.wasRecentlyActivated key1 ctx |> shouldEqual false
@@ -91,7 +103,7 @@ module TestVdomContext =
     [<Test>]
     let ``pruneExpiredActivations handles removing multiple entries in one pass`` () =
         let clock = MockTime.make ()
-        let ctx = VdomContext.empty clock.GetUtcNow bounds
+        let ctx = VdomContext.empty<unit> clock.GetUtcNow bounds
 
         // Create many activations at the same time
         let keys = [ for i in 1..10 -> NodeKey.make $"key{i}" ]
@@ -106,9 +118,15 @@ module TestVdomContext =
         // Advance time past expiration threshold
         clock.Advance (TimeSpan.FromMilliseconds 600.0) |> ignore<DateTime>
 
+        // Mark clean before pruning so we can verify pruning actually removed entries
+        VdomContext.markClean ctx
+
         // This should remove all entries without throwing
         // (demonstrating that Dictionary.Remove during enumeration is safe in .NET Core 3.0+)
         VdomContext.pruneExpiredActivations ctx
+
+        // Verify pruning actually removed entries (not just that time elapsed)
+        VdomContext.isDirty ctx |> shouldEqual true
 
         // All should now be expired
         for key in keys do
@@ -117,7 +135,7 @@ module TestVdomContext =
     [<Test>]
     let ``pruneExpiredActivations marks context dirty only when removals occur`` () =
         let clock = MockTime.make ()
-        let ctx = VdomContext.empty clock.GetUtcNow bounds
+        let ctx = VdomContext.empty<unit> clock.GetUtcNow bounds
 
         let key1 = NodeKey.make "key1"
 

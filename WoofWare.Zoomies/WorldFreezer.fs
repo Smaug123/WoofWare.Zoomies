@@ -211,8 +211,13 @@ type WorldFreezer<'appEvent> =
             /// Buffer for accumulating characters during a bracketed paste operation.
             /// Reused across paste operations; cleared when each paste completes.
             _PasteBuffer : Text.StringBuilder
+            /// Buffer for storing the keys that triggered paste mode entry (ESC [ 2 0 0 ~).
+            /// Needed so we can re-emit them on timeout.
+            _PasteModeEntryKeys : ResizeArray<ConsoleKeyInfo>
             /// Whether we're currently in bracketed paste mode.
             mutable _InPasteMode : bool
+            /// Timestamp when we entered paste mode. Used for timeout handling.
+            mutable _PasteModeEnteredAt : int64
         }
 
     /// Load pending changes from the external world, like keystrokes, into the change list.
@@ -233,7 +238,7 @@ type WorldFreezer<'appEvent> =
     ///
     /// This function is *not* safe to call multiple times concurrently.
     member this.Changes () : WorldStateChange<'appEvent>[] voption =
-        if this._Changes.IsEmpty && this._DequeueState.IsNormal then
+        if this._Changes.IsEmpty && this._DequeueState.IsNormal && not this._InPasteMode then
             // Fine to have a TOCTTOU here. The next render loop will catch it if any events get added.
             ValueNone
         else
@@ -323,6 +328,14 @@ type WorldFreezer<'appEvent> =
                         match code, key.KeyChar with
                         | 200, '~' ->
                             // Begin bracketed paste: enter paste mode (don't emit the event)
+                            // Store the entry keys so we can re-emit them on timeout
+                            this._PasteModeEntryKeys.Clear ()
+                            this._PasteModeEntryKeys.Add esc
+
+                            for p in this._DequeueState.Processed do
+                                this._PasteModeEntryKeys.Add p
+
+                            this._PasteModeEnteredAt <- this._Stopwatch.GetTimestamp ()
                             this._InPasteMode <- true
                             this._DequeueState.Clear ()
                         | 201, '~' ->
@@ -470,6 +483,33 @@ type WorldFreezer<'appEvent> =
                 this._DequeueState.Clear ()
             | None -> ()
 
+            // Handle paste mode timeout: if we've been in paste mode for too long without
+            // receiving the end marker, exit paste mode and re-emit everything as keystrokes.
+            if this._InPasteMode then
+                let elapsed =
+                    float (this._Stopwatch.GetTimestamp () - this._PasteModeEnteredAt)
+                    / float this._Stopwatch.Frequency
+
+                if elapsed > 0.01 then
+                    // Re-emit the paste mode entry keys (ESC [ 2 0 0 ~)
+                    for key in this._PasteModeEntryKeys do
+                        result.Add (WorldStateChange.Keystroke key)
+
+                    // Re-emit the buffered paste content as keystrokes
+                    for c in this._PasteBuffer.ToString () do
+                        let key =
+                            if c = '\u001B' then
+                                ConsoleKeyInfo (c, ConsoleKey.Escape, false, false, false)
+                            else
+                                ConsoleKeyInfo (c, ConsoleKey.A, false, false, false)
+
+                        result.Add (WorldStateChange.Keystroke key)
+
+                    // Clean up
+                    this._PasteModeEntryKeys.Clear ()
+                    this._PasteBuffer.Clear () |> ignore<Text.StringBuilder>
+                    this._InPasteMode <- false
+
             if result.Count = 0 then
                 // This can happen if we are awaiting more keystrokes in an ANSI escape sequence.
                 ValueNone
@@ -567,7 +607,9 @@ module WorldFreezer =
             _HasDisposed = TaskCompletionSource<_> ()
             _TerminalResizeGeneration = ref 0
             _PasteBuffer = Text.StringBuilder ()
+            _PasteModeEntryKeys = ResizeArray ()
             _InPasteMode = false
+            _PasteModeEnteredAt = 0L
         }
 
     let listen<'appEvent> () : WorldFreezer<'appEvent> =

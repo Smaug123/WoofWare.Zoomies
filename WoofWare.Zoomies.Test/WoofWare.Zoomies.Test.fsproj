@@ -32,13 +32,18 @@
     <Compile Include="TestFocusCycle.fs" />
     <Compile Include="TestCollapsible.fs" />
     <Compile Include="TestProgressBar.fs" />
+    <Compile Include="TestScrollBar.fs" />
     <Compile Include="TestButton.fs" />
     <Compile Include="TestTextBox.fs" />
     <Compile Include="TestTable.fs" />
+    <Compile Include="TestVdomMeasure.fs" />
+    <Compile Include="TestMultiSelection.fs" />
+    <Compile Include="TestSingleSelection.fs" />
     <Compile Include="TestActivationWithPartialBatch.fs" />
     <Compile Include="TestBatchProcessing.fs" />
     <Compile Include="TestFlexibleContent.fs" />
     <Compile Include="TestJustifiedText.fs" />
+    <Compile Include="TestPostLayoutEvents.fs" />
     <Compile Include="TestWorldFreezer.fs" />
     <Compile Include="TestAppRun.fs" />
   </ItemGroup>

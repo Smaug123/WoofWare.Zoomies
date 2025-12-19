@@ -42,10 +42,10 @@ type Button =
     /// concerned with layout, not action.
     /// </remarks>
     static member make
-        (ctx : VdomContext, key : NodeKey, label : string, ?isFirstToFocus : bool, ?isInitiallyFocused : bool)
+        (ctx : IVdomContext, key : NodeKey, label : string, ?isFirstToFocus : bool, ?isInitiallyFocused : bool)
         =
-        let isFocused = VdomContext.focusedKey ctx = Some key
-        let isPressed = VdomContext.wasRecentlyActivated key ctx
+        let isFocused = ctx.FocusedKey = Some key
+        let isPressed = ctx.WasRecentlyActivated key
 
         let button = Button.make' (label, isFocused, isPressed) |> Vdom.withKey key
 

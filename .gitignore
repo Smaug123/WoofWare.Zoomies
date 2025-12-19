@@ -17,3 +17,7 @@ result
 
 GeneratedStopwatch.fs
 .claude/
+
+# FsDocs output
+output/
+.fsdocs/

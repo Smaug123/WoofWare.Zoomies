@@ -39,7 +39,7 @@ module TestFocusCycle =
                     Seq.zip this.Checkboxes other.Checkboxes |> Seq.forall (fun (x, y) -> x = y)
             | _ -> failwith "bad"
 
-    let vdom (vdomContext : VdomContext) (state : State) =
+    let vdom (vdomContext : IVdomContext<_>) (state : State) =
         List.init
             4
             (fun i ->
@@ -70,7 +70,7 @@ module TestFocusCycle =
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<_, State> with
+                { new WorldProcessor<_, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) =
                         let mutable newCheckboxes = state.Checkboxes
 
@@ -78,7 +78,7 @@ module TestFocusCycle =
                             match s with
                             | WorldStateChange.Keystroke c ->
                                 if c.KeyChar = ' ' then
-                                    match VdomContext.focusedKey renderState with
+                                    match renderState.FocusedKey with
                                     | None ->
                                         // pressed space while nothing focused
                                         ()
@@ -104,9 +104,11 @@ module TestFocusCycle =
                             {
                                 Checkboxes = newCheckboxes
                             }
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
             let mutable currentState = state
 
             currentState <-
@@ -374,7 +376,7 @@ module TestFocusCycle =
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<_, State> with
+                { new WorldProcessor<_, unit, State> with
                     member _.ProcessWorld (inputs, renderState, checkboxes) =
                         let mutable newCheckboxes = checkboxes.Checkboxes
 
@@ -382,7 +384,7 @@ module TestFocusCycle =
                             match s with
                             | WorldStateChange.Keystroke c ->
                                 if c.KeyChar = ' ' then
-                                    match VdomContext.focusedKey renderState with
+                                    match renderState.FocusedKey with
                                     | None -> ()
                                     | Some focused ->
                                         // a hack just to make the test smaller; in real life you should more explicitly
@@ -406,9 +408,11 @@ module TestFocusCycle =
                             {
                                 Checkboxes = newCheckboxes
                             }
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
             let mutable currentState = state
 
             currentState <-
@@ -587,7 +591,7 @@ module TestFocusCycle =
             // State tracks which element to render at a given key
             let haveFrameworkHandleFocus _ = true
 
-            let vdom (vdomContext : VdomContext) (renderCheckbox1 : bool) =
+            let vdom (vdomContext : IVdomContext<_>) (renderCheckbox1 : bool) =
                 let sharedKey = NodeKey.make "shared-key"
                 let unsharedKey = NodeKey.make "unshared-key"
 
@@ -609,7 +613,7 @@ module TestFocusCycle =
                     Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, checkbox1, checkbox2)
 
             let processWorld =
-                { new WorldProcessor<_, bool> with
+                { new WorldProcessor<_, unit, bool> with
                     member _.ProcessWorld (inputs, _, renderCheckbox1) =
                         let mutable renderCheckbox1 = renderCheckbox1
 
@@ -622,9 +626,11 @@ module TestFocusCycle =
                             | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
 
                         ProcessWorldResult.make renderCheckbox1
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
             let mutable renderCheckbox1 = true
 
             renderCheckbox1 <-
@@ -702,8 +708,8 @@ module TestFocusCycle =
 
             let world = MockWorld.make ()
 
-            let vdom (vdomContext : VdomContext) (tick : int) =
-                let currentFocus = VdomContext.focusedKey vdomContext
+            let vdom (vdomContext : IVdomContext<_>) (tick : int) =
+                let currentFocus = vdomContext.FocusedKey
                 let sharedKey = NodeKey.make "shared-key"
 
                 match tick with
@@ -735,7 +741,7 @@ module TestFocusCycle =
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<_, int> with
+                { new WorldProcessor<_, unit, int> with
                     member _.ProcessWorld (inputs, _, state) =
                         let mutable newState = state
 
@@ -748,10 +754,12 @@ module TestFocusCycle =
                             | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
 
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let mutable renderFocusable = 0
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             renderFocusable <-
                 App.pumpOnce
@@ -862,8 +870,8 @@ more      [☐]   |
             let textKey = NodeKey.make "focusable-text"
             let checkboxKey = NodeKey.make "checkbox"
 
-            let vdom (vdomContext : VdomContext) (_ : FakeUnit) =
-                let currentFocus = VdomContext.focusedKey vdomContext
+            let vdom (vdomContext : IVdomContext<_>) (_ : FakeUnit) =
+                let currentFocus = vdomContext.FocusedKey
 
                 let text =
                     Vdom.textContent ("This is focusable text", isFocused = (currentFocus = Some textKey))
@@ -875,7 +883,7 @@ more      [☐]   |
                 Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 3, text, checkbox)
 
             let processWorld =
-                { new WorldProcessor<unit, FakeUnit> with
+                { new WorldProcessor<unit, unit, FakeUnit> with
                     member _.ProcessWorld (worldChanges, _, state) =
                         for change in worldChanges do
                             match change with
@@ -886,9 +894,11 @@ more      [☐]   |
                             | ApplicationEventException _ -> failwith "no exceptions possible"
 
                         ProcessWorldResult.make state
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -1003,6 +1013,9 @@ This is focusable text                                                          
                 (fun () -> false)
             |> ignore<FakeUnit>
 
+            // Assert that focus moved back to the text element
+            RenderState.focusedKey renderState |> shouldEqual (Some textKey)
+
             expect {
                 snapshot
                     @"
@@ -1036,7 +1049,7 @@ This is focusable text                                                          
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (vdomContext : VdomContext) (_ : FakeUnit) =
+            let vdom (vdomContext : IVdomContext<_>) (_ : FakeUnit) =
                 let checkbox1Key = NodeKey.make "checkbox1"
                 let checkbox2Key = NodeKey.make "checkbox2"
                 let checkbox3Key = NodeKey.make "checkbox3"
@@ -1056,7 +1069,7 @@ This is focusable text                                                          
                 )
 
             let processWorld =
-                { new WorldProcessor<unit, FakeUnit> with
+                { new WorldProcessor<unit, unit, FakeUnit> with
                     member _.ProcessWorld (worldChanges, _, state) =
                         for change in worldChanges do
                             match change with
@@ -1067,9 +1080,11 @@ This is focusable text                                                          
                             | ApplicationEventException _ -> failwith "no exceptions possible"
 
                         ProcessWorldResult.make state
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -1208,7 +1223,7 @@ This is focusable text                                                          
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (vdomContext : VdomContext) (_ : FakeUnit) =
+            let vdom (vdomContext : IVdomContext<_>) (_ : FakeUnit) =
                 let checkbox1Key = NodeKey.make "checkbox1"
                 let checkbox2Key = NodeKey.make "checkbox2"
                 let checkbox3Key = NodeKey.make "checkbox3"
@@ -1228,7 +1243,7 @@ This is focusable text                                                          
                 )
 
             let processWorld =
-                { new WorldProcessor<unit, FakeUnit> with
+                { new WorldProcessor<unit, unit, FakeUnit> with
                     member _.ProcessWorld (worldChanges, _, state) =
                         for change in worldChanges do
                             match change with
@@ -1239,9 +1254,11 @@ This is focusable text                                                          
                             | ApplicationEventException _ -> failwith "no exceptions possible"
 
                         ProcessWorldResult.make state
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             // First render: checkbox2 should start with focus (marked with isInitiallyFocused=true)
             App.pumpOnce

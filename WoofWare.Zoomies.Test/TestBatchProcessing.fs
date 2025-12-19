@@ -42,7 +42,7 @@ module TestBatchProcessing =
             let mutable totalProcessed = 0
 
             let processWorld =
-                { new WorldProcessor<obj, ImmutableArray<char>> with
+                { new WorldProcessor<unit, unit, ImmutableArray<char>> with
                     member _.ProcessWorld (inputs, _renderState, state) =
                         let batchSize =
                             if List.isEmpty batchSizes then
@@ -73,9 +73,11 @@ module TestBatchProcessing =
                             // Request a new batch after processing 'toProcess' items
                             ProcessWorldResult.make newState
                             |> ProcessWorldResult.withRerender (toProcess - 1)
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let vdom (_vdomContext : VdomContext) (_state : ImmutableArray<char>) = Vdom.textContent ""
+            let vdom (_vdomContext : IVdomContext<_>) (_state : ImmutableArray<char>) = Vdom.textContent ""
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
             let mutable currentState = initialState
@@ -102,19 +104,14 @@ module TestBatchProcessing =
             return currentState |> Seq.toList
         }
 
-    [<TestCase true>]
-    [<TestCase false>]
-    let ``batch processing handles all events in order`` (frameworkHandleFocus : bool) =
+    [<Test>]
+    let ``batch processing handles all events in order`` () =
+        // This test runs with frameworkHandleFocus=false (manual mode).
+        // Processing tabs with frameworkHandleFocus=true requires focusable elements in the vdom;
+        // see ``batch processing with framework focus intercepts tabs`` for that case.
         let property (batchSize1 : int) (batchSizes : int list) (keyChars : char list) =
             task {
                 let batchSizes = (batchSize1 :: batchSizes) |> List.map (fun i -> abs i + 1)
-
-                let keyChars =
-                    if frameworkHandleFocus then
-                        // Filter out tab characters to avoid focus cycling interference
-                        keyChars |> List.filter (fun c -> c <> '\t')
-                    else
-                        keyChars
 
                 if List.isEmpty keyChars then
                     return ()
@@ -128,25 +125,19 @@ module TestBatchProcessing =
                                 ConsoleKeyInfo (c, ConsoleKey.NoName, false, false, false)
                         )
 
-                    let! result = processWithBatchStrategy frameworkHandleFocus keystrokes batchSizes
+                    let! result = processWithBatchStrategy false keystrokes batchSizes
 
-                    let expected =
-                        if frameworkHandleFocus then
-                            // Tabs are handled by the framework when haveFrameworkHandleFocus is true,
-                            // so they won't appear in the processed list
-                            keyChars |> List.filter (fun c -> c <> '\t')
-                        else
-                            keyChars
-
-                    return result |> shouldEqual expected
+                    // In manual mode, all characters including tabs pass through
+                    return result |> shouldEqual keyChars
             }
 
         Check.One (propConfig, property)
 
-    [<TestCase true>]
-    [<TestCase false>]
-    let ``single event processing eventually processes everything`` (frameworkHandlesFocus : bool) =
+    [<Test>]
+    let ``single event processing eventually processes everything`` () =
         // Edge case: always process exactly one event per batch
+        // Note: We filter out tabs because processWithBatchStrategy uses a vdom without
+        // focusable elements. Tab interception with focus is tested separately.
         let property (keyChars : char list) =
             task {
                 let keyChars = keyChars |> List.filter (fun c -> c <> '\t')
@@ -158,18 +149,18 @@ module TestBatchProcessing =
                         keyChars
                         |> List.map (fun c -> ConsoleKeyInfo (c, ConsoleKey.NoName, false, false, false))
 
-                    let! result = processWithBatchStrategy frameworkHandlesFocus keystrokes [ 1 ]
-                    let expected = keyChars
+                    let! result = processWithBatchStrategy false keystrokes [ 1 ]
 
-                    return result |> shouldEqual expected
+                    return result |> shouldEqual keyChars
             }
 
         Check.One (propConfig, property)
 
-    [<TestCase true>]
-    [<TestCase false>]
-    let ``large batch processing eventually processes everything`` (frameworkHandlesFocus : bool) =
+    [<Test>]
+    let ``large batch processing eventually processes everything`` () =
         // Edge case: try to process all events in one go (but framework may split)
+        // Note: We filter out tabs because processWithBatchStrategy uses a vdom without
+        // focusable elements. Tab interception with focus is tested separately.
         let property (keyChars : char list) =
             task {
                 let keyChars = keyChars |> List.filter (fun c -> c <> '\t')
@@ -181,10 +172,157 @@ module TestBatchProcessing =
                         keyChars
                         |> List.map (fun c -> ConsoleKeyInfo (c, ConsoleKey.NoName, false, false, false))
 
-                    let! result = processWithBatchStrategy frameworkHandlesFocus keystrokes [ 1000 ]
-                    let expected = keyChars
+                    let! result = processWithBatchStrategy false keystrokes [ 1000 ]
 
-                    return result |> shouldEqual expected
+                    return result |> shouldEqual keyChars
+            }
+
+        Check.One (propConfig, property)
+
+    /// Test helper that simulates processing events with framework focus handling enabled,
+    /// using a vdom with focusable elements so tabs are properly intercepted.
+    let processWithBatchStrategyAndFocus (keystrokes : ConsoleKeyInfo list) (batchSizes : int list) : char list Task =
+        task {
+            let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            // Send all keystrokes
+            for key in keystrokes do
+                world.SendKey key
+
+            // State is a list of all processed characters in order
+            let initialState = ImmutableArray.Empty
+
+            // Cycle through batch sizes
+            let mutable batchSizeIndex = 0
+            let mutable totalProcessed = 0
+            // Track how many tabs we expect to be intercepted
+            let tabCount =
+                keystrokes |> List.filter (fun k -> k.Key = ConsoleKey.Tab) |> List.length
+
+            let processWorld =
+                { new WorldProcessor<unit, unit, ImmutableArray<char>> with
+                    member _.ProcessWorld (inputs, _renderState, state) =
+                        let batchSize =
+                            if List.isEmpty batchSizes then
+                                1
+                            else
+                                List.item (batchSizeIndex % batchSizes.Length) batchSizes
+
+                        batchSizeIndex <- batchSizeIndex + 1
+
+                        // Process up to batchSize events
+                        let toProcess = min batchSize inputs.Length
+                        let mutable newState = state
+
+                        for i = 0 to toProcess - 1 do
+                            match inputs.[i] with
+                            | WorldStateChange.Keystroke c -> newState <- newState.Add c.KeyChar
+                            | WorldStateChange.MouseEvent _ -> ()
+                            | WorldStateChange.ApplicationEvent _ -> ()
+                            | WorldStateChange.Paste _ -> ()
+                            | WorldStateChange.ApplicationEventException _ -> ()
+
+                        totalProcessed <- totalProcessed + toProcess
+
+                        if toProcess >= inputs.Length then
+                            // Processed everything in this batch
+                            ProcessWorldResult.make newState
+                        else
+                            // Request a new batch after processing 'toProcess' items
+                            ProcessWorldResult.make newState
+                            |> ProcessWorldResult.withRerender (toProcess - 1)
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
+                }
+
+            // Use a vdom with focusable elements so the framework can intercept tabs
+            let vdom (vdomContext : IVdomContext<_>) (_state : ImmutableArray<char>) =
+                let checkbox0 =
+                    Components.Checkbox.make (vdomContext, NodeKey.make "checkbox0", false)
+
+                let checkbox1 =
+                    Components.Checkbox.make (vdomContext, NodeKey.make "checkbox1", false)
+
+                Vdom.panelSplitAbsolute (SplitDirection.Vertical, -3, checkbox0, checkbox1)
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let mutable currentState = initialState
+
+            // Keep pumping until all events are processed
+            // (tabs are intercepted by framework, so we expect keystrokes.Length - tabCount to be processed)
+            let expectedProcessed = keystrokes.Length - tabCount
+            let mutable iterations = 0
+            let maxIterations = keystrokes.Length * 10 + 10 // Safety limit
+
+            while totalProcessed < expectedProcessed && iterations < maxIterations do
+                currentState <-
+                    App.pumpOnce
+                        worldFreezer
+                        currentState
+                        (fun _ -> true) // Framework handles focus
+                        renderState
+                        processWorld
+                        vdom
+                        ActivationResolver.none
+                        (fun () -> false)
+
+                iterations <- iterations + 1
+
+            // Return the final processed characters
+            return currentState |> Seq.toList
+        }
+
+    [<Test>]
+    let ``batch processing with framework focus intercepts tabs`` () =
+        // This test exercises the focus-aware batching path by including tabs and
+        // verifying they are intercepted by the framework (not passed through to the processor).
+        // We inject tabs into the input to guarantee coverage of the tab-interception path.
+        let property
+            (batchSize1 : int)
+            (batchSizes : int list)
+            (nonTabChar : char)
+            (nonTabChars : char list)
+            (tabPositions : int list)
+            =
+            task {
+                let batchSizes = (batchSize1 :: batchSizes) |> List.map (fun i -> abs i + 1)
+
+                // Construct a non-empty list of non-tab characters
+                let baseChars =
+                    (nonTabChar :: nonTabChars) |> List.map (fun c -> if c = '\t' then 'X' else c)
+
+                // Inject tabs at various positions to guarantee tab coverage
+                let mutable keyChars = baseChars
+
+                for pos in tabPositions do
+                    let insertPos = abs pos % (keyChars.Length + 1)
+
+                    keyChars <- List.take insertPos keyChars @ [ '\t' ] @ List.skip insertPos keyChars
+
+                let keystrokes =
+                    keyChars
+                    |> List.map (fun c ->
+                        if c = '\t' then
+                            ConsoleKeyInfo (c, ConsoleKey.Tab, false, false, false)
+                        else
+                            ConsoleKeyInfo (c, ConsoleKey.NoName, false, false, false)
+                    )
+
+                let! result = processWithBatchStrategyAndFocus keystrokes batchSizes
+
+                // In framework focus mode, tabs are intercepted for focus cycling
+                // and don't appear in the processed output
+                let expected = keyChars |> List.filter (fun c -> c <> '\t')
+
+                return result |> shouldEqual expected
             }
 
         Check.One (propConfig, property)
@@ -220,11 +358,11 @@ module TestBatchProcessing =
             let mutable switchModeAfterNextEvent = false
 
             let processWorld =
-                { new WorldProcessor<obj, ModeSwitchingState> with
+                { new WorldProcessor<unit, unit, ModeSwitchingState> with
                     member _.ProcessWorld (inputs, vdomContext, state) =
                         let mutable newState =
                             { state with
-                                LastFocusedKey = VdomContext.focusedKey vdomContext
+                                LastFocusedKey = vdomContext.FocusedKey
                             }
 
                         let mutable shouldRerender = false
@@ -259,11 +397,13 @@ module TestBatchProcessing =
                             |> ProcessWorldResult.withRerender (inputs.Length - 1)
                         else
                             ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let mutable vdomRenderCount = 0
 
-            let vdom (vdomContext : VdomContext) (_state : ModeSwitchingState) =
+            let vdom (vdomContext : IVdomContext<_>) (_state : ModeSwitchingState) =
                 vdomRenderCount <- vdomRenderCount + 1
 
                 let checkbox0 =
@@ -446,7 +586,7 @@ module TestBatchProcessing =
                 let mutable batchIndex = 0
 
                 let processWorld =
-                    { new WorldProcessor<obj, char list> with
+                    { new WorldProcessor<unit, unit, char list> with
                         member _.ProcessWorld (inputs, _vdomContext, state) =
                             // Process only batchSize events from this batch, then request Rerender
                             let batchSize =
@@ -472,9 +612,11 @@ module TestBatchProcessing =
                                 |> ProcessWorldResult.withRerender (toProcess - 1)
                             else
                                 ProcessWorldResult.make newState
+
+                        member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                     }
 
-                let vdom (_vdomContext : VdomContext) (_state : char list) =
+                let vdom (_vdomContext : IVdomContext<_>) (_state : char list) =
                     vdomRenderCount <- vdomRenderCount + 1
                     Vdom.textContent ""
 

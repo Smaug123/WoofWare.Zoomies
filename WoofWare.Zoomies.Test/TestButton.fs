@@ -30,7 +30,7 @@ module TestButton =
         task {
             let flipKey = NodeKey.make "flip-button"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
                 let text =
                     if state.ShowFirstText then
                         "Hello, World!"
@@ -58,7 +58,7 @@ module TestButton =
             let resolver = ActivationResolver.button flipKey FlipText
 
             let processWorld =
-                { new WorldProcessor<AppEvent, State> with
+                { new WorldProcessor<AppEvent, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) =
                         let mutable newState = state
 
@@ -72,6 +72,8 @@ module TestButton =
                             | _ -> ()
 
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let clock = MockTime.make ()
@@ -199,7 +201,7 @@ Hello, World!                           |
             let button2Key = NodeKey.make "button2"
             let button3Key = NodeKey.make "button3"
 
-            let vdom (ctx : VdomContext) (state : MultiButtonState) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : MultiButtonState) : Vdom<DesiredBounds> =
                 let statusText = Vdom.textContent $"Last clicked: {state.LastClicked}"
 
                 let button1 =
@@ -236,7 +238,7 @@ Hello, World!                           |
                     ]
 
             let processWorld =
-                { new WorldProcessor<MultiButtonEvent, MultiButtonState> with
+                { new WorldProcessor<MultiButtonEvent, unit, MultiButtonState> with
                     member _.ProcessWorld (inputs, renderState, state) =
                         let mutable newState = state
 
@@ -260,6 +262,8 @@ Hello, World!                           |
                             | _ -> ()
 
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let clock = MockTime.make ()
@@ -450,7 +454,7 @@ Last clicked: Button 3                            |
         task {
             let flipKey = NodeKey.make "flip-button"
 
-            let vdom (ctx : VdomContext) (state : bool) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : bool) : Vdom<DesiredBounds> =
                 let text = if state then "Hello, World!" else "Goodbye, World!"
 
                 let textVdom = Vdom.textContent text
@@ -476,7 +480,7 @@ Last clicked: Button 3                            |
             let resolver = ActivationResolver.button flipKey FlipText
 
             let processWorld =
-                { new WorldProcessor<AppEvent, bool> with
+                { new WorldProcessor<AppEvent, unit, bool> with
                     member _.ProcessWorld (inputs, renderState, state) =
                         let mutable newState = state
 
@@ -486,6 +490,8 @@ Last clicked: Button 3                            |
                             | _ -> ()
 
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
             let clock = MockTime.make ()
@@ -544,7 +550,7 @@ Goodbye, World!                         |
 
             // See how the button press evolves over time. Wait til just before the timer elapses:
 
-            clock.Advance (TimeSpan.FromMilliseconds (VdomContext.RECENT_ACTIVATION_TIMEOUT_MS - 0.01))
+            clock.Advance (TimeSpan.FromMilliseconds (VdomContextConstants.RECENT_ACTIVATION_TIMEOUT_MS - 0.01))
             |> ignore<DateTime>
 
             state <-

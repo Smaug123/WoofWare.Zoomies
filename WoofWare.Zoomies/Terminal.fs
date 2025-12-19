@@ -30,7 +30,9 @@ module Terminal =
 
 type TerminalOp =
     | MoveCursor of x : int * y : int
-    | WriteChar of TerminalCell
+    /// Write a run of characters with uniform styling.
+    /// The text should not contain control characters or newlines.
+    | WriteRun of text : string * backgroundColor : ConsoleColor voption * textColor : ConsoleColor voption
     | SetCursorVisibility of toVisible : bool
     | ClearScreen
     | EnterAlternateScreen
@@ -39,6 +41,11 @@ type TerminalOp =
     | UnregisterMouseMode
     | RegisterBracketedPaste
     | UnregisterBracketedPaste
+    /// Begin synchronized update (DEC mode 2026). Terminals batch output until EndSynchronizedUpdate.
+    /// Unsupporting terminals ignore this sequence.
+    | BeginSynchronizedUpdate
+    /// End synchronized update (DEC mode 2026). Terminal displays the batched output.
+    | EndSynchronizedUpdate
 
 [<RequireQualifiedAccess>]
 module TerminalOp =
@@ -51,22 +58,22 @@ module TerminalOp =
         : unit
         =
         match o with
-        | TerminalOp.WriteChar c ->
+        | TerminalOp.WriteRun (text, backgroundColor, textColor) ->
             let backgroundEscape =
-                match colorMode, c.BackgroundColor with
+                match colorMode, backgroundColor with
                 | ColorMode.Color, ValueSome bg when bg <> currentBackground ->
                     Some (ConsoleColor.toBackgroundEscapeCode bg, ConsoleColor.toBackgroundEscapeCode currentBackground)
                 | _ -> None
 
             let foregroundEscape =
-                match colorMode, c.TextColor with
+                match colorMode, textColor with
                 | ColorMode.Color, ValueSome fg when fg <> currentForeground ->
                     Some (ConsoleColor.toForegroundEscapeCode fg, ConsoleColor.toForegroundEscapeCode currentForeground)
                 | _ -> None
 
             backgroundEscape |> Option.iter (fst >> consoleWrite)
             foregroundEscape |> Option.iter (fst >> consoleWrite)
-            consoleWrite $"%c{c.Char}"
+            consoleWrite text
             foregroundEscape |> Option.iter (snd >> consoleWrite)
             backgroundEscape |> Option.iter (snd >> consoleWrite)
         | TerminalOp.MoveCursor (x, y) -> consoleWrite $"\x1B[%d{y + 1};%d{x + 1}H"
@@ -82,3 +89,5 @@ module TerminalOp =
         | TerminalOp.UnregisterMouseMode -> consoleWrite "\u001b[?1000;1006l"
         | TerminalOp.RegisterBracketedPaste -> consoleWrite "\u001b[?2004h"
         | TerminalOp.UnregisterBracketedPaste -> consoleWrite "\u001b[?2004l"
+        | TerminalOp.BeginSynchronizedUpdate -> consoleWrite "\u001b[?2026h"
+        | TerminalOp.EndSynchronizedUpdate -> consoleWrite "\u001b[?2026l"

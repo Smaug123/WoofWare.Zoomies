@@ -45,7 +45,7 @@ module FileBrowser =
         }
 
     let processWorld (worldBridge : IWorldBridge<AppEvent>) =
-        { new WorldProcessor<AppEvent, State> with
+        { new WorldProcessor<AppEvent, unit, State> with
             member _.ProcessWorld (changes, _prevVdom, state) =
                 let mutable pathInput = state.PathInput
                 let mutable cursorPos = state.CursorPos
@@ -100,9 +100,11 @@ module FileBrowser =
                         IsLoading = isLoading
                         Generation = generation
                     }
+
+            member _.ProcessPostLayoutEvents (_, _, state) = state
         }
 
-    let view (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+    let view (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
         let topPane =
             let textBox =
                 TextBox.make (ctx, textBoxKey, state.PathInput, state.CursorPos, isInitiallyFocused = true)

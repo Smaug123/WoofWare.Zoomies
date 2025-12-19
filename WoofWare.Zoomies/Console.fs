@@ -1,6 +1,7 @@
 namespace WoofWare.Zoomies
 
 open System
+open System.Text
 
 type IConsole =
     {
@@ -10,6 +11,9 @@ type IConsole =
         WindowHeight : unit -> int
         ColorMode : ColorMode
         Execute : TerminalOp -> unit
+        /// Flush any buffered output to the console.
+        /// Call this at the end of each render frame.
+        Flush : unit -> unit
     }
 
 [<RequireQualifiedAccess>]
@@ -26,6 +30,9 @@ module IConsole =
                 ColorMode.NoColor
             | _ -> ColorMode.Color
 
+        // Buffer all writes and flush once per frame to minimize syscalls
+        let buffer = StringBuilder ()
+
         {
             BackgroundColor = fun () -> Console.BackgroundColor
             ForegroundColor = fun () -> Console.ForegroundColor
@@ -33,7 +40,18 @@ module IConsole =
             WindowHeight = fun () -> Console.WindowHeight
             ColorMode = colorMode
             Execute =
-                fun o -> TerminalOp.execute colorMode Console.BackgroundColor Console.ForegroundColor Console.Write o
+                fun o ->
+                    TerminalOp.execute
+                        colorMode
+                        Console.BackgroundColor
+                        Console.ForegroundColor
+                        (buffer.Append >> ignore)
+                        o
+            Flush =
+                fun () ->
+                    if buffer.Length > 0 then
+                        Console.Write (buffer.ToString ())
+                        buffer.Clear () |> ignore
         }
 
     let defaultForTests =
@@ -44,4 +62,5 @@ module IConsole =
             WindowHeight = fun () -> 10
             ColorMode = ColorMode.Color
             Execute = fun _ -> failwith "not implemented"
+            Flush = fun () -> ()
         }

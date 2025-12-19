@@ -103,7 +103,7 @@ module TestFlexibleContent =
     [<Test>]
     let ``FlexibleContent renders at width 80`` () =
         let console, harness = ConsoleHarness.make' (fun () -> 80) (fun () -> 5)
-        let renderState = RenderState.make console MockTime.getStaticUtcNow None
+        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
         let vdom = progressBar 0.6
 
         Render.oneStep renderState () (fun _ -> vdom)
@@ -124,7 +124,7 @@ module TestFlexibleContent =
     [<Test>]
     let ``FlexibleContent renders at width 20`` () =
         let console, harness = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
-        let renderState = RenderState.make console MockTime.getStaticUtcNow None
+        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
         let vdom = progressBar 0.6
 
         Render.oneStep renderState () (fun _ -> vdom)
@@ -153,7 +153,7 @@ module TestFlexibleContent =
                 Execute = terminalOps.Add
             }
 
-        let renderState = RenderState.make console MockTime.getStaticUtcNow None
+        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
         let vdom = progressBar 0.6
 
@@ -169,39 +169,66 @@ module TestFlexibleContent =
         terminalOps.Count |> shouldEqual 0
 
     [<Test>]
-    let ``FlexibleContent with responsive layout changes structure`` () =
-        let terminalOps = ResizeArray ()
-
-        // Start with wide console
-        let mutable width = 80
-
-        let console =
-            { IConsole.defaultForTests with
-                WindowWidth = fun () -> width
-                WindowHeight = fun () -> 24
-                Execute = terminalOps.Add
-            }
-
-        let renderState = RenderState.make console MockTime.getStaticUtcNow None
+    let ``FlexibleContent responsive layout renders horizontal at wide width`` () =
+        // At width >= 40, responsiveLayout uses Vertical split (side-by-side)
+        let console, harness = ConsoleHarness.make' (fun () -> 80) (fun () -> 10)
+        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
         let vdom = responsiveLayout "Left" "Right"
 
-        // First render at width 80 (horizontal layout)
         Render.oneStep renderState () (fun _ -> vdom)
 
-        terminalOps.Clear ()
+        expect {
+            snapshot
+                @"
+Left                                    Right                                   |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+                                                                                |
+"
 
-        // Update terminal size to width 30 (should switch to vertical layout)
-        width <- 30
-        RenderState.refreshTerminalSize renderState
-
-        Render.oneStep renderState () (fun _ -> vdom)
-
-        // Should have produced output due to structural change
-        (terminalOps.Count > 0) |> shouldEqual true
+            return ConsoleHarness.toString harness
+        }
 
     [<Test>]
-    let ``FlexibleContent measurement respects constraints`` () =
+    let ``FlexibleContent responsive layout renders vertical at narrow width`` () =
+        // At width < 40, responsiveLayout uses Horizontal split (stacked vertically)
+        let console, harness = ConsoleHarness.make' (fun () -> 30) (fun () -> 10)
+        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+
+        let vdom = responsiveLayout "Left" "Right"
+
+        Render.oneStep renderState () (fun _ -> vdom)
+
+        expect {
+            snapshot
+                @"
+Left                          |
+                              |
+                              |
+                              |
+                              |
+Right                         |
+                              |
+                              |
+                              |
+                              |
+"
+
+            return ConsoleHarness.toString harness
+        }
+
+    [<Test>]
+    let ``FlexibleContent clamps to available width when measurement requests more`` () =
+        // This test verifies that when a FlexibleContent requests more width than available
+        // (MinWidth=100, PreferredWidth=200), the framework clamps to the actual available
+        // width (50) rather than crashing or rendering incorrectly.
         let measure (measureConstraint : MeasureConstraints) =
             measureConstraint.MaxWidth |> shouldBeSmallerThan 100
 
@@ -219,21 +246,25 @@ module TestFlexibleContent =
 
         let vdom = Vdom.flexibleContent measure render
 
-        let terminalOps = ResizeArray ()
+        let console, harness = ConsoleHarness.make' (fun () -> 50) (fun () -> 5)
+        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
-        let console =
-            { IConsole.defaultForTests with
-                WindowWidth = fun () -> 50 // Constraint is narrower than request
-                WindowHeight = fun () -> 24
-                Execute = terminalOps.Add
-            }
-
-        let renderState = RenderState.make console MockTime.getStaticUtcNow None
-
-        // Should not crash even though measurement requests more than available
         Render.oneStep renderState () (fun _ -> vdom)
 
-        (terminalOps.Count > 0) |> shouldEqual true
+        // The snapshot shows the framework clamped to width 50 (the available space)
+        // rather than the requested MinWidth of 100 or PreferredWidth of 200
+        expect {
+            snapshot
+                @"
+Width: 50                                         |
+                                                  |
+                                                  |
+                                                  |
+                                                  |
+"
+
+            return ConsoleHarness.toString harness
+        }
 
     [<Test>]
     let ``FlexibleContent can be nested`` () =
@@ -296,7 +327,7 @@ module TestFlexibleContent =
             Vdom.flexibleContent outerMeasure outerRender
 
         let console, harness = ConsoleHarness.make' (fun () -> 50) (fun () -> 5)
-        let renderState = RenderState.make console MockTime.getStaticUtcNow None
+        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
         let vdom = nestedFlexible 0.6
 
         Render.oneStep renderState () (fun _ -> vdom)
@@ -371,7 +402,7 @@ Progress:                                         |
             Vdom.flexibleContent outerMeasure outerRender
 
         let console, harness = ConsoleHarness.make' (fun () -> 25) (fun () -> 5)
-        let renderState = RenderState.make console MockTime.getStaticUtcNow None
+        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
         let vdom = nestedFlexible 0.6
 
         Render.oneStep renderState () (fun _ -> vdom)

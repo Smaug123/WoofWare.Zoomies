@@ -30,13 +30,38 @@ module TestTextBox =
             Cursor : int
         }
 
+    /// Common WorldProcessor for tests that use a TextBox with State.
+    /// Handles TextEdit events by applying TextBoxHelpers.applyAction.
+    let textBoxProcessor : WorldProcessor<AppEvent, unit, State> =
+        { new WorldProcessor<AppEvent, unit, State> with
+            member _.ProcessWorld (inputs, _renderState, state) =
+                let mutable newState = state
+
+                for input in inputs do
+                    match input with
+                    | WorldStateChange.ApplicationEvent (TextEdit action) ->
+                        let content, cursor =
+                            TextBoxHelpers.applyAction newState.Content newState.Cursor action
+
+                        newState <-
+                            {
+                                Content = content
+                                Cursor = cursor
+                            }
+                    | _ -> ()
+
+                ProcessWorldResult.make newState
+
+            member _.ProcessPostLayoutEvents (_, _, state) = state
+        }
+
     [<Test>]
     let ``tab moves focus from textbox to button when framework focus enabled`` () =
         task {
             let textBoxKey = NodeKey.make "textbox"
             let buttonKey = NodeKey.make "button"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
                 let textbox =
                     TextBox.make (
                         ctx,
@@ -71,26 +96,6 @@ module TestTextBox =
                         ActivationResolver.button buttonKey ButtonClicked
                     ]
 
-            let processWorld =
-                { new WorldProcessor<AppEvent, State> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        let mutable newState = state
-
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent (TextEdit action) ->
-                                let content, cursor = TextBoxHelpers.applyAction state.Content state.Cursor action
-
-                                newState <-
-                                    {
-                                        Content = content
-                                        Cursor = cursor
-                                    }
-                            | _ -> ()
-
-                        ProcessWorldResult.make newState
-                }
-
             let clock = MockTime.make ()
 
             let renderState = RenderState.make console clock.GetUtcNow None
@@ -108,7 +113,7 @@ module TestTextBox =
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -133,7 +138,7 @@ module TestTextBox =
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -159,7 +164,7 @@ module TestTextBox =
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : VdomContext) (_ : ImmutableArray<ConsoleKeyInfo>) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (_ : ImmutableArray<ConsoleKeyInfo>) : Vdom<DesiredBounds> =
                 TextBox.make (ctx, textBoxKey, "", 0, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -178,7 +183,7 @@ module TestTextBox =
             let resolver = ActivationResolver.none
 
             let processWorld =
-                { new WorldProcessor<AppEvent, ImmutableArray<_>> with
+                { new WorldProcessor<AppEvent, unit, ImmutableArray<_>> with
                     member _.ProcessWorld (inputs, renderState, state) =
                         let mutable newState = state.ToBuilder ()
 
@@ -188,6 +193,8 @@ module TestTextBox =
                             | _ -> ()
 
                         ProcessWorldResult.make (newState.ToImmutable ())
+
+                    member _.ProcessPostLayoutEvents (_, _, state) = state
                 }
 
             let clock = MockTime.make ()
@@ -262,7 +269,7 @@ module TestTextBox =
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -279,26 +286,6 @@ module TestTextBox =
             let haveFrameworkHandleFocus _ = true
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
-
-            let processWorld =
-                { new WorldProcessor<AppEvent, State> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        let mutable newState = state
-
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent (TextEdit action) ->
-                                let content, cursor = TextBoxHelpers.applyAction state.Content state.Cursor action
-
-                                newState <-
-                                    {
-                                        Content = content
-                                        Cursor = cursor
-                                    }
-                            | _ -> ()
-
-                        ProcessWorldResult.make newState
-                }
 
             let clock = MockTime.make ()
 
@@ -317,7 +304,7 @@ module TestTextBox =
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -331,7 +318,7 @@ module TestTextBox =
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -348,7 +335,7 @@ module TestTextBox =
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -365,7 +352,7 @@ module TestTextBox =
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -382,7 +369,7 @@ module TestTextBox =
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -399,7 +386,7 @@ module TestTextBox =
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -416,7 +403,7 @@ module TestTextBox =
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -441,7 +428,7 @@ Hello!|                                 |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -458,26 +445,6 @@ Hello!|                                 |
             let haveFrameworkHandleFocus _ = true
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
-
-            let processWorld =
-                { new WorldProcessor<AppEvent, State> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        let mutable newState = state
-
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent (TextEdit action) ->
-                                let content, cursor = TextBoxHelpers.applyAction state.Content state.Cursor action
-
-                                newState <-
-                                    {
-                                        Content = content
-                                        Cursor = cursor
-                                    }
-                            | _ -> ()
-
-                        ProcessWorldResult.make newState
-                }
 
             let clock = MockTime.make ()
 
@@ -496,7 +463,7 @@ Hello!|                                 |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -510,7 +477,7 @@ Hello!|                                 |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -527,7 +494,7 @@ Hello!|                                 |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -540,7 +507,7 @@ Hello!|                                 |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -556,7 +523,7 @@ Hello!|                                 |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -573,7 +540,7 @@ Hello!|                                 |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -590,7 +557,7 @@ Hello!|                                 |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -604,7 +571,7 @@ Hello!|                                 |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -621,26 +588,6 @@ Hello!|                                 |
             let haveFrameworkHandleFocus _ = true
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
-
-            let processWorld =
-                { new WorldProcessor<AppEvent, State> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        let mutable newState = state
-
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent (TextEdit action) ->
-                                let content, cursor = TextBoxHelpers.applyAction state.Content state.Cursor action
-
-                                newState <-
-                                    {
-                                        Content = content
-                                        Cursor = cursor
-                                    }
-                            | _ -> ()
-
-                        ProcessWorldResult.make newState
-                }
 
             let clock = MockTime.make ()
 
@@ -659,7 +606,7 @@ Hello!|                                 |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -673,7 +620,7 @@ Hello!|                                 |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -690,7 +637,7 @@ Hello!|                                 |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -707,7 +654,7 @@ Hello!|                                 |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -724,7 +671,7 @@ Hello!|                                 |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -741,7 +688,7 @@ Hello!|                                 |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -758,7 +705,7 @@ Hello!|                                 |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -802,7 +749,7 @@ Hello!|                                 |
             let textBox1Key = NodeKey.make "textbox1"
             let textBox2Key = NodeKey.make "textbox2"
 
-            let vdom (ctx : VdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
                 let textbox1 =
                     TextBox.make (ctx, textBox1Key, "Focused", 3, isInitiallyFocused = true, isFirstToFocus = true)
 
@@ -831,8 +778,9 @@ Hello!|                                 |
                     ]
 
             let processWorld =
-                { new WorldProcessor<AppEvent, State> with
-                    member _.ProcessWorld (inputs, renderState, state) = ProcessWorldResult.make state
+                { new WorldProcessor<AppEvent, unit, State> with
+                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
+                    member _.ProcessPostLayoutEvents (_, _, state) = state
                 }
 
             let clock = MockTime.make ()
@@ -876,20 +824,33 @@ Unfocused                               |
         task {
             let content = "Hello"
 
-            // Test negative cursor position
-            let negativeVdom = TextBox.make' (content, -1, true)
-
             let constraints =
                 {
                     MaxWidth = 1000
                     MaxHeight = 1000
                 }
-            // Should not throw, just render content without cursor
-            VdomBounds.measure negativeVdom constraints |> ignore
+
+            // Measure with valid cursor for comparison
+            let validVdom = TextBox.make' (content, 2, true)
+            let validMeasured = VdomBounds.measure validVdom constraints
+            // Valid case: "Hello" with cursor = 6 width (5 content + 1 cursor)
+            validMeasured.PreferredWidth |> shouldEqual 6
+
+            // Test negative cursor position
+            let negativeVdom = TextBox.make' (content, -1, true)
+            // Should not throw; cursor is suppressed so width is just content (5)
+            let negativeMeasured = VdomBounds.measure negativeVdom constraints
+            negativeMeasured.PreferredWidth |> shouldEqual 5
+            // Height should still be reasonable (1 line)
+            negativeMeasured.PreferredHeightForWidth 100 |> shouldEqual 1
 
             // Test cursor position beyond content length
             let beyondVdom = TextBox.make' (content, 100, true)
-            VdomBounds.measure beyondVdom constraints |> ignore
+            // Should not throw; cursor is suppressed so width is just content (5)
+            let beyondMeasured = VdomBounds.measure beyondVdom constraints
+            beyondMeasured.PreferredWidth |> shouldEqual 5
+            // Height should still be reasonable (1 line)
+            beyondMeasured.PreferredHeightForWidth 100 |> shouldEqual 1
         }
 
     [<Test>]
@@ -897,7 +858,7 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -914,26 +875,6 @@ Unfocused                               |
             let haveFrameworkHandleFocus _ = true
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
-
-            let processWorld =
-                { new WorldProcessor<AppEvent, State> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        let mutable newState = state
-
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent (TextEdit action) ->
-                                let content, cursor = TextBoxHelpers.applyAction state.Content state.Cursor action
-
-                                newState <-
-                                    {
-                                        Content = content
-                                        Cursor = cursor
-                                    }
-                            | _ -> ()
-
-                        ProcessWorldResult.make newState
-                }
 
             let clock = MockTime.make ()
 
@@ -952,7 +893,7 @@ Unfocused                               |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -966,7 +907,7 @@ Unfocused                               |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -976,11 +917,15 @@ Unfocused                               |
         }
 
     [<Test>]
-    let ``multiple text edit events in single batch are processed correctly`` () =
+    let ``multiple keystrokes before next pump are all processed`` () =
+        // Note: With framework focus enabled, each keystroke becomes a separate TextEdit event.
+        // This test verifies that multiple keystrokes queued before the next pump cycle are
+        // all processed correctly, but it does NOT test true same-batch accumulation where
+        // multiple TextEdit actions arrive in a single inputs collection.
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -997,27 +942,6 @@ Unfocused                               |
             let haveFrameworkHandleFocus _ = true
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
-
-            let processWorld =
-                { new WorldProcessor<AppEvent, State> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        let mutable newState = state
-
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent (TextEdit action) ->
-                                let content, cursor =
-                                    TextBoxHelpers.applyAction newState.Content newState.Cursor action
-
-                                newState <-
-                                    {
-                                        Content = content
-                                        Cursor = cursor
-                                    }
-                            | _ -> ()
-
-                        ProcessWorldResult.make newState
-                }
 
             let clock = MockTime.make ()
 
@@ -1036,7 +960,7 @@ Unfocused                               |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -1046,14 +970,14 @@ Unfocused                               |
             world.SendKey (ConsoleKeyInfo ('i', ConsoleKey.I, false, false, false))
             world.SendKey (ConsoleKeyInfo ('!', ConsoleKey.D1, true, false, false))
 
-            // Process all events in one batch
+            // Process all keystrokes in one pump cycle
             state <-
                 App.pumpOnce
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -1068,7 +992,7 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -1085,26 +1009,6 @@ Unfocused                               |
             let haveFrameworkHandleFocus _ = true
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
-
-            let processWorld =
-                { new WorldProcessor<AppEvent, State> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        let mutable newState = state
-
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent (TextEdit action) ->
-                                let content, cursor = TextBoxHelpers.applyAction state.Content state.Cursor action
-
-                                newState <-
-                                    {
-                                        Content = content
-                                        Cursor = cursor
-                                    }
-                            | _ -> ()
-
-                        ProcessWorldResult.make newState
-                }
 
             let clock = MockTime.make ()
 
@@ -1123,7 +1027,7 @@ Unfocused                               |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -1137,7 +1041,7 @@ Unfocused                               |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -1154,7 +1058,7 @@ Unfocused                               |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -1168,7 +1072,7 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -1185,26 +1089,6 @@ Unfocused                               |
             let haveFrameworkHandleFocus _ = true
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
-
-            let processWorld =
-                { new WorldProcessor<AppEvent, State> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        let mutable newState = state
-
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent (TextEdit action) ->
-                                let content, cursor = TextBoxHelpers.applyAction state.Content state.Cursor action
-
-                                newState <-
-                                    {
-                                        Content = content
-                                        Cursor = cursor
-                                    }
-                            | _ -> ()
-
-                        ProcessWorldResult.make newState
-                }
 
             let clock = MockTime.make ()
 
@@ -1223,7 +1107,7 @@ Unfocused                               |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -1237,12 +1121,13 @@ Unfocused                               |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
 
             state.Cursor |> shouldEqual 2
+            state.Content |> shouldEqual "Hello"
 
             // Press Ctrl+F (forward)
             world.SendKey (ConsoleKeyInfo ('\006', ConsoleKey.F, false, false, true))
@@ -1253,12 +1138,13 @@ Unfocused                               |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
 
             state.Cursor |> shouldEqual 3
+            state.Content |> shouldEqual "Hello"
         }
 
     [<Test>]
@@ -1266,7 +1152,7 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -1283,26 +1169,6 @@ Unfocused                               |
             let haveFrameworkHandleFocus _ = true
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
-
-            let processWorld =
-                { new WorldProcessor<AppEvent, State> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        let mutable newState = state
-
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent (TextEdit action) ->
-                                let content, cursor = TextBoxHelpers.applyAction state.Content state.Cursor action
-
-                                newState <-
-                                    {
-                                        Content = content
-                                        Cursor = cursor
-                                    }
-                            | _ -> ()
-
-                        ProcessWorldResult.make newState
-                }
 
             let clock = MockTime.make ()
 
@@ -1321,7 +1187,7 @@ Unfocused                               |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -1335,7 +1201,7 @@ Unfocused                               |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -1352,7 +1218,7 @@ Unfocused                               |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -1366,7 +1232,7 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -1383,26 +1249,6 @@ Unfocused                               |
             let haveFrameworkHandleFocus _ = true
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
-
-            let processWorld =
-                { new WorldProcessor<AppEvent, State> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        let mutable newState = state
-
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent (TextEdit action) ->
-                                let content, cursor = TextBoxHelpers.applyAction state.Content state.Cursor action
-
-                                newState <-
-                                    {
-                                        Content = content
-                                        Cursor = cursor
-                                    }
-                            | _ -> ()
-
-                        ProcessWorldResult.make newState
-                }
 
             let clock = MockTime.make ()
 
@@ -1421,7 +1267,7 @@ Unfocused                               |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -1435,7 +1281,7 @@ Unfocused                               |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -1449,7 +1295,7 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -1466,26 +1312,6 @@ Unfocused                               |
             let haveFrameworkHandleFocus _ = true
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
-
-            let processWorld =
-                { new WorldProcessor<AppEvent, State> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        let mutable newState = state
-
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent (TextEdit action) ->
-                                let content, cursor = TextBoxHelpers.applyAction state.Content state.Cursor action
-
-                                newState <-
-                                    {
-                                        Content = content
-                                        Cursor = cursor
-                                    }
-                            | _ -> ()
-
-                        ProcessWorldResult.make newState
-                }
 
             let clock = MockTime.make ()
 
@@ -1504,7 +1330,7 @@ Unfocused                               |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -1518,7 +1344,7 @@ Unfocused                               |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -1532,7 +1358,7 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : VdomContext) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -1549,26 +1375,6 @@ Unfocused                               |
             let haveFrameworkHandleFocus _ = true
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
-
-            let processWorld =
-                { new WorldProcessor<AppEvent, State> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        let mutable newState = state
-
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent (TextEdit action) ->
-                                let content, cursor = TextBoxHelpers.applyAction state.Content state.Cursor action
-
-                                newState <-
-                                    {
-                                        Content = content
-                                        Cursor = cursor
-                                    }
-                            | _ -> ()
-
-                        ProcessWorldResult.make newState
-                }
 
             let clock = MockTime.make ()
 
@@ -1587,7 +1393,7 @@ Unfocused                               |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -1601,7 +1407,7 @@ Unfocused                               |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)
@@ -1618,7 +1424,7 @@ Unfocused                               |
                     state
                     haveFrameworkHandleFocus
                     renderState
-                    processWorld
+                    textBoxProcessor
                     vdom
                     resolver
                     (fun () -> false)

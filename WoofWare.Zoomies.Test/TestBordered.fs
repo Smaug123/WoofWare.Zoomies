@@ -31,7 +31,7 @@ module TestBordered =
                 WindowHeight = fun _ -> 3
             }
 
-        let renderState = RenderState.make console MockTime.getStaticUtcNow None
+        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
         // Create vdom with bordered text that can change
         let vdom (content : string) =
@@ -46,16 +46,21 @@ module TestBordered =
         // Change only the text content inside the border
         Render.oneStep renderState () (fun _ -> vdom "changed text")
 
-        // Collect all the cells that were written to
+        // Collect all the cells that were written to, tracking cursor position
+        // (cursor advances automatically after each write, and MoveCursor may be skipped for consecutive cells)
         let writtenCells = ResizeArray<int * int> ()
+        let mutable cursorX = 0
+        let mutable cursorY = 0
 
-        for i = 0 to terminalOps.Count - 1 do
-            match terminalOps.[i] with
+        for op in terminalOps do
+            match op with
             | TerminalOp.MoveCursor (x, y) ->
-                if i + 1 < terminalOps.Count then
-                    match terminalOps.[i + 1] with
-                    | TerminalOp.WriteChar _ -> writtenCells.Add (x, y)
-                    | _ -> ()
+                cursorX <- x
+                cursorY <- y
+            | TerminalOp.WriteRun (text, _, _) ->
+                for _ in text do
+                    writtenCells.Add (cursorX, cursorY)
+                    cursorX <- cursorX + 1
             | _ -> ()
 
         // The text content changed, so we should write to text cells
@@ -90,7 +95,7 @@ module TestBordered =
 
             let borderedKey = NodeKey.make "bordered"
 
-            let vdom (vdomContext : VdomContext) (showBordered : bool) =
+            let vdom (vdomContext : IVdomContext<_>) (showBordered : bool) =
                 if showBordered then
                     // A keyed Bordered with small text content
                     // The border should be drawn
@@ -104,14 +109,16 @@ module TestBordered =
                     Vdom.textContent "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
             let processWorld =
-                { new WorldProcessor<unit, bool> with
+                { new WorldProcessor<unit, unit, bool> with
                     member _.ProcessWorld (worldChanges, _, state) =
                         // Toggle state on any keystroke
                         let newState = if worldChanges.Length > 0 then not state else state
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             // First render: fill with X's
             let mutable state =
@@ -183,7 +190,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : VdomContext) (useLongText : bool) =
+            let vdom (_ : IVdomContext<_>) (useLongText : bool) =
                 if useLongText then
                     // Long text filling the bordered area
                     Vdom.textContent (String.replicate 200 "X") |> Vdom.bordered
@@ -192,13 +199,15 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
                     Vdom.textContent "AAA" |> Vdom.bordered
 
             let processWorld =
-                { new WorldProcessor<unit, bool> with
+                { new WorldProcessor<unit, unit, bool> with
                     member _.ProcessWorld (worldChanges, _, state) =
                         let newState = if worldChanges.Length > 0 then not state else state
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             // First render: long text
             let mutable state =
@@ -272,7 +281,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
 
             let borderedKey = NodeKey.make "bordered"
 
-            let vdom (_ : VdomContext) (useLongText : bool) =
+            let vdom (_ : IVdomContext<_>) (useLongText : bool) =
                 let bordered =
                     if useLongText then
                         Vdom.textContent (String.replicate 200 "X") |> Vdom.bordered
@@ -283,13 +292,15 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
                 bordered |> Vdom.withKey borderedKey |> Vdom.bordered
 
             let processWorld =
-                { new WorldProcessor<unit, bool> with
+                { new WorldProcessor<unit, unit, bool> with
                     member _.ProcessWorld (worldChanges, _, state) =
                         let newState = if worldChanges.Length > 0 then not state else state
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
 
             // First render: long text
             let mutable state =

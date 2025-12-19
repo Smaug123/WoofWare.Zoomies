@@ -8,11 +8,12 @@
     <OtherFlags>$(OtherFlags) --reflectionfree</OtherFlags>
     <WarnOn>FS3559</WarnOn>
     <PackageId>WoofWare.Zoomies</PackageId>
+    <PackageProjectUrl>https://smaug123.github.io/WoofWare.Zoomies</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Smaug123/WoofWare.Zoomies</RepositoryUrl>
     <Authors>PatrickStevens</Authors>
     <Copyright>Copyright (c) Patrick Stevens 2025</Copyright>
     <Description>An immediate-mode declarative terminal user interface framework built around manipulating virtual DOMs.</Description>
     <RepositoryType>git</RepositoryType>
-    <RepositoryUrl>https://github.com/Smaug123/WoofWare.Zoomies</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>fsharp;tui;terminal;immediate;vdom;interface;console</PackageTags>
@@ -49,18 +50,26 @@
     <Compile Include="Console.fs" />
     <Compile Include="IStopwatch.fs" />
     <Compile Include="WorldFreezer.fs" />
+    <Compile Include="IVdomContext.fs" />
     <Compile Include="VdomContext.fs" />
     <Compile Include="Layout.fs" />
     <Compile Include="VdomBounds.fs" />
+    <Compile Include="RenderState.fs" />
+    <Compile Include="TreeReconciliation.fs" />
     <Compile Include="Render.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Components\Button.fs" />
     <Compile Include="Components\Toggle.fs" />
     <Compile Include="Components\Checkbox.fs" />
+    <Compile Include="Components\RadioButton.fs" />
     <Compile Include="Components\Collapsible.fs" />
     <Compile Include="Components\LabelledCheckbox.fs" />
     <Compile Include="Components\ProgressBar.fs" />
+    <Compile Include="Components\ScrollBar.fs" />
     <Compile Include="Components\Table.fs" />
+    <Compile Include="Components\SelectionList.fs" />
+    <Compile Include="Components\MultiSelection.fs" />
+    <Compile Include="Components\SingleSelection.fs" />
     <Compile Include="Components\TextBox.fs" />
     <Compile Include="Components\TextBoxHelpers.fs" />
     <None Include="..\README.md">

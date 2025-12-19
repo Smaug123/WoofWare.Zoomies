@@ -89,7 +89,7 @@ module TestJustifiedText =
     [<Test>]
     let ``JustifiedText renders at width 80 with expandToFill`` () =
         let console, harness = ConsoleHarness.make' (fun () -> 80) (fun () -> 10)
-        let renderState = RenderState.make console MockTime.getStaticUtcNow None
+        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
         let vdom = JustifiedText.make (sampleText, expandToFill = true)
 
         Render.oneStep renderState () (fun _ -> vdom)
@@ -115,7 +115,7 @@ lean, long, dusty, dreary and yet somehow lovable.                              
     [<Test>]
     let ``JustifiedText renders at width 120 with expandToFill`` () =
         let console, harness = ConsoleHarness.make' (fun () -> 120) (fun () -> 10)
-        let renderState = RenderState.make console MockTime.getStaticUtcNow None
+        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
         let vdom = JustifiedText.make (sampleText, expandToFill = true)
 
         Render.oneStep renderState () (fun _ -> vdom)
@@ -141,7 +141,7 @@ ssed in discourse; backward in sentiment; lean, long, dusty, dreary and yet some
     [<Test>]
     let ``JustifiedText renders at width 40 with expandToFill`` () =
         let console, harness = ConsoleHarness.make' (fun () -> 40) (fun () -> 15)
-        let renderState = RenderState.make console MockTime.getStaticUtcNow None
+        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
         let vdom = JustifiedText.make (sampleText, expandToFill = true)
 
         Render.oneStep renderState () (fun _ -> vdom)
@@ -172,7 +172,7 @@ somehow lovable.                        |
     [<Test>]
     let ``JustifiedText renders at width 80 without expandToFill`` () =
         let console, harness = ConsoleHarness.make' (fun () -> 120) (fun () -> 10)
-        let renderState = RenderState.make console MockTime.getStaticUtcNow None
+        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
         let vdom = JustifiedText.make (sampleText, expandToFill = false)
 
         Render.oneStep renderState () (fun _ -> vdom)
@@ -198,7 +198,7 @@ ssed in discourse; backward in sentiment; lean, long, dusty, dreary and yet some
     [<Test>]
     let ``JustifiedText in bordered panel at width 120`` () =
         let console, harness = ConsoleHarness.make' (fun () -> 120) (fun () -> 10)
-        let renderState = RenderState.make console MockTime.getStaticUtcNow None
+        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
         let vdom = JustifiedText.make (sampleText, expandToFill = true) |> Vdom.bordered
 
         Render.oneStep renderState () (fun _ -> vdom)

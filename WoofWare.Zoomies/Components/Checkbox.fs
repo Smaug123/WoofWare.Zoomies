@@ -7,8 +7,8 @@ type Checkbox =
     static member private toggledGlyph = '☑'
     static member private untoggledGlyph = '☐'
 
-    static member make' (isChecked : bool, isFocused : bool) : Vdom<DesiredBounds> =
-        Toggle.make' (Checkbox.untoggledGlyph, Checkbox.toggledGlyph, isChecked, isFocused)
+    static member make' (isChecked : bool, isFocused : bool, ?alignment : ContentAlignment) : Vdom<DesiredBounds> =
+        Toggle.make' (Checkbox.untoggledGlyph, Checkbox.toggledGlyph, isChecked, isFocused, ?alignment = alignment)
         |> Vdom.withTag "checkbox"
 
     /// <summary>Creates a checkbox component with automatic focus state.</summary>
@@ -29,7 +29,7 @@ type Checkbox =
     /// It automatically handles focus visual state by consulting the VdomContext.
     /// </remarks>
     static member make
-        (ctx : VdomContext, key : NodeKey, isChecked : bool, ?isFirstToFocus : bool, ?isInitiallyFocused : bool)
+        (ctx : IVdomContext, key : NodeKey, isChecked : bool, ?isFirstToFocus : bool, ?isInitiallyFocused : bool)
         : Vdom<DesiredBounds>
         =
         Toggle.make (

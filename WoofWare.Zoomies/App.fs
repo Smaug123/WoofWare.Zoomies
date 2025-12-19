@@ -51,10 +51,13 @@ module ProcessWorldResult =
             RequestRerender = RerenderRequest.Rerender lastProcessedIndex
         }
 
-type WorldProcessor<'appEvent, 'userState> =
+type WorldProcessor<'appEvent, 'postLayoutEvent, 'userState> =
     abstract ProcessWorld :
-        events : ReadOnlySpan<WorldStateChange<'appEvent>> * previousRenderState : VdomContext * 'userState ->
+        events : ReadOnlySpan<WorldStateChange<'appEvent>> * previousRenderState : IVdomContext * 'userState ->
             ProcessWorldResult<'userState>
+
+    abstract ProcessPostLayoutEvents :
+        events : ReadOnlySpan<'postLayoutEvent> * previousRenderState : IVdomContext * 'userState -> 'userState
 
 /// Handle to a running application, providing tasks for lifecycle events.
 type AppHandle =
@@ -69,29 +72,87 @@ type AppHandle =
 [<RequireQualifiedAccess>]
 module App =
 
-    let internal processNoChanges<'state>
+    /// Maximum number of post-layout event stabilization iterations to prevent infinite loops.
+    /// If a component's post-layout event handler keeps triggering renders that generate more
+    /// post-layout events, we'll stop after this many iterations.
+    [<Literal>]
+    let private MAX_POST_LAYOUT_ITERATIONS = 100
+
+    /// Process post-layout events until the queue is empty or max iterations reached.
+    /// Returns the final state and whether max iterations was hit.
+    let internal stabilizePostLayoutEvents<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
         (state : 'state)
-        (renderState : RenderState)
-        (vdom : VdomContext -> 'state -> Vdom<DesiredBounds>)
+        (renderState : RenderState<'postLayoutEvent>)
+        (processWorld : WorldProcessor<'appEvent, 'postLayoutEvent, 'state>)
+        (vdom : IVdomContext<'postLayoutEvent> -> 'state -> Vdom<DesiredBounds>)
+        : 'state * bool
+        =
+        let ctx = RenderState.vdomContext renderState
+        // Caller must mark clean before calling; PostLayoutEvent can only set dirty during vdom construction,
+        // and processWorld receives IVdomContext (not IVdomContext<'postLayoutEvent>) so cannot post events.
+        assert (not (VdomContext.isDirty ctx))
+        let mutable currentState = state
+        let mutable iterations = 0
+        let mutable continueLoop = true
+
+        while continueLoop && iterations < MAX_POST_LAYOUT_ITERATIONS do
+            let layoutEvents = VdomContext.drainPostLayoutEvents ctx
+
+            if layoutEvents.Length = 0 then
+                continueLoop <- false
+            else
+                let newState =
+                    processWorld.ProcessPostLayoutEvents (
+                        ReadOnlySpan layoutEvents,
+                        VdomContext.asBase ctx,
+                        currentState
+                    )
+
+                // If state changed, we need to render and potentially get more post-layout events
+                if newState <> currentState then
+                    currentState <- newState
+                    Render.oneStepNoFlush renderState currentState (vdom (VdomContext.asTyped ctx))
+                    VdomContext.markClean ctx
+                    iterations <- iterations + 1
+                else
+                    // State didn't change, no need to render, we're done
+                    continueLoop <- false
+
+        currentState, iterations >= MAX_POST_LAYOUT_ITERATIONS
+
+    let internal processNoChanges<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
+        (state : 'state)
+        (renderState : RenderState<'postLayoutEvent>)
+        (processWorld : WorldProcessor<'appEvent, 'postLayoutEvent, 'state>)
+        (vdom : IVdomContext<'postLayoutEvent> -> 'state -> Vdom<DesiredBounds>)
         : 'state
         =
-        if renderState.VdomContext.IsDirty then
-            Render.oneStep renderState state (vdom renderState.VdomContext)
-            VdomContext.markClean renderState.VdomContext
+        let ctx = RenderState.vdomContext renderState
 
-        state
+        if VdomContext.isDirty ctx then
+            Render.oneStepNoFlush renderState state (vdom (VdomContext.asTyped ctx))
+            VdomContext.markClean ctx
 
-    let internal processChanges<'state, 'appEvent when 'state : equality>
+            let finalState, _hitLimit =
+                stabilizePostLayoutEvents state renderState processWorld vdom
+
+            Render.flush renderState
+            finalState
+        else
+            state
+
+    let internal processChanges<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
         (changes : WorldStateChange<'appEvent>[])
         (state : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
-        (renderState : RenderState)
-        (processWorld : WorldProcessor<'appEvent, 'state>)
-        (vdom : VdomContext -> 'state -> Vdom<DesiredBounds>)
+        (renderState : RenderState<'postLayoutEvent>)
+        (processWorld : WorldProcessor<'appEvent, 'postLayoutEvent, 'state>)
+        (vdom : IVdomContext<'postLayoutEvent> -> 'state -> Vdom<DesiredBounds>)
         (resolveActivation : ActivationResolver<'appEvent, 'state>)
         (isCancelled : unit -> bool)
         : 'state
         =
+        let ctx = RenderState.vdomContext renderState
         let mutable startState = state
         let mutable currentState = state
         let mutable startOfBatch = 0
@@ -109,7 +170,7 @@ module App =
                     let processResult =
                         processWorld.ProcessWorld (
                             changes.AsSpan().Slice (startOfBatch, nextToProcess - startOfBatch),
-                            renderState.VdomContext,
+                            VdomContext.asBase ctx,
                             currentState
                         )
 
@@ -166,7 +227,7 @@ module App =
 
                     | WorldStateChange.Keystroke k ->
                         // Check if the resolver handles this keystroke
-                        match VdomContext.focusedKey renderState.VdomContext with
+                        match VdomContext.focusedKey ctx with
                         | Some focusedKey ->
                             match resolveActivation.Invoke (focusedKey, k, currentState) with
                             | Some appEvent ->
@@ -189,7 +250,7 @@ module App =
                                     // Now handle the activation
 
                                     // Record activation time for visual feedback
-                                    VdomContext.recordActivation focusedKey renderState.VdomContext
+                                    VdomContext.recordActivation focusedKey ctx
 
                                     // Inject the resolved event
                                     let injectedEvent = [| WorldStateChange.ApplicationEvent appEvent |]
@@ -197,15 +258,23 @@ module App =
                                     let processResult =
                                         processWorld.ProcessWorld (
                                             ReadOnlySpan injectedEvent,
-                                            renderState.VdomContext,
+                                            VdomContext.asBase ctx,
                                             currentState
                                         )
 
                                     currentState <- processResult.NewState
 
                                     // Re-render for visual feedback
-                                    Render.oneStep renderState currentState (vdom renderState.VdomContext)
-                                    VdomContext.markClean renderState.VdomContext
+                                    Render.oneStepNoFlush renderState currentState (vdom (VdomContext.asTyped ctx))
+
+                                    VdomContext.markClean ctx
+
+                                    // Stabilize post-layout events before continuing
+                                    let stabilizedState, _hitLimit =
+                                        stabilizePostLayoutEvents currentState renderState processWorld vdom
+
+                                    Render.flush renderState
+                                    currentState <- stabilizedState
                                     startState <- currentState
 
                                     // Successfully consumed the keystroke; move forward
@@ -235,7 +304,7 @@ module App =
                 let processResult =
                     processWorld.ProcessWorld (
                         changes.AsSpan().Slice startOfBatch,
-                        renderState.VdomContext,
+                        VdomContext.asBase ctx,
                         currentState
                     )
 
@@ -253,28 +322,36 @@ module App =
                     else
                         startOfBatch <- startOfBatch + truncatedAt + 1
 
-            if forceRerender || renderState.VdomContext.IsDirty || currentState <> startState then
-                Render.oneStep renderState currentState (vdom renderState.VdomContext)
-                VdomContext.markClean renderState.VdomContext
+            if forceRerender || VdomContext.isDirty ctx || currentState <> startState then
+                Render.oneStepNoFlush renderState currentState (vdom (VdomContext.asTyped ctx))
+                VdomContext.markClean ctx
+
+                let stabilizedState, _hitLimit =
+                    stabilizePostLayoutEvents currentState renderState processWorld vdom
+
+                Render.flush renderState
+                currentState <- stabilizedState
                 startState <- currentState
 
         currentState
 
-    let pumpOnce<'state, 'appEvent when 'state : equality>
+    let pumpOnce<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
         (listener : WorldFreezer<'appEvent>)
         (state : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
-        (renderState : RenderState)
-        (processWorld : WorldProcessor<'appEvent, 'state>)
-        (vdom : VdomContext -> 'state -> Vdom<DesiredBounds>)
+        (renderState : RenderState<'postLayoutEvent>)
+        (processWorld : WorldProcessor<'appEvent, 'postLayoutEvent, 'state>)
+        (vdom : IVdomContext<'postLayoutEvent> -> 'state -> Vdom<DesiredBounds>)
         (resolveActivation : ActivationResolver<'appEvent, 'state>)
         (isCancelled : unit -> bool)
         : 'state
         =
+        let ctx = RenderState.vdomContext renderState
+
         let go state =
             let resizeGeneration = listener.TerminalResizeGeneration
             RenderState.refreshTerminalSize renderState
-            VdomContext.pruneExpiredActivations renderState.VdomContext
+            VdomContext.pruneExpiredActivations ctx
 
             listener.RefreshExternal ()
 
@@ -282,7 +359,7 @@ module App =
 
             let state =
                 match changes with
-                | ValueNone -> processNoChanges state renderState vdom
+                | ValueNone -> processNoChanges state renderState processWorld vdom
                 | ValueSome changes ->
                     processChanges
                         changes
@@ -299,7 +376,7 @@ module App =
                 // we were drawing to the screen when it had an arbitrary size. Need a *complete* refresh.
                 RenderState.clearScreen renderState
                 renderState.PreviousVdom <- None
-                VdomContext.markDirty renderState.VdomContext
+                VdomContext.markDirty ctx
                 true, state
             else
                 false, state
@@ -320,7 +397,7 @@ module App =
     /// Returns an AppHandle with:
     /// - Ready: completes when initial setup is done and first render is complete
     /// - Finished: completes when the app exits (faults if user logic raises an exception)
-    let run'<'state, 'appEvent when 'state : equality>
+    let run'<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
         (terminate : CancellationToken)
         (console : IConsole)
         (getUtcNow : unit -> DateTime)
@@ -328,8 +405,8 @@ module App =
         (worldFreezer : unit -> WorldFreezer<'appEvent>)
         (initialState : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
-        (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'state>)
-        (vdom : VdomContext -> 'state -> Vdom<DesiredBounds>)
+        (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'postLayoutEvent, 'state>)
+        (vdom : IVdomContext<'postLayoutEvent> -> 'state -> Vdom<DesiredBounds>)
         (resolveActivation : ActivationResolver<'appEvent, 'state>)
         (debugWriter : StreamWriter option)
         : AppHandle
@@ -368,8 +445,6 @@ module App =
 
                     let exc =
                         try
-                            let mutable currentState = processNoChanges initialState renderState vdom
-
                             let listener' = worldFreezer ()
 
                             use _ =
@@ -385,6 +460,10 @@ module App =
 
                             listener <- Some listener'
                             let processWorld = processWorld listener'
+
+                            // Initial render - now with processWorld available for post-layout events
+                            let mutable currentState =
+                                processNoChanges initialState renderState processWorld vdom
 
                             let isCancelled () =
                                 cancels > 0 || terminate.IsCancellationRequested
@@ -428,6 +507,8 @@ module App =
                     RenderState.unregisterBracketedPaste renderState
                     RenderState.unregisterMouseMode renderState
                     RenderState.exitAlternateScreen renderState
+                    // Flush any buffered output to ensure cleanup operations are written to the terminal
+                    RenderState.flush renderState
 
                     match exc with
                     | None -> complete.SetResult ()
@@ -447,12 +528,12 @@ module App =
             Finished = complete.Task
         }
 
-    let run<'state, 'appEvent when 'state : equality>
+    let run<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
         (getEnv : string -> string option)
         (state : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
-        (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'state>)
-        (vdom : VdomContext -> 'state -> Vdom<DesiredBounds>)
+        (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'postLayoutEvent, 'state>)
+        (vdom : IVdomContext<'postLayoutEvent> -> 'state -> Vdom<DesiredBounds>)
         (resolveActivation : ActivationResolver<'appEvent, 'state>)
         : AppHandle
         =

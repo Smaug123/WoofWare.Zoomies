@@ -29,7 +29,7 @@ module TestCollapsible =
         task {
             let collapsibleKey = NodeKey.make "collapsible"
 
-            let vdom (vdomContext : VdomContext) (state : State) =
+            let vdom (vdomContext : IVdomContext<_>) (state : State) =
                 let childContent = Vdom.textContent "This stuff was hidden"
 
                 Collapsible.make vdomContext collapsibleKey state.CollapsibleState "Collapsible section" childContent
@@ -53,7 +53,7 @@ module TestCollapsible =
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<_, State> with
+                { new WorldProcessor<_, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) =
                         let mutable newState = state
 
@@ -61,7 +61,7 @@ module TestCollapsible =
                             match s with
                             | WorldStateChange.Keystroke c ->
                                 if c.KeyChar = ' ' then
-                                    match VdomContext.focusedKey renderState with
+                                    match renderState.FocusedKey with
                                     | None -> ()
                                     | Some focused ->
                                         if focused = collapsibleKey then
@@ -79,9 +79,11 @@ module TestCollapsible =
                             | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
 
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
             let mutable currentState = state
 
             // Initial render: collapsed and unfocused
@@ -232,7 +234,7 @@ This stuff was hidden                                       |
 
             let collapsibleKey = NodeKey.make "collapsible"
 
-            let vdom (vdomContext : VdomContext) (state : State) =
+            let vdom (vdomContext : IVdomContext<_>) (state : State) =
                 let childContent =
                     let line1 =
                         Vdom.textContent "Line 1 of content" |> Vdom.withKey (NodeKey.make "line1")
@@ -247,7 +249,7 @@ This stuff was hidden                                       |
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<_, State> with
+                { new WorldProcessor<_, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) =
                         let mutable newState = state
 
@@ -255,7 +257,7 @@ This stuff was hidden                                       |
                             match s with
                             | WorldStateChange.Keystroke c ->
                                 if c.KeyChar = ' ' then
-                                    match VdomContext.focusedKey renderState with
+                                    match renderState.FocusedKey with
                                     | None -> ()
                                     | Some focused ->
                                         if focused = collapsibleKey then
@@ -273,9 +275,11 @@ This stuff was hidden                                       |
                             | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
 
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
             let mutable currentState = state
 
             // Initial render: collapsed
@@ -379,7 +383,7 @@ Line 2 of content                                           |
 
             let longLabel = "This is a very long label that should wrap onto multiple lines"
 
-            let vdom (vdomContext : VdomContext) (state : State) =
+            let vdom (vdomContext : IVdomContext<_>) (state : State) =
                 let collapsibleKey = NodeKey.make "collapsible"
 
                 let childContent = Vdom.textContent "Child content here"
@@ -389,7 +393,7 @@ Line 2 of content                                           |
             let haveFrameworkHandleFocus _ = true
 
             let processWorld =
-                { new WorldProcessor<_, State> with
+                { new WorldProcessor<_, unit, State> with
                     member _.ProcessWorld (inputs, renderState, state) =
                         let mutable newState = state
 
@@ -397,7 +401,7 @@ Line 2 of content                                           |
                             match s with
                             | WorldStateChange.Keystroke c ->
                                 if c.KeyChar = ' ' then
-                                    match VdomContext.focusedKey renderState with
+                                    match renderState.FocusedKey with
                                     | None -> ()
                                     | Some focused ->
                                         NodeKey.toHumanReadableString focused |> shouldEqual "collapsible"
@@ -417,12 +421,14 @@ Line 2 of content                                           |
                             | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
 
                         ProcessWorldResult.make newState
+
+                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
             let mutable currentState = state
 
-            // Initial render: collapsed and unfocused - long text is truncated but on same line as glyph
+            // Initial render: collapsed and unfocused - long label wraps across multiple lines
             currentState <-
                 App.pumpOnce
                     worldFreezer
