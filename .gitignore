@@ -16,3 +16,4 @@ result
 .DS_Store
 
 GeneratedStopwatch.fs
+.claude/
