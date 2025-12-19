@@ -30,6 +30,8 @@ module ConsoleHarness =
         | TerminalOp.UnregisterMouseMode -> ()
         | TerminalOp.RegisterBracketedPaste -> ()
         | TerminalOp.UnregisterBracketedPaste -> ()
+        | TerminalOp.BeginSynchronizedUpdate -> ()
+        | TerminalOp.EndSynchronizedUpdate -> ()
         | TerminalOp.MoveCursor (x, y) ->
             c.CursorX <- x
             c.CursorY <- y

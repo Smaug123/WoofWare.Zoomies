@@ -437,8 +437,13 @@ module Render =
 
         let cursorFlip = RenderState.isCursorVisible renderState
         let mutable haveManipulatedCursor = false
+        let mutable haveStartedSyncUpdate = false
 
         for op in writeBuffer (RenderState.buffer renderState) do
+            if not haveStartedSyncUpdate then
+                RenderState.output renderState TerminalOp.BeginSynchronizedUpdate
+                haveStartedSyncUpdate <- true
+
             if not haveManipulatedCursor && cursorFlip then
                 RenderState.setCursorInvisible renderState
                 haveManipulatedCursor <- true
@@ -447,6 +452,9 @@ module Render =
 
         if haveManipulatedCursor && cursorFlip then
             RenderState.setCursorVisible renderState
+
+        if haveStartedSyncUpdate then
+            RenderState.output renderState TerminalOp.EndSynchronizedUpdate
 
     /// Flush all buffered output to the console in a single write.
     let flush<'event> (renderState : RenderState<'event>) = RenderState.flush renderState
