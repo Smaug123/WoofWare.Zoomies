@@ -182,26 +182,27 @@ type Vdom =
     /// <summary>Creates a text content component with per-span styling.</summary>
     /// <param name="spans">A list of text spans, each with its own style.</param>
     /// <param name="alignment">Where within the panel to place the text.</param>
+    /// <param name="isFocused">Whether this content currently has focus (for display purposes).</param>
     /// <param name="wrap">
     /// If true (the default), text wraps to the next line when it reaches the edge of the bounds.
     /// If false, text is truncated at the edge of the bounds and does not wrap.
     /// </param>
     static member styledSpans
-        (spans : StyledSpan list, ?alignment : ContentAlignment, ?wrap : bool)
+        (spans : StyledSpan list, ?isFocused : bool, ?alignment : ContentAlignment, ?wrap : bool)
         : Vdom<DesiredBounds>
         =
-        let wrap = defaultArg wrap true
-        let alignment = defaultArg alignment ContentAlignment.TopLeft
-        Vdom.Unkeyed (UnkeyedVdom.StyledSpans (spans, alignment, false, wrap))
+        Vdom.styledSpans' (spans, ?isFocused = isFocused, ?alignment = alignment, ?wrap = wrap)
+        |> Vdom.Unkeyed
 
     /// This is `Vdom.styledSpans`, but you get back an UnkeyedVdom rather than a Vdom.
     static member styledSpans'
-        (spans : StyledSpan list, ?alignment : ContentAlignment, ?wrap : bool)
+        (spans : StyledSpan list, ?isFocused : bool, ?alignment : ContentAlignment, ?wrap : bool)
         : UnkeyedVdom<DesiredBounds>
         =
         let wrap = defaultArg wrap true
         let alignment = defaultArg alignment ContentAlignment.TopLeft
-        UnkeyedVdom.StyledSpans (spans, alignment, false, wrap)
+        let isFocused = defaultArg isFocused false
+        UnkeyedVdom.StyledSpans (spans, alignment, isFocused, wrap)
 
     /// <summary>Creates an empty zero-sized element.</summary>
     /// <remarks>

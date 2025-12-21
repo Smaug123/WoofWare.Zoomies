@@ -289,13 +289,20 @@ module Render =
             // Only render text if we have space (width and height both > 0)
             if bounds.Width > 0 && bounds.Height > 0 then
                 // Concatenate all spans into a single string for layout calculations
-                let content = spans |> List.map (fun s -> s.Text) |> String.concat ""
+                // Normalize line endings upfront so content and styleAtIndex are consistent
+                let content =
+                    spans
+                    |> List.map (fun s -> s.Text.Replace("\r\n", "\n").Replace ("\r", "\n"))
+                    |> String.concat ""
                 // Build a style lookup: for each character index, which style applies
+                // Use normalized span text to match the normalized content
                 let styleAtIndex =
                     let arr = ResizeArray<CellStyle> ()
 
                     for span in spans do
-                        for _ in span.Text do
+                        let normalizedText = span.Text.Replace("\r\n", "\n").Replace ("\r", "\n")
+
+                        for _ in normalizedText do
                             arr.Add span.Style
 
                     arr
@@ -303,8 +310,7 @@ module Render =
                 match alignment with
                 | ContentAlignment.Centered ->
                     // Center the text horizontally and vertically within bounds
-                    // Normalize line endings: CRLF -> LF, lone CR -> LF
-                    let content = content.Replace("\r\n", "\n").Replace ("\r", "\n")
+                    // (line endings already normalized above)
                     let inputLines = content.Split '\n'
 
                     // Process lines based on wrap setting
@@ -376,8 +382,7 @@ module Render =
 
                 | ContentAlignment.TopLeft ->
                     // Render from top-left
-                    // Normalize line endings: CRLF -> LF, lone CR -> LF
-                    let content = content.Replace("\r\n", "\n").Replace ("\r", "\n")
+                    // (line endings already normalized above)
                     let mutable index = 0
                     let mutable currX = 0
                     let mutable currY = 0
