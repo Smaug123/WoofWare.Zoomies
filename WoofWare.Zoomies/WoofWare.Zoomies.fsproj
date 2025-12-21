@@ -65,6 +65,7 @@
     <Compile Include="Components\Collapsible.fs" />
     <Compile Include="Components\LabelledCheckbox.fs" />
     <Compile Include="Components\ProgressBar.fs" />
+    <Compile Include="Components\LoadingSpinner.fs" />
     <Compile Include="Components\ScrollBar.fs" />
     <Compile Include="Components\Table.fs" />
     <Compile Include="Components\SelectionList.fs" />
