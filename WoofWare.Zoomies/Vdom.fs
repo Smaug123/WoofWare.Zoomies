@@ -7,43 +7,61 @@ module VdomTagging =
     /// Defaults to false. Set to true before constructing VDOMs to enable tagging.
     let mutable Enabled : bool = false
 
-/// Opaque identifier for stable node identity across frames
+/// Opaque segment of a node key path.
+[<Struct>]
+type NodeKeySegment = private | NodeKeySegment of string
+
+[<RequireQualifiedAccess>]
+module NodeKeySegment =
+    /// Create a segment from an arbitrary string.
+    let make (s : string) : NodeKeySegment = NodeKeySegment s
+
+/// Opaque identifier for stable node identity across frames.
+/// Internally a reversed path of segments for O(1) child derivation.
+[<CustomEquality ; NoComparison>]
 type NodeKey =
     private
-    | Custom of string
-    | Table of NodeKey * row : int * toRow : int option * col : int option * toCol : int option
+        {
+            /// Segments in reverse order (most recent first). Never empty.
+            RevSegments : NodeKeySegment list
+            /// Pre-computed hash for fast inequality rejection.
+            Hash : int
+        }
+
+    override this.Equals (obj) =
+        match obj with
+        | :? NodeKey as other -> this.Hash = other.Hash && this.RevSegments = other.RevSegments
+        | _ -> false
+
+    override this.GetHashCode () = this.Hash
 
 [<RequireQualifiedAccess>]
 module NodeKey =
+    let private combineHashes h1 h2 = (h1 * 397) ^^^ h2
+
     /// Wraps an arbitrary user-chosen string node identifier into a key that WoofWare.Zoomies can use to identify
     /// nodes.
-    let make (s : string) : NodeKey = NodeKey.Custom s
+    let make (s : string) : NodeKey =
+        let seg = NodeKeySegment s
 
-    /// Indicate a sub-key
-    let makeTableCellKey (table : NodeKey) (row : int) (toRow : int option) (col : int option) (toCol : int option) =
-        NodeKey.Table (table, row, toRow, col, toCol)
+        {
+            RevSegments = [ seg ]
+            Hash = hash seg
+        }
+
+    /// Derive a child key by appending a segment.
+    let child (segment : NodeKeySegment) (parent : NodeKey) : NodeKey =
+        {
+            RevSegments = segment :: parent.RevSegments
+            Hash = combineHashes parent.Hash (hash segment)
+        }
 
     /// Gets a string that represents this key for human display.
-    let rec toHumanReadableString (s : NodeKey) : string =
-        match s with
-        | NodeKey.Custom s -> s
-        | NodeKey.Table (nodeKey, row, toRow, col, toCol) ->
-            let toRow =
-                match toRow with
-                | None -> ""
-                | Some toRow -> $"to%i{toRow}"
-
-            let toCol =
-                match toCol with
-                | None -> ""
-                | Some toCol -> $"to%i{toCol}"
-
-            let col =
-                match col with
-                | None -> ""
-                | Some col -> $"_%i{col}%s{toCol}"
-
-            $"%s{toHumanReadableString nodeKey}_%i{row}%s{toRow}%s{col}"
+    let toHumanReadableString (key : NodeKey) : string =
+        key.RevSegments
+        |> List.rev
+        |> List.map (fun (NodeKeySegment s) -> s)
+        |> String.concat "/"
 
 /// Specify the direction to split, when splitting a panel.
 type SplitDirection =
