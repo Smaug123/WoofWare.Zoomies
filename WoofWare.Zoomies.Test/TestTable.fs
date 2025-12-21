@@ -1487,6 +1487,11 @@ module TestTableMeasurements =
                                 Run = fun _ -> None
                             }
 
+                        member _.StyledSpans _spans _alignment _focused _wrap =
+                            {
+                                Run = fun _ -> None
+                            }
+
                         member _.Focusable _isFirstToFocus _isInitiallyFocused child = child
 
                         member _.Empty =

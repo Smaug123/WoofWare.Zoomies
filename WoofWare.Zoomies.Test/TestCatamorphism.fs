@@ -30,6 +30,9 @@ module TestCatamorphism =
                 member _.TextContent content style alignment focused wrap =
                     Vdom.textContent' (content, focused, style = style, alignment = alignment, wrap = wrap)
 
+                member _.StyledSpans spans alignment focused wrap =
+                    Vdom.styledSpans' (spans, alignment = alignment, wrap = wrap)
+
                 member _.Focusable isFirstToFocus isInitiallyFocused inner =
                     Vdom.withFocusTracking' (
                         inner,
