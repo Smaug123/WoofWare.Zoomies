@@ -1,5 +1,6 @@
 namespace WoofWare.Zoomies.Components
 
+open System.Globalization
 open WoofWare.Zoomies
 
 /// Creates key segments for table internal structure.
@@ -8,10 +9,10 @@ module TableKeySegment =
     /// Create a segment encoding a table cell region.
     let make (row : int) (toRow : int option) (col : int option) (toCol : int option) : NodeKeySegment =
         let sb = System.Text.StringBuilder ()
-        sb.Append('r').Append (row) |> ignore
-        toRow |> Option.iter (fun r -> sb.Append('-').Append (r) |> ignore)
-        col |> Option.iter (fun c -> sb.Append('c').Append (c) |> ignore)
-        toCol |> Option.iter (fun c -> sb.Append('-').Append (c) |> ignore)
+        sb.Append('r').Append (row.ToString CultureInfo.InvariantCulture) |> ignore
+        toRow |> Option.iter (fun r -> sb.Append('-').Append (r.ToString CultureInfo.InvariantCulture) |> ignore)
+        col |> Option.iter (fun c -> sb.Append('c').Append (c.ToString CultureInfo.InvariantCulture) |> ignore)
+        toCol |> Option.iter (fun c -> sb.Append('-').Append (c.ToString CultureInfo.InvariantCulture) |> ignore)
         NodeKeySegment.make (sb.ToString ())
 
 /// <summary>

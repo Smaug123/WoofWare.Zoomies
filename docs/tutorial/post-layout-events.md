@@ -67,7 +67,7 @@ let measure (constraints : MeasureConstraints) : MeasuredSize =
         // We don't have a size cap.
         MaxWidth = None
         // Always try and show at least one item...
-        MinHeightForWidth = 1
+        MinHeightForWidth = fun _ -> 1
         // ... but we'd prefer to show every item!
         PreferredHeightForWidth = fun _ -> totalItems
         // And we have no need for any more height than "one per row",
@@ -163,7 +163,7 @@ let make (key : NodeKey) (cursor : int) (selectedItems : int Set) (items : unit[
             // We don't have a size cap.
             MaxWidth = None
             // Always try and show at least one item...
-            MinHeightForWidth = 1
+            MinHeightForWidth = fun _ -> 1
             // ... but we'd prefer to show every item!
             PreferredHeightForWidth = fun _ -> totalItems
             // And we have no need for any more height than "one per row",
