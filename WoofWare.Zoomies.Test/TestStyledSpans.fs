@@ -274,6 +274,63 @@ Hello|
         }
 
     [<Test>]
+    let ``StyledSpans handles CRLF split across span boundaries`` () =
+        // This tests a specific edge case: when \r\n is split across two spans,
+        // it should be treated as a single newline (matching Layout.fs measurement).
+        task {
+            let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 3)
+
+            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+                Vdom.styledSpans (
+                    [
+                        {
+                            Text = "Hello\r" // Span ends with \r
+                            Style = CellStyle.none
+                        }
+                        {
+                            Text = "\nWorld" // Span starts with \n
+                            Style = CellStyle.none
+                        }
+                    ]
+                )
+
+            let processWorld = WorldProcessor.passthrough
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+
+            App.pumpOnce
+                worldFreezer
+                (FakeUnit.fake ())
+                (fun _ -> true)
+                renderState
+                processWorld
+                vdom
+                ActivationResolver.none
+                (fun () -> false)
+            |> ignore<FakeUnit>
+
+            // Should render as two lines (Hello\nWorld), not three (Hello\n\nWorld)
+            expect {
+                snapshot
+                    @"
+Hello     |
+World     |
+          |
+"
+
+                return ConsoleHarness.toString terminal
+            }
+        }
+
+    [<Test>]
     let ``StyledSpans with centered alignment`` () =
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 3)
