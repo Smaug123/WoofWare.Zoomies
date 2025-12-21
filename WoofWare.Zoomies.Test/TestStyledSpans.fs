@@ -226,7 +226,7 @@ World|
     [<Test>]
     let ``StyledSpans truncates when wrap is false`` () =
         task {
-            let console, terminal = ConsoleHarness.make' (fun () -> 5) (fun () -> 1)
+            let console, terminal = ConsoleHarness.make' (fun () -> 5) (fun () -> 2)
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 Vdom.styledSpans (
@@ -266,6 +266,7 @@ World|
                 snapshot
                     @"
 Hello|
+     |
 "
 
                 return ConsoleHarness.toString terminal
