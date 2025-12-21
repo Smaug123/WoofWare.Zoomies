@@ -28,6 +28,7 @@
     <Compile Include="TestPanelSplit.fs" />
     <Compile Include="TestBordered.fs" />
     <Compile Include="TestTextRendering.fs" />
+    <Compile Include="TestStyledSpans.fs" />
     <Compile Include="TestCheckbox.fs" />
     <Compile Include="TestFocusCycle.fs" />
     <Compile Include="TestCollapsible.fs" />

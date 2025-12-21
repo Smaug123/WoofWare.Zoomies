@@ -29,6 +29,10 @@ type UnkeyedVdomCataCase<'Vdom, 'KeyedVdom, 'UnkeyedVdom> =
         wrap : bool ->
             'UnkeyedVdom
 
+    /// How to operate on the StyledSpans case
+    abstract StyledSpans :
+        spans : StyledSpan list -> alignment : ContentAlignment -> focused : bool -> wrap : bool -> 'UnkeyedVdom
+
     /// How to operate on the Focusable case
     abstract Focusable : isFirstToFocus : bool -> isInitiallyFocused : bool -> 'KeyedVdom -> 'UnkeyedVdom
     /// How to operate on the Empty case
@@ -108,6 +112,9 @@ module UnkeyedVdomCata =
                     instructions.Add (Instruction.Process__Vdom child2)
                 | UnkeyedVdom.TextContent (content, style, alignment, focused, wrap) ->
                     cata.UnkeyedVdom.TextContent content style alignment focused wrap
+                    |> unkeyedVdomStack.Add
+                | UnkeyedVdom.StyledSpans (spans, alignment, focused, wrap) ->
+                    cata.UnkeyedVdom.StyledSpans spans alignment focused wrap
                     |> unkeyedVdomStack.Add
                 | UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, arg2_0) ->
                     instructions.Add (Instruction.UnkeyedVdom_Focusable (isFirstToFocus, isInitiallyFocused))

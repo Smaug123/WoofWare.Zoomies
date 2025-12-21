@@ -282,6 +282,173 @@ module Render =
 
                         index <- index + 1
 
+        | UnkeyedVdom.StyledSpans (spans, alignment, _focus, wrap) ->
+            // Similar to TextContent but with per-span styling
+            clearBoundsWithSpaces dirty bounds
+
+            // Only render text if we have space (width and height both > 0)
+            if bounds.Width > 0 && bounds.Height > 0 then
+                // First concatenate raw spans, then normalize the whole string.
+                // This ensures CRLF split across span boundaries is handled correctly
+                // (matching how Layout.fs measures).
+                let rawContent = spans |> List.map (fun s -> s.Text) |> String.concat ""
+                let content = rawContent.Replace("\r\n", "\n").Replace ("\r", "\n")
+
+                // Build a style lookup: for each character index in the normalized content,
+                // which style applies. We must handle CRLF pairs that span boundaries:
+                // when \r\n becomes \n, we use the \r's style and skip both raw chars.
+                let styleAtIndex =
+                    // First build an array of styles for each raw character
+                    let rawStyles =
+                        let result = ResizeArray<CellStyle> ()
+
+                        for span in spans do
+                            for _ in span.Text do
+                                result.Add span.Style
+
+                        result
+
+                    // Now walk through raw content and emit styles for normalized output
+                    let arr = ResizeArray<CellStyle> ()
+                    let mutable rawIdx = 0
+
+                    while rawIdx < rawContent.Length do
+                        let ch = rawContent.[rawIdx]
+
+                        if ch = '\r' && rawIdx + 1 < rawContent.Length && rawContent.[rawIdx + 1] = '\n' then
+                            // CRLF pair - emit one style entry (use the \r's style), skip 2 raw chars
+                            arr.Add rawStyles.[rawIdx]
+                            rawIdx <- rawIdx + 2
+                        else
+                            // Any other char (\r alone, \n alone, or regular char) - emit its style
+                            arr.Add rawStyles.[rawIdx]
+                            rawIdx <- rawIdx + 1
+
+                    arr
+
+                match alignment with
+                | ContentAlignment.Centered ->
+                    // Center the text horizontally and vertically within bounds
+                    // (line endings already normalized above)
+                    let inputLines = content.Split '\n'
+
+                    // Process lines based on wrap setting
+                    // Also track character index ranges for each wrapped line
+                    let linesWithOffsets =
+                        if wrap && bounds.Width > 0 then
+                            let result = ResizeArray<string * int> ()
+                            let mutable globalOffset = 0
+
+                            for line in inputLines do
+                                if line.Length <= bounds.Width then
+                                    result.Add (line, globalOffset)
+                                    globalOffset <- globalOffset + line.Length
+                                else
+                                    let mutable i = 0
+
+                                    while i < line.Length do
+                                        let chunkLen = min bounds.Width (line.Length - i)
+                                        result.Add (line.Substring (i, chunkLen), globalOffset + i)
+                                        i <- i + bounds.Width
+
+                                    globalOffset <- globalOffset + line.Length
+
+                                globalOffset <- globalOffset + 1 // account for newline
+
+                            result.ToArray ()
+                        else
+                            let mutable offset = 0
+                            let result = ResizeArray<string * int> ()
+
+                            for line in inputLines do
+                                result.Add (line, offset)
+                                offset <- offset + line.Length + 1 // +1 for newline
+
+                            result.ToArray ()
+
+                    let lineCount = linesWithOffsets.Length
+                    // Vertically center the block of lines
+                    let startY = max 0 ((bounds.Height - lineCount + 1) / 2)
+
+                    for lineIndex = 0 to linesWithOffsets.Length - 1 do
+                        let (line, lineStartOffset) = linesWithOffsets.[lineIndex]
+                        let y = startY + lineIndex
+
+                        if y < bounds.Height then
+                            let startX = max 0 ((bounds.Width - line.Length) / 2)
+                            let mutable x = startX
+
+                            for charIdx = 0 to line.Length - 1 do
+                                if x < bounds.Width then
+                                    let ch = line.[charIdx]
+                                    let globalCharIdx = lineStartOffset + charIdx
+
+                                    let style =
+                                        if globalCharIdx < styleAtIndex.Count then
+                                            styleAtIndex.[globalCharIdx]
+                                        else
+                                            CellStyle.none
+
+                                    let cell =
+                                        {
+                                            Char = ch
+                                            BackgroundColor = style.Background
+                                            TextColor = style.Foreground
+                                        }
+
+                                    setAtRelativeOffset dirty bounds x y (ValueSome cell)
+                                    x <- x + 1
+
+                | ContentAlignment.TopLeft ->
+                    // Render from top-left
+                    // (line endings already normalized above)
+                    let mutable index = 0
+                    let mutable currX = 0
+                    let mutable currY = 0
+
+                    while index < content.Length do
+                        let ch = content.Chars index
+
+                        if ch = '\n' then
+                            // Newline: move to start of next line without rendering
+                            currX <- 0
+                            currY <- currY + 1
+
+                            if currY >= bounds.Height then
+                                index <- content.Length
+                        else
+                            let style =
+                                if index < styleAtIndex.Count then
+                                    styleAtIndex.[index]
+                                else
+                                    CellStyle.none
+
+                            let cell =
+                                {
+                                    Char = ch
+                                    BackgroundColor = style.Background
+                                    TextColor = style.Foreground
+                                }
+
+                            setAtRelativeOffset dirty bounds currX currY (ValueSome cell)
+
+                            currX <- currX + 1
+
+                            if currX = bounds.Width then
+                                if wrap then
+                                    // Wrap to next line
+                                    currX <- 0
+                                    currY <- currY + 1
+
+                                    if currY >= bounds.Height then
+                                        index <- content.Length
+                                else
+                                    // Truncate: skip remaining characters until newline
+                                    while index + 1 < content.Length && content.Chars (index + 1) <> '\n' do
+                                        index <- index + 1
+
+                        index <- index + 1
+
         | UnkeyedVdom.Empty ->
             // Empty nodes render nothing, but need to clear if replacing a previous node
             match previousNode with

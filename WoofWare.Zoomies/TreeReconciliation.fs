@@ -36,6 +36,13 @@ module internal TreeReconciliation =
                         // Repopulate keyToNode for reused keyed node
                         keyToNode.[key1] <- prev
                         Some prev
+                    | UnkeyedVdom.StyledSpans (spans1, align1, focus1, wrap1),
+                      UnkeyedVdom.StyledSpans (spans2, align2, focus2, wrap2) when
+                        spans1 = spans2 && align1 = align2 && focus1 = focus2 && wrap1 = wrap2
+                        ->
+                        // Repopulate keyToNode for reused keyed node
+                        keyToNode.[key1] <- prev
+                        Some prev
                     | UnkeyedVdom.Empty, UnkeyedVdom.Empty ->
                         // Empty nodes are always equal, repopulate keyToNode and reuse
                         keyToNode.[key1] <- prev
@@ -198,6 +205,11 @@ module internal TreeReconciliation =
                     && align1 = align2
                     && focus1 = focus2
                     && wrap1 = wrap2
+                    ->
+                    Some prev
+                | Vdom.Unkeyed (UnkeyedVdom.StyledSpans (spans1, align1, focus1, wrap1)),
+                  Vdom.Unkeyed (UnkeyedVdom.StyledSpans (spans2, align2, focus2, wrap2)) when
+                    spans1 = spans2 && align1 = align2 && focus1 = focus2 && wrap1 = wrap2
                     ->
                     Some prev
                 | Vdom.Unkeyed UnkeyedVdom.Empty, Vdom.Unkeyed UnkeyedVdom.Empty ->
@@ -465,6 +477,7 @@ module internal TreeReconciliation =
                             arranged.Children.[0].VDomSource
                     ]
                 | UnkeyedVdom.TextContent _
+                | UnkeyedVdom.StyledSpans _
                 | UnkeyedVdom.Empty -> []
             | Vdom.Unkeyed unkeyedVdom ->
                 match unkeyedVdom with
@@ -579,6 +592,7 @@ module internal TreeReconciliation =
                             arranged.Children.[0].VDomSource
                     ]
                 | UnkeyedVdom.TextContent _
+                | UnkeyedVdom.StyledSpans _
                 | UnkeyedVdom.Empty -> []
 
         let result =
@@ -622,6 +636,7 @@ module internal TreeReconciliation =
 
         match node.Vdom with
         | Vdom.Unkeyed (UnkeyedVdom.TextContent _) -> fprintf writer "TextContent"
+        | Vdom.Unkeyed (UnkeyedVdom.StyledSpans _) -> fprintf writer "StyledSpans"
         | Vdom.Unkeyed UnkeyedVdom.Empty -> fprintf writer "Empty"
         | Vdom.Unkeyed (UnkeyedVdom.Bordered _) -> fprintf writer "Bordered"
         | Vdom.Unkeyed (UnkeyedVdom.PanelSplit (direction, behaviour, _, _)) ->

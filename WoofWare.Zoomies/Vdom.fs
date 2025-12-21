@@ -105,6 +105,13 @@ type ContentAlignment =
     /// Content starts at the top-left corner.
     | TopLeft
 
+/// A span of text with its own styling.
+type StyledSpan =
+    {
+        Text : string
+        Style : CellStyle
+    }
+
 type internal FlexibleContent =
     {
         Measure : MeasureConstraints -> MeasuredSize
@@ -122,6 +129,7 @@ and UnkeyedVdom<'bounds> =
     | Bordered of Vdom<'bounds>
     | PanelSplit of SplitDirection * SplitBehaviour * child1 : Vdom<'bounds> * child2 : Vdom<'bounds>
     | TextContent of content : string * style : CellStyle * alignment : ContentAlignment * focused : bool * wrap : bool
+    | StyledSpans of spans : StyledSpan list * alignment : ContentAlignment * focused : bool * wrap : bool
     | Focusable of isFirstToFocus : bool * isInitiallyFocused : bool * KeyedVdom<'bounds>
     | Empty
     | FlexibleContent of FlexibleContent
@@ -188,6 +196,31 @@ type Vdom =
         Vdom.Unkeyed (
             UnkeyedVdom.TextContent (content, style, defaultArg alignment ContentAlignment.TopLeft, false, wrap)
         )
+
+    /// <summary>Creates a text content component with per-span styling.</summary>
+    /// <param name="spans">A list of text spans, each with its own style.</param>
+    /// <param name="alignment">Where within the panel to place the text.</param>
+    /// <param name="isFocused">Whether this content currently has focus (for display purposes).</param>
+    /// <param name="wrap">
+    /// If true (the default), text wraps to the next line when it reaches the edge of the bounds.
+    /// If false, text is truncated at the edge of the bounds and does not wrap.
+    /// </param>
+    static member styledSpans
+        (spans : StyledSpan list, ?isFocused : bool, ?alignment : ContentAlignment, ?wrap : bool)
+        : Vdom<DesiredBounds>
+        =
+        Vdom.styledSpans' (spans, ?isFocused = isFocused, ?alignment = alignment, ?wrap = wrap)
+        |> Vdom.Unkeyed
+
+    /// This is `Vdom.styledSpans`, but you get back an UnkeyedVdom rather than a Vdom.
+    static member styledSpans'
+        (spans : StyledSpan list, ?isFocused : bool, ?alignment : ContentAlignment, ?wrap : bool)
+        : UnkeyedVdom<DesiredBounds>
+        =
+        let wrap = defaultArg wrap true
+        let alignment = defaultArg alignment ContentAlignment.TopLeft
+        let isFocused = defaultArg isFocused false
+        UnkeyedVdom.StyledSpans (spans, alignment, isFocused, wrap)
 
     /// <summary>Creates an empty zero-sized element.</summary>
     /// <remarks>
@@ -633,6 +666,34 @@ type Vdom =
                         indent
                         (truncated.Replace("\n", "\\n").Replace ("\r", "\\r"))
                         alignmentStr
+                        focusedStr
+                        wrapStr
+                )
+                |> ignore
+            | UnkeyedVdom.StyledSpans (spans, alignment, focused, wrap) ->
+                let totalText = spans |> List.map (fun s -> s.Text) |> String.concat ""
+
+                let truncated =
+                    if totalText.Length > 50 then
+                        totalText.Substring (0, 47) + "..."
+                    else
+                        totalText
+
+                let focusedStr = if focused then " (focused)" else ""
+                let wrapStr = if wrap then "" else " (no-wrap)"
+
+                let alignmentStr =
+                    match alignment with
+                    | ContentAlignment.Centered -> "centered"
+                    | ContentAlignment.TopLeft -> "top-left"
+
+                sb.AppendLine (
+                    sprintf
+                        "%sStyledSpans: \"%s\" [%s, %d spans]%s%s"
+                        indent
+                        (truncated.Replace("\n", "\\n").Replace ("\r", "\\r"))
+                        alignmentStr
+                        (List.length spans)
                         focusedStr
                         wrapStr
                 )

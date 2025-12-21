@@ -669,6 +669,15 @@ module internal Layout =
                 Measured = measureText text wrap constraints
                 Children = []
             }
+        | UnkeyedVdom.StyledSpans (spans, _alignment, _focused, wrap) ->
+            // Measure as if it were a single text string
+            let text = spans |> List.map (fun s -> s.Text) |> String.concat ""
+
+            {
+                Vdom = Vdom.Unkeyed vdom
+                Measured = measureText text wrap constraints
+                Children = []
+            }
         | UnkeyedVdom.Empty ->
             {
                 Vdom = Vdom.Unkeyed vdom
@@ -767,6 +776,13 @@ module internal Layout =
             | UnkeyedVdom.TextContent (text, style, alignment, focused, wrap) ->
                 {
                     Vdom = Vdom.Keyed (KeyedVdom (key, UnkeyedVdom.TextContent (text, style, alignment, focused, wrap)))
+                    VDomSource = measured.Vdom
+                    Bounds = bounds
+                    Children = []
+                }
+            | UnkeyedVdom.StyledSpans (spans, alignment, focused, wrap) ->
+                {
+                    Vdom = Vdom.Keyed (KeyedVdom (key, UnkeyedVdom.StyledSpans (spans, alignment, focused, wrap)))
                     VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = []
@@ -870,6 +886,13 @@ module internal Layout =
             | UnkeyedVdom.TextContent (text, style, alignment, focused, wrap) ->
                 {
                     Vdom = Vdom.Unkeyed (UnkeyedVdom.TextContent (text, style, alignment, focused, wrap))
+                    VDomSource = measured.Vdom
+                    Bounds = bounds
+                    Children = []
+                }
+            | UnkeyedVdom.StyledSpans (spans, alignment, focused, wrap) ->
+                {
+                    Vdom = Vdom.Unkeyed (UnkeyedVdom.StyledSpans (spans, alignment, focused, wrap))
                     VDomSource = measured.Vdom
                     Bounds = bounds
                     Children = []
