@@ -1741,9 +1741,13 @@ module TestTableMeasurements =
                 keyPrefix
                 [|
                     [|
-                        Vdom.withKey (NodeKey.makeTableCellKey keyPrefix 0 None (Some 0) None) (Vdom.textContent "L")
+                        Vdom.withKey
+                            (keyPrefix |> NodeKey.child (TableKeySegment.make 0 None (Some 0) None))
+                            (Vdom.textContent "L")
                         |> Vdom.Keyed
-                        Vdom.withKey (NodeKey.makeTableCellKey keyPrefix 0 None (Some 1) None) (Vdom.textContent "R")
+                        Vdom.withKey
+                            (keyPrefix |> NodeKey.child (TableKeySegment.make 0 None (Some 1) None))
+                            (Vdom.textContent "R")
                         |> Vdom.Keyed
                     |]
                 |]
@@ -1768,7 +1772,7 @@ module TestTableMeasurements =
             }
 
         let lastWidth =
-            findAllocatedWidth (NodeKey.makeTableCellKey keyPrefix 0 None (Some 1) None) bounds table
+            findAllocatedWidth (keyPrefix |> NodeKey.child (TableKeySegment.make 0 None (Some 1) None)) bounds table
 
         lastWidth |> shouldEqual (Some 4)
 
@@ -1777,7 +1781,9 @@ module TestTableMeasurements =
         let keyPrefix = NodeKey.make "t"
 
         let cell =
-            Vdom.withKey (NodeKey.makeTableCellKey keyPrefix 0 None (Some 0) None) (Vdom.textContent "Hello")
+            Vdom.withKey
+                (keyPrefix |> NodeKey.child (TableKeySegment.make 0 None (Some 0) None))
+                (Vdom.textContent "Hello")
             |> Vdom.Keyed
 
         let table = Table.makeContentSized keyPrefix [| [| cell |] |]
@@ -1802,7 +1808,7 @@ module TestTableMeasurements =
             }
 
         let width =
-            findAllocatedWidth (NodeKey.makeTableCellKey keyPrefix 0 None (Some 0) None) bounds table
+            findAllocatedWidth (keyPrefix |> NodeKey.child (TableKeySegment.make 0 None (Some 0) None)) bounds table
 
         width |> shouldEqual (Some expectedWidth)
 
