@@ -64,6 +64,7 @@
     <Compile Include="Components\RadioButton.fs" />
     <Compile Include="Components\Collapsible.fs" />
     <Compile Include="Components\IdleTracker.fs" />
+    <Compile Include="Components\RainbowText.fs" />
     <Compile Include="Components\LabelledCheckbox.fs" />
     <Compile Include="Components\ProgressBar.fs" />
     <Compile Include="Components\LoadingSpinner.fs" />
