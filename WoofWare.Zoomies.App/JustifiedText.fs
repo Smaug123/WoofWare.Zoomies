@@ -3,9 +3,12 @@ namespace WoofWare.Zoomies.App
 open System.Globalization
 open WoofWare.KnuthPlass
 open WoofWare.Zoomies
+open WoofWare.LiangHyphenation
 
 [<RequireQualifiedAccess>]
 module MonospaceText =
+    let english = LanguageData.load KnownLanguage.EnGb
+
     /// Format text for monospace terminal display using Knuth-Plass line breaking.
     /// Guarantees no overfull lines - any line exceeding the width is truncated with ellipsis.
     ///
@@ -19,7 +22,7 @@ module MonospaceText =
                 Text.defaultWordWidth
                 Items.monospaceGlue
                 Hyphenation.DEFAULT_PENALTY
-                Hyphenation.simpleEnglish
+                (Hyphenation.hyphenate english)
                 text
 
         // Post-process: truncate any overfull lines with ellipsis

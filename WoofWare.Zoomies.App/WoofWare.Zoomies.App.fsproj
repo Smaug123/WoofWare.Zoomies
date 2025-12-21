@@ -19,7 +19,8 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="WoofWare.KnuthPlass" Version="0.2.2" />
+      <PackageReference Include="WoofWare.KnuthPlass" Version="0.3.1" />
+      <PackageReference Include="WoofWare.LiangHyphenation" Version="0.1.3" />
     </ItemGroup>
 
 </Project>
