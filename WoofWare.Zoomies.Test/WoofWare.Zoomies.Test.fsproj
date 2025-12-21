@@ -32,6 +32,7 @@
     <Compile Include="TestCheckbox.fs" />
     <Compile Include="TestFocusCycle.fs" />
     <Compile Include="TestCollapsible.fs" />
+    <Compile Include="TestIdleTracker.fs" />
     <Compile Include="TestProgressBar.fs" />
     <Compile Include="TestLoadingSpinner.fs" />
     <Compile Include="TestScrollBar.fs" />
