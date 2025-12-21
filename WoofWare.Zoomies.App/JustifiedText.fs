@@ -22,7 +22,10 @@ module MonospaceText =
                 Text.defaultWordWidth
                 Items.monospaceGlue
                 Hyphenation.DEFAULT_PENALTY
-                (Hyphenation.hyphenate english)
+                (fun s ->
+                    Hyphenation.hyphenate english s
+                    |> FilteredPriorities.fromLiangEnglish (StringInfo(s).LengthInTextElements)
+                )
                 text
 
         // Post-process: truncate any overfull lines with ellipsis

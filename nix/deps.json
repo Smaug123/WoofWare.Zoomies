@@ -300,6 +300,11 @@
     "hash": "sha256-OeOay7YvrTBysPAvJhlN3ff+4y5z95ah6F4lPT/fjh0="
   },
   {
+    "pname": "WoofWare.KnuthPlass",
+    "version": "0.2.2",
+    "hash": "sha256-q0pm7izIxu7OFQ69GfA0DCBwcXKhc5Y7Eube/LbrcTA="
+  },
+  {
     "pname": "WoofWare.Myriad.Plugins",
     "version": "9.1.4",
     "hash": "sha256-FNAgKfAr/VZrZpozyctyvz8XgAucED+OoAT0xIdpcAs="
