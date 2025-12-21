@@ -2,6 +2,18 @@ namespace WoofWare.Zoomies.Components
 
 open WoofWare.Zoomies
 
+/// Creates key segments for table internal structure.
+[<RequireQualifiedAccess>]
+module TableKeySegment =
+    /// Create a segment encoding a table cell region.
+    let make (row : int) (toRow : int option) (col : int option) (toCol : int option) : NodeKeySegment =
+        let sb = System.Text.StringBuilder ()
+        sb.Append('r').Append (row) |> ignore
+        toRow |> Option.iter (fun r -> sb.Append('-').Append (r) |> ignore)
+        col |> Option.iter (fun c -> sb.Append('c').Append (c) |> ignore)
+        toCol |> Option.iter (fun c -> sb.Append('-').Append (c) |> ignore)
+        NodeKeySegment.make (sb.ToString ())
+
 /// <summary>
 /// Sizing specification for a table column.
 /// </summary>
@@ -780,14 +792,11 @@ module Table =
                                         // Split: give 'cell' exactly 'width' chars, rest goes to accumulator
                                         // Key the accumulator with a unique namespaced key indicating "columns colIdx to end of row rowIdx"
                                         let accumKeyed =
-                                            Vdom.withKey
-                                                (NodeKey.makeTableCellKey
-                                                    keyPrefix
-                                                    rowIdx
-                                                    None
-                                                    (Some colIdx)
-                                                    (Some (numCols - 1)))
-                                                accum
+                                            keyPrefix
+                                            |> NodeKey.child (
+                                                TableKeySegment.make rowIdx None (Some colIdx) (Some (numCols - 1))
+                                            )
+                                            |> fun k -> Vdom.withKey k accum
 
                                         let splitResult =
                                             Vdom.panelSplitAbsolute (SplitDirection.Vertical, width, cell, accumKeyed)
@@ -824,17 +833,16 @@ module Table =
                                 else
                                     // Key both the current row and the accumulator with unique namespaced keys
                                     let rowKeyed =
-                                        Vdom.withKey (NodeKey.makeTableCellKey keyPrefix rowIdx None None None) row
+                                        keyPrefix
+                                        |> NodeKey.child (TableKeySegment.make rowIdx None None None)
+                                        |> fun k -> Vdom.withKey k row
 
                                     let accumKeyed =
-                                        Vdom.withKey
-                                            (NodeKey.makeTableCellKey
-                                                keyPrefix
-                                                rowIdx
-                                                (Some (numRowVdoms - 1))
-                                                None
-                                                None)
-                                            accum
+                                        keyPrefix
+                                        |> NodeKey.child (
+                                            TableKeySegment.make rowIdx (Some (numRowVdoms - 1)) None None
+                                        )
+                                        |> fun k -> Vdom.withKey k accum
 
                                     (rowIdx - 1,
                                      false,

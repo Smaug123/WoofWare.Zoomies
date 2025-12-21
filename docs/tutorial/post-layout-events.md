@@ -184,12 +184,9 @@ let make (key : NodeKey) (cursor : int) (selectedItems : int Set) (items : unit[
 
         let visibleRows = items.[indexOfFirstRow..indexOfFirstRow + visibleRowCount - 1]
 
-        // An abuse of the key system, which currently has only
-        // a single "make a key that's derived from another key" method.
-        // At some point I intend reworking node keys so you don't have to lie.
-        // For now, we use `-1` because no table is ever going to have a `-1`th
-        // row, so this is never going to collide with any other key.
-        let tableKey = NodeKey.makeTableCellKey key (-1) None None None
+        // Derive a child key for the inner table, so it doesn't collide with
+        // the parent's key.
+        let tableKey = key |> NodeKey.child (NodeKeySegment.make "table")
 
         // Table cells are a ragged array of `Vdom`s.
         let cells =
