@@ -70,8 +70,9 @@ Hello     |
             }
         }
 
+    // Note: we don't yet have the infrastructure to test that the correct colours are shown.
     [<Test>]
-    let ``StyledSpans renders with colors`` () =
+    let ``StyledSpans renders when colours are set`` () =
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 1)
 
