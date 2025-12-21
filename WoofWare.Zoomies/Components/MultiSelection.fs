@@ -118,7 +118,7 @@ type MultiSelection =
                         )
 
                     // Use a derived key for the inner table to avoid collision with the outer focusable key
-                    let tableKey = NodeKey.makeTableCellKey listKey -1 None None None
+                    let tableKey = listKey |> NodeKey.child (NodeKeySegment.make "table")
                     Table.make tableKey cells [| Column.Fixed 3 ; Column.Proportion 1.0 |] [||]
 
             // Register the list itself as focusable (not individual items)

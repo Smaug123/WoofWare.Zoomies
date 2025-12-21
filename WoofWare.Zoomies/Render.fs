@@ -288,23 +288,48 @@ module Render =
 
             // Only render text if we have space (width and height both > 0)
             if bounds.Width > 0 && bounds.Height > 0 then
-                // Concatenate all spans into a single string for layout calculations
-                let content = spans |> List.map (fun s -> s.Text) |> String.concat ""
-                // Build a style lookup: for each character index, which style applies
-                let styleAtIndex =
-                    let arr = ResizeArray<CellStyle> ()
+                // First concatenate raw spans, then normalize the whole string.
+                // This ensures CRLF split across span boundaries is handled correctly
+                // (matching how Layout.fs measures).
+                let rawContent = spans |> List.map (fun s -> s.Text) |> String.concat ""
+                let content = rawContent.Replace("\r\n", "\n").Replace ("\r", "\n")
 
-                    for span in spans do
-                        for _ in span.Text do
-                            arr.Add span.Style
+                // Build a style lookup: for each character index in the normalized content,
+                // which style applies. We must handle CRLF pairs that span boundaries:
+                // when \r\n becomes \n, we use the \r's style and skip both raw chars.
+                let styleAtIndex =
+                    // First build an array of styles for each raw character
+                    let rawStyles =
+                        let result = ResizeArray<CellStyle> ()
+
+                        for span in spans do
+                            for _ in span.Text do
+                                result.Add span.Style
+
+                        result
+
+                    // Now walk through raw content and emit styles for normalized output
+                    let arr = ResizeArray<CellStyle> ()
+                    let mutable rawIdx = 0
+
+                    while rawIdx < rawContent.Length do
+                        let ch = rawContent.[rawIdx]
+
+                        if ch = '\r' && rawIdx + 1 < rawContent.Length && rawContent.[rawIdx + 1] = '\n' then
+                            // CRLF pair - emit one style entry (use the \r's style), skip 2 raw chars
+                            arr.Add rawStyles.[rawIdx]
+                            rawIdx <- rawIdx + 2
+                        else
+                            // Any other char (\r alone, \n alone, or regular char) - emit its style
+                            arr.Add rawStyles.[rawIdx]
+                            rawIdx <- rawIdx + 1
 
                     arr
 
                 match alignment with
                 | ContentAlignment.Centered ->
                     // Center the text horizontally and vertically within bounds
-                    // Normalize line endings: CRLF -> LF, lone CR -> LF
-                    let content = content.Replace("\r\n", "\n").Replace ("\r", "\n")
+                    // (line endings already normalized above)
                     let inputLines = content.Split '\n'
 
                     // Process lines based on wrap setting
@@ -376,8 +401,7 @@ module Render =
 
                 | ContentAlignment.TopLeft ->
                     // Render from top-left
-                    // Normalize line endings: CRLF -> LF, lone CR -> LF
-                    let content = content.Replace("\r\n", "\n").Replace ("\r", "\n")
+                    // (line endings already normalized above)
                     let mutable index = 0
                     let mutable currX = 0
                     let mutable currY = 0
