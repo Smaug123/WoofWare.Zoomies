@@ -502,6 +502,9 @@ module App =
                             let mutable currentState =
                                 processNoChanges initialState renderState processWorld vdom
 
+                            // Track the previous vdom value to detect time-based changes
+                            let mutable previousVdom = Observer.value vdomObserver
+
                             let isCancelled () =
                                 cancels > 0 || terminate.IsCancellationRequested
 
@@ -509,6 +512,17 @@ module App =
                             ready.SetResult ()
 
                             while not (isCancelled ()) do
+                                // Advance clock and stabilize to propagate time-based changes.
+                                // This must happen BEFORE checking isDirty in pumpOnce, so that
+                                // time-dependent components (like spinners) can trigger re-renders.
+                                IncrementalState.advanceClockAndStabilize DateTime.UtcNow incrState
+
+                                // Check if vdom changed due to time advancement
+                                let currentVdom = Observer.value vdomObserver
+
+                                if not (Object.referenceEquals previousVdom currentVdom) then
+                                    IncrVdomContext.markDirty vdomContext
+
                                 currentState <-
                                     pumpOnce
                                         listener'
@@ -519,6 +533,11 @@ module App =
                                         vdom
                                         resolveActivation
                                         isCancelled
+
+                                // Update previousVdom to track the most recently observed vdom.
+                                // This ensures we don't mark dirty on the next iteration just
+                                // because pumpOnce rendered due to state changes.
+                                previousVdom <- Observer.value vdomObserver
 
                             None
                         with e ->
