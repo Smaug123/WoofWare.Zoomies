@@ -108,7 +108,9 @@ module TestFocusCycle =
                     member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+
             let mutable currentState = state
 
             currentState <-
@@ -412,7 +414,9 @@ module TestFocusCycle =
                     member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+
             let mutable currentState = state
 
             currentState <-
@@ -630,7 +634,9 @@ module TestFocusCycle =
                     member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+
             let mutable renderCheckbox1 = true
 
             renderCheckbox1 <-
@@ -759,7 +765,9 @@ module TestFocusCycle =
                 }
 
             let mutable renderFocusable = 0
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             renderFocusable <-
                 App.pumpOnce
@@ -898,7 +906,8 @@ more      [☐]   |
                     member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -1084,7 +1093,8 @@ This is focusable text                                                          
                     member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -1258,7 +1268,8 @@ This is focusable text                                                          
                     member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             // First render: checkbox2 should start with focus (marked with isInitiallyFocused=true)
             App.pumpOnce

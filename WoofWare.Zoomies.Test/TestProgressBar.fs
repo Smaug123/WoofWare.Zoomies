@@ -39,7 +39,8 @@ module TestProgressBar =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -82,7 +83,8 @@ module TestProgressBar =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -125,7 +127,8 @@ module TestProgressBar =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -172,7 +175,8 @@ module TestProgressBar =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -217,7 +221,8 @@ Loading:[███░░░░░░░] 30%      |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -266,7 +271,8 @@ Loading:[███░░░░░░░] 30%      |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -313,7 +319,8 @@ Progress:[██████░░░░]         |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -356,7 +363,8 @@ Progress:[██████░░░░]         |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -404,7 +412,8 @@ Progress:[██████░░░░]         |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -447,7 +456,8 @@ Progress:[██████░░░░]         |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer

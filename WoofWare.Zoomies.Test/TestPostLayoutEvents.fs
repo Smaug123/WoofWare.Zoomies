@@ -80,7 +80,7 @@ module TestPostLayoutEvents =
             let vdom (ctx : IVdomContext<PostLayoutEvent>) (_state : PostLayoutState) : Vdom<DesiredBounds> =
                 viewportReporter ctx
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
 
             // Run one pump cycle
             let finalState =
@@ -151,7 +151,7 @@ module TestPostLayoutEvents =
             let vdom (ctx : IVdomContext<PostLayoutEvent>) (_state : PostLayoutState) : Vdom<DesiredBounds> =
                 multiEventComponent ctx
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -214,7 +214,7 @@ module TestPostLayoutEvents =
             let vdom (ctx : IVdomContext<PostLayoutEvent>) (_state : PostLayoutState) : Vdom<DesiredBounds> =
                 viewportReporter ctx
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
 
             // Use processNoChanges directly (simulating no incoming events)
             let finalState =
@@ -312,7 +312,7 @@ module TestPostLayoutEvents =
             let vdom (ctx : IVdomContext<ChainedEvent>) (state : ChainedStabilizationState) : Vdom<DesiredBounds> =
                 chainedComponent targetCount ctx state
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
 
             let finalState =
                 App.pumpOnce
@@ -399,7 +399,7 @@ module TestPostLayoutEvents =
             let vdom (ctx : IVdomContext<InfiniteLoopEvent>) (_state : InfiniteLoopState) : Vdom<DesiredBounds> =
                 infiniteComponent ctx
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
 
             let finalState =
                 App.pumpOnce
@@ -526,7 +526,7 @@ module TestPostLayoutEvents =
             let vdom (ctx : IVdomContext<OrderingEvent>) (state : OrderingState) : Vdom<DesiredBounds> =
                 orderingComponent ctx state
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
 
             // Do initial render to establish baseline
             let stateAfterInit =
@@ -615,7 +615,7 @@ module TestPostLayoutEvents =
 
             let vdom (ctx : IVdomContext<int>) (_state : NoState) : Vdom<DesiredBounds> = orderedComponent ctx
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
 
             App.processNoChanges NoState renderState processWorld vdom |> ignore<NoState>
 
@@ -670,7 +670,7 @@ module TestPostLayoutEvents =
 
             let vdom (ctx : IVdomContext<StateUnchangedEvent>) (_state : int) : Vdom<DesiredBounds> = noOpComponent ctx
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
 
             let _finalState = App.processNoChanges 42 renderState processWorld vdom
 
@@ -790,7 +790,7 @@ module TestPostLayoutEvents =
                         None
                 )
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
 
             // Do initial render to set up focus
             let stateAfterInit =
@@ -906,7 +906,7 @@ module TestPostLayoutEvents =
             let vdom (ctx : IVdomContext<RerenderRequestEvent>) (state : RerenderRequestState) : Vdom<DesiredBounds> =
                 rerenderComponent ctx state
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
 
             let finalState =
                 App.processNoChanges RerenderRequestState.Initial renderState processWorld vdom
@@ -1047,7 +1047,7 @@ module TestPostLayoutEvents =
                 =
                 component' ctx state
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
 
             // Run one pump cycle - this will:
             // 1. Initial render: component writes "X" to pending buffer, posts SwitchToFinalState event

@@ -44,7 +44,7 @@ module TestTextRendering =
                     world.KeyAvailable
                     world.ReadKey
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
 
             // This should not throw an IndexOutOfRangeException
             App.pumpOnce
@@ -108,7 +108,7 @@ r|
                     world.KeyAvailable
                     world.ReadKey
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
 
             // This should not throw an IndexOutOfRangeException
             App.pumpOnce
@@ -168,7 +168,8 @@ r|
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -220,7 +221,8 @@ bottom    |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -267,7 +269,8 @@ Line3               |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -314,7 +317,8 @@ Line3               |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -361,7 +365,8 @@ Line3               |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -422,7 +427,8 @@ Line3               |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -481,7 +487,8 @@ Footer              |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -531,7 +538,8 @@ Footer              |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -578,7 +586,8 @@ xt        |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -625,7 +634,8 @@ Hello Worl|
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -679,7 +689,8 @@ Short     |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -732,7 +743,8 @@ Footer    |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -784,7 +796,8 @@ here                |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -833,7 +846,8 @@ ABCDEFGHIJKLMNOPQRST|
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -884,7 +898,8 @@ ABCDEFGHIJKLMNOPQRST|
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer

@@ -39,7 +39,8 @@ module TestLoadingSpinner =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -81,7 +82,8 @@ module TestLoadingSpinner =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -125,7 +127,8 @@ module TestLoadingSpinner =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -168,7 +171,8 @@ module TestLoadingSpinner =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer

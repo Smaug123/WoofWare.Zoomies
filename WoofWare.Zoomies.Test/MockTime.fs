@@ -1,6 +1,7 @@
 namespace WoofWare.Zoomies.Test
 
 open System
+open WoofWare.Zoomies
 
 type MockTimer =
     {
@@ -35,3 +36,60 @@ module MockTime =
                         )
             SetTimeUtc = fun dt -> lock lockObj (fun () -> now <- dt)
         }
+
+    /// Create an IncrVdomContext for testing purposes with the given bounds and time function.
+    let makeVdomContext'<'postLayoutEvent>
+        (getUtcNow : unit -> DateTime)
+        (bounds : Rectangle)
+        : IncrVdomContext<'postLayoutEvent>
+        =
+        // Create an IncrementalState with a unit state (tests don't need state)
+        let incrState = IncrementalState.make () bounds None
+        IncrVdomContext.make' getUtcNow incrState
+
+    /// Create an IncrVdomContext for testing purposes with the given bounds.
+    /// Uses a static mock time.
+    let makeVdomContext<'postLayoutEvent> (bounds : Rectangle) : IncrVdomContext<'postLayoutEvent> =
+        makeVdomContext' getStaticUtcNow bounds
+
+    /// Create an IncrVdomContext with default 80x24 terminal bounds for testing.
+    let makeDefaultVdomContext<'postLayoutEvent> () : IncrVdomContext<'postLayoutEvent> =
+        makeVdomContext
+            {
+                TopLeftX = 0
+                TopLeftY = 0
+                Width = 80
+                Height = 24
+            }
+
+    /// Create an IncrVdomContext from an IConsole for testing with a custom time function.
+    let makeVdomContextFromConsole'<'postLayoutEvent>
+        (getUtcNow : unit -> DateTime)
+        (console : IConsole)
+        : IncrVdomContext<'postLayoutEvent>
+        =
+        makeVdomContext'
+            getUtcNow
+            {
+                TopLeftX = 0
+                TopLeftY = 0
+                Width = console.WindowWidth ()
+                Height = console.WindowHeight ()
+            }
+
+    /// Create an IncrVdomContext from an IConsole for testing.
+    /// This is a helper to make migrating tests from the old API easier.
+    /// Uses a static mock time.
+    let makeVdomContextFromConsole<'postLayoutEvent> (console : IConsole) : IncrVdomContext<'postLayoutEvent> =
+        makeVdomContextFromConsole' getStaticUtcNow console
+
+    /// Create a RenderState for testing - backward-compatible helper.
+    /// This replaces the old pattern of `RenderState.make console getUtcNow debugWriter`.
+    let makeRenderState<'postLayoutEvent>
+        (console : IConsole)
+        (getUtcNow : unit -> DateTime)
+        (debugWriter : System.IO.StreamWriter option)
+        : RenderState<'postLayoutEvent>
+        =
+        let vdomContext = makeVdomContextFromConsole'<'postLayoutEvent> getUtcNow console
+        RenderState.make console vdomContext debugWriter

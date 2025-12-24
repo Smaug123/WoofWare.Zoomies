@@ -78,7 +78,7 @@ module TestButton =
 
             let clock = MockTime.make ()
 
-            let renderState = RenderState.make console clock.GetUtcNow None
+            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
 
             let mutable state =
                 {
@@ -268,7 +268,7 @@ Hello, World!                           |
 
             let clock = MockTime.make ()
 
-            let renderState = RenderState.make console clock.GetUtcNow None
+            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
 
             let mutable state =
                 {
@@ -496,7 +496,7 @@ Last clicked: Button 3                            |
 
             let clock = MockTime.make ()
 
-            let renderState = RenderState.make console clock.GetUtcNow None
+            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
 
             let mutable state = true
 

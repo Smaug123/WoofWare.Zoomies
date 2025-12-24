@@ -56,13 +56,12 @@ module TestAppRun =
                 App.run'
                     cts.Token
                     console
-                    clock.GetUtcNow
                     ctrlCHandler
                     worldFreezer
                     ()
                     (fun _ -> false)
                     processWorld
-                    vdom
+                    (App.pureView vdom)
                     resolver
                     None
 

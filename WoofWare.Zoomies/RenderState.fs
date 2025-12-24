@@ -32,8 +32,8 @@ type RenderState<'postLayoutEvent> =
             /// The key marked with isInitiallyFocused=true, if any
             InitiallyFocusedKey : NodeKey option ref
             /// This gets handed out to users every so often: it's the fragment of state that they will want to
-            /// construct the vdom with.
-            VdomContext : VdomContext<'postLayoutEvent>
+            /// construct the vdom with. Uses IncrVdomContext for incremental reactivity.
+            VdomContext : IncrVdomContext<'postLayoutEvent>
             /// Debug file writer for layout diagnostics (if WOOFWARE_ZOOMIES_DEBUG_TO_FILE is enabled)
             DebugWriter : IO.StreamWriter option
         }
@@ -96,75 +96,75 @@ module RenderState =
         }
 
     let refreshTerminalSize<'postLayoutEvent> (rs : RenderState<'postLayoutEvent>) : unit =
-        VdomContext.setTerminalBounds (getBounds rs.Console) rs.VdomContext
+        IncrVdomContext.setTerminalBounds (getBounds rs.Console) rs.VdomContext
 
     /// Advance focus to the next focusable node (Tab key)
     let advanceFocus<'postLayoutEvent> (s : RenderState<'postLayoutEvent>) : unit =
         if s.FocusableKeys.Count = 0 then
             // nothing to do, nothing can ever have focus
-            VdomContext.setFocusedKey None s.VdomContext
+            IncrVdomContext.setFocusedKey None s.VdomContext
         else
 
-        match VdomContext.focusedKey s.VdomContext with
+        match IncrVdomContext.focusedKey s.VdomContext with
         | None ->
             // No current focus, use first-to-focus key if available, otherwise first focusable element
             match s.FirstToFocusKey.Value with
             | Some firstKey when s.FocusableKeys.Contains firstKey ->
-                VdomContext.setFocusedKey (Some firstKey) s.VdomContext
-            | _ -> VdomContext.setFocusedKey (Some s.FocusableKeys.[0]) s.VdomContext
+                IncrVdomContext.setFocusedKey (Some firstKey) s.VdomContext
+            | _ -> IncrVdomContext.setFocusedKey (Some s.FocusableKeys.[0]) s.VdomContext
         | Some currentKey ->
             // Find the current key in the list and move to the next one
             match s.FocusableKeys |> Seq.tryFindIndex ((=) currentKey) with
             | Some index ->
                 let nextIndex = (index + 1) % s.FocusableKeys.Count
-                VdomContext.setFocusedKey (Some s.FocusableKeys.[nextIndex]) s.VdomContext
+                IncrVdomContext.setFocusedKey (Some s.FocusableKeys.[nextIndex]) s.VdomContext
             | None ->
                 // Current key is not in the focusable list, use first-to-focus key if available
                 match s.FirstToFocusKey.Value with
                 | Some firstKey when s.FocusableKeys.Contains firstKey ->
-                    VdomContext.setFocusedKey (Some firstKey) s.VdomContext
-                | _ -> VdomContext.setFocusedKey (Some s.FocusableKeys.[0]) s.VdomContext
+                    IncrVdomContext.setFocusedKey (Some firstKey) s.VdomContext
+                | _ -> IncrVdomContext.setFocusedKey (Some s.FocusableKeys.[0]) s.VdomContext
 
     /// Retreat focus to the previous focusable node (Shift+Tab key)
     let retreatFocus<'postLayoutEvent> (s : RenderState<'postLayoutEvent>) : unit =
         if s.FocusableKeys.Count = 0 then
             // nothing to do, nothing can ever have focus
-            VdomContext.setFocusedKey None s.VdomContext
+            IncrVdomContext.setFocusedKey None s.VdomContext
         else
 
-        match VdomContext.focusedKey s.VdomContext with
+        match IncrVdomContext.focusedKey s.VdomContext with
         | None ->
             // No current focus, use first-to-focus key if available, otherwise last focusable element
             match s.FirstToFocusKey.Value with
             | Some firstKey when s.FocusableKeys.Contains firstKey ->
-                VdomContext.setFocusedKey (Some firstKey) s.VdomContext
-            | _ -> VdomContext.setFocusedKey (Some s.FocusableKeys.[s.FocusableKeys.Count - 1]) s.VdomContext
+                IncrVdomContext.setFocusedKey (Some firstKey) s.VdomContext
+            | _ -> IncrVdomContext.setFocusedKey (Some s.FocusableKeys.[s.FocusableKeys.Count - 1]) s.VdomContext
         | Some currentKey ->
             // Find the current key in the list and move to the previous one
             match s.FocusableKeys |> Seq.tryFindIndex ((=) currentKey) with
             | Some index ->
                 let prevIndex = (index - 1 + s.FocusableKeys.Count) % s.FocusableKeys.Count
-                VdomContext.setFocusedKey (Some s.FocusableKeys.[prevIndex]) s.VdomContext
+                IncrVdomContext.setFocusedKey (Some s.FocusableKeys.[prevIndex]) s.VdomContext
             | None ->
                 // Current key is not in the focusable list, use first-to-focus key if available
                 match s.FirstToFocusKey.Value with
                 | Some firstKey when s.FocusableKeys.Contains firstKey ->
-                    VdomContext.setFocusedKey (Some firstKey) s.VdomContext
-                | _ -> VdomContext.setFocusedKey (Some s.FocusableKeys.[s.FocusableKeys.Count - 1]) s.VdomContext
+                    IncrVdomContext.setFocusedKey (Some firstKey) s.VdomContext
+                | _ -> IncrVdomContext.setFocusedKey (Some s.FocusableKeys.[s.FocusableKeys.Count - 1]) s.VdomContext
 
     let internal vdomContext<'postLayoutEvent> (rs : RenderState<'postLayoutEvent>) = rs.VdomContext
 
     /// Get the currently focused key, if any
     let focusedKey<'postLayoutEvent> (rs : RenderState<'postLayoutEvent>) : NodeKey option =
-        VdomContext.focusedKey rs.VdomContext
+        IncrVdomContext.focusedKey rs.VdomContext
 
     let internal make<'postLayoutEvent>
         (c : IConsole)
-        (getUtcNow : unit -> DateTime)
+        (vdomContext : IncrVdomContext<'postLayoutEvent>)
         (debugWriter : IO.StreamWriter option)
         : RenderState<'postLayoutEvent>
         =
-        let bounds = getBounds c
+        let bounds = IncrVdomContext.terminalBounds vdomContext
 
         let changeBuffer = Array2D.zeroCreate bounds.Height bounds.Width
 
@@ -183,7 +183,7 @@ module RenderState =
             FocusableKeys = OrderedSet ()
             FirstToFocusKey = ref None
             InitiallyFocusedKey = ref None
-            VdomContext = VdomContext.empty getUtcNow bounds
+            VdomContext = vdomContext
             DebugWriter = debugWriter
         }
 

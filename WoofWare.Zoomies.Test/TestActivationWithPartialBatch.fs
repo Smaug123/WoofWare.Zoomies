@@ -108,7 +108,7 @@ module TestActivationWithPartialBatch =
                 }
 
             let clock = MockTime.make ()
-            let renderState = RenderState.make console clock.GetUtcNow None
+            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
 
             let mutable state =
                 {
@@ -226,7 +226,7 @@ module TestActivationWithPartialBatch =
                 }
 
             let clock = MockTime.make ()
-            let renderState = RenderState.make console clock.GetUtcNow None
+            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
 
             let mutable state =
                 {
@@ -348,7 +348,7 @@ module TestActivationWithPartialBatch =
                 }
 
             let clock = MockTime.make ()
-            let renderState = RenderState.make console clock.GetUtcNow None
+            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
 
             let mutable state =
                 {
@@ -449,7 +449,7 @@ module TestActivationWithPartialBatch =
                 }
 
             let clock = MockTime.make ()
-            let renderState = RenderState.make console clock.GetUtcNow None
+            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
 
             let mutable state =
                 {
@@ -555,7 +555,7 @@ module TestActivationWithPartialBatch =
                 }
 
             let clock = MockTime.make ()
-            let renderState = RenderState.make console clock.GetUtcNow None
+            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
 
             let mutable state =
                 {

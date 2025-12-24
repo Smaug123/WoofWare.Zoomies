@@ -53,7 +53,7 @@ module TestMultiSelection =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -124,7 +124,7 @@ module TestMultiSelection =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -195,7 +195,7 @@ module TestMultiSelection =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -266,7 +266,7 @@ module TestMultiSelection =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -337,7 +337,7 @@ module TestMultiSelection =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -426,7 +426,7 @@ module TestMultiSelection =
                     member _.ProcessPostLayoutEvents (_, _, state) = state
                 }
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
 
             // Initial render - no focus yet
             App.pumpOnce
@@ -652,7 +652,7 @@ module TestMultiSelection =
                     ToggleCursorDown
                     ToggleItem
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
 
             let initialState : ToggleListState =
                 {
@@ -751,7 +751,7 @@ module TestMultiSelection =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -838,7 +838,7 @@ module TestMultiSelection =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -919,7 +919,7 @@ module TestMultiSelection =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
 
             App.pumpOnce
                 worldFreezer
@@ -1059,7 +1059,7 @@ module TestMultiSelection =
                     CursorDownEvt
                     ToggleEvt
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
 
             let initialState : ArrowTestState =
                 {
@@ -1251,7 +1251,7 @@ module TestMultiSelection =
                     FocusLeaveCursorDown
                     FocusLeaveToggle
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
 
             let initialState : FocusLeaveState =
                 {
@@ -1440,7 +1440,7 @@ module TestMultiSelection =
                     NoDanceCursorDown
                     NoDanceToggle
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
 
             // Start with scroll at 1, cursor at 1 (showing items 2, 3, 4 with cursor on item 2)
             let initialState : NoDanceState =
@@ -1681,7 +1681,7 @@ module TestMultiSelection =
                     ViewportAwareCursorDown
                     ViewportAwareToggle
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
 
             let initialState : ViewportAwareState =
                 {

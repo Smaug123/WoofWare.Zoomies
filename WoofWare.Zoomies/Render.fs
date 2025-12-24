@@ -515,7 +515,7 @@ module Render =
         let vdomContext = RenderState.vdomContext renderState
 
         do
-            let bounds = VdomContext.terminalBounds vdomContext
+            let bounds = IncrVdomContext.terminalBounds vdomContext
             let terminalHeight = bounds.Height
             let terminalWidth = bounds.Width
 
@@ -544,24 +544,24 @@ module Render =
                 firstToFocusKey
                 initiallyFocusedKey
                 (RenderState.previousVdom renderState)
-                (VdomContext.terminalBounds vdomContext)
+                (IncrVdomContext.terminalBounds vdomContext)
                 vdom
                 (RenderState.debugWriter renderState)
 
         // If the focused element from the previous tick no longer exists, clear focused state
-        match VdomContext.focusedKey vdomContext with
+        match IncrVdomContext.focusedKey vdomContext with
         | None -> ()
         | Some key ->
             if not (focusableKeys.Contains key) then
-                VdomContext.setFocusedKey None vdomContext
+                IncrVdomContext.setFocusedKey None vdomContext
 
         // Set initial focus to the isInitiallyFocused element if nothing is currently focused
         let needsRecompute =
-            match VdomContext.focusedKey vdomContext with
+            match IncrVdomContext.focusedKey vdomContext with
             | None ->
                 match initiallyFocusedKey.Value with
                 | Some initialKey when focusableKeys.Contains initialKey ->
-                    VdomContext.setFocusedKey (Some initialKey) vdomContext
+                    IncrVdomContext.setFocusedKey (Some initialKey) vdomContext
                     true // Need to recompute vdom with the new focus state
                 | _ -> false
             | Some _ -> false
@@ -583,7 +583,7 @@ module Render =
                     firstToFocusKey
                     initiallyFocusedKey
                     (RenderState.previousVdom renderState)
-                    (VdomContext.terminalBounds vdomContext)
+                    (IncrVdomContext.terminalBounds vdomContext)
                     vdom
                     (RenderState.debugWriter renderState)
             else

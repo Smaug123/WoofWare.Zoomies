@@ -31,7 +31,8 @@ module TestBordered =
                 WindowHeight = fun _ -> 3
             }
 
-        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+        let renderState =
+            MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
         // Create vdom with bordered text that can change
         let vdom (content : string) =
@@ -118,7 +119,8 @@ module TestBordered =
                     member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             // First render: fill with X's
             let mutable state =
@@ -207,7 +209,8 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
                     member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             // First render: long text
             let mutable state =
@@ -300,7 +303,8 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
                     member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState =
+                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
             // First render: long text
             let mutable state =
