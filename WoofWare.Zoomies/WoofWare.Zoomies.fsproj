@@ -52,7 +52,6 @@
     <Compile Include="IStopwatch.fs" />
     <Compile Include="WorldFreezer.fs" />
     <Compile Include="IVdomContext.fs" />
-    <Compile Include="VdomContext.fs" />
     <Compile Include="IncrementalState.fs" />
     <Compile Include="IncrVdomContext.fs" />
     <Compile Include="IncrTime.fs" />
