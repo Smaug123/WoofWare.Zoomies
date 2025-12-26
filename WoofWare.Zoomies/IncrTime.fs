@@ -16,14 +16,9 @@ module IncrTime =
     /// The node updates when the clock advances past a frame boundary.
     /// Uses default cutoff (polyEqual) so only propagates when frame index changes.
     let spinnerFrameNode (incr : Incremental) (clock : Clock) (frameCount : int) (fps : float) : int Node =
-        if frameCount <= 0 then
-            invalidArg (nameof frameCount) "frameCount must be positive"
-
-        if fps <= 0.0 then
-            invalidArg (nameof fps) "fps must be positive"
-
-        // Calculate interval in nanoseconds
-        let intervalNs = int64 (float nsPerSecond / fps)
+        // Gracefully handle invalid inputs by using sensible defaults
+        let frameCount = max 1 frameCount
+        let intervalNs = if fps <= 0.0 then 0L else int64 (float nsPerSecond / fps)
 
         // Watch the current time
         let timeNode = incr.Clock.WatchNow clock

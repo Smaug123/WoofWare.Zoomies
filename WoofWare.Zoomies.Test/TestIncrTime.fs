@@ -155,40 +155,92 @@ module TestIncrTime =
         }
 
     // ============================================================
-    // spinnerFrameNode validation tests
+    // spinnerFrameNode graceful fallback tests
     // ============================================================
 
     [<Test>]
-    let ``spinnerFrameNode throws ArgumentException for zero frameCount`` () =
-        let incr = Incremental.make ()
-        let clock = incr.Clock.Create (TimeNs.ofInt64NsSinceEpoch 0L)
+    let ``spinnerFrameNode handles zero frameCount gracefully by treating as 1`` () =
+        task {
+            let incr = Incremental.make ()
+            let clock = incr.Clock.Create (TimeNs.ofInt64NsSinceEpoch 0L)
 
-        Assert.Throws<System.ArgumentException> (fun () -> IncrTime.spinnerFrameNode incr clock 0 10.0 |> ignore)
-        |> ignore
+            let frameNode = IncrTime.spinnerFrameNode incr clock 0 10.0
 
-    [<Test>]
-    let ``spinnerFrameNode throws ArgumentException for negative frameCount`` () =
-        let incr = Incremental.make ()
-        let clock = incr.Clock.Create (TimeNs.ofInt64NsSinceEpoch 0L)
+            let observer = incr.Observe frameNode
+            incr.Stabilize ()
 
-        Assert.Throws<System.ArgumentException> (fun () -> IncrTime.spinnerFrameNode incr clock -5 10.0 |> ignore)
-        |> ignore
+            // With frameCount treated as 1, frame index is always 0
+            Observer.value observer |> shouldEqual 0
 
-    [<Test>]
-    let ``spinnerFrameNode throws ArgumentException for zero fps`` () =
-        let incr = Incremental.make ()
-        let clock = incr.Clock.Create (TimeNs.ofInt64NsSinceEpoch 0L)
+            // Even after advancing clock, still 0
+            incr.Clock.AdvanceClock clock (TimeNs.ofInt64NsSinceEpoch 1_000_000_000L)
+            incr.Stabilize ()
 
-        Assert.Throws<System.ArgumentException> (fun () -> IncrTime.spinnerFrameNode incr clock 10 0.0 |> ignore)
-        |> ignore
+            Observer.value observer |> shouldEqual 0
+        }
 
     [<Test>]
-    let ``spinnerFrameNode throws ArgumentException for negative fps`` () =
-        let incr = Incremental.make ()
-        let clock = incr.Clock.Create (TimeNs.ofInt64NsSinceEpoch 0L)
+    let ``spinnerFrameNode handles negative frameCount gracefully by treating as 1`` () =
+        task {
+            let incr = Incremental.make ()
+            let clock = incr.Clock.Create (TimeNs.ofInt64NsSinceEpoch 0L)
 
-        Assert.Throws<System.ArgumentException> (fun () -> IncrTime.spinnerFrameNode incr clock 10 -5.0 |> ignore)
-        |> ignore
+            let frameNode = IncrTime.spinnerFrameNode incr clock -5 10.0
+
+            let observer = incr.Observe frameNode
+            incr.Stabilize ()
+
+            // With frameCount treated as 1, frame index is always 0
+            Observer.value observer |> shouldEqual 0
+
+            // Even after advancing clock, still 0
+            incr.Clock.AdvanceClock clock (TimeNs.ofInt64NsSinceEpoch 1_000_000_000L)
+            incr.Stabilize ()
+
+            Observer.value observer |> shouldEqual 0
+        }
+
+    [<Test>]
+    let ``spinnerFrameNode handles zero fps gracefully by returning frame 0`` () =
+        task {
+            let incr = Incremental.make ()
+            let clock = incr.Clock.Create (TimeNs.ofInt64NsSinceEpoch 0L)
+
+            let frameNode = IncrTime.spinnerFrameNode incr clock 10 0.0
+
+            let observer = incr.Observe frameNode
+            incr.Stabilize ()
+
+            // With zero fps, frame index is always 0
+            Observer.value observer |> shouldEqual 0
+
+            // Even after advancing clock, still 0
+            incr.Clock.AdvanceClock clock (TimeNs.ofInt64NsSinceEpoch 1_000_000_000L)
+            incr.Stabilize ()
+
+            Observer.value observer |> shouldEqual 0
+        }
+
+    [<Test>]
+    let ``spinnerFrameNode handles negative fps gracefully by returning frame 0`` () =
+        task {
+            let incr = Incremental.make ()
+            let clock = incr.Clock.Create (TimeNs.ofInt64NsSinceEpoch 0L)
+
+            let frameNode = IncrTime.spinnerFrameNode incr clock 10 -5.0
+
+            let observer = incr.Observe frameNode
+            incr.Stabilize ()
+
+            // With negative fps, frame index is always 0
+            Observer.value observer |> shouldEqual 0
+
+            // Even after advancing clock, still 0
+            incr.Clock.AdvanceClock clock (TimeNs.ofInt64NsSinceEpoch 1_000_000_000L)
+            incr.Stabilize ()
+
+            Observer.value observer |> shouldEqual 0
+        }
 
     // ============================================================
     // periodicTickNode tests
