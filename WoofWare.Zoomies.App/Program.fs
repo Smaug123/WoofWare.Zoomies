@@ -1,215 +1,217 @@
 namespace WoofWare.Zoomies
 
 open System
-open System.IO
-open System.Runtime.ExceptionServices
-open System.Threading.Tasks
+open WoofWare.Incremental
 open WoofWare.Zoomies
 open WoofWare.Zoomies.Components
 
-/// Events from user input (via ActivationResolver) or async operations (via WorldBridge)
+/// Events from user input
 type AppEvent =
-    | SelectFile of index : int
-    | CursorUp
-    | CursorDown
-    | LoadButtonClicked
-    | FileLoaded of content : string * generation : int
-    | FileLoadError of error : string * generation : int
+    | ButtonClicked
+    | CounterUp
+    | CounterDown
 
-/// Events posted during rendering (via ctx.PostLayoutEvent)
-type PostLayoutEvent = | ViewportInfo of SelectionListViewportInfo
-
-type FileEntry =
-    {
-        Name : string
-        FullPath : string
-        Key : NodeKey
-    }
+/// Events posted during rendering
+type PostLayoutEvent = | NoOp
 
 type State =
     {
-        Files : FileEntry[]
-        SelectedFileIndex : int option
-        FileContent : string option
-        IsLoading : bool
-        Generation : int
-        ListState : SelectionListState
+        /// Counter that increments on each user input event (for idle tracking)
+        InputEventCount : int
+        /// Simple counter to show interactivity
+        Counter : int
+        /// Number of button clicks
+        Clicks : int
     }
 
     static member Initial =
-        let files =
-            try
-                Directory.GetFiles Environment.CurrentDirectory
-                |> Array.map (fun path ->
-                    let name = Path.GetFileName path
-
-                    {
-                        Name = name
-                        FullPath = path
-                        Key = NodeKey.make $"file-{name}"
-                    }
-                )
-                |> Array.sortBy _.Name
-            with _ ->
-                [||]
-
         {
-            Files = files
-            SelectedFileIndex = None
-            FileContent = None
-            IsLoading = false
-            Generation = 0
-            ListState = SelectionListState.AtStart
+            InputEventCount = 0
+            Counter = 0
+            Clicks = 0
         }
 
-module FileBrowser =
-    let fileListKey = NodeKey.make "file-list"
-    let loadButtonKey = NodeKey.make "loadButton"
+module RainbowDemo =
+    let buttonKey = NodeKey.make "button"
+    let counterUpKey = NodeKey.make "counter-up"
+    let counterDownKey = NodeKey.make "counter-down"
 
-    let loadFileAsync (generation : int) (worldBridge : IWorldBridge<_>) (filepath : string) : unit Task =
-        task {
-            try
-                let! content = File.ReadAllTextAsync filepath
-                return FileLoaded (content, generation) |> worldBridge.PostEvent
-            with e ->
-                return FileLoadError (e.Message, generation) |> worldBridge.PostEvent
-        }
-
-    let processWorld (worldBridge : IWorldBridge<AppEvent>) =
+    let processWorld =
         { new WorldProcessor<AppEvent, PostLayoutEvent, State> with
             member _.ProcessWorld (changes, _prevVdom, state) =
-                let mutable selectedFileIndex = state.SelectedFileIndex
-                let mutable fileContent = state.FileContent
-                let mutable isLoading = state.IsLoading
-                let mutable generation = state.Generation
-                let mutable listState = state.ListState
+                let mutable inputEventCount = state.InputEventCount
+                let mutable counter = state.Counter
+                let mutable clicks = state.Clicks
 
                 for change in changes do
                     match change with
                     | WorldStateChange.MouseEvent _
                     | WorldStateChange.Keystroke _
-                    | WorldStateChange.Paste _ -> ()
+                    | WorldStateChange.Paste _ ->
+                        // Increment counter to signal input happened (incremental view will capture time)
+                        inputEventCount <- inputEventCount + 1
 
-                    | WorldStateChange.ApplicationEvent (SelectFile index) ->
-                        // Select the file at the given index
-                        if index >= 0 && index < state.Files.Length then
-                            selectedFileIndex <- Some index
+                    | WorldStateChange.ApplicationEvent ButtonClicked -> clicks <- clicks + 1
 
-                    | WorldStateChange.ApplicationEvent CursorUp -> listState <- listState.MoveUp state.Files.Length
+                    | WorldStateChange.ApplicationEvent CounterUp -> counter <- counter + 1
 
-                    | WorldStateChange.ApplicationEvent CursorDown -> listState <- listState.MoveDown state.Files.Length
+                    | WorldStateChange.ApplicationEvent CounterDown -> counter <- counter - 1
 
-                    | WorldStateChange.ApplicationEvent LoadButtonClicked ->
-                        match selectedFileIndex with
-                        | Some index when not isLoading && index >= 0 && index < state.Files.Length ->
-                            let selectedPath = state.Files.[index].FullPath
-                            isLoading <- true
-                            fileContent <- None
-                            generation <- generation + 1
-                            loadFileAsync generation worldBridge selectedPath |> ignore<Task<unit>>
-                        | _ -> ()
-
-                    | WorldStateChange.ApplicationEvent (FileLoaded (content, gen)) ->
-                        if generation = gen then
-                            fileContent <- Some content
-                            isLoading <- false
-
-                    | WorldStateChange.ApplicationEvent (FileLoadError (error, gen)) ->
-                        if generation = gen then
-                            fileContent <- Some $"Error: {error}"
-                            isLoading <- false
-
-                    | WorldStateChange.ApplicationEventException e ->
-                        ExceptionDispatchInfo.Throw e
-                        failwith "unreachable"
+                    | WorldStateChange.ApplicationEventException _ -> ()
 
                 ProcessWorldResult.make
                     {
-                        Files = state.Files
-                        SelectedFileIndex = selectedFileIndex
-                        FileContent = fileContent
-                        IsLoading = isLoading
-                        Generation = generation
-                        ListState = listState
+                        InputEventCount = inputEventCount
+                        Counter = counter
+                        Clicks = clicks
                     }
 
-            member _.ProcessPostLayoutEvents (events, _ctx, state) =
-                let mutable listState = state.ListState
-
-                for event in events do
-                    match event with
-                    | ViewportInfo info -> listState <- listState.EnsureVisible info.ViewportHeight
-
-                { state with
-                    ListState = listState
-                }
+            member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
         }
 
-    let view (ctx : IVdomContext<PostLayoutEvent>) (state : State) : Vdom<DesiredBounds> =
-        let leftPane =
-            let title = Vdom.textContent "Files in current directory:"
+    let rainbowConfig =
+        { RainbowText.Config.Default with
+            IdleThresholdSeconds = 2.0
+            PulseWidthChars = 5
+            PulseSpeedCharsPerSec = 8.0
+        }
 
-            let fileList =
-                if Array.isEmpty state.Files then
-                    Vdom.textContent "(no files found)"
-                else
-                    let items =
-                        state.Files
-                        |> Array.map (fun entry ->
-                            {
-                                Id = entry.Key
-                                Label = entry.Name
-                            }
-                        )
+    /// Incremental view function - uses the Incremental infrastructure for proper animation
+    let incrView (ctx : VdomContext<PostLayoutEvent>) (stateNode : State Node) : Vdom<DesiredBounds> Node =
+        let incr = VdomContext.incr ctx
+        // VdomContext implements IVdomContext, so we can upcast it
+        let typedCtx : IVdomContext<PostLayoutEvent> = ctx :> _
 
-                    (SingleSelection.make (
-                        ctx,
-                        fileListKey,
-                        items,
-                        state.SelectedFileIndex,
-                        state.ListState,
-                        ViewportInfo,
-                        isFirstToFocus = true
-                    ))
-                        .Vdom
+        // Get the clock time as DateTime for time-based animations
+        let clockDateTimeNode = VdomContext.clockDateTimeNode ctx
 
-            let buttonLabel =
-                match state.SelectedFileIndex with
-                | None -> "Select a file"
-                | Some _ -> "Load selected file"
+        // Track input event count and capture clock time when it changes
+        let inputEventCountNode = incr.Map (fun s -> s.InputEventCount) stateNode
 
-            let button = Button.make (ctx, loadButtonKey, buttonLabel)
+        // Capture the clock time when input happens (using local mutable state for the "sample and hold")
+        let mutable lastSeenCount = 0
+        let mutable capturedInputTime : DateTime voption = ValueNone
 
-            Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 1, title, fileList)
-            |> fun content -> Vdom.panelSplitAbsolute (SplitDirection.Horizontal, -1, content, button)
-            |> Vdom.bordered
+        let lastInputTimeNode : DateTime voption Node =
+            incr.Map2
+                (fun count currentTime ->
+                    if count > lastSeenCount then
+                        // Input happened - capture the current clock time
+                        lastSeenCount <- count
+                        capturedInputTime <- ValueSome currentTime
 
-        let rightPane =
-            let content =
-                match state.IsLoading, state.FileContent, state.SelectedFileIndex with
-                | true, _, _ -> "Loading..."
-                | false, Some content, _ -> content
-                | false, None, None -> "Select a file and press the button to view its contents."
-                | false, None, Some _ -> "Press the button to load the selected file."
+                    capturedInputTime
+                )
+                inputEventCountNode
+                clockDateTimeNode
 
-            Vdom.textContent content |> Vdom.bordered
+        // Create the rainbow text nodes using the incremental API
+        let headerRainbowNode =
+            RainbowText.makeIncr
+                incr
+                clockDateTimeNode
+                lastInputTimeNode
+                "Welcome to WoofWare.Zoomies Rainbow Demo!"
+                rainbowConfig
 
-        Vdom.panelSplitProportion (SplitDirection.Vertical, 0.3, leftPane, rightPane)
+        let secondRainbowNode =
+            RainbowText.makeIncr
+                incr
+                clockDateTimeNode
+                lastInputTimeNode
+                "The quick brown fox jumps over the lazy dog"
+                rainbowConfig
+
+        // Create the idle status text as a Node
+        let idleStatusNode =
+            incr.Map2
+                (fun currentTime lastInputTime ->
+                    let idleDuration =
+                        match lastInputTime with
+                        | ValueSome t -> currentTime - t
+                        | ValueNone -> TimeSpan.Zero
+
+                    let idleSeconds = idleDuration.TotalSeconds
+
+                    if idleSeconds < rainbowConfig.IdleThresholdSeconds then
+                        sprintf "Idle: %.1fs (pulse starts at %.1fs)" idleSeconds rainbowConfig.IdleThresholdSeconds
+                    else
+                        sprintf "Idle: %.1fs - PULSING!" idleSeconds
+                )
+                clockDateTimeNode
+                lastInputTimeNode
+
+        // Combine all the nodes into the final Vdom
+        incr.Map
+            (fun
+                ((((state, headerRainbow : Vdom<DesiredBounds>), secondRainbow : Vdom<DesiredBounds>), idleStatus),
+                 _bounds) ->
+                // Interactive elements (these don't need Incremental since they're not animated)
+                let counterDisplay = Vdom.textContent (sprintf "Counter: %d" state.Counter)
+
+                let counterButtons =
+                    let upButton = Button.make (typedCtx, counterUpKey, "[+]")
+                    let downButton = Button.make (typedCtx, counterDownKey, "[-]")
+                    Vdom.panelSplitAuto (SplitDirection.Vertical, upButton, downButton)
+
+                let counterRow =
+                    Vdom.panelSplitAuto (SplitDirection.Vertical, counterDisplay, counterButtons)
+
+                let clickButton =
+                    Button.make (typedCtx, buttonKey, sprintf "Click me! (clicked %d times)" state.Clicks)
+
+                let instructions =
+                    Vdom.textContent
+                        "Press Tab to cycle focus, Enter/Space to activate buttons.\nStop interacting to see the rainbow pulse!"
+
+                let idleStatusVdom = Vdom.textContent idleStatus
+
+                // Layout: stack everything vertically
+                // Add type annotations to help inference with overloaded panelSplitAbsolute
+                let headerRow : Vdom<DesiredBounds> =
+                    Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 1, headerRainbow, Vdom.empty)
+
+                let secondRainbowRow : Vdom<DesiredBounds> =
+                    Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 1, secondRainbow, Vdom.empty)
+
+                let instructionsRow : Vdom<DesiredBounds> =
+                    Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 2, instructions, secondRainbowRow)
+
+                let buttonRow : Vdom<DesiredBounds> =
+                    Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 1, clickButton, instructionsRow)
+
+                let counterRowLayout : Vdom<DesiredBounds> =
+                    Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 1, counterRow, buttonRow)
+
+                let statusRow : Vdom<DesiredBounds> =
+                    Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 1, idleStatusVdom, counterRowLayout)
+
+                let content : Vdom<DesiredBounds> =
+                    Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 1, headerRow, statusRow)
+
+                Vdom.bordered content
+            )
+            (incr.Map2
+                (fun a b -> a, b)
+                (incr.Map2
+                    (fun a b -> a, b)
+                    (incr.Map2
+                        (fun a b -> a, b)
+                        (incr.Map2 (fun a b -> a, b) stateNode headerRainbowNode)
+                        secondRainbowNode)
+                    idleStatusNode)
+                (VdomContext.boundsNode ctx))
 
     let resolver : ActivationResolver<AppEvent, State> =
         ActivationResolver.combine
             [
-                ActivationResolver.selectionList
-                    fileListKey
-                    (fun s -> s.ListState.CursorIndex)
-                    CursorUp
-                    CursorDown
-                    SelectFile
-                ActivationResolver.button loadButtonKey LoadButtonClicked
+                ActivationResolver.button buttonKey ButtonClicked
+                ActivationResolver.button counterUpKey CounterUp
+                ActivationResolver.button counterDownKey CounterDown
             ]
 
     let run (getEnv : string -> string option) =
-        App.run getEnv State.Initial (fun _ -> true) processWorld (App.pureView view) resolver
+        App.run getEnv State.Initial (fun _ -> true) (fun _ -> processWorld) incrView resolver
 
 module Program =
     let getEnv (varName : string) : string option =
@@ -219,5 +221,5 @@ module Program =
 
     [<EntryPoint>]
     let main _argv =
-        (FileBrowser.run getEnv).Finished.Wait ()
+        (RainbowDemo.run getEnv).Finished.Wait ()
         0
