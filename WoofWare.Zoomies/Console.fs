@@ -5,8 +5,6 @@ open System.Text
 
 type IConsole =
     {
-        BackgroundColor : unit -> ConsoleColor
-        ForegroundColor : unit -> ConsoleColor
         WindowWidth : unit -> int
         WindowHeight : unit -> int
         ColorMode : ColorMode
@@ -34,19 +32,10 @@ module IConsole =
         let buffer = StringBuilder ()
 
         {
-            BackgroundColor = fun () -> Console.BackgroundColor
-            ForegroundColor = fun () -> Console.ForegroundColor
             WindowWidth = fun () -> Console.WindowWidth
             WindowHeight = fun () -> Console.WindowHeight
             ColorMode = colorMode
-            Execute =
-                fun o ->
-                    TerminalOp.execute
-                        colorMode
-                        Console.BackgroundColor
-                        Console.ForegroundColor
-                        (buffer.Append >> ignore)
-                        o
+            Execute = fun o -> TerminalOp.execute colorMode (buffer.Append >> ignore) o
             Flush =
                 fun () ->
                     if buffer.Length > 0 then
@@ -56,8 +45,6 @@ module IConsole =
 
     let defaultForTests =
         {
-            BackgroundColor = fun () -> ConsoleColor.Black
-            ForegroundColor = fun () -> ConsoleColor.White
             WindowWidth = fun () -> 80
             WindowHeight = fun () -> 10
             ColorMode = ColorMode.Color

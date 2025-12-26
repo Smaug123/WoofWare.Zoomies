@@ -61,7 +61,7 @@ module TestPanelSplit =
                 | TerminalOp.MoveCursor (x, y) ->
                     cursorX <- x
                     cursorY <- y
-                | TerminalOp.WriteRun (text, _, _) ->
+                | TerminalOp.WriteRun (text, _, _, _) ->
                     for _ in text do
                         result.Add (cursorX, cursorY)
                         cursorX <- cursorX + 1

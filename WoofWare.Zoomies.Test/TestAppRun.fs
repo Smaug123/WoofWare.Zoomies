@@ -25,8 +25,6 @@ module TestAppRun =
 
             let console : IConsole =
                 {
-                    BackgroundColor = fun () -> ConsoleColor.Black
-                    ForegroundColor = fun () -> ConsoleColor.White
                     WindowWidth = fun () -> 80
                     WindowHeight = fun () -> 10
                     ColorMode = ColorMode.Color
