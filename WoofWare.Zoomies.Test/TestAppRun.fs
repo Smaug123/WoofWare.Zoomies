@@ -192,12 +192,8 @@ module TestAppRun =
                     world.ReadKey
 
             // Create an incremental vdom that depends on time (spinner)
-            let incrVdom
-                (incr : Incremental)
-                (ctx : VdomContext<unit>)
-                (_stateNode : unit Node)
-                : Vdom<DesiredBounds> Node
-                =
+            let incrVdom (ctx : VdomContext<unit>) (_stateNode : unit Node) : Vdom<DesiredBounds> Node =
+                let incr = VdomContext.incr ctx
                 let clock = VdomContext.clock ctx
                 // 10 fps = 100ms per frame
                 let frameNode = IncrTime.spinnerFrameNode incr clock LoadingSpinner.FrameCount 10.0
@@ -289,7 +285,7 @@ module TestAppRun =
                 Vdom.textContent state
 
             let stateNode = IncrementalState.stateNode incrState
-            let vdomNode = App.pureView pureVdom incr ctx stateNode
+            let vdomNode = App.pureView pureVdom ctx stateNode
 
             let observer = incr.Observe vdomNode
             incr.Stabilize ()
@@ -328,7 +324,7 @@ module TestAppRun =
                 Vdom.textContent $"Width: {ctx.TerminalBounds.Width}"
 
             let stateNode = IncrementalState.stateNode incrState
-            let vdomNode = App.pureView pureVdom incr ctx stateNode
+            let vdomNode = App.pureView pureVdom ctx stateNode
 
             let observer = incr.Observe vdomNode
             incr.Stabilize ()
@@ -379,7 +375,7 @@ module TestAppRun =
                 | None -> Vdom.textContent "No focus"
 
             let stateNode = IncrementalState.stateNode incrState
-            let vdomNode = App.pureView pureVdom incr ctx stateNode
+            let vdomNode = App.pureView pureVdom ctx stateNode
 
             let observer = incr.Observe vdomNode
             incr.Stabilize ()
@@ -419,7 +415,7 @@ module TestAppRun =
                 Vdom.textContent state
 
             let stateNode = IncrementalState.stateNode incrState
-            let vdomNode = App.pureView pureVdom incr ctx stateNode
+            let vdomNode = App.pureView pureVdom ctx stateNode
 
             let observer = incr.Observe vdomNode
             incr.Stabilize ()

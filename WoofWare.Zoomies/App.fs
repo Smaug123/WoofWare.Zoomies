@@ -407,7 +407,7 @@ module App =
         (initialState : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
         (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'postLayoutEvent, 'state>)
-        (incrVdom : Incremental -> VdomContext<'postLayoutEvent> -> 'state Node -> Vdom<DesiredBounds> Node)
+        (incrVdom : VdomContext<'postLayoutEvent> -> 'state Node -> Vdom<DesiredBounds> Node)
         (resolveActivation : ActivationResolver<'appEvent, 'state>)
         (debugWriter : StreamWriter option)
         : AppHandle
@@ -438,7 +438,7 @@ module App =
 
                     // Create the incremental Vdom Node
                     let stateNode = IncrementalState.stateNode incrState
-                    let vdomNode = incrVdom incrState.Incr vdomContext stateNode
+                    let vdomNode = incrVdom vdomContext stateNode
 
                     // Create an observer for the Vdom so we can read it after stabilization
                     let vdomObserver = incrState.Incr.Observe vdomNode
@@ -590,9 +590,10 @@ module App =
     /// For fine-grained incrementality, write an incremental view function directly.
     let pureView<'state, 'postLayoutEvent>
         (view : IVdomContext<'postLayoutEvent> -> 'state -> Vdom<DesiredBounds>)
-        : Incremental -> VdomContext<'postLayoutEvent> -> 'state Node -> Vdom<DesiredBounds> Node
+        : VdomContext<'postLayoutEvent> -> 'state Node -> Vdom<DesiredBounds> Node
         =
-        fun incr ctx stateNode ->
+        fun ctx stateNode ->
+            let incr = VdomContext.incr ctx
             // We also depend on bounds and focus so the vdom updates when they change
             let boundsNode = VdomContext.boundsNode ctx
             let focusNode = VdomContext.focusedKeyNode ctx
@@ -606,7 +607,7 @@ module App =
         (state : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
         (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'postLayoutEvent, 'state>)
-        (incrVdom : Incremental -> VdomContext<'postLayoutEvent> -> 'state Node -> Vdom<DesiredBounds> Node)
+        (incrVdom : VdomContext<'postLayoutEvent> -> 'state Node -> Vdom<DesiredBounds> Node)
         (resolveActivation : ActivationResolver<'appEvent, 'state>)
         : AppHandle
         =
