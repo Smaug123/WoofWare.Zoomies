@@ -6,6 +6,7 @@ open FsCheck.FSharp
 open FsUnitTyped
 open NUnit.Framework
 open WoofWare.Incremental
+open WoofWare.TimingWheel
 open WoofWare.Zoomies
 
 [<TestFixture>]
@@ -339,6 +340,7 @@ module TestIncrementalState =
         let clockNode = VdomContext.clockTimeNode ctx
         let clockObserver = incrState.Incr.Observe clockNode
         incrState.Incr.Stabilize ()
-        // Just verify it returns a value (the actual time depends on when the test runs)
-        let _ = Observer.value clockObserver
-        ()
+        Observer.value clockObserver |> shouldEqual 0L<timeNs>
+
+        IncrementalState.advanceClockAndStabilize MockTime.defaultStartTime incrState
+        Observer.value clockObserver |> shouldEqual 1468089540000000000L<timeNs>
