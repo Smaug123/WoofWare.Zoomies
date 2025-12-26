@@ -57,7 +57,7 @@ module TestAppRun =
                 App.run'
                     cts.Token
                     console
-                    (fun () -> DateTime.UtcNow)
+                    (fun () -> TimeConversion.unixEpoch)
                     ctrlCHandler
                     worldFreezer
                     ()

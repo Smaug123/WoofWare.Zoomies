@@ -178,7 +178,7 @@ module TestIncrementalState =
         let time1 = Observer.value observer
 
         // Advance clock and verify node reflects change
-        let futureTime = DateTime.UtcNow.AddSeconds 10.0
+        let futureTime = TimeConversion.unixEpoch.AddSeconds 10.0
         IncrementalState.advanceClockAndStabilize futureTime incrState
 
         let time2 = Observer.value observer
