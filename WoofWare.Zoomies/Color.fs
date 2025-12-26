@@ -4,12 +4,12 @@ open System
 
 /// Represents a terminal color.
 /// This type supports the full range of terminal color capabilities:
-/// - Default: use the terminal's default color
+/// - Default: use the terminal's default color (SGR 39 for foreground, SGR 49 for background)
 /// - Palette: 0-255 indexed colors (0-15 are standard ANSI, 16-255 are extended)
 /// - Rgb: 24-bit true color
 [<Struct>]
 type Color =
-    /// Terminal default color (no escape code emitted for this component).
+    /// Terminal default color (SGR 39 for foreground, SGR 49 for background).
     | Default
     /// Indexed palette color (0-15 = standard ANSI 16 colors, 16-255 = extended palette).
     | Palette of index : byte

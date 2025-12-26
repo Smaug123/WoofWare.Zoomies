@@ -56,15 +56,12 @@ module TerminalOp =
         | TerminalOp.WriteRun (text, backgroundColor, textColor, bold) ->
             match colorMode with
             | ColorMode.Color ->
-                // Emit background color if not default
-                match backgroundColor with
-                | Color.Default -> ()
-                | _ -> consoleWrite (Color.toBackgroundEscapeCode backgroundColor)
-
-                // Emit foreground color if not default
-                match textColor with
-                | Color.Default -> ()
-                | _ -> consoleWrite (Color.toForegroundEscapeCode textColor)
+                // Always emit colors (including Default, which emits SGR 39/49).
+                // This ensures consistent behavior: each run explicitly sets its colors,
+                // so Default-colored runs behave the same whether they're first or after
+                // a colored run.
+                consoleWrite (Color.toBackgroundEscapeCode backgroundColor)
+                consoleWrite (Color.toForegroundEscapeCode textColor)
 
                 // Emit bold if set
                 if bold then
@@ -76,14 +73,7 @@ module TerminalOp =
                 if bold then
                     consoleWrite "\u001b[22m"
 
-                // Reset colors if they were set
-                match textColor with
-                | Color.Default -> ()
-                | _ -> consoleWrite (Color.toForegroundEscapeCode Color.Default)
-
-                match backgroundColor with
-                | Color.Default -> ()
-                | _ -> consoleWrite (Color.toBackgroundEscapeCode Color.Default)
+            // No need to reset colors after: the next run will set its own colors.
 
             | ColorMode.NoColor -> consoleWrite text
 
