@@ -37,7 +37,6 @@ module TestVdomContext =
 
         // Record first activation
         VdomContext.recordActivation key1 ctx
-        let time1 = clock.GetUtcNow ()
 
         // Advance time by 100ms and record second activation
         clock.Advance (TimeSpan.FromMilliseconds 100.0) |> ignore<DateTime>
