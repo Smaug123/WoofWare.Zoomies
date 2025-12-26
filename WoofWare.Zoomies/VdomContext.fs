@@ -14,6 +14,8 @@ type VdomContext<'postLayoutEvent> =
             _FocusedKeyVar : NodeKey option Var
             _Clock : Clock
             _Incr : Incremental
+            /// Cached clock DateTime node from IncrementalState for time-based animations.
+            _ClockDateTimeNode : DateTime Node
             mutable _IsDirty : bool
             _LastActivationTimes : Dictionary<NodeKey, DateTime>
             _PostLayoutEvents : ResizeArray<'postLayoutEvent>
@@ -52,6 +54,7 @@ module VdomContext =
             _FocusedKeyVar = incrState.FocusedKeyVar
             _Clock = incrState.Clock
             _Incr = incrState.Incr
+            _ClockDateTimeNode = incrState.ClockDateTimeNode
             _IsDirty = true
             _LastActivationTimes = Dictionary<NodeKey, DateTime> ()
             _PostLayoutEvents = ResizeArray ()
@@ -178,5 +181,6 @@ module VdomContext =
         ctx._Incr.Clock.WatchNow ctx._Clock
 
     /// Get the clock time as a DateTime Node for convenience.
+    /// Uses the cached node from IncrementalState for proper time-based animation updates.
     let clockDateTimeNode<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : DateTime Node =
-        ctx._Incr.Map TimeConversion.nsToDateTime (clockTimeNode ctx)
+        ctx._ClockDateTimeNode
