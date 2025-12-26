@@ -16,7 +16,7 @@ type MockTimer =
 
 [<RequireQualifiedAccess>]
 module MockTime =
-    let private defaultStartTime =
+    let defaultStartTime =
         // Eddie Hall's 500kg deadlift.
         // (https://www.youtube.com/watch?v=_DX2L4Pp8S0 took place on 2016-07-09 in Leeds, UK.
         // Eddie Hall hits the lift at timestamp 1:12:45. There are various watches displayed throughout the stream;
@@ -69,7 +69,7 @@ module MockTime =
     let makeFromConsole (console : IConsole) : MockTimer =
         makeFromConsole' defaultStartTime console
 
-    /// Create an IncrVdomContext for testing purposes with the given bounds.
+    /// Create a VdomContext for testing purposes with the given bounds.
     /// Uses a static mock time.
     let makeVdomContext<'postLayoutEvent> (bounds : Rectangle) : VdomContext<'postLayoutEvent> =
         let incrState = IncrementalState.make () bounds None
@@ -79,7 +79,7 @@ module MockTime =
         IncrementalState.stabilize incrState
         ctx
 
-    /// Create an IncrVdomContext with default 80x24 terminal bounds for testing.
+    /// Create a VdomContext with default 80x24 terminal bounds for testing.
     let makeDefaultVdomContext<'postLayoutEvent> () : VdomContext<'postLayoutEvent> =
         makeVdomContext
             {
@@ -89,7 +89,7 @@ module MockTime =
                 Height = 24
             }
 
-    /// Create an IncrVdomContext from an IConsole for testing.
+    /// Create a VdomContext from an IConsole for testing.
     /// Uses a static mock time.
     let makeVdomContextFromConsole<'postLayoutEvent> (console : IConsole) : VdomContext<'postLayoutEvent> =
         makeVdomContext

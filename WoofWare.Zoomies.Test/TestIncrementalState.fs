@@ -31,7 +31,7 @@ module TestIncrementalState =
         // Nanoseconds per tick is 100, ticks per second is 10_000_000
         // Max int64 is ~9.2e18, so max nanoseconds from epoch is ~292 years
         // Use a safe range: 1970 to 2200
-        let minDate = DateTime (1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+        let minDate = TimeConversion.unixEpoch
         let maxDate = DateTime (2200, 1, 1, 0, 0, 0, DateTimeKind.Utc)
         let tickRange = maxDate.Ticks - minDate.Ticks
 
@@ -56,7 +56,7 @@ module TestIncrementalState =
 
     [<Test>]
     let ``TimeConversion handles epoch correctly`` () =
-        let epoch = DateTime (1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+        let epoch = TimeConversion.unixEpoch
         let ns = TimeConversion.dateTimeToNs epoch
         WoofWare.TimingWheel.TimeNs.toInt64NsSinceEpoch ns |> shouldEqual 0L
 
@@ -65,8 +65,7 @@ module TestIncrementalState =
 
     [<Test>]
     let ``TimeConversion handles dates after epoch`` () =
-        // 1 second after epoch
-        let dt = DateTime (1970, 1, 1, 0, 0, 1, DateTimeKind.Utc)
+        let dt = TimeConversion.unixEpoch.AddSeconds 1.0
         let ns = TimeConversion.dateTimeToNs dt
         WoofWare.TimingWheel.TimeNs.toInt64NsSinceEpoch ns |> shouldEqual 1_000_000_000L
 
@@ -188,11 +187,11 @@ module TestIncrementalState =
         |> shouldEqual true
 
     // ============================================================
-    // IncrVdomContext dirty propagation tests
+    // VdomContext dirty propagation tests
     // ============================================================
 
     [<Test>]
-    let ``IncrVdomContext.setTerminalBounds marks dirty when bounds change`` () =
+    let ``VdomContext.setTerminalBounds marks dirty when bounds change`` () =
         let bounds1 =
             {
                 TopLeftX = 0
@@ -223,7 +222,7 @@ module TestIncrementalState =
         VdomContext.isDirty ctx |> shouldEqual true
 
     [<Test>]
-    let ``IncrVdomContext.setTerminalBounds does not mark dirty when bounds unchanged`` () =
+    let ``VdomContext.setTerminalBounds does not mark dirty when bounds unchanged`` () =
         let bounds =
             {
                 TopLeftX = 0
@@ -246,7 +245,7 @@ module TestIncrementalState =
         VdomContext.isDirty ctx |> shouldEqual false
 
     [<Test>]
-    let ``IncrVdomContext.setFocusedKey marks dirty when focus changes`` () =
+    let ``VdomContext.setFocusedKey marks dirty when focus changes`` () =
         let key1 = NodeKey.make "key1"
         let incrState = IncrementalState.make () emptyRect (Some key1)
         let ctx = VdomContext.make<unit, unit> incrState
@@ -263,7 +262,7 @@ module TestIncrementalState =
         VdomContext.isDirty ctx |> shouldEqual true
 
     [<Test>]
-    let ``IncrVdomContext.setFocusedKey does not mark dirty when focus unchanged`` () =
+    let ``VdomContext.setFocusedKey does not mark dirty when focus unchanged`` () =
         let key = NodeKey.make "key1"
         let incrState = IncrementalState.make () emptyRect (Some key)
         let ctx = VdomContext.make<unit, unit> incrState
@@ -279,7 +278,7 @@ module TestIncrementalState =
         VdomContext.isDirty ctx |> shouldEqual false
 
     [<Test>]
-    let ``IncrVdomContext.setFocusedKey handles None to Some transition`` () =
+    let ``VdomContext.setFocusedKey handles None to Some transition`` () =
         let incrState = IncrementalState.make () emptyRect None
         let ctx = VdomContext.make<unit, unit> incrState
 
@@ -295,7 +294,7 @@ module TestIncrementalState =
         VdomContext.isDirty ctx |> shouldEqual true
 
     [<Test>]
-    let ``IncrVdomContext.setFocusedKey handles Some to None transition`` () =
+    let ``VdomContext.setFocusedKey handles Some to None transition`` () =
         let key = NodeKey.make "key1"
         let incrState = IncrementalState.make () emptyRect (Some key)
         let ctx = VdomContext.make<unit, unit> incrState
@@ -311,7 +310,7 @@ module TestIncrementalState =
         VdomContext.isDirty ctx |> shouldEqual true
 
     [<Test>]
-    let ``IncrVdomContext node accessors return working nodes`` () =
+    let ``VdomContext node accessors return working nodes`` () =
         let bounds =
             {
                 TopLeftX = 0

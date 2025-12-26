@@ -401,6 +401,7 @@ module App =
     let run'<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
         (terminate : CancellationToken)
         (console : IConsole)
+        (getUtcNow : unit -> DateTime)
         (ctrlC : CtrlCHandler)
         (worldFreezer : unit -> WorldFreezer<'appEvent>)
         (initialState : 'state)
@@ -443,7 +444,7 @@ module App =
                     let vdomObserver = incrState.Incr.Observe vdomNode
 
                     // Initial stabilization
-                    IncrementalState.advanceClockAndStabilize DateTime.UtcNow incrState
+                    IncrementalState.advanceClockAndStabilize (getUtcNow ()) incrState
 
                     // Create a wrapper that bridges the incremental system to the legacy API.
                     // When state changes, we update the state Var, stabilize, and observe.
@@ -455,7 +456,7 @@ module App =
                             IncrementalState.setState state incrState
 
                         // Advance clock and stabilize
-                        IncrementalState.advanceClockAndStabilize DateTime.UtcNow incrState
+                        IncrementalState.advanceClockAndStabilize (getUtcNow ()) incrState
 
                         // Observe and return the vdom - Observer module provides Value function
                         Observer.value vdomObserver
@@ -515,7 +516,7 @@ module App =
                                 // Advance clock and stabilize to propagate time-based changes.
                                 // This must happen BEFORE checking isDirty in pumpOnce, so that
                                 // time-dependent components (like spinners) can trigger re-renders.
-                                IncrementalState.advanceClockAndStabilize DateTime.UtcNow incrState
+                                IncrementalState.advanceClockAndStabilize (getUtcNow ()) incrState
 
                                 // Check if vdom changed due to time advancement
                                 let currentVdom = Observer.value vdomObserver
@@ -634,6 +635,7 @@ module App =
         run'
             CancellationToken.None
             (IConsole.make getEnv)
+            (fun () -> DateTime.UtcNow)
             (CtrlCHandler.make ())
             WorldFreezer.listen
             state

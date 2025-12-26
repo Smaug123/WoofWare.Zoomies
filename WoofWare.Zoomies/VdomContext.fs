@@ -43,7 +43,7 @@ type VdomContext<'postLayoutEvent> =
 [<RequireQualifiedAccess>]
 module VdomContext =
 
-    /// Create a new IncrVdomContext from an IncrementalState.
+    /// Create a new VdomContext from an IncrementalState.
     /// Time is read from the incremental Clock.
     let make<'userState, 'postLayoutEvent> (incrState : IncrementalState<'userState>) : VdomContext<'postLayoutEvent> =
         // Create a node for clock time as DateTime
@@ -103,6 +103,13 @@ module VdomContext =
     /// Remove any activation records that have expired.
     let internal pruneExpiredActivations<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : unit =
         let now = getUtcNow ctx
+
+        // The docs are very explicit.
+        // https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2.getenumerator?view=net-6.0)
+        // > .NET Core 3.0+ only: The only mutating methods which do not invalidate enumerators are Remove and Clear.
+        // https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2.remove?view=net-6.0
+        // > .NET Core 3.0+ only: this mutating method may be safely called without invalidating active enumerators on the Dictionary<TKey,TValue> instance. This does not imply thread safety.
+        // We also explicitly test this safety property in TestVdomContext.fs.
         let mutable removed = false
 
         for KeyValue (key, time) in ctx._LastActivationTimes do

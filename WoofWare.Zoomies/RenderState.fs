@@ -32,7 +32,7 @@ type RenderState<'postLayoutEvent> =
             /// The key marked with isInitiallyFocused=true, if any
             InitiallyFocusedKey : NodeKey option ref
             /// This gets handed out to users every so often: it's the fragment of state that they will want to
-            /// construct the vdom with. Uses IncrVdomContext for incremental reactivity.
+            /// construct the vdom with. Uses VdomContext for incremental reactivity.
             VdomContext : VdomContext<'postLayoutEvent>
             /// Debug file writer for layout diagnostics (if WOOFWARE_ZOOMIES_DEBUG_TO_FILE is enabled)
             DebugWriter : IO.StreamWriter option

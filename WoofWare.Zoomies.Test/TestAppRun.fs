@@ -34,7 +34,6 @@ module TestAppRun =
                     Flush = fun () -> ops.Enqueue Flush
                 }
 
-            let clock = MockTime.make ()
             let ctrlCHandler, _, _ = FakeCtrlCHandler.make ()
 
             let world = MockWorld.make ()
@@ -58,6 +57,7 @@ module TestAppRun =
                 App.run'
                     cts.Token
                     console
+                    (fun () -> DateTime.UtcNow)
                     ctrlCHandler
                     worldFreezer
                     ()
@@ -166,6 +166,10 @@ module TestAppRun =
             let vdomCallCount = ref 0
             let capturedFrames = ConcurrentQueue<int> ()
 
+            // Mock time source - start at a fixed time
+            let mutable mockTime = MockTime.defaultStartTime
+            let getUtcNow () = mockTime
+
             let console : IConsole =
                 {
                     BackgroundColor = fun () -> ConsoleColor.Black
@@ -216,6 +220,7 @@ module TestAppRun =
                 App.run'
                     cts.Token
                     console
+                    getUtcNow
                     ctrlCHandler
                     worldFreezer
                     ()
@@ -231,11 +236,18 @@ module TestAppRun =
             // At this point, the vdom should have been called at least once
             vdomCallCount.Value >= 1 |> shouldEqual true
 
-            // Record initial frame count and wait a bit for time to pass
+            // Record initial frame count
             let initialCallCount = vdomCallCount.Value
 
-            // Wait for more than 100ms to allow at least one frame change
-            do! System.Threading.Tasks.Task.Delay 150
+            // Advance mock time by 150ms (more than one 100ms frame)
+            mockTime <- mockTime + TimeSpan.FromMilliseconds 150.0
+
+            // Poll until vdom is called again (generous timeout, completes almost instantly)
+            let mutable attempts = 0
+
+            while vdomCallCount.Value <= initialCallCount && attempts < 500 do
+                do! System.Threading.Tasks.Task.Delay 10
+                attempts <- attempts + 1
 
             // The vdom should have been called again due to time advancement
             // (The main loop advances clock and marks dirty when vdom changes)
