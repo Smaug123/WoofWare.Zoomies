@@ -98,7 +98,7 @@ module TestTextBox =
 
             let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderStateFromTimer console clock None
+            let renderState, _ = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -199,7 +199,7 @@ module TestTextBox =
 
             let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderStateFromTimer console clock None
+            let renderState, _ = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state = ImmutableArray.Empty
 
@@ -289,7 +289,7 @@ module TestTextBox =
 
             let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderStateFromTimer console clock None
+            let renderState, _ = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -448,7 +448,7 @@ Hello!|                                 |
 
             let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderStateFromTimer console clock None
+            let renderState, _ = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -591,7 +591,7 @@ Hello!|                                 |
 
             let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderStateFromTimer console clock None
+            let renderState, _ = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -785,7 +785,7 @@ Hello!|                                 |
 
             let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderStateFromTimer console clock None
+            let renderState, _ = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -878,7 +878,7 @@ Unfocused                               |
 
             let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderStateFromTimer console clock None
+            let renderState, _ = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -945,7 +945,7 @@ Unfocused                               |
 
             let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderStateFromTimer console clock None
+            let renderState, _ = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -1012,7 +1012,7 @@ Unfocused                               |
 
             let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderStateFromTimer console clock None
+            let renderState, _ = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -1092,7 +1092,7 @@ Unfocused                               |
 
             let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderStateFromTimer console clock None
+            let renderState, _ = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -1172,7 +1172,7 @@ Unfocused                               |
 
             let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderStateFromTimer console clock None
+            let renderState, _ = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -1252,7 +1252,7 @@ Unfocused                               |
 
             let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderStateFromTimer console clock None
+            let renderState, _ = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -1315,7 +1315,7 @@ Unfocused                               |
 
             let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderStateFromTimer console clock None
+            let renderState, _ = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -1378,7 +1378,7 @@ Unfocused                               |
 
             let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderStateFromTimer console clock None
+            let renderState, _ = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {

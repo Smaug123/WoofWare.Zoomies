@@ -12,6 +12,8 @@ type MockTimer =
         Advance : TimeSpan -> DateTime
         /// Set the time to a specific DateTime and stabilize.
         SetTimeUtc : DateTime -> unit
+        /// Get the current time.
+        CurrentTime : unit -> DateTime
     }
 
 [<RequireQualifiedAccess>]
@@ -41,6 +43,7 @@ module MockTime =
                 fun dt ->
                     currentTime <- dt
                     IncrementalState.advanceClockAndStabilize currentTime incrState
+            CurrentTime = fun () -> currentTime
         }
 
     /// Create a MockTimer with default start time and bounds.
@@ -75,8 +78,8 @@ module MockTime =
         let incrState = IncrementalState.make () bounds None
         IncrementalState.advanceClockAndStabilize defaultStartTime incrState
         let ctx = VdomContext.make incrState
-        // Stabilize again after creating VdomContext, since it creates a new observer
-        IncrementalState.stabilize incrState
+        // Set the stabilization time so getUtcNow returns the correct time
+        VdomContext.setCurrentStabilizationTime defaultStartTime ctx
         ctx
 
     /// Create a VdomContext with default 80x24 terminal bounds for testing.
@@ -101,17 +104,24 @@ module MockTime =
             }
 
     /// Create a RenderState for testing from a MockTimer.
-    /// The clock time is controlled by the MockTimer.
+    /// Returns both the RenderState and a function to advance time that updates both the clock and the VdomContext.
     let makeRenderStateFromTimer<'postLayoutEvent>
         (console : IConsole)
         (timer : MockTimer)
         (debugWriter : System.IO.StreamWriter option)
-        : RenderState<'postLayoutEvent>
+        : RenderState<'postLayoutEvent> * (TimeSpan -> DateTime)
         =
         let vdomContext = VdomContext.make<unit, 'postLayoutEvent> timer.IncrState
-        // Stabilize after creating VdomContext, since it creates a new observer
-        IncrementalState.stabilize timer.IncrState
-        RenderState.make console vdomContext debugWriter
+        // Set the stabilization time so getUtcNow returns the correct time
+        VdomContext.setCurrentStabilizationTime (timer.CurrentTime ()) vdomContext
+        let renderState = RenderState.make console vdomContext debugWriter
+
+        let advanceWithContext ts =
+            let newTime = timer.Advance ts
+            VdomContext.setCurrentStabilizationTime newTime vdomContext
+            newTime
+
+        renderState, advanceWithContext
 
     /// Create a RenderState for testing with a static mock time.
     /// This is for tests that don't need to control time.
@@ -122,3 +132,20 @@ module MockTime =
         =
         let vdomContext = makeVdomContextFromConsole<'postLayoutEvent> console
         RenderState.make console vdomContext debugWriter
+
+    /// Create a VdomContext from a MockTimer.
+    /// Returns both the context and a function to advance time that updates both.
+    /// Use this when you need to control time and test VdomContext together.
+    let makeVdomContextFromTimer<'postLayoutEvent>
+        (timer : MockTimer)
+        : VdomContext<'postLayoutEvent> * (TimeSpan -> DateTime)
+        =
+        let ctx = VdomContext.make<unit, 'postLayoutEvent> timer.IncrState
+        VdomContext.setCurrentStabilizationTime (timer.CurrentTime ()) ctx
+
+        let advanceWithContext ts =
+            let newTime = timer.Advance ts
+            VdomContext.setCurrentStabilizationTime newTime ctx
+            newTime
+
+        ctx, advanceWithContext

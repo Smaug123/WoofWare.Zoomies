@@ -108,7 +108,7 @@ module TestActivationWithPartialBatch =
                 }
 
             let clock = MockTime.makeFromConsole console
-            let renderState = MockTime.makeRenderStateFromTimer console clock None
+            let renderState, _ = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -226,7 +226,7 @@ module TestActivationWithPartialBatch =
                 }
 
             let clock = MockTime.makeFromConsole console
-            let renderState = MockTime.makeRenderStateFromTimer console clock None
+            let renderState, _ = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -348,7 +348,7 @@ module TestActivationWithPartialBatch =
                 }
 
             let clock = MockTime.makeFromConsole console
-            let renderState = MockTime.makeRenderStateFromTimer console clock None
+            let renderState, _ = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -449,7 +449,7 @@ module TestActivationWithPartialBatch =
                 }
 
             let clock = MockTime.makeFromConsole console
-            let renderState = MockTime.makeRenderStateFromTimer console clock None
+            let renderState, _ = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -555,7 +555,7 @@ module TestActivationWithPartialBatch =
                 }
 
             let clock = MockTime.makeFromConsole console
-            let renderState = MockTime.makeRenderStateFromTimer console clock None
+            let renderState, _ = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {

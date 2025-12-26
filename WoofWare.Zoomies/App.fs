@@ -444,7 +444,9 @@ module App =
                     let vdomObserver = incrState.Incr.Observe vdomNode
 
                     // Initial stabilization
-                    IncrementalState.advanceClockAndStabilize (getUtcNow ()) incrState
+                    let initialUtcNow = getUtcNow ()
+                    VdomContext.setCurrentStabilizationTime initialUtcNow vdomContext
+                    IncrementalState.advanceClockAndStabilize initialUtcNow incrState
 
                     // Create a wrapper that bridges the incremental system to the legacy API.
                     // When state changes, we update the state Var, stabilize, and observe.
@@ -456,7 +458,9 @@ module App =
                             IncrementalState.setState state incrState
 
                         // Advance clock and stabilize
-                        IncrementalState.advanceClockAndStabilize (getUtcNow ()) incrState
+                        let utcNow = getUtcNow ()
+                        VdomContext.setCurrentStabilizationTime utcNow vdomContext
+                        IncrementalState.advanceClockAndStabilize utcNow incrState
 
                         // Observe and return the vdom - Observer module provides Value function
                         Observer.value vdomObserver
@@ -516,7 +520,9 @@ module App =
                                 // Advance clock and stabilize to propagate time-based changes.
                                 // This must happen BEFORE checking isDirty in pumpOnce, so that
                                 // time-dependent components (like spinners) can trigger re-renders.
-                                IncrementalState.advanceClockAndStabilize (getUtcNow ()) incrState
+                                let loopUtcNow = getUtcNow ()
+                                VdomContext.setCurrentStabilizationTime loopUtcNow vdomContext
+                                IncrementalState.advanceClockAndStabilize loopUtcNow incrState
 
                                 // Check if vdom changed due to time advancement
                                 let currentVdom = Observer.value vdomObserver

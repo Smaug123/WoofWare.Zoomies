@@ -17,12 +17,13 @@ type VdomContext<'postLayoutEvent> =
             mutable _IsDirty : bool
             _LastActivationTimes : Dictionary<NodeKey, DateTime>
             _PostLayoutEvents : ResizeArray<'postLayoutEvent>
-            /// Observer for the clock time, used to get the current time.
-            _ClockTimeObserver : DateTime Observer
+            /// Cached stabilization time, set before each stabilization cycle.
+            /// This is read during stabilization (when observer reads are forbidden).
+            mutable _CurrentStabilizationTime : DateTime
         }
 
-    /// Get the current time from the clock.
-    member private this.GetUtcNowInternal () : DateTime = Observer.value this._ClockTimeObserver
+    /// Get the current time (from the cached stabilization time).
+    member private this.GetUtcNowInternal () : DateTime = this._CurrentStabilizationTime
 
     interface IVdomContext<'postLayoutEvent> with
         member this.TerminalBounds = this._Incr.Var.Value this._TerminalBoundsVar
@@ -44,13 +45,8 @@ type VdomContext<'postLayoutEvent> =
 module VdomContext =
 
     /// Create a new VdomContext from an IncrementalState.
-    /// Time is read from the incremental Clock.
+    /// Time is cached before each stabilization via setCurrentStabilizationTime.
     let make<'userState, 'postLayoutEvent> (incrState : IncrementalState<'userState>) : VdomContext<'postLayoutEvent> =
-        // Create a node for clock time as DateTime
-        let clockTimeNode = IncrementalState.clockDateTimeNode incrState
-        // Create an observer so we can read the current time value
-        let clockTimeObserver = incrState.Incr.Observe clockTimeNode
-
         {
             _TerminalBoundsVar = incrState.TerminalBoundsVar
             _FocusedKeyVar = incrState.FocusedKeyVar
@@ -59,7 +55,7 @@ module VdomContext =
             _IsDirty = true
             _LastActivationTimes = Dictionary<NodeKey, DateTime> ()
             _PostLayoutEvents = ResizeArray ()
-            _ClockTimeObserver = clockTimeObserver
+            _CurrentStabilizationTime = TimeConversion.unixEpoch
         }
 
     /// Get the terminal bounds.
@@ -86,9 +82,16 @@ module VdomContext =
             ctx._Incr.Var.Set ctx._FocusedKeyVar key
             ctx._IsDirty <- true
 
-    /// Get the current UTC time from the incremental Clock.
-    let getUtcNow<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : DateTime =
-        Observer.value ctx._ClockTimeObserver
+    /// Get the current UTC time (from the cached stabilization time).
+    let getUtcNow<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : DateTime = ctx._CurrentStabilizationTime
+
+    /// Set the cached stabilization time. Call this before each stabilization.
+    let internal setCurrentStabilizationTime<'postLayoutEvent>
+        (time : DateTime)
+        (ctx : VdomContext<'postLayoutEvent>)
+        : unit
+        =
+        ctx._CurrentStabilizationTime <- time
 
     /// Record that a node was just activated.
     let internal recordActivation<'postLayoutEvent> (key : NodeKey) (ctx : VdomContext<'postLayoutEvent>) : unit =
