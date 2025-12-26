@@ -35,7 +35,7 @@ module ConsoleHarness =
         | TerminalOp.MoveCursor (x, y) ->
             c.CursorX <- x
             c.CursorY <- y
-        | TerminalOp.WriteRun (text, _, _) ->
+        | TerminalOp.WriteRun (text, _, _, _) ->
             for ch in text do
                 c.Display.[c.CursorY, c.CursorX] <- ch
                 // Advance cursor right (real terminals do this automatically).
@@ -71,8 +71,6 @@ module ConsoleHarness =
 
         let result =
             {
-                BackgroundColor = fun () -> ConsoleColor.Black
-                ForegroundColor = fun () -> ConsoleColor.White
                 WindowWidth = width
                 WindowHeight = height
                 ColorMode = ColorMode.Color

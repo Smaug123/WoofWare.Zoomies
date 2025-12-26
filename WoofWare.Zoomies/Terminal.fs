@@ -10,15 +10,17 @@ type ColorMode =
 type TerminalCell =
     {
         Char : char
-        BackgroundColor : ConsoleColor voption
-        TextColor : ConsoleColor voption
+        BackgroundColor : Color
+        TextColor : Color
+        Bold : bool
     }
 
     static member OfChar (c : char) =
         {
             Char = c
-            BackgroundColor = ValueNone
-            TextColor = ValueNone
+            BackgroundColor = Color.Default
+            TextColor = Color.Default
+            Bold = false
         }
 
 [<RequireQualifiedAccess>]
@@ -32,7 +34,7 @@ type TerminalOp =
     | MoveCursor of x : int * y : int
     /// Write a run of characters with uniform styling.
     /// The text should not contain control characters or newlines.
-    | WriteRun of text : string * backgroundColor : ConsoleColor voption * textColor : ConsoleColor voption
+    | WriteRun of text : string * backgroundColor : Color * textColor : Color * bold : bool
     | SetCursorVisibility of toVisible : bool
     | ClearScreen
     | EnterAlternateScreen
@@ -49,33 +51,42 @@ type TerminalOp =
 
 [<RequireQualifiedAccess>]
 module TerminalOp =
-    let execute
-        (colorMode : ColorMode)
-        (currentBackground : ConsoleColor)
-        (currentForeground : ConsoleColor)
-        (consoleWrite : string -> unit)
-        (o : TerminalOp)
-        : unit
-        =
+    let execute (colorMode : ColorMode) (consoleWrite : string -> unit) (o : TerminalOp) : unit =
         match o with
-        | TerminalOp.WriteRun (text, backgroundColor, textColor) ->
-            let backgroundEscape =
-                match colorMode, backgroundColor with
-                | ColorMode.Color, ValueSome bg when bg <> currentBackground ->
-                    Some (ConsoleColor.toBackgroundEscapeCode bg, ConsoleColor.toBackgroundEscapeCode currentBackground)
-                | _ -> None
+        | TerminalOp.WriteRun (text, backgroundColor, textColor, bold) ->
+            match colorMode with
+            | ColorMode.Color ->
+                // Emit background color if not default
+                match backgroundColor with
+                | Color.Default -> ()
+                | _ -> consoleWrite (Color.toBackgroundEscapeCode backgroundColor)
 
-            let foregroundEscape =
-                match colorMode, textColor with
-                | ColorMode.Color, ValueSome fg when fg <> currentForeground ->
-                    Some (ConsoleColor.toForegroundEscapeCode fg, ConsoleColor.toForegroundEscapeCode currentForeground)
-                | _ -> None
+                // Emit foreground color if not default
+                match textColor with
+                | Color.Default -> ()
+                | _ -> consoleWrite (Color.toForegroundEscapeCode textColor)
 
-            backgroundEscape |> Option.iter (fst >> consoleWrite)
-            foregroundEscape |> Option.iter (fst >> consoleWrite)
-            consoleWrite text
-            foregroundEscape |> Option.iter (snd >> consoleWrite)
-            backgroundEscape |> Option.iter (snd >> consoleWrite)
+                // Emit bold if set
+                if bold then
+                    consoleWrite "\u001b[1m"
+
+                consoleWrite text
+
+                // Reset bold if it was set
+                if bold then
+                    consoleWrite "\u001b[22m"
+
+                // Reset colors if they were set
+                match textColor with
+                | Color.Default -> ()
+                | _ -> consoleWrite (Color.toForegroundEscapeCode Color.Default)
+
+                match backgroundColor with
+                | Color.Default -> ()
+                | _ -> consoleWrite (Color.toBackgroundEscapeCode Color.Default)
+
+            | ColorMode.NoColor -> consoleWrite text
+
         | TerminalOp.MoveCursor (x, y) -> consoleWrite $"\x1B[%d{y + 1};%d{x + 1}H"
         | TerminalOp.SetCursorVisibility visible ->
             if visible then

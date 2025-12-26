@@ -233,6 +233,7 @@ module Render =
                                             Char = ch
                                             BackgroundColor = style.Background
                                             TextColor = style.Foreground
+                                            Bold = style.Bold
                                         }
 
                                     setAtRelativeOffset dirty bounds x y (ValueSome cell)
@@ -261,6 +262,7 @@ module Render =
                                     Char = ch
                                     BackgroundColor = style.Background
                                     TextColor = style.Foreground
+                                    Bold = style.Bold
                                 }
 
                             setAtRelativeOffset dirty bounds currX currY (ValueSome cell)
@@ -394,6 +396,7 @@ module Render =
                                             Char = ch
                                             BackgroundColor = style.Background
                                             TextColor = style.Foreground
+                                            Bold = style.Bold
                                         }
 
                                     setAtRelativeOffset dirty bounds x y (ValueSome cell)
@@ -428,6 +431,7 @@ module Render =
                                     Char = ch
                                     BackgroundColor = style.Background
                                     TextColor = style.Foreground
+                                    Bold = style.Bold
                                 }
 
                             setAtRelativeOffset dirty bounds currX currY (ValueSome cell)
@@ -472,12 +476,13 @@ module Render =
                     | ValueNone -> x <- x + 1
                     | ValueSome startCell ->
                         // Found a cell to write - start collecting a run of consecutive
-                        // cells with the same foreground and background colors
+                        // cells with the same foreground, background, and bold
                         if cursorX <> x || cursorY <> y then
                             yield TerminalOp.MoveCursor (x, y)
 
                         let bg = startCell.BackgroundColor
                         let fg = startCell.TextColor
+                        let bold = startCell.Bold
                         let runChars = StringBuilder ()
                         runChars.Append startCell.Char |> ignore
                         x <- x + 1
@@ -487,12 +492,14 @@ module Render =
 
                         while continueRun && x < width do
                             match dirty.[y, x] with
-                            | ValueSome nextCell when nextCell.BackgroundColor = bg && nextCell.TextColor = fg ->
+                            | ValueSome nextCell when
+                                nextCell.BackgroundColor = bg && nextCell.TextColor = fg && nextCell.Bold = bold
+                                ->
                                 runChars.Append nextCell.Char |> ignore
                                 x <- x + 1
                             | _ -> continueRun <- false
 
-                        yield TerminalOp.WriteRun (runChars.ToString (), bg, fg)
+                        yield TerminalOp.WriteRun (runChars.ToString (), bg, fg, bold)
 
                         // After writing, cursor advances right. But at row end, terminal behavior
                         // varies (may wrap, stay put, etc.), so mark position as unknown.
