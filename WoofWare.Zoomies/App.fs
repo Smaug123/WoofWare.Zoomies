@@ -91,13 +91,13 @@ module App =
         let ctx = RenderState.vdomContext renderState
         // Caller must mark clean before calling; PostLayoutEvent can only set dirty during vdom construction,
         // and processWorld receives IVdomContext (not IVdomContext<'postLayoutEvent>) so cannot post events.
-        assert (not (IncrVdomContext.isDirty ctx))
+        assert (not (VdomContext.isDirty ctx))
         let mutable currentState = state
         let mutable iterations = 0
         let mutable continueLoop = true
 
         while continueLoop && iterations < MAX_POST_LAYOUT_ITERATIONS do
-            let layoutEvents = IncrVdomContext.drainPostLayoutEvents ctx
+            let layoutEvents = VdomContext.drainPostLayoutEvents ctx
 
             if layoutEvents.Length = 0 then
                 continueLoop <- false
@@ -105,15 +105,15 @@ module App =
                 let newState =
                     processWorld.ProcessPostLayoutEvents (
                         ReadOnlySpan layoutEvents,
-                        IncrVdomContext.asBase ctx,
+                        VdomContext.asBase ctx,
                         currentState
                     )
 
                 // If state changed, we need to render and potentially get more post-layout events
                 if newState <> currentState then
                     currentState <- newState
-                    Render.oneStepNoFlush renderState currentState (vdom (IncrVdomContext.asTyped ctx))
-                    IncrVdomContext.markClean ctx
+                    Render.oneStepNoFlush renderState currentState (vdom (VdomContext.asTyped ctx))
+                    VdomContext.markClean ctx
                     iterations <- iterations + 1
                 else
                     // State didn't change, no need to render, we're done
@@ -130,9 +130,9 @@ module App =
         =
         let ctx = RenderState.vdomContext renderState
 
-        if IncrVdomContext.isDirty ctx then
-            Render.oneStepNoFlush renderState state (vdom (IncrVdomContext.asTyped ctx))
-            IncrVdomContext.markClean ctx
+        if VdomContext.isDirty ctx then
+            Render.oneStepNoFlush renderState state (vdom (VdomContext.asTyped ctx))
+            VdomContext.markClean ctx
 
             let finalState, _hitLimit =
                 stabilizePostLayoutEvents state renderState processWorld vdom
@@ -171,7 +171,7 @@ module App =
                     let processResult =
                         processWorld.ProcessWorld (
                             changes.AsSpan().Slice (startOfBatch, nextToProcess - startOfBatch),
-                            IncrVdomContext.asBase ctx,
+                            VdomContext.asBase ctx,
                             currentState
                         )
 
@@ -228,7 +228,7 @@ module App =
 
                     | WorldStateChange.Keystroke k ->
                         // Check if the resolver handles this keystroke
-                        match IncrVdomContext.focusedKey ctx with
+                        match VdomContext.focusedKey ctx with
                         | Some focusedKey ->
                             match resolveActivation.Invoke (focusedKey, k, currentState) with
                             | Some appEvent ->
@@ -251,7 +251,7 @@ module App =
                                     // Now handle the activation
 
                                     // Record activation time for visual feedback
-                                    IncrVdomContext.recordActivation focusedKey ctx
+                                    VdomContext.recordActivation focusedKey ctx
 
                                     // Inject the resolved event
                                     let injectedEvent = [| WorldStateChange.ApplicationEvent appEvent |]
@@ -259,16 +259,16 @@ module App =
                                     let processResult =
                                         processWorld.ProcessWorld (
                                             ReadOnlySpan injectedEvent,
-                                            IncrVdomContext.asBase ctx,
+                                            VdomContext.asBase ctx,
                                             currentState
                                         )
 
                                     currentState <- processResult.NewState
 
                                     // Re-render for visual feedback
-                                    Render.oneStepNoFlush renderState currentState (vdom (IncrVdomContext.asTyped ctx))
+                                    Render.oneStepNoFlush renderState currentState (vdom (VdomContext.asTyped ctx))
 
-                                    IncrVdomContext.markClean ctx
+                                    VdomContext.markClean ctx
 
                                     // Stabilize post-layout events before continuing
                                     let stabilizedState, _hitLimit =
@@ -305,7 +305,7 @@ module App =
                 let processResult =
                     processWorld.ProcessWorld (
                         changes.AsSpan().Slice startOfBatch,
-                        IncrVdomContext.asBase ctx,
+                        VdomContext.asBase ctx,
                         currentState
                     )
 
@@ -323,9 +323,9 @@ module App =
                     else
                         startOfBatch <- startOfBatch + truncatedAt + 1
 
-            if forceRerender || IncrVdomContext.isDirty ctx || currentState <> startState then
-                Render.oneStepNoFlush renderState currentState (vdom (IncrVdomContext.asTyped ctx))
-                IncrVdomContext.markClean ctx
+            if forceRerender || VdomContext.isDirty ctx || currentState <> startState then
+                Render.oneStepNoFlush renderState currentState (vdom (VdomContext.asTyped ctx))
+                VdomContext.markClean ctx
 
                 let stabilizedState, _hitLimit =
                     stabilizePostLayoutEvents currentState renderState processWorld vdom
@@ -352,7 +352,7 @@ module App =
         let go state =
             let resizeGeneration = listener.TerminalResizeGeneration
             RenderState.refreshTerminalSize renderState
-            IncrVdomContext.pruneExpiredActivations ctx
+            VdomContext.pruneExpiredActivations ctx
 
             listener.RefreshExternal ()
 
@@ -377,7 +377,7 @@ module App =
                 // we were drawing to the screen when it had an arbitrary size. Need a *complete* refresh.
                 RenderState.clearScreen renderState
                 renderState.PreviousVdom <- None
-                IncrVdomContext.markDirty ctx
+                VdomContext.markDirty ctx
                 true, state
             else
                 false, state
@@ -406,7 +406,7 @@ module App =
         (initialState : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
         (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'postLayoutEvent, 'state>)
-        (incrVdom : Incremental -> IncrVdomContext<'postLayoutEvent> -> 'state Node -> Vdom<DesiredBounds> Node)
+        (incrVdom : Incremental -> VdomContext<'postLayoutEvent> -> 'state Node -> Vdom<DesiredBounds> Node)
         (resolveActivation : ActivationResolver<'appEvent, 'state>)
         (debugWriter : StreamWriter option)
         : AppHandle
@@ -433,7 +433,7 @@ module App =
 
                     // Set up incremental state for reactive updates
                     let incrState = IncrementalState.make initialState initialBounds None
-                    let vdomContext = IncrVdomContext.make incrState
+                    let vdomContext = VdomContext.make incrState
 
                     // Create the incremental Vdom Node
                     let stateNode = IncrementalState.stateNode incrState
@@ -521,7 +521,7 @@ module App =
                                 let currentVdom = Observer.value vdomObserver
 
                                 if not (Object.referenceEquals previousVdom currentVdom) then
-                                    IncrVdomContext.markDirty vdomContext
+                                    VdomContext.markDirty vdomContext
 
                                 currentState <-
                                     pumpOnce
@@ -589,15 +589,15 @@ module App =
     /// For fine-grained incrementality, write an incremental view function directly.
     let pureView<'state, 'postLayoutEvent>
         (view : IVdomContext<'postLayoutEvent> -> 'state -> Vdom<DesiredBounds>)
-        : Incremental -> IncrVdomContext<'postLayoutEvent> -> 'state Node -> Vdom<DesiredBounds> Node
+        : Incremental -> VdomContext<'postLayoutEvent> -> 'state Node -> Vdom<DesiredBounds> Node
         =
         fun incr ctx stateNode ->
             // We also depend on bounds and focus so the vdom updates when they change
-            let boundsNode = IncrVdomContext.boundsNode ctx
-            let focusNode = IncrVdomContext.focusedKeyNode ctx
+            let boundsNode = VdomContext.boundsNode ctx
+            let focusNode = VdomContext.focusedKeyNode ctx
 
             incr.Map
-                (fun ((state, _bounds), _focus) -> view (IncrVdomContext.asTyped ctx) state)
+                (fun ((state, _bounds), _focus) -> view (VdomContext.asTyped ctx) state)
                 (incr.Both (incr.Both stateNode boundsNode) focusNode)
 
     let run<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
@@ -605,7 +605,7 @@ module App =
         (state : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
         (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'postLayoutEvent, 'state>)
-        (incrVdom : Incremental -> IncrVdomContext<'postLayoutEvent> -> 'state Node -> Vdom<DesiredBounds> Node)
+        (incrVdom : Incremental -> VdomContext<'postLayoutEvent> -> 'state Node -> Vdom<DesiredBounds> Node)
         (resolveActivation : ActivationResolver<'appEvent, 'state>)
         : AppHandle
         =

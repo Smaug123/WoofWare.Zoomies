@@ -438,7 +438,7 @@ module TestLoadingSpinner =
             // The real run' function handles this automatically by checking if the vdom observer
             // changed after stabilization.
             let ctx = RenderState.vdomContext renderState
-            IncrVdomContext.markDirty ctx
+            VdomContext.markDirty ctx
 
             App.pumpOnce
                 worldFreezer

@@ -190,11 +190,11 @@ module TestAppRun =
             // Create an incremental vdom that depends on time (spinner)
             let incrVdom
                 (incr : Incremental)
-                (ctx : IncrVdomContext<unit>)
+                (ctx : VdomContext<unit>)
                 (_stateNode : unit Node)
                 : Vdom<DesiredBounds> Node
                 =
-                let clock = IncrVdomContext.clock ctx
+                let clock = VdomContext.clock ctx
                 // 10 fps = 100ms per frame
                 let frameNode = IncrTime.spinnerFrameNode incr clock LoadingSpinner.FrameCount 10.0
 
@@ -268,7 +268,7 @@ module TestAppRun =
 
             let incrState = IncrementalState.make "initial" bounds None
             let incr = incrState.Incr
-            let ctx = IncrVdomContext.make<string, unit> incrState
+            let ctx = VdomContext.make<string, unit> incrState
 
             let mutable callCount = 0
 
@@ -307,7 +307,7 @@ module TestAppRun =
 
             let incrState = IncrementalState.make () bounds1 None
             let incr = incrState.Incr
-            let ctx = IncrVdomContext.make<unit, unit> incrState
+            let ctx = VdomContext.make<unit, unit> incrState
 
             let mutable callCount = 0
 
@@ -355,7 +355,7 @@ module TestAppRun =
             let key1 = NodeKey.make "key1"
             let incrState = IncrementalState.make () bounds (Some key1)
             let incr = incrState.Incr
-            let ctx = IncrVdomContext.make<unit, unit> incrState
+            let ctx = VdomContext.make<unit, unit> incrState
 
             let mutable callCount = 0
 
@@ -398,7 +398,7 @@ module TestAppRun =
 
             let incrState = IncrementalState.make "state" bounds None
             let incr = incrState.Incr
-            let ctx = IncrVdomContext.make<string, unit> incrState
+            let ctx = VdomContext.make<string, unit> incrState
 
             let mutable callCount = 0
 

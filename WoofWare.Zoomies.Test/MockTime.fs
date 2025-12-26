@@ -41,19 +41,19 @@ module MockTime =
     let makeVdomContext'<'postLayoutEvent>
         (getUtcNow : unit -> DateTime)
         (bounds : Rectangle)
-        : IncrVdomContext<'postLayoutEvent>
+        : VdomContext<'postLayoutEvent>
         =
         // Create an IncrementalState with a unit state (tests don't need state)
         let incrState = IncrementalState.make () bounds None
-        IncrVdomContext.make' getUtcNow incrState
+        VdomContext.make' getUtcNow incrState
 
     /// Create an IncrVdomContext for testing purposes with the given bounds.
     /// Uses a static mock time.
-    let makeVdomContext<'postLayoutEvent> (bounds : Rectangle) : IncrVdomContext<'postLayoutEvent> =
+    let makeVdomContext<'postLayoutEvent> (bounds : Rectangle) : VdomContext<'postLayoutEvent> =
         makeVdomContext' getStaticUtcNow bounds
 
     /// Create an IncrVdomContext with default 80x24 terminal bounds for testing.
-    let makeDefaultVdomContext<'postLayoutEvent> () : IncrVdomContext<'postLayoutEvent> =
+    let makeDefaultVdomContext<'postLayoutEvent> () : VdomContext<'postLayoutEvent> =
         makeVdomContext
             {
                 TopLeftX = 0
@@ -66,7 +66,7 @@ module MockTime =
     let makeVdomContextFromConsole'<'postLayoutEvent>
         (getUtcNow : unit -> DateTime)
         (console : IConsole)
-        : IncrVdomContext<'postLayoutEvent>
+        : VdomContext<'postLayoutEvent>
         =
         makeVdomContext'
             getUtcNow
@@ -80,7 +80,7 @@ module MockTime =
     /// Create an IncrVdomContext from an IConsole for testing.
     /// This is a helper to make migrating tests from the old API easier.
     /// Uses a static mock time.
-    let makeVdomContextFromConsole<'postLayoutEvent> (console : IConsole) : IncrVdomContext<'postLayoutEvent> =
+    let makeVdomContextFromConsole<'postLayoutEvent> (console : IConsole) : VdomContext<'postLayoutEvent> =
         makeVdomContextFromConsole' getStaticUtcNow console
 
     /// Create a RenderState for testing - backward-compatible helper.

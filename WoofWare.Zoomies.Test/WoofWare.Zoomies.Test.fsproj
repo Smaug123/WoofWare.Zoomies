@@ -20,6 +20,7 @@
     <Compile Include="MockWorld.fs" />
     <Compile Include="MockTime.fs" />
     <Compile Include="TestExternalEventSubscription.fs" />
+    <Compile Include="TestVdomContext.fs" />
     <Compile Include="TestOrderedSet.fs" />
     <Compile Include="TestCatamorphism.fs" />
     <Compile Include="TestDebugDump.fs" />

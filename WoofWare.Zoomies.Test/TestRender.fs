@@ -84,11 +84,11 @@ module TestRender =
         let renderState =
             MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
-        Render.oneStep renderState state (vdom (IncrVdomContext.asTyped<unit> (RenderState.vdomContext renderState)))
+        Render.oneStep renderState state (vdom (VdomContext.asTyped<unit> (RenderState.vdomContext renderState)))
 
         terminalOps.Clear ()
 
-        Render.oneStep renderState state (vdom (IncrVdomContext.asTyped<unit> (RenderState.vdomContext renderState)))
+        Render.oneStep renderState state (vdom (VdomContext.asTyped<unit> (RenderState.vdomContext renderState)))
 
         terminalOps |> shouldBeEmpty
 
@@ -560,7 +560,7 @@ only displayed when checked                this one is focusable!               
             let renderState =
                 MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
 
-            Render.oneStep renderState () (vdom (IncrVdomContext.asTyped<unit> (RenderState.vdomContext renderState)))
+            Render.oneStep renderState () (vdom (VdomContext.asTyped<unit> (RenderState.vdomContext renderState)))
 
             expect {
                 snapshot

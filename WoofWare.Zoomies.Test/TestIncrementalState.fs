@@ -202,11 +202,11 @@ module TestIncrementalState =
             }
 
         let incrState = IncrementalState.make () bounds1 None
-        let ctx = IncrVdomContext.make<unit, unit> incrState
+        let ctx = VdomContext.make<unit, unit> incrState
 
         // Start clean
-        IncrVdomContext.markClean ctx
-        IncrVdomContext.isDirty ctx |> shouldEqual false
+        VdomContext.markClean ctx
+        VdomContext.isDirty ctx |> shouldEqual false
 
         // Change bounds
         let bounds2 =
@@ -217,10 +217,10 @@ module TestIncrementalState =
                 Height = 40
             }
 
-        IncrVdomContext.setTerminalBounds bounds2 ctx
+        VdomContext.setTerminalBounds bounds2 ctx
 
         // Should be dirty
-        IncrVdomContext.isDirty ctx |> shouldEqual true
+        VdomContext.isDirty ctx |> shouldEqual true
 
     [<Test>]
     let ``IncrVdomContext.setTerminalBounds does not mark dirty when bounds unchanged`` () =
@@ -233,82 +233,82 @@ module TestIncrementalState =
             }
 
         let incrState = IncrementalState.make () bounds None
-        let ctx = IncrVdomContext.make<unit, unit> incrState
+        let ctx = VdomContext.make<unit, unit> incrState
 
         // Start clean
-        IncrVdomContext.markClean ctx
-        IncrVdomContext.isDirty ctx |> shouldEqual false
+        VdomContext.markClean ctx
+        VdomContext.isDirty ctx |> shouldEqual false
 
         // Set same bounds
-        IncrVdomContext.setTerminalBounds bounds ctx
+        VdomContext.setTerminalBounds bounds ctx
 
         // Should still be clean
-        IncrVdomContext.isDirty ctx |> shouldEqual false
+        VdomContext.isDirty ctx |> shouldEqual false
 
     [<Test>]
     let ``IncrVdomContext.setFocusedKey marks dirty when focus changes`` () =
         let key1 = NodeKey.make "key1"
         let incrState = IncrementalState.make () emptyRect (Some key1)
-        let ctx = IncrVdomContext.make<unit, unit> incrState
+        let ctx = VdomContext.make<unit, unit> incrState
 
         // Start clean
-        IncrVdomContext.markClean ctx
-        IncrVdomContext.isDirty ctx |> shouldEqual false
+        VdomContext.markClean ctx
+        VdomContext.isDirty ctx |> shouldEqual false
 
         // Change focus
         let key2 = NodeKey.make "key2"
-        IncrVdomContext.setFocusedKey (Some key2) ctx
+        VdomContext.setFocusedKey (Some key2) ctx
 
         // Should be dirty
-        IncrVdomContext.isDirty ctx |> shouldEqual true
+        VdomContext.isDirty ctx |> shouldEqual true
 
     [<Test>]
     let ``IncrVdomContext.setFocusedKey does not mark dirty when focus unchanged`` () =
         let key = NodeKey.make "key1"
         let incrState = IncrementalState.make () emptyRect (Some key)
-        let ctx = IncrVdomContext.make<unit, unit> incrState
+        let ctx = VdomContext.make<unit, unit> incrState
 
         // Start clean
-        IncrVdomContext.markClean ctx
-        IncrVdomContext.isDirty ctx |> shouldEqual false
+        VdomContext.markClean ctx
+        VdomContext.isDirty ctx |> shouldEqual false
 
         // Set same focus
-        IncrVdomContext.setFocusedKey (Some key) ctx
+        VdomContext.setFocusedKey (Some key) ctx
 
         // Should still be clean
-        IncrVdomContext.isDirty ctx |> shouldEqual false
+        VdomContext.isDirty ctx |> shouldEqual false
 
     [<Test>]
     let ``IncrVdomContext.setFocusedKey handles None to Some transition`` () =
         let incrState = IncrementalState.make () emptyRect None
-        let ctx = IncrVdomContext.make<unit, unit> incrState
+        let ctx = VdomContext.make<unit, unit> incrState
 
         // Start clean
-        IncrVdomContext.markClean ctx
-        IncrVdomContext.isDirty ctx |> shouldEqual false
+        VdomContext.markClean ctx
+        VdomContext.isDirty ctx |> shouldEqual false
 
         // Set focus from None to Some
         let key = NodeKey.make "key1"
-        IncrVdomContext.setFocusedKey (Some key) ctx
+        VdomContext.setFocusedKey (Some key) ctx
 
         // Should be dirty
-        IncrVdomContext.isDirty ctx |> shouldEqual true
+        VdomContext.isDirty ctx |> shouldEqual true
 
     [<Test>]
     let ``IncrVdomContext.setFocusedKey handles Some to None transition`` () =
         let key = NodeKey.make "key1"
         let incrState = IncrementalState.make () emptyRect (Some key)
-        let ctx = IncrVdomContext.make<unit, unit> incrState
+        let ctx = VdomContext.make<unit, unit> incrState
 
         // Start clean
-        IncrVdomContext.markClean ctx
-        IncrVdomContext.isDirty ctx |> shouldEqual false
+        VdomContext.markClean ctx
+        VdomContext.isDirty ctx |> shouldEqual false
 
         // Set focus from Some to None
-        IncrVdomContext.setFocusedKey None ctx
+        VdomContext.setFocusedKey None ctx
 
         // Should be dirty
-        IncrVdomContext.isDirty ctx |> shouldEqual true
+        VdomContext.isDirty ctx |> shouldEqual true
 
     [<Test>]
     let ``IncrVdomContext node accessors return working nodes`` () =
@@ -322,22 +322,22 @@ module TestIncrementalState =
 
         let key = NodeKey.make "test"
         let incrState = IncrementalState.make () bounds (Some key)
-        let ctx = IncrVdomContext.make<unit, unit> incrState
+        let ctx = VdomContext.make<unit, unit> incrState
 
         // boundsNode
-        let boundsNode = IncrVdomContext.boundsNode ctx
+        let boundsNode = VdomContext.boundsNode ctx
         let boundsObserver = incrState.Incr.Observe boundsNode
         incrState.Incr.Stabilize ()
         Observer.value boundsObserver |> shouldEqual bounds
 
         // focusedKeyNode
-        let focusNode = IncrVdomContext.focusedKeyNode ctx
+        let focusNode = VdomContext.focusedKeyNode ctx
         let focusObserver = incrState.Incr.Observe focusNode
         incrState.Incr.Stabilize ()
         Observer.value focusObserver |> shouldEqual (Some key)
 
         // clockTimeNode
-        let clockNode = IncrVdomContext.clockTimeNode ctx
+        let clockNode = VdomContext.clockTimeNode ctx
         let clockObserver = incrState.Incr.Observe clockNode
         incrState.Incr.Stabilize ()
         // Just verify it returns a value (the actual time depends on when the test runs)
