@@ -32,28 +32,28 @@ module RainbowText =
                 PulseSpeedCharsPerSec = 5.0
             }
 
-    /// ROYGBIV colors (7 colors).
-    let private roygbiv =
+    /// ROYGBIV colors (7 colors) using true RGB values.
+    let private roygbiv : Color array =
         [|
-            ConsoleColor.Red
-            ConsoleColor.DarkYellow // Orange approximation
-            ConsoleColor.Yellow
-            ConsoleColor.Green
-            ConsoleColor.Blue
-            ConsoleColor.DarkBlue // Indigo
-            ConsoleColor.Magenta // Violet
+            Color.Rgb (255uy, 0uy, 0uy) // Red
+            Color.Rgb (255uy, 127uy, 0uy) // Orange
+            Color.Rgb (255uy, 255uy, 0uy) // Yellow
+            Color.Rgb (0uy, 255uy, 0uy) // Green
+            Color.Rgb (80uy, 80uy, 255uy) // Blue
+            Color.Rgb (130uy, 80uy, 200uy) // Indigo
+            Color.Rgb (180uy, 100uy, 255uy) // Violet
         |]
 
     /// Lighter variants for the pulse effect.
-    let private lightVariants =
+    let private lightVariants : Color array =
         [|
-            ConsoleColor.Red // Red stays red (already bright)
-            ConsoleColor.Yellow // Lighter orange
-            ConsoleColor.Yellow // Yellow stays yellow
-            ConsoleColor.Cyan // Lighter green
-            ConsoleColor.Cyan // Lighter blue
-            ConsoleColor.Blue // Lighter indigo
-            ConsoleColor.Magenta // Violet stays magenta
+            Color.Rgb (255uy, 128uy, 128uy) // Light red
+            Color.Rgb (255uy, 191uy, 128uy) // Light orange
+            Color.Rgb (255uy, 255uy, 128uy) // Light yellow
+            Color.Rgb (128uy, 255uy, 128uy) // Light green
+            Color.Rgb (128uy, 128uy, 255uy) // Light blue
+            Color.Rgb (165uy, 128uy, 193uy) // Light indigo
+            Color.Rgb (202uy, 128uy, 233uy) // Light violet
         |]
 
     /// <summary>Creates rainbow-colored text with optional pulse effect.</summary>
