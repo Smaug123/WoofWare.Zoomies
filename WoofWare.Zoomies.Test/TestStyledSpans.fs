@@ -47,7 +47,7 @@ module TestStyledSpans =
                     world.KeyAvailable
                     world.ReadKey
 
-            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
                 worldFreezer
@@ -103,7 +103,7 @@ Hello     |
                     world.KeyAvailable
                     world.ReadKey
 
-            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
                 worldFreezer
@@ -158,7 +158,7 @@ RGB       |
                     world.KeyAvailable
                     world.ReadKey
 
-            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
                 worldFreezer
@@ -200,7 +200,7 @@ World|
                     world.KeyAvailable
                     world.ReadKey
 
-            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
                 worldFreezer
@@ -249,7 +249,7 @@ World|
                     world.KeyAvailable
                     world.ReadKey
 
-            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
                 worldFreezer
@@ -304,7 +304,7 @@ Hello|
                     world.KeyAvailable
                     world.ReadKey
 
-            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
                 worldFreezer
@@ -356,7 +356,7 @@ World     |
                     world.KeyAvailable
                     world.ReadKey
 
-            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
                 worldFreezer

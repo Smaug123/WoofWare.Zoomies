@@ -83,8 +83,7 @@ module TestCollapsible =
                     member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let renderState =
-                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             let mutable currentState = state
 
@@ -281,8 +280,7 @@ This stuff was hidden                                       |
                     member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let renderState =
-                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             let mutable currentState = state
 
@@ -429,8 +427,7 @@ Line 2 of content                                           |
                     member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let renderState =
-                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             let mutable currentState = state
 

@@ -53,7 +53,7 @@ module TestSingleSelection =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
                 worldFreezer
@@ -124,7 +124,7 @@ module TestSingleSelection =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
                 worldFreezer
@@ -195,7 +195,7 @@ module TestSingleSelection =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
                 worldFreezer
@@ -266,7 +266,7 @@ module TestSingleSelection =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
                 worldFreezer
@@ -337,7 +337,7 @@ module TestSingleSelection =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
                 worldFreezer
@@ -416,7 +416,7 @@ module TestSingleSelection =
                     member _.ProcessPostLayoutEvents (_, _, state) = state
                 }
 
-            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic console None
 
             // Initial render - no focus yet
             App.pumpOnce
@@ -590,7 +590,7 @@ module TestSingleSelection =
                     SelectCursorDown
                     SelectItem
 
-            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic console None
 
             let initialState : SelectListState =
                 {
@@ -752,7 +752,7 @@ module TestSingleSelection =
                     SelectCursorDown
                     SelectItem
 
-            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic console None
 
             // Start with Option A selected
             let initialState : SelectListState =
@@ -880,7 +880,7 @@ module TestSingleSelection =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
                 worldFreezer
@@ -966,7 +966,7 @@ module TestSingleSelection =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
                 worldFreezer
@@ -1047,7 +1047,7 @@ module TestSingleSelection =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
                 worldFreezer
@@ -1188,7 +1188,7 @@ module TestSingleSelection =
                     CursorDownEvt
                     SelectEvt
 
-            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic console None
 
             let initialState : ArrowTestState =
                 {
@@ -1375,7 +1375,7 @@ module TestSingleSelection =
                     FocusLeaveCursorDown
                     (fun _ -> FocusLeaveSelect)
 
-            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic console None
 
             let initialState : FocusLeaveState =
                 {
@@ -1584,7 +1584,7 @@ module TestSingleSelection =
                     NoDanceCursorDown
                     NoDanceSelect
 
-            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic console None
 
             // Start with scroll at 1, cursor at 1 (showing items 2, 3, 4 with cursor on item 2)
             let initialState : NoDanceState =
@@ -1827,7 +1827,7 @@ module TestSingleSelection =
                     ViewportAwareCursorDown
                     ViewportAwareSelect
 
-            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic console None
 
             let initialState : ViewportAwareState =
                 {

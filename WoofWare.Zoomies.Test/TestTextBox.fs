@@ -96,9 +96,9 @@ module TestTextBox =
                         ActivationResolver.button buttonKey ButtonClicked
                     ]
 
-            let clock = MockTime.make ()
+            let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
+            let renderState = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -197,9 +197,9 @@ module TestTextBox =
                     member _.ProcessPostLayoutEvents (_, _, state) = state
                 }
 
-            let clock = MockTime.make ()
+            let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
+            let renderState = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state = ImmutableArray.Empty
 
@@ -287,9 +287,9 @@ module TestTextBox =
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
-            let clock = MockTime.make ()
+            let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
+            let renderState = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -446,9 +446,9 @@ Hello!|                                 |
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
-            let clock = MockTime.make ()
+            let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
+            let renderState = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -589,9 +589,9 @@ Hello!|                                 |
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
-            let clock = MockTime.make ()
+            let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
+            let renderState = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -783,9 +783,9 @@ Hello!|                                 |
                     member _.ProcessPostLayoutEvents (_, _, state) = state
                 }
 
-            let clock = MockTime.make ()
+            let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
+            let renderState = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -876,9 +876,9 @@ Unfocused                               |
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
-            let clock = MockTime.make ()
+            let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
+            let renderState = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -943,9 +943,9 @@ Unfocused                               |
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
-            let clock = MockTime.make ()
+            let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
+            let renderState = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -1010,9 +1010,9 @@ Unfocused                               |
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
-            let clock = MockTime.make ()
+            let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
+            let renderState = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -1090,9 +1090,9 @@ Unfocused                               |
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
-            let clock = MockTime.make ()
+            let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
+            let renderState = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -1170,9 +1170,9 @@ Unfocused                               |
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
-            let clock = MockTime.make ()
+            let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
+            let renderState = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -1250,9 +1250,9 @@ Unfocused                               |
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
-            let clock = MockTime.make ()
+            let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
+            let renderState = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -1313,9 +1313,9 @@ Unfocused                               |
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
-            let clock = MockTime.make ()
+            let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
+            let renderState = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -1376,9 +1376,9 @@ Unfocused                               |
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
-            let clock = MockTime.make ()
+            let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
+            let renderState = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {

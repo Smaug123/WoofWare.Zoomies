@@ -17,19 +17,17 @@ type VdomContext<'postLayoutEvent> =
             mutable _IsDirty : bool
             _LastActivationTimes : Dictionary<NodeKey, DateTime>
             _PostLayoutEvents : ResizeArray<'postLayoutEvent>
-            /// Function to get the current time (for testability).
-            _GetUtcNow : unit -> DateTime
+            /// Observer for the clock time, used to get the current time.
+            _ClockTimeObserver : DateTime Observer
         }
 
-    /// Get the current time.
-    member private this.GetUtcNowInternal () : DateTime = this._GetUtcNow ()
+    /// Get the current time from the clock.
+    member private this.GetUtcNowInternal () : DateTime = Observer.value this._ClockTimeObserver
 
     interface IVdomContext<'postLayoutEvent> with
         member this.TerminalBounds = this._Incr.Var.Value this._TerminalBoundsVar
 
         member this.FocusedKey = this._Incr.Var.Value this._FocusedKeyVar
-
-        member this.GetUtcNow () = this.GetUtcNowInternal ()
 
         member this.WasRecentlyActivated key =
             match this._LastActivationTimes.TryGetValue key with
@@ -46,12 +44,13 @@ type VdomContext<'postLayoutEvent> =
 module VdomContext =
 
     /// Create a new IncrVdomContext from an IncrementalState.
-    /// The getUtcNow function is used for activation time tracking (visual feedback).
-    let make'<'userState, 'postLayoutEvent>
-        (getUtcNow : unit -> DateTime)
-        (incrState : IncrementalState<'userState>)
-        : VdomContext<'postLayoutEvent>
-        =
+    /// Time is read from the incremental Clock.
+    let make<'userState, 'postLayoutEvent> (incrState : IncrementalState<'userState>) : VdomContext<'postLayoutEvent> =
+        // Create a node for clock time as DateTime
+        let clockTimeNode = IncrementalState.clockDateTimeNode incrState
+        // Create an observer so we can read the current time value
+        let clockTimeObserver = incrState.Incr.Observe clockTimeNode
+
         {
             _TerminalBoundsVar = incrState.TerminalBoundsVar
             _FocusedKeyVar = incrState.FocusedKeyVar
@@ -60,13 +59,8 @@ module VdomContext =
             _IsDirty = true
             _LastActivationTimes = Dictionary<NodeKey, DateTime> ()
             _PostLayoutEvents = ResizeArray ()
-            _GetUtcNow = getUtcNow
+            _ClockTimeObserver = clockTimeObserver
         }
-
-    /// Create a new IncrVdomContext from an IncrementalState.
-    /// Uses DateTime.UtcNow for activation time tracking.
-    let make<'userState, 'postLayoutEvent> (incrState : IncrementalState<'userState>) : VdomContext<'postLayoutEvent> =
-        make'<'userState, 'postLayoutEvent> (fun () -> DateTime.UtcNow) incrState
 
     /// Get the terminal bounds.
     let terminalBounds<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : Rectangle =
@@ -92,8 +86,9 @@ module VdomContext =
             ctx._Incr.Var.Set ctx._FocusedKeyVar key
             ctx._IsDirty <- true
 
-    /// Get the current UTC time.
-    let getUtcNow<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : DateTime = ctx._GetUtcNow ()
+    /// Get the current UTC time from the incremental Clock.
+    let getUtcNow<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : DateTime =
+        Observer.value ctx._ClockTimeObserver
 
     /// Record that a node was just activated.
     let internal recordActivation<'postLayoutEvent> (key : NodeKey) (ctx : VdomContext<'postLayoutEvent>) : unit =

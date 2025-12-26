@@ -50,8 +50,7 @@ module TestScrollBar =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState =
-                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -103,8 +102,7 @@ module TestScrollBar =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState =
-                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -156,8 +154,7 @@ module TestScrollBar =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState =
-                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -209,8 +206,7 @@ module TestScrollBar =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState =
-                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -272,8 +268,7 @@ module TestScrollBar =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState =
-                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -335,8 +330,7 @@ module TestScrollBar =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState =
-                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -398,8 +392,7 @@ module TestScrollBar =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState =
-                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -450,8 +443,7 @@ module TestScrollBar =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState =
-                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -504,8 +496,7 @@ module TestScrollBar =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState =
-                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -557,8 +548,7 @@ module TestScrollBar =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState =
-                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -611,8 +601,7 @@ module TestScrollBar =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState =
-                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -665,8 +654,7 @@ module TestScrollBar =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState =
-                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -723,8 +711,7 @@ module TestScrollBar =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState =
-                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -780,8 +767,7 @@ module TestScrollBar =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState =
-                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -837,8 +823,7 @@ module TestScrollBar =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState =
-                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -868,8 +853,7 @@ module TestScrollBar =
         let height = 1
         let console, terminal = ConsoleHarness.make' (fun () -> width) (fun () -> height)
 
-        let renderState =
-            MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+        let renderState = MockTime.makeRenderStateStatic<unit> console None
 
         Render.oneStep renderState () (fun () -> ScrollBar.make ScrollBarOrientation.Horizontal scrollParams)
 
@@ -887,8 +871,7 @@ module TestScrollBar =
         let height = max 1 scrollParams.TrackLength
         let console, terminal = ConsoleHarness.make' (fun () -> width) (fun () -> height)
 
-        let renderState =
-            MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+        let renderState = MockTime.makeRenderStateStatic<unit> console None
 
         Render.oneStep renderState () (fun () -> ScrollBar.make ScrollBarOrientation.Vertical scrollParams)
 
@@ -904,8 +887,7 @@ module TestScrollBar =
     let private renderHorizontalScrollBarWithFixedWidth (consoleWidth : int) (scrollParams : ScrollBarParams) : string =
         let console, terminal = ConsoleHarness.make' (fun () -> consoleWidth) (fun () -> 1)
 
-        let renderState =
-            MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+        let renderState = MockTime.makeRenderStateStatic<unit> console None
 
         Render.oneStep renderState () (fun () -> ScrollBar.make ScrollBarOrientation.Horizontal scrollParams)
 
@@ -923,8 +905,7 @@ module TestScrollBar =
         =
         let console, terminal = ConsoleHarness.make' (fun () -> 1) (fun () -> consoleHeight)
 
-        let renderState =
-            MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+        let renderState = MockTime.makeRenderStateStatic<unit> console None
 
         Render.oneStep renderState () (fun () -> ScrollBar.make ScrollBarOrientation.Vertical scrollParams)
 
@@ -1184,7 +1165,7 @@ module TestScrollBar =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
                 worldFreezer
@@ -1237,7 +1218,7 @@ module TestScrollBar =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
                 worldFreezer
@@ -1290,7 +1271,7 @@ module TestScrollBar =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
                 worldFreezer
@@ -1343,7 +1324,7 @@ module TestScrollBar =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
                 worldFreezer
@@ -1395,7 +1376,7 @@ module TestScrollBar =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
                 worldFreezer
@@ -1452,7 +1433,7 @@ module TestScrollBar =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
                 worldFreezer

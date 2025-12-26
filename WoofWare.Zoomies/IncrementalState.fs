@@ -14,7 +14,7 @@ module internal TimeConversion =
     let private nanosecondsPerTick = 100L
 
     /// Unix epoch as DateTime
-    let private unixEpoch = DateTime (1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+    let unixEpoch = DateTime (1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
 
     /// Convert DateTime to nanoseconds since Unix epoch.
     let dateTimeToNs (dt : DateTime) : int64<timeNs> =
@@ -45,12 +45,17 @@ type IncrementalState<'userState> =
 
         /// The currently focused NodeKey, updated when focus changes.
         FocusedKeyVar : NodeKey option Var
+
+        /// Cached clock time node as DateTime (derived from Clock.WatchNow).
+        /// Cached because each call to Incr.Map creates a new node.
+        ClockDateTimeNode : DateTime Node
     }
 
 [<RequireQualifiedAccess>]
 module IncrementalState =
 
     /// Create a new IncrementalState with the given initial values.
+    /// The clock is initialized at Unix epoch so it can be advanced to any desired time.
     let make<'userState>
         (initialState : 'userState)
         (initialBounds : Rectangle)
@@ -58,14 +63,21 @@ module IncrementalState =
         : IncrementalState<'userState>
         =
         let incr = Incremental.make ()
-        let nowNs = TimeConversion.dateTimeToNs DateTime.UtcNow
+        // Start the clock at Unix epoch so we can advance forward to any time
+        // (including times in the past relative to "now" for testing)
+        let epochNs = TimeConversion.dateTimeToNs TimeConversion.unixEpoch
+        let clock = incr.Clock.Create epochNs
+        // Create the clock DateTime node once and cache it
+        let clockNsNode = incr.Clock.WatchNow clock
+        let clockDateTimeNode = incr.Map TimeConversion.nsToDateTime clockNsNode
 
         {
             Incr = incr
-            Clock = incr.Clock.Create nowNs
+            Clock = clock
             StateVar = incr.Var.Create initialState
             TerminalBoundsVar = incr.Var.Create initialBounds
             FocusedKeyVar = incr.Var.Create initialFocusedKey
+            ClockDateTimeNode = clockDateTimeNode
         }
 
     /// Get the user state as a Node for incremental computations.
@@ -94,8 +106,8 @@ module IncrementalState =
         s.Incr.Clock.WatchNow s.Clock
 
     /// Get the clock time as a DateTime Node for convenience.
-    let clockDateTimeNode (s : IncrementalState<'userState>) : DateTime Node =
-        s.Incr.Map TimeConversion.nsToDateTime (clockTimeNode s)
+    /// Uses the cached node to ensure all observers use the same node.
+    let clockDateTimeNode (s : IncrementalState<'userState>) : DateTime Node = s.ClockDateTimeNode
 
     /// Advance the clock to the given time and stabilize the computation graph.
     let advanceClockAndStabilize (time : DateTime) (s : IncrementalState<'userState>) : unit =

@@ -19,9 +19,6 @@ type IVdomContext =
     /// If you're not using the automatic focus handling mechanism, this is always None.
     abstract FocusedKey : NodeKey option
 
-    /// Get the current UTC time.
-    abstract GetUtcNow : unit -> DateTime
-
     /// Returns true if the node with the given key was activated within the
     /// visual feedback window (approximately 500ms).
     abstract WasRecentlyActivated : NodeKey -> bool

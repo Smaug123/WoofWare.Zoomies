@@ -123,7 +123,7 @@ module TestExternalEventSubscription =
             let vdom (_ : IVdomContext<_>) (state : TimerState) = Vdom.textContent $"%i{state.Counter}"
 
             let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 1)
-            let renderState = MockTime.makeRenderState console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic console None
 
             let world = MockWorld.make ()
 

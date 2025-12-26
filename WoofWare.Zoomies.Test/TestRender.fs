@@ -81,8 +81,7 @@ module TestRender =
 
         let state = State.Empty ()
 
-        let renderState =
-            MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+        let renderState = MockTime.makeRenderStateStatic<unit> console None
 
         Render.oneStep renderState state (vdom (VdomContext.asTyped<unit> (RenderState.vdomContext renderState)))
 
@@ -140,8 +139,7 @@ module TestRender =
 
             let mutable state = State.Empty ()
 
-            let renderState =
-                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             state <-
                 App.pumpOnce
@@ -440,8 +438,7 @@ only displayed when checked                this one is focusable!               
                 WindowHeight = fun _ -> 5
             }
 
-        let renderState =
-            MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+        let renderState = MockTime.makeRenderStateStatic<unit> console None
 
         // Create vdom with some content that will result in multiple cells being written
         let vdom =
@@ -485,8 +482,7 @@ only displayed when checked                this one is focusable!               
                 Execute = fun x -> terminalOps.Add x
             }
 
-        let renderState =
-            MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+        let renderState = MockTime.makeRenderStateStatic<unit> console None
 
         let key = NodeKey.make "test-key"
 
@@ -557,8 +553,7 @@ only displayed when checked                this one is focusable!               
                     (Vdom.textContent "Right" |> Vdom.withKey (NodeKey.make "content"))
                 )
 
-            let renderState =
-                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             Render.oneStep renderState () (vdom (VdomContext.asTyped<unit> (RenderState.vdomContext renderState)))
 

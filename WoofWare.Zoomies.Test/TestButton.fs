@@ -76,9 +76,9 @@ module TestButton =
                     member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let clock = MockTime.make ()
+            let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
+            let renderState = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -266,9 +266,9 @@ Hello, World!                           |
                     member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let clock = MockTime.make ()
+            let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
+            let renderState = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -494,9 +494,9 @@ Last clicked: Button 3                            |
                     member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let clock = MockTime.make ()
+            let clock = MockTime.makeFromConsole console
 
-            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
+            let renderState = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state = true
 

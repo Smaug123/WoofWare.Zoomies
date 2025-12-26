@@ -19,16 +19,10 @@ module TestVdomContext =
         }
 
     let empty (clock : MockTimer) : VdomContext<unit> =
-        let i = Incremental.make ()
-
-        {
-            Incr = i
-            Clock = failwith "TODO"
-            StateVar = i.Var.Create ()
-            TerminalBoundsVar = i.Var.Create bounds
-            FocusedKeyVar = i.Var.Create None
-        }
-        |> VdomContext.make' clock.GetUtcNow
+        let ctx = VdomContext.make clock.IncrState
+        // Stabilize after creating VdomContext, since it creates a new observer
+        IncrementalState.stabilize clock.IncrState
+        ctx
 
     [<Test>]
     let ``pruneExpiredActivations removes only expired entries`` () =

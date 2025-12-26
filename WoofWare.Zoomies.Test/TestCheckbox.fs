@@ -22,8 +22,7 @@ module TestCheckbox =
                     WindowHeight = fun _ -> 5
                 }
 
-            let renderState =
-                MockTime.makeRenderState<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             let checkboxKey = NodeKey.make "checkbox"
 

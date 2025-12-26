@@ -107,8 +107,8 @@ module TestActivationWithPartialBatch =
                     member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let clock = MockTime.make ()
-            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
+            let clock = MockTime.makeFromConsole console
+            let renderState = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -225,8 +225,8 @@ module TestActivationWithPartialBatch =
                     member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let clock = MockTime.make ()
-            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
+            let clock = MockTime.makeFromConsole console
+            let renderState = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -347,8 +347,8 @@ module TestActivationWithPartialBatch =
                     member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let clock = MockTime.make ()
-            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
+            let clock = MockTime.makeFromConsole console
+            let renderState = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -448,8 +448,8 @@ module TestActivationWithPartialBatch =
                     member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let clock = MockTime.make ()
-            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
+            let clock = MockTime.makeFromConsole console
+            let renderState = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -554,8 +554,8 @@ module TestActivationWithPartialBatch =
                     member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let clock = MockTime.make ()
-            let renderState = MockTime.makeRenderState console clock.GetUtcNow None
+            let clock = MockTime.makeFromConsole console
+            let renderState = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
