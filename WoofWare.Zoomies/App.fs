@@ -409,6 +409,7 @@ module App =
         (vdom : IVdomContext<'postLayoutEvent> -> 'state -> Vdom<DesiredBounds>)
         (resolveActivation : ActivationResolver<'appEvent, 'state>)
         (debugWriter : StreamWriter option)
+        (frameDelayMs : int)
         : AppHandle
         =
         // RunContinuationsAsynchronously so that we don't force continuation on the UI thread.
@@ -482,6 +483,11 @@ module App =
                                         vdom
                                         resolveActivation
                                         isCancelled
+
+                                // Throttle to reduce CPU usage
+                                if frameDelayMs > 0 then
+                                    Thread.Sleep frameDelayMs
+
 
                             None
                         with e ->
@@ -571,3 +577,4 @@ module App =
             vdom
             resolveActivation
             debugWriter
+            16
