@@ -951,8 +951,6 @@ module TestPostLayoutEvents =
             // Create a console that buffers writes until Flush
             let console : IConsole =
                 {
-                    BackgroundColor = fun () -> ConsoleColor.Black
-                    ForegroundColor = fun () -> ConsoleColor.White
                     WindowWidth = fun () -> 80
                     WindowHeight = fun () -> 10
                     ColorMode = ColorMode.Color
@@ -962,7 +960,7 @@ module TestPostLayoutEvents =
                             | TerminalOp.MoveCursor (x, y) ->
                                 cursorX <- x
                                 cursorY <- y
-                            | TerminalOp.WriteRun (text, _, _) ->
+                            | TerminalOp.WriteRun (text, _, _, _) ->
                                 // Write to pending buffer (not yet visible to user)
                                 for ch in text do
                                     if cursorY >= 0 && cursorY < 10 && cursorX >= 0 && cursorX < 80 then

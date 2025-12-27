@@ -410,6 +410,7 @@ module App =
         (incrVdom : VdomContext<'postLayoutEvent> -> 'state Node -> Vdom<DesiredBounds> Node)
         (resolveActivation : ActivationResolver<'appEvent, 'state>)
         (debugWriter : StreamWriter option)
+        (frameDelayMs : int)
         : AppHandle
         =
         // RunContinuationsAsynchronously so that we don't force continuation on the UI thread.
@@ -546,6 +547,10 @@ module App =
                                 // because pumpOnce rendered due to state changes.
                                 previousVdom <- Observer.value vdomObserver
 
+                                // Throttle to reduce CPU usage
+                                if frameDelayMs > 0 then
+                                    Thread.Sleep frameDelayMs
+
                             None
                         with e ->
                             // If we fail before signaling ready, signal failure there too
@@ -565,10 +570,12 @@ module App =
                     // main buffer in whatever state it was in before we started executing.
                     // According to the LLMs, some terminals *don't* confine state to the alternate buffer, but in that
                     // case this order is still correct: we'll leave the cursor visible when such a terminal leaks cursor
-                    // visibility out into the main buffer.
+                    // visibility out into the main buffer. The resetAttributes call handles terminals that leak SGR
+                    // state (colors, bold, etc.) from the alternate buffer.
                     RenderState.setCursorVisible renderState
                     RenderState.unregisterBracketedPaste renderState
                     RenderState.unregisterMouseMode renderState
+                    RenderState.resetAttributes renderState
                     RenderState.exitAlternateScreen renderState
                     // Flush any buffered output to ensure cleanup operations are written to the terminal
                     RenderState.flush renderState
@@ -651,3 +658,4 @@ module App =
             incrVdom
             resolveActivation
             debugWriter
+            16

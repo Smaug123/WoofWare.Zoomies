@@ -10,15 +10,17 @@ type ColorMode =
 type TerminalCell =
     {
         Char : char
-        BackgroundColor : ConsoleColor voption
-        TextColor : ConsoleColor voption
+        BackgroundColor : Color
+        TextColor : Color
+        Bold : bool
     }
 
     static member OfChar (c : char) =
         {
             Char = c
-            BackgroundColor = ValueNone
-            TextColor = ValueNone
+            BackgroundColor = Color.Default
+            TextColor = Color.Default
+            Bold = false
         }
 
 [<RequireQualifiedAccess>]
@@ -32,7 +34,7 @@ type TerminalOp =
     | MoveCursor of x : int * y : int
     /// Write a run of characters with uniform styling.
     /// The text should not contain control characters or newlines.
-    | WriteRun of text : string * backgroundColor : ConsoleColor voption * textColor : ConsoleColor voption
+    | WriteRun of text : string * backgroundColor : Color * textColor : Color * bold : bool
     | SetCursorVisibility of toVisible : bool
     | ClearScreen
     | EnterAlternateScreen
@@ -46,36 +48,39 @@ type TerminalOp =
     | BeginSynchronizedUpdate
     /// End synchronized update (DEC mode 2026). Terminal displays the batched output.
     | EndSynchronizedUpdate
+    /// Reset all text attributes to defaults (SGR 0). Use before exiting alternate screen
+    /// to prevent style leakage on terminals that don't fully isolate alternate buffer state.
+    | ResetAttributes
 
 [<RequireQualifiedAccess>]
 module TerminalOp =
-    let execute
-        (colorMode : ColorMode)
-        (currentBackground : ConsoleColor)
-        (currentForeground : ConsoleColor)
-        (consoleWrite : string -> unit)
-        (o : TerminalOp)
-        : unit
-        =
+    let execute (colorMode : ColorMode) (consoleWrite : string -> unit) (o : TerminalOp) : unit =
         match o with
-        | TerminalOp.WriteRun (text, backgroundColor, textColor) ->
-            let backgroundEscape =
-                match colorMode, backgroundColor with
-                | ColorMode.Color, ValueSome bg when bg <> currentBackground ->
-                    Some (ConsoleColor.toBackgroundEscapeCode bg, ConsoleColor.toBackgroundEscapeCode currentBackground)
-                | _ -> None
+        | TerminalOp.WriteRun (text, backgroundColor, textColor, bold) ->
+            match colorMode with
+            | ColorMode.Color ->
+                // Always emit colors (including Default, which emits SGR 39/49).
+                // This ensures consistent behavior: each run explicitly sets its colors,
+                // so Default-colored runs behave the same whether they're first or after
+                // a colored run.
+                consoleWrite (Color.toBackgroundEscapeCode backgroundColor)
+                consoleWrite (Color.toForegroundEscapeCode textColor)
 
-            let foregroundEscape =
-                match colorMode, textColor with
-                | ColorMode.Color, ValueSome fg when fg <> currentForeground ->
-                    Some (ConsoleColor.toForegroundEscapeCode fg, ConsoleColor.toForegroundEscapeCode currentForeground)
-                | _ -> None
+                // Always emit bold state (mirroring the "always emit colors" approach).
+                // This ensures consistent behavior: each run explicitly sets its bold state,
+                // so non-bold runs behave correctly even if the terminal started bold or
+                // bold was enabled out-of-band.
+                if bold then
+                    consoleWrite "\u001b[1m"
+                else
+                    consoleWrite "\u001b[22m"
 
-            backgroundEscape |> Option.iter (fst >> consoleWrite)
-            foregroundEscape |> Option.iter (fst >> consoleWrite)
-            consoleWrite text
-            foregroundEscape |> Option.iter (snd >> consoleWrite)
-            backgroundEscape |> Option.iter (snd >> consoleWrite)
+                consoleWrite text
+
+            // No need to reset colors or bold after: the next run will set its own styling.
+
+            | ColorMode.NoColor -> consoleWrite text
+
         | TerminalOp.MoveCursor (x, y) -> consoleWrite $"\x1B[%d{y + 1};%d{x + 1}H"
         | TerminalOp.SetCursorVisibility visible ->
             if visible then
@@ -91,3 +96,9 @@ module TerminalOp =
         | TerminalOp.UnregisterBracketedPaste -> consoleWrite "\u001b[?2004l"
         | TerminalOp.BeginSynchronizedUpdate -> consoleWrite "\u001b[?2026h"
         | TerminalOp.EndSynchronizedUpdate -> consoleWrite "\u001b[?2026l"
+        | TerminalOp.ResetAttributes ->
+            // Only reset attributes in Color mode. When NO_COLOR is set, we avoid
+            // changing terminal styling, which includes not resetting attributes on cleanup.
+            match colorMode with
+            | ColorMode.Color -> consoleWrite "\u001b[0m"
+            | ColorMode.NoColor -> ()
