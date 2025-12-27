@@ -502,10 +502,12 @@ module App =
                     // main buffer in whatever state it was in before we started executing.
                     // According to the LLMs, some terminals *don't* confine state to the alternate buffer, but in that
                     // case this order is still correct: we'll leave the cursor visible when such a terminal leaks cursor
-                    // visibility out into the main buffer.
+                    // visibility out into the main buffer. The resetAttributes call handles terminals that leak SGR
+                    // state (colors, bold, etc.) from the alternate buffer.
                     RenderState.setCursorVisible renderState
                     RenderState.unregisterBracketedPaste renderState
                     RenderState.unregisterMouseMode renderState
+                    RenderState.resetAttributes renderState
                     RenderState.exitAlternateScreen renderState
                     // Flush any buffered output to ensure cleanup operations are written to the terminal
                     RenderState.flush renderState

@@ -73,6 +73,8 @@ module RenderState =
     let unregisterBracketedPaste<'postLayoutEvent> (s : RenderState<'postLayoutEvent>) =
         s.Output TerminalOp.UnregisterBracketedPaste
 
+    let resetAttributes<'postLayoutEvent> (s : RenderState<'postLayoutEvent>) = s.Output TerminalOp.ResetAttributes
+
     /// Flush any buffered output to the console.
     let flush<'postLayoutEvent> (s : RenderState<'postLayoutEvent>) = s.Console.Flush ()
 

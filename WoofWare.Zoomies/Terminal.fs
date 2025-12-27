@@ -48,6 +48,9 @@ type TerminalOp =
     | BeginSynchronizedUpdate
     /// End synchronized update (DEC mode 2026). Terminal displays the batched output.
     | EndSynchronizedUpdate
+    /// Reset all text attributes to defaults (SGR 0). Use before exiting alternate screen
+    /// to prevent style leakage on terminals that don't fully isolate alternate buffer state.
+    | ResetAttributes
 
 [<RequireQualifiedAccess>]
 module TerminalOp =
@@ -92,3 +95,4 @@ module TerminalOp =
         | TerminalOp.UnregisterBracketedPaste -> consoleWrite "\u001b[?2004l"
         | TerminalOp.BeginSynchronizedUpdate -> consoleWrite "\u001b[?2026h"
         | TerminalOp.EndSynchronizedUpdate -> consoleWrite "\u001b[?2026l"
+        | TerminalOp.ResetAttributes -> consoleWrite "\u001b[0m"
