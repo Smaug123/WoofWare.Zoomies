@@ -17,16 +17,18 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         fetch-depth: 0 # so that NerdBank.GitVersioning has access to history
     - name: Install Nix
-      uses: cachix/install-nix-action@v30
-      with:
-        extra_nix_config: |
-          access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+      uses: DeterminateSystems/nix-installer-action@main
+    - name: Enable Nix cache
+      uses: DeterminateSystems/magic-nix-cache-action@main
     - name: Restore dependencies
       run: nix develop --command dotnet restore
     - name: Build
@@ -36,14 +38,16 @@ jobs:
 
   build-nix:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install Nix
-        uses: cachix/install-nix-action@v30
-        with:
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+        uses: DeterminateSystems/nix-installer-action@main
+      - name: Enable Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Build
         run: nix build
       - name: Reproducibility check
@@ -51,45 +55,49 @@ jobs:
 
   check-dotnet-format:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install Nix
-        uses: cachix/install-nix-action@v30
-        with:
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+        uses: DeterminateSystems/nix-installer-action@main
+      - name: Enable Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Run Fantomas
         run: nix run .#fantomas -- --check .
 
   check-nix-format:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install Nix
-        uses: cachix/install-nix-action@v30
-        with:
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+        uses: DeterminateSystems/nix-installer-action@main
+      - name: Enable Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Run Alejandra
         run: nix develop --command alejandra --check .
 
   analyzers:
     runs-on: ubuntu-latest
     permissions:
+      id-token: write
       security-events: write
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0 # so that NerdBank.GitVersioning has access to history
       - name: Install Nix
-        uses: cachix/install-nix-action@v30
-        with:
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+        uses: DeterminateSystems/nix-installer-action@main
+      - name: Enable Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Run analyzers
         run: ./analyzers/run.sh
       - name: Upload SARIF file
@@ -106,13 +114,15 @@ jobs:
   flake-check:
     name: Check flake
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v6
       - name: Install Nix
-        uses: cachix/install-nix-action@v30
-        with:
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+        uses: DeterminateSystems/nix-installer-action@main
+      - name: Enable Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Flake check
         run: nix flake check
 
