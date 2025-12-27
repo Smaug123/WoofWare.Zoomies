@@ -35,6 +35,7 @@
     <Compile Include="ConsoleModifiers.fs" />
     <Compile Include="LayoutTypes.fs" />
     <Compile Include="ConsoleColor.fs" />
+    <Compile Include="Color.fs" />
     <Compile Include="CellStyle.fs" />
     <Compile Include="Vdom.fs" />
     <Compile Include="GeneratedVdom.fs">

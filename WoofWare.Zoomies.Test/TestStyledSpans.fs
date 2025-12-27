@@ -80,15 +80,21 @@ Hello     |
                     [
                         {
                             Text = "R"
-                            Style = CellStyle.none |> CellStyle.withForeground ConsoleColor.Red
+                            Style =
+                                CellStyle.none
+                                |> CellStyle.withForeground (Color.fromConsoleColor ConsoleColor.Red)
                         }
                         {
                             Text = "G"
-                            Style = CellStyle.none |> CellStyle.withForeground ConsoleColor.Green
+                            Style =
+                                CellStyle.none
+                                |> CellStyle.withForeground (Color.fromConsoleColor ConsoleColor.Green)
                         }
                         {
                             Text = "B"
-                            Style = CellStyle.none |> CellStyle.withForeground ConsoleColor.Blue
+                            Style =
+                                CellStyle.none
+                                |> CellStyle.withForeground (Color.fromConsoleColor ConsoleColor.Blue)
                         }
                     ]
                 )

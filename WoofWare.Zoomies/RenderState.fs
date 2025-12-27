@@ -22,8 +22,6 @@ type RenderState<'postLayoutEvent> =
             mutable Buffer : TerminalCell voption[,]
             mutable CursorVisible : bool
             Output : TerminalOp -> unit
-            mutable BackgroundColor : ConsoleColor
-            mutable ForegroundColor : ConsoleColor
             KeyToNode : Dictionary<NodeKey, RenderedNode>
             /// List of focusable keys in tree order (for Tab navigation)
             FocusableKeys : OrderedSet<NodeKey>
@@ -74,6 +72,8 @@ module RenderState =
 
     let unregisterBracketedPaste<'postLayoutEvent> (s : RenderState<'postLayoutEvent>) =
         s.Output TerminalOp.UnregisterBracketedPaste
+
+    let resetAttributes<'postLayoutEvent> (s : RenderState<'postLayoutEvent>) = s.Output TerminalOp.ResetAttributes
 
     /// Flush any buffered output to the console.
     let flush<'postLayoutEvent> (s : RenderState<'postLayoutEvent>) = s.Console.Flush ()
@@ -168,17 +168,12 @@ module RenderState =
 
         let changeBuffer = Array2D.zeroCreate bounds.Height bounds.Width
 
-        let bg = c.BackgroundColor ()
-        let fg = c.ForegroundColor ()
-
         {
             Console = c
             Buffer = changeBuffer
             PreviousVdom = None
             Output = c.Execute
             CursorVisible = true
-            BackgroundColor = bg
-            ForegroundColor = fg
             KeyToNode = Dictionary<NodeKey, RenderedNode> ()
             FocusableKeys = OrderedSet ()
             FirstToFocusKey = ref None
