@@ -5,7 +5,9 @@ open System.Collections.Concurrent
 open System.Threading
 open FsUnitTyped
 open NUnit.Framework
+open WoofWare.Incremental
 open WoofWare.Zoomies
+open WoofWare.Zoomies.Components
 
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
@@ -30,7 +32,6 @@ module TestAppRun =
                     Flush = fun () -> ops.Enqueue Flush
                 }
 
-            let clock = MockTime.make ()
             let ctrlCHandler, _, _ = FakeCtrlCHandler.make ()
 
             let world = MockWorld.make ()
@@ -54,13 +55,13 @@ module TestAppRun =
                 App.run'
                     cts.Token
                     console
-                    clock.GetUtcNow
+                    (fun () -> TimeConversion.unixEpoch)
                     ctrlCHandler
                     worldFreezer
                     ()
                     (fun _ -> false)
                     processWorld
-                    vdom
+                    (App.pureView vdom)
                     resolver
                     None
                     0
@@ -151,4 +152,280 @@ module TestAppRun =
 
             // Verify the final flush is the very last console action
             lastFlushIndex.Value |> shouldEqual (opsList.Length - 1)
+        }
+
+    // ============================================================
+    // Time-based re-rendering tests
+    // ============================================================
+
+    [<Test>]
+    let ``App.run' re-renders when time-based vdom changes`` () =
+        task {
+            // Track how many times vdom function is called
+            let vdomCallCount = ref 0
+            let capturedFrames = ConcurrentQueue<int> ()
+
+            // Mock time source - start at a fixed time
+            let mutable mockTime = MockTime.defaultStartTime
+            let getUtcNow () = mockTime
+
+            let console : IConsole =
+                {
+                    WindowWidth = fun () -> 80
+                    WindowHeight = fun () -> 10
+                    ColorMode = ColorMode.Color
+                    Execute = fun _ -> ()
+                    Flush = fun () -> ()
+                }
+
+            let ctrlCHandler, _, _ = FakeCtrlCHandler.make ()
+            let world = MockWorld.make ()
+
+            let worldFreezer () =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            // Create an incremental vdom that depends on time (spinner)
+            let incrVdom (ctx : VdomContext<unit>) (_stateNode : unit Node) : Vdom<DesiredBounds> Node =
+                let incr = VdomContext.incr ctx
+                let clock = VdomContext.clock ctx
+                // 10 fps = 100ms per frame
+                let frameNode = IncrTime.spinnerFrameNode incr clock LoadingSpinner.FrameCount 10.0
+
+                incr.Map
+                    (fun frame ->
+                        vdomCallCount.Value <- vdomCallCount.Value + 1
+                        capturedFrames.Enqueue frame
+                        LoadingSpinner.make frame
+                    )
+                    frameNode
+
+            let processWorld (_bridge : IWorldBridge<unit>) = WorldProcessor.passthrough
+
+            let resolver = ActivationResolver.none
+
+            use cts = new CancellationTokenSource ()
+
+            let appHandle =
+                App.run'
+                    cts.Token
+                    console
+                    getUtcNow
+                    ctrlCHandler
+                    worldFreezer
+                    ()
+                    (fun _ -> false)
+                    processWorld
+                    incrVdom
+                    resolver
+                    None
+                    0
+
+            // Wait for the app to be ready
+            do! appHandle.Ready
+
+            // At this point, the vdom should have been called at least once
+            vdomCallCount.Value >= 1 |> shouldEqual true
+
+            // Record initial frame count
+            let initialCallCount = vdomCallCount.Value
+
+            // Advance mock time by 150ms (more than one 100ms frame)
+            mockTime <- mockTime + TimeSpan.FromMilliseconds 150.0
+
+            // Poll until vdom is called again (generous timeout, completes almost instantly)
+            let mutable attempts = 0
+
+            while vdomCallCount.Value <= initialCallCount && attempts < 500 do
+                do! System.Threading.Tasks.Task.Delay 10
+                attempts <- attempts + 1
+
+            // The vdom should have been called again due to time advancement
+            // (The main loop advances clock and marks dirty when vdom changes)
+            vdomCallCount.Value > initialCallCount |> shouldEqual true
+
+            // Verify we got different frames
+            let frames = capturedFrames.ToArray ()
+            frames.Length >= 2 |> shouldEqual true
+
+            // Cancel to stop the app
+            cts.Cancel ()
+
+            do! appHandle.Finished
+        }
+
+    // ============================================================
+    // App.pureView tests
+    // ============================================================
+
+    [<Test>]
+    let ``App.pureView creates node that depends on state changes`` () =
+        task {
+            let bounds =
+                {
+                    TopLeftX = 0
+                    TopLeftY = 0
+                    Width = 80
+                    Height = 24
+                }
+
+            let incrState = IncrementalState.make "initial" bounds None
+            let incr = incrState.Incr
+            let ctx = VdomContext.make<string, unit> incrState
+
+            let mutable callCount = 0
+
+            let pureVdom (_ctx : IVdomContext<unit>) (state : string) : Vdom<DesiredBounds> =
+                callCount <- callCount + 1
+                Vdom.textContent state
+
+            let stateNode = IncrementalState.stateNode incrState
+            let vdomNode = App.pureView pureVdom ctx stateNode
+
+            let observer = incr.Observe vdomNode
+            incr.Stabilize ()
+
+            // Initial call
+            let _ = Observer.value observer
+            callCount |> shouldEqual 1
+
+            // Change state
+            IncrementalState.setState "changed" incrState
+            incr.Stabilize ()
+
+            let _ = Observer.value observer
+            callCount |> shouldEqual 2
+        }
+
+    [<Test>]
+    let ``App.pureView creates node that depends on bounds changes`` () =
+        task {
+            let bounds1 =
+                {
+                    TopLeftX = 0
+                    TopLeftY = 0
+                    Width = 80
+                    Height = 24
+                }
+
+            let incrState = IncrementalState.make () bounds1 None
+            let incr = incrState.Incr
+            let ctx = VdomContext.make<unit, unit> incrState
+
+            let mutable callCount = 0
+
+            let pureVdom (ctx : IVdomContext<unit>) (_ : unit) : Vdom<DesiredBounds> =
+                callCount <- callCount + 1
+                Vdom.textContent $"Width: {ctx.TerminalBounds.Width}"
+
+            let stateNode = IncrementalState.stateNode incrState
+            let vdomNode = App.pureView pureVdom ctx stateNode
+
+            let observer = incr.Observe vdomNode
+            incr.Stabilize ()
+
+            // Initial call
+            let _ = Observer.value observer
+            callCount |> shouldEqual 1
+
+            // Change bounds
+            let bounds2 =
+                {
+                    TopLeftX = 0
+                    TopLeftY = 0
+                    Width = 120
+                    Height = 40
+                }
+
+            IncrementalState.setBounds bounds2 incrState
+            incr.Stabilize ()
+
+            let _ = Observer.value observer
+            callCount |> shouldEqual 2
+        }
+
+    [<Test>]
+    let ``App.pureView creates node that depends on focus changes`` () =
+        task {
+            let bounds =
+                {
+                    TopLeftX = 0
+                    TopLeftY = 0
+                    Width = 80
+                    Height = 24
+                }
+
+            let key1 = NodeKey.make "key1"
+            let incrState = IncrementalState.make () bounds (Some key1)
+            let incr = incrState.Incr
+            let ctx = VdomContext.make<unit, unit> incrState
+
+            let mutable callCount = 0
+
+            let pureVdom (ctx : IVdomContext<unit>) (_ : unit) : Vdom<DesiredBounds> =
+                callCount <- callCount + 1
+
+                match ctx.FocusedKey with
+                | Some key -> Vdom.textContent $"Focused: {key}"
+                | None -> Vdom.textContent "No focus"
+
+            let stateNode = IncrementalState.stateNode incrState
+            let vdomNode = App.pureView pureVdom ctx stateNode
+
+            let observer = incr.Observe vdomNode
+            incr.Stabilize ()
+
+            // Initial call
+            let _ = Observer.value observer
+            callCount |> shouldEqual 1
+
+            // Change focus
+            let key2 = NodeKey.make "key2"
+            IncrementalState.setFocusedKey (Some key2) incrState
+            incr.Stabilize ()
+
+            let _ = Observer.value observer
+            callCount |> shouldEqual 2
+        }
+
+    [<Test>]
+    let ``App.pureView does not trigger when nothing changes`` () =
+        task {
+            let bounds =
+                {
+                    TopLeftX = 0
+                    TopLeftY = 0
+                    Width = 80
+                    Height = 24
+                }
+
+            let incrState = IncrementalState.make "state" bounds None
+            let incr = incrState.Incr
+            let ctx = VdomContext.make<string, unit> incrState
+
+            let mutable callCount = 0
+
+            let pureVdom (_ctx : IVdomContext<unit>) (state : string) : Vdom<DesiredBounds> =
+                callCount <- callCount + 1
+                Vdom.textContent state
+
+            let stateNode = IncrementalState.stateNode incrState
+            let vdomNode = App.pureView pureVdom ctx stateNode
+
+            let observer = incr.Observe vdomNode
+            incr.Stabilize ()
+
+            // Initial call
+            let _ = Observer.value observer
+            callCount |> shouldEqual 1
+
+            // Stabilize again without changing anything
+            incr.Stabilize ()
+
+            // Should not have been called again
+            let _ = Observer.value observer
+            callCount |> shouldEqual 1
         }

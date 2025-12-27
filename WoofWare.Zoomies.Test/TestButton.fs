@@ -76,9 +76,9 @@ module TestButton =
                     member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let clock = MockTime.make ()
+            let clock = MockTime.makeFromConsole console
 
-            let renderState = RenderState.make console clock.GetUtcNow None
+            let renderState, _ = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -266,9 +266,9 @@ Hello, World!                           |
                     member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let clock = MockTime.make ()
+            let clock = MockTime.makeFromConsole console
 
-            let renderState = RenderState.make console clock.GetUtcNow None
+            let renderState, _ = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state =
                 {
@@ -494,9 +494,9 @@ Last clicked: Button 3                            |
                     member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let clock = MockTime.make ()
+            let clock = MockTime.makeFromConsole console
 
-            let renderState = RenderState.make console clock.GetUtcNow None
+            let renderState, advance = MockTime.makeRenderStateFromTimer console clock None
 
             let mutable state = true
 
@@ -550,7 +550,7 @@ Goodbye, World!                         |
 
             // See how the button press evolves over time. Wait til just before the timer elapses:
 
-            clock.Advance (TimeSpan.FromMilliseconds (VdomContextConstants.RECENT_ACTIVATION_TIMEOUT_MS - 0.01))
+            advance (TimeSpan.FromMilliseconds (VdomContextConstants.RECENT_ACTIVATION_TIMEOUT_MS - 0.01))
             |> ignore<DateTime>
 
             state <-
@@ -575,7 +575,7 @@ Goodbye, World!                         |
                 return ConsoleHarness.toString terminal
             }
 
-            clock.Advance (TimeSpan.FromMilliseconds 0.02) |> ignore<DateTime>
+            advance (TimeSpan.FromMilliseconds 0.02) |> ignore<DateTime>
 
             state <-
                 App.pumpOnce

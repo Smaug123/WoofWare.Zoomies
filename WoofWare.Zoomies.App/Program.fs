@@ -209,7 +209,7 @@ module FileBrowser =
             ]
 
     let run (getEnv : string -> string option) =
-        App.run getEnv State.Initial (fun _ -> true) processWorld view resolver
+        App.run getEnv State.Initial (fun _ -> true) processWorld (App.pureView view) resolver
 
 module Program =
     let getEnv (varName : string) : string option =

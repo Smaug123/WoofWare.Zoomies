@@ -103,7 +103,9 @@ module TestFlexibleContent =
     [<Test>]
     let ``FlexibleContent renders at width 80`` () =
         let console, harness = ConsoleHarness.make' (fun () -> 80) (fun () -> 5)
-        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+
+        let renderState = MockTime.makeRenderStateStatic<unit> console None
+
         let vdom = progressBar 0.6
 
         Render.oneStep renderState () (fun _ -> vdom)
@@ -124,7 +126,9 @@ module TestFlexibleContent =
     [<Test>]
     let ``FlexibleContent renders at width 20`` () =
         let console, harness = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
-        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+
+        let renderState = MockTime.makeRenderStateStatic<unit> console None
+
         let vdom = progressBar 0.6
 
         Render.oneStep renderState () (fun _ -> vdom)
@@ -153,7 +157,7 @@ module TestFlexibleContent =
                 Execute = terminalOps.Add
             }
 
-        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+        let renderState = MockTime.makeRenderStateStatic<unit> console None
 
         let vdom = progressBar 0.6
 
@@ -172,7 +176,8 @@ module TestFlexibleContent =
     let ``FlexibleContent responsive layout renders horizontal at wide width`` () =
         // At width >= 40, responsiveLayout uses Vertical split (side-by-side)
         let console, harness = ConsoleHarness.make' (fun () -> 80) (fun () -> 10)
-        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+
+        let renderState = MockTime.makeRenderStateStatic<unit> console None
 
         let vdom = responsiveLayout "Left" "Right"
 
@@ -200,7 +205,8 @@ Left                                    Right                                   
     let ``FlexibleContent responsive layout renders vertical at narrow width`` () =
         // At width < 40, responsiveLayout uses Horizontal split (stacked vertically)
         let console, harness = ConsoleHarness.make' (fun () -> 30) (fun () -> 10)
-        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+
+        let renderState = MockTime.makeRenderStateStatic<unit> console None
 
         let vdom = responsiveLayout "Left" "Right"
 
@@ -247,7 +253,8 @@ Right                         |
         let vdom = Vdom.flexibleContent measure render
 
         let console, harness = ConsoleHarness.make' (fun () -> 50) (fun () -> 5)
-        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+
+        let renderState = MockTime.makeRenderStateStatic<unit> console None
 
         Render.oneStep renderState () (fun _ -> vdom)
 
@@ -327,7 +334,9 @@ Width: 50                                         |
             Vdom.flexibleContent outerMeasure outerRender
 
         let console, harness = ConsoleHarness.make' (fun () -> 50) (fun () -> 5)
-        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+
+        let renderState = MockTime.makeRenderStateStatic<unit> console None
+
         let vdom = nestedFlexible 0.6
 
         Render.oneStep renderState () (fun _ -> vdom)
@@ -402,7 +411,9 @@ Progress:                                         |
             Vdom.flexibleContent outerMeasure outerRender
 
         let console, harness = ConsoleHarness.make' (fun () -> 25) (fun () -> 5)
-        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+
+        let renderState = MockTime.makeRenderStateStatic<unit> console None
+
         let vdom = nestedFlexible 0.6
 
         Render.oneStep renderState () (fun _ -> vdom)

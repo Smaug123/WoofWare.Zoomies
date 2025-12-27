@@ -23,6 +23,7 @@
   <ItemGroup>
     <!-- similarly, maximise compatibility by keeping FSharp.Core as low as we can -->
     <PackageReference Update="FSharp.Core" Version="6.0.1" />
+    <PackageReference Include="WoofWare.Incremental" Version="0.1.5" />
   </ItemGroup>
 
   <ItemGroup>
@@ -52,7 +53,9 @@
     <Compile Include="IStopwatch.fs" />
     <Compile Include="WorldFreezer.fs" />
     <Compile Include="IVdomContext.fs" />
+    <Compile Include="IncrementalState.fs" />
     <Compile Include="VdomContext.fs" />
+    <Compile Include="IncrTime.fs" />
     <Compile Include="Layout.fs" />
     <Compile Include="VdomBounds.fs" />
     <Compile Include="RenderState.fs" />

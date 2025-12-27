@@ -17,10 +17,14 @@ module TestVdomContext =
             Height = 24
         }
 
+    /// Create a VdomContext from a MockTimer, returning both the context and an advance function.
+    /// The advance function updates both the MockTimer's clock and the VdomContext's stabilization time.
+    let empty (clock : MockTimer) : VdomContext<unit> * (TimeSpan -> DateTime) = MockTime.makeVdomContextFromTimer clock
+
     [<Test>]
     let ``pruneExpiredActivations removes only expired entries`` () =
         let clock = MockTime.make ()
-        let ctx = VdomContext.empty<unit> clock.GetUtcNow bounds
+        let ctx, advance = empty clock
 
         // Record activations at different times
         let key1 = NodeKey.make "key1"
@@ -30,18 +34,17 @@ module TestVdomContext =
 
         // Record first activation
         VdomContext.recordActivation key1 ctx
-        let time1 = clock.GetUtcNow ()
 
         // Advance time by 100ms and record second activation
-        clock.Advance (TimeSpan.FromMilliseconds 100.0) |> ignore<DateTime>
+        advance (TimeSpan.FromMilliseconds 100.0) |> ignore<DateTime>
         VdomContext.recordActivation key2 ctx
 
         // Advance time by 200ms and record third activation
-        clock.Advance (TimeSpan.FromMilliseconds 200.0) |> ignore<DateTime>
+        advance (TimeSpan.FromMilliseconds 200.0) |> ignore<DateTime>
         VdomContext.recordActivation key3 ctx
 
         // Advance time by 150ms and record fourth activation
-        clock.Advance (TimeSpan.FromMilliseconds 150.0) |> ignore<DateTime>
+        advance (TimeSpan.FromMilliseconds 150.0) |> ignore<DateTime>
         VdomContext.recordActivation key4 ctx
 
         // At this point:
@@ -62,7 +65,7 @@ module TestVdomContext =
         // - key2 was activated 450ms ago (not expired)
         // - key3 was activated 250ms ago (not expired)
         // - key4 was activated 100ms ago (not expired)
-        clock.Advance (TimeSpan.FromMilliseconds 100.0) |> ignore<DateTime>
+        advance (TimeSpan.FromMilliseconds 100.0) |> ignore<DateTime>
 
         // Mark clean before pruning so we can verify pruning actually removed something
         VdomContext.markClean ctx
@@ -84,7 +87,7 @@ module TestVdomContext =
         // - key2 was activated 550ms ago (expired)
         // - key3 was activated 350ms ago (not expired)
         // - key4 was activated 200ms ago (not expired)
-        clock.Advance (TimeSpan.FromMilliseconds 100.0) |> ignore<DateTime>
+        advance (TimeSpan.FromMilliseconds 100.0) |> ignore<DateTime>
 
         // Mark clean before pruning so we can verify pruning actually removed something
         VdomContext.markClean ctx
@@ -103,7 +106,7 @@ module TestVdomContext =
     [<Test>]
     let ``pruneExpiredActivations handles removing multiple entries in one pass`` () =
         let clock = MockTime.make ()
-        let ctx = VdomContext.empty<unit> clock.GetUtcNow bounds
+        let ctx, advance = empty clock
 
         // Create many activations at the same time
         let keys = [ for i in 1..10 -> NodeKey.make $"key{i}" ]
@@ -116,7 +119,7 @@ module TestVdomContext =
             VdomContext.wasRecentlyActivated key ctx |> shouldEqual true
 
         // Advance time past expiration threshold
-        clock.Advance (TimeSpan.FromMilliseconds 600.0) |> ignore<DateTime>
+        advance (TimeSpan.FromMilliseconds 600.0) |> ignore<DateTime>
 
         // Mark clean before pruning so we can verify pruning actually removed entries
         VdomContext.markClean ctx
@@ -135,7 +138,7 @@ module TestVdomContext =
     [<Test>]
     let ``pruneExpiredActivations marks context dirty only when removals occur`` () =
         let clock = MockTime.make ()
-        let ctx = VdomContext.empty<unit> clock.GetUtcNow bounds
+        let ctx, advance = empty clock
 
         let key1 = NodeKey.make "key1"
 
@@ -151,7 +154,7 @@ module TestVdomContext =
         VdomContext.isDirty ctx |> shouldEqual false
 
         // Advance time past expiration
-        clock.Advance (TimeSpan.FromMilliseconds 600.0) |> ignore<DateTime>
+        advance (TimeSpan.FromMilliseconds 600.0) |> ignore<DateTime>
 
         // Prune when something has expired - should mark dirty
         VdomContext.pruneExpiredActivations ctx

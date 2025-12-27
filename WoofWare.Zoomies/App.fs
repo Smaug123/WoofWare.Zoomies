@@ -5,6 +5,7 @@ open System.IO
 open System.Runtime.InteropServices
 open System.Threading
 open System.Threading.Tasks
+open WoofWare.Incremental
 
 [<Struct>]
 type RerenderRequest =
@@ -406,7 +407,7 @@ module App =
         (initialState : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
         (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'postLayoutEvent, 'state>)
-        (vdom : IVdomContext<'postLayoutEvent> -> 'state -> Vdom<DesiredBounds>)
+        (incrVdom : VdomContext<'postLayoutEvent> -> 'state Node -> Vdom<DesiredBounds> Node)
         (resolveActivation : ActivationResolver<'appEvent, 'state>)
         (debugWriter : StreamWriter option)
         (frameDelayMs : int)
@@ -423,8 +424,49 @@ module App =
         let _thread =
             fun () ->
                 try
-                    // TODO: react to changes in dimension
-                    use renderState = RenderState.make console getUtcNow debugWriter
+                    // Get initial terminal bounds
+                    let initialBounds =
+                        {
+                            TopLeftX = 0
+                            TopLeftY = 0
+                            Width = console.WindowWidth ()
+                            Height = console.WindowHeight ()
+                        }
+
+                    // Set up incremental state for reactive updates
+                    let incrState = IncrementalState.make initialState initialBounds None
+                    let vdomContext = VdomContext.make incrState
+
+                    // Create the incremental Vdom Node
+                    let stateNode = IncrementalState.stateNode incrState
+                    let vdomNode = incrVdom vdomContext stateNode
+
+                    // Create an observer for the Vdom so we can read it after stabilization
+                    let vdomObserver = incrState.Incr.Observe vdomNode
+
+                    // Initial stabilization
+                    let initialUtcNow = getUtcNow ()
+                    VdomContext.setCurrentStabilizationTime initialUtcNow vdomContext
+                    IncrementalState.advanceClockAndStabilize initialUtcNow incrState
+
+                    // Create a wrapper that bridges the incremental system to the legacy API.
+                    // When state changes, we update the state Var, stabilize, and observe.
+                    let vdom (ctx : IVdomContext<'postLayoutEvent>) (state : 'state) : Vdom<DesiredBounds> =
+                        // Update state Var if it changed
+                        let currentState = incrState.Incr.Var.Value incrState.StateVar
+
+                        if currentState <> state then
+                            IncrementalState.setState state incrState
+
+                        // Advance clock and stabilize
+                        let utcNow = getUtcNow ()
+                        VdomContext.setCurrentStabilizationTime utcNow vdomContext
+                        IncrementalState.advanceClockAndStabilize utcNow incrState
+
+                        // Observe and return the vdom - Observer module provides Value function
+                        Observer.value vdomObserver
+
+                    use renderState = RenderState.make console vdomContext debugWriter
 
                     RenderState.enterAlternateScreen renderState
                     RenderState.registerMouseMode renderState
@@ -466,6 +508,9 @@ module App =
                             let mutable currentState =
                                 processNoChanges initialState renderState processWorld vdom
 
+                            // Track the previous vdom value to detect time-based changes
+                            let mutable previousVdom = Observer.value vdomObserver
+
                             let isCancelled () =
                                 cancels > 0 || terminate.IsCancellationRequested
 
@@ -473,6 +518,19 @@ module App =
                             ready.SetResult ()
 
                             while not (isCancelled ()) do
+                                // Advance clock and stabilize to propagate time-based changes.
+                                // This must happen BEFORE checking isDirty in pumpOnce, so that
+                                // time-dependent components (like spinners) can trigger re-renders.
+                                let loopUtcNow = getUtcNow ()
+                                VdomContext.setCurrentStabilizationTime loopUtcNow vdomContext
+                                IncrementalState.advanceClockAndStabilize loopUtcNow incrState
+
+                                // Check if vdom changed due to time advancement
+                                let currentVdom = Observer.value vdomObserver
+
+                                if not (Object.referenceEquals previousVdom currentVdom) then
+                                    VdomContext.markDirty vdomContext
+
                                 currentState <-
                                     pumpOnce
                                         listener'
@@ -484,10 +542,14 @@ module App =
                                         resolveActivation
                                         isCancelled
 
+                                // Update previousVdom to track the most recently observed vdom.
+                                // This ensures we don't mark dirty on the next iteration just
+                                // because pumpOnce rendered due to state changes.
+                                previousVdom <- Observer.value vdomObserver
+
                                 // Throttle to reduce CPU usage
                                 if frameDelayMs > 0 then
                                     Thread.Sleep frameDelayMs
-
 
                             None
                         with e ->
@@ -536,12 +598,29 @@ module App =
             Finished = complete.Task
         }
 
+    /// Lift a pure view function into an incremental one.
+    /// The resulting view depends only on the state Node - any state change triggers full recomputation.
+    /// For fine-grained incrementality, write an incremental view function directly.
+    let pureView<'state, 'postLayoutEvent>
+        (view : IVdomContext<'postLayoutEvent> -> 'state -> Vdom<DesiredBounds>)
+        : VdomContext<'postLayoutEvent> -> 'state Node -> Vdom<DesiredBounds> Node
+        =
+        fun ctx stateNode ->
+            let incr = VdomContext.incr ctx
+            // We also depend on bounds and focus so the vdom updates when they change
+            let boundsNode = VdomContext.boundsNode ctx
+            let focusNode = VdomContext.focusedKeyNode ctx
+
+            incr.Map
+                (fun ((state, _bounds), _focus) -> view (VdomContext.asTyped ctx) state)
+                (incr.Both (incr.Both stateNode boundsNode) focusNode)
+
     let run<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
         (getEnv : string -> string option)
         (state : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
         (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'postLayoutEvent, 'state>)
-        (vdom : IVdomContext<'postLayoutEvent> -> 'state -> Vdom<DesiredBounds>)
+        (incrVdom : VdomContext<'postLayoutEvent> -> 'state Node -> Vdom<DesiredBounds> Node)
         (resolveActivation : ActivationResolver<'appEvent, 'state>)
         : AppHandle
         =
@@ -576,7 +655,7 @@ module App =
             state
             haveFrameworkHandleFocus
             processWorld
-            vdom
+            incrVdom
             resolveActivation
             debugWriter
             16
