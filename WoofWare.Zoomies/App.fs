@@ -410,6 +410,7 @@ module App =
         (incrVdom : VdomContext<'postLayoutEvent> -> 'state Node -> Vdom<DesiredBounds> Node)
         (resolveActivation : ActivationResolver<'appEvent, 'state>)
         (debugWriter : StreamWriter option)
+        (frameDelayMs : int)
         : AppHandle
         =
         // RunContinuationsAsynchronously so that we don't force continuation on the UI thread.
@@ -546,6 +547,10 @@ module App =
                                 // because pumpOnce rendered due to state changes.
                                 previousVdom <- Observer.value vdomObserver
 
+                                // Throttle to reduce CPU usage
+                                if frameDelayMs > 0 then
+                                    Thread.Sleep frameDelayMs
+
                             None
                         with e ->
                             // If we fail before signaling ready, signal failure there too
@@ -653,3 +658,4 @@ module App =
             incrVdom
             resolveActivation
             debugWriter
+            16

@@ -64,6 +64,7 @@ module TestAppRun =
                     (App.pureView vdom)
                     resolver
                     None
+                    0
 
             // Wait for the app to be ready (initial setup and first render complete)
             do! appHandle.Ready
@@ -170,8 +171,6 @@ module TestAppRun =
 
             let console : IConsole =
                 {
-                    BackgroundColor = fun () -> ConsoleColor.Black
-                    ForegroundColor = fun () -> ConsoleColor.White
                     WindowWidth = fun () -> 80
                     WindowHeight = fun () -> 10
                     ColorMode = ColorMode.Color
@@ -223,6 +222,7 @@ module TestAppRun =
                     incrVdom
                     resolver
                     None
+                    0
 
             // Wait for the app to be ready
             do! appHandle.Ready

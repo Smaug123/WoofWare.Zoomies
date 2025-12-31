@@ -66,17 +66,18 @@ module TerminalOp =
                 consoleWrite (Color.toBackgroundEscapeCode backgroundColor)
                 consoleWrite (Color.toForegroundEscapeCode textColor)
 
-                // Emit bold if set
+                // Always emit bold state (mirroring the "always emit colors" approach).
+                // This ensures consistent behavior: each run explicitly sets its bold state,
+                // so non-bold runs behave correctly even if the terminal started bold or
+                // bold was enabled out-of-band.
                 if bold then
                     consoleWrite "\u001b[1m"
+                else
+                    consoleWrite "\u001b[22m"
 
                 consoleWrite text
 
-                // Reset bold if it was set
-                if bold then
-                    consoleWrite "\u001b[22m"
-
-            // No need to reset colors after: the next run will set its own colors.
+            // No need to reset colors or bold after: the next run will set its own styling.
 
             | ColorMode.NoColor -> consoleWrite text
 
@@ -95,4 +96,9 @@ module TerminalOp =
         | TerminalOp.UnregisterBracketedPaste -> consoleWrite "\u001b[?2004l"
         | TerminalOp.BeginSynchronizedUpdate -> consoleWrite "\u001b[?2026h"
         | TerminalOp.EndSynchronizedUpdate -> consoleWrite "\u001b[?2026l"
-        | TerminalOp.ResetAttributes -> consoleWrite "\u001b[0m"
+        | TerminalOp.ResetAttributes ->
+            // Only reset attributes in Color mode. When NO_COLOR is set, we avoid
+            // changing terminal styling, which includes not resetting attributes on cleanup.
+            match colorMode with
+            | ColorMode.Color -> consoleWrite "\u001b[0m"
+            | ColorMode.NoColor -> ()
