@@ -450,18 +450,19 @@ module App =
                     IncrementalState.advanceClockAndStabilize initialUtcNow incrState
 
                     // Create a wrapper that bridges the incremental system to the legacy API.
-                    // When state changes, we update the state Var, stabilize, and observe.
+                    // When state changes, we update the state Var and stabilize to propagate.
+                    // When state is unchanged, the graph is already stable from the main loop's
+                    // advanceClockAndStabilize call, so we just read the observer value.
                     let vdom (ctx : IVdomContext<'postLayoutEvent>) (state : 'state) : Vdom<DesiredBounds> =
                         // Update state Var if it changed
                         let currentState = incrState.Incr.Var.Value incrState.StateVar
 
                         if currentState <> state then
                             IncrementalState.setState state incrState
-
-                        // Advance clock and stabilize
-                        let utcNow = getUtcNow ()
-                        VdomContext.setCurrentStabilizationTime utcNow vdomContext
-                        IncrementalState.advanceClockAndStabilize utcNow incrState
+                            // Stabilize to propagate the state change through the graph
+                            let utcNow = getUtcNow ()
+                            VdomContext.setCurrentStabilizationTime utcNow vdomContext
+                            IncrementalState.advanceClockAndStabilize utcNow incrState
 
                         // Observe and return the vdom - Observer module provides Value function
                         Observer.value vdomObserver
