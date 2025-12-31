@@ -48,6 +48,9 @@ type TerminalOp =
     | BeginSynchronizedUpdate
     /// End synchronized update (DEC mode 2026). Terminal displays the batched output.
     | EndSynchronizedUpdate
+    /// Reset all text attributes to defaults (SGR 0). Use before exiting alternate screen
+    /// to prevent style leakage on terminals that don't fully isolate alternate buffer state.
+    | ResetAttributes
 
 [<RequireQualifiedAccess>]
 module TerminalOp =
@@ -56,15 +59,12 @@ module TerminalOp =
         | TerminalOp.WriteRun (text, backgroundColor, textColor, bold) ->
             match colorMode with
             | ColorMode.Color ->
-                // Emit background color if not default
-                match backgroundColor with
-                | Color.Default -> ()
-                | _ -> consoleWrite (Color.toBackgroundEscapeCode backgroundColor)
-
-                // Emit foreground color if not default
-                match textColor with
-                | Color.Default -> ()
-                | _ -> consoleWrite (Color.toForegroundEscapeCode textColor)
+                // Always emit colors (including Default, which emits SGR 39/49).
+                // This ensures consistent behavior: each run explicitly sets its colors,
+                // so Default-colored runs behave the same whether they're first or after
+                // a colored run.
+                consoleWrite (Color.toBackgroundEscapeCode backgroundColor)
+                consoleWrite (Color.toForegroundEscapeCode textColor)
 
                 // Emit bold if set
                 if bold then
@@ -76,14 +76,7 @@ module TerminalOp =
                 if bold then
                     consoleWrite "\u001b[22m"
 
-                // Reset colors if they were set
-                match textColor with
-                | Color.Default -> ()
-                | _ -> consoleWrite (Color.toForegroundEscapeCode Color.Default)
-
-                match backgroundColor with
-                | Color.Default -> ()
-                | _ -> consoleWrite (Color.toBackgroundEscapeCode Color.Default)
+            // No need to reset colors after: the next run will set its own colors.
 
             | ColorMode.NoColor -> consoleWrite text
 
@@ -102,3 +95,4 @@ module TerminalOp =
         | TerminalOp.UnregisterBracketedPaste -> consoleWrite "\u001b[?2004l"
         | TerminalOp.BeginSynchronizedUpdate -> consoleWrite "\u001b[?2026h"
         | TerminalOp.EndSynchronizedUpdate -> consoleWrite "\u001b[?2026l"
+        | TerminalOp.ResetAttributes -> consoleWrite "\u001b[0m"
