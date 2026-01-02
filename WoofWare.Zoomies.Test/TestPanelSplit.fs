@@ -31,7 +31,7 @@ module TestPanelSplit =
                 WindowHeight = fun _ -> 3
             }
 
-        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+        let renderState = MockTime.makeRenderStateStatic<unit> console None
 
         // Create vdom with a PanelSplit where a bordered child changes
         // Bordered doesn't repaint its entire area, so we can detect if PanelSplit is adding extra repaints
@@ -119,7 +119,7 @@ module TestPanelSplit =
                     member _.ProcessPostLayoutEvents (_, _, state) = state
                 }
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             // First render: fill with X's
             let mutable state =
@@ -182,7 +182,7 @@ module TestPanelSplit =
             // Demonstrates that proportion splits with small terminals can allocate zero width/height
             let console, _ = ConsoleHarness.make' (fun () -> 1) (fun () -> 1)
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             let leftKey = NodeKey.make "left"
             let rightKey = NodeKey.make "right"
@@ -236,7 +236,7 @@ module TestPanelSplit =
             // Same as above but for horizontal splits
             let console, _ = ConsoleHarness.make' (fun () -> 10) (fun () -> 2)
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             let topKey = NodeKey.make "top"
             let bottomKey = NodeKey.make "bottom"
@@ -309,7 +309,7 @@ module TestPanelSplit =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -369,7 +369,7 @@ Hello world                                                        Hi           
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -421,7 +421,7 @@ onger piece text her|
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -474,7 +474,7 @@ o   d   |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -530,7 +530,7 @@ e multiple lines when rendered          |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -581,7 +581,7 @@ nt                            |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -634,7 +634,7 @@ nt                            |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -698,7 +698,7 @@ B|
                     member _.ProcessPostLayoutEvents (_, _, state) = state
                 }
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             // First render: 50/50 split with X's filling the left side
             let mutable state =
@@ -803,7 +803,7 @@ AAA                 right                                                       
                     member _.ProcessPostLayoutEvents (_, _, state) = state
                 }
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             // First render: 50/50 split
             let mutable state =
@@ -880,7 +880,7 @@ AAA                 right                                                       
                     member _.ProcessPostLayoutEvents (_, _, state) = state
                 }
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             // First render: 70/30 split with X's on the left
             let mutable state =
@@ -976,7 +976,7 @@ AAA                 right                                                       
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -1045,7 +1045,7 @@ small               ┌──────────────────┐
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -1097,7 +1097,7 @@ Left                               Right|
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderStateAuto = RenderState.make consoleAuto MockTime.getStaticUtcNow None
+            let renderStateAuto = MockTime.makeRenderStateStatic consoleAuto None
 
             App.pumpOnce
                 worldFreezer
@@ -1119,7 +1119,7 @@ Left                               Right|
                 let right = Vdom.textContent "Right"
                 Vdom.panelSplitAutoExpand (SplitDirection.Vertical, left, right)
 
-            let renderStateExpand = RenderState.make consoleExpand MockTime.getStaticUtcNow None
+            let renderStateExpand = MockTime.makeRenderStateStatic consoleExpand None
 
             App.pumpOnce
                 worldFreezer
@@ -1187,7 +1187,7 @@ Left                               Right|
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -1252,7 +1252,7 @@ Bottom              |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -1314,7 +1314,7 @@ LeftRight                               |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -1394,7 +1394,8 @@ Bottom              |
                     member _.ProcessPostLayoutEvents (_, _, state) = state
                 }
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
+
             let mutable state = true
 
             // First render with content
@@ -1533,7 +1534,7 @@ OnlyThis            |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -1635,7 +1636,7 @@ LLLLLLLLLLLLRRRRRRRR|
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer

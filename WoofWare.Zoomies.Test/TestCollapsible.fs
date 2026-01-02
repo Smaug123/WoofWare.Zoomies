@@ -83,7 +83,8 @@ module TestCollapsible =
                     member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
+
             let mutable currentState = state
 
             // Initial render: collapsed and unfocused
@@ -279,7 +280,8 @@ This stuff was hidden                                       |
                     member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
+
             let mutable currentState = state
 
             // Initial render: collapsed
@@ -425,7 +427,8 @@ Line 2 of content                                           |
                     member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
                 }
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
+
             let mutable currentState = state
 
             // Initial render: collapsed and unfocused - long label wraps across multiple lines

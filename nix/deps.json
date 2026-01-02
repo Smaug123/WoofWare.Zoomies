@@ -291,13 +291,28 @@
   },
   {
     "pname": "TypeEquality",
+    "version": "0.3.0",
+    "hash": "sha256-V50xAOzzyUJrY+MYPRxtnqW5MVeATXCes89wPprv1r4="
+  },
+  {
+    "pname": "TypeEquality",
     "version": "0.4.2",
     "hash": "sha256-YxK6BGHjcuP76j5BbTDi814jxGqOevQSgS00IJcjZSA="
+  },
+  {
+    "pname": "WoofWare.BalancedReducer",
+    "version": "1.0.2",
+    "hash": "sha256-3QJSfo3eyfcyz8EueNjEh/IOZJrBNCoD/g7cY0hh+YU="
   },
   {
     "pname": "WoofWare.Expect",
     "version": "0.8.1",
     "hash": "sha256-OeOay7YvrTBysPAvJhlN3ff+4y5z95ah6F4lPT/fjh0="
+  },
+  {
+    "pname": "WoofWare.Incremental",
+    "version": "0.1.5",
+    "hash": "sha256-LrDAouQQFV1V8cJi9e7JnOO68xzN9FRqmgAtIs1seXY="
   },
   {
     "pname": "WoofWare.Myriad.Plugins",
@@ -313,6 +328,16 @@
     "pname": "WoofWare.NUnitTestRunner",
     "version": "0.3.4",
     "hash": "sha256-OaBYMEAXUDiz9ei2/Zg4Q1A8BNDK1oaMB44uVz4UG/0="
+  },
+  {
+    "pname": "WoofWare.TimingWheel",
+    "version": "0.6.1",
+    "hash": "sha256-zEupF3zeFaC2yigryXTcxbFuNgWPmltPtdQruJdrwOI="
+  },
+  {
+    "pname": "WoofWare.WeakHashTable",
+    "version": "1.1.1",
+    "hash": "sha256-Y1S6QSyaPIyGU1DljGCPycO0blRUaOndqmbdcnyxTIw="
   },
   {
     "pname": "WoofWare.Whippet.Fantomas",

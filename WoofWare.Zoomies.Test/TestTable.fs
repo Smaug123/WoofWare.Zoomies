@@ -41,7 +41,7 @@ module TestTable =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -93,7 +93,7 @@ module TestTable =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -146,7 +146,7 @@ A2B2                |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -198,7 +198,7 @@ Bob  25                       |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -250,7 +250,7 @@ A2        B2        |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -303,7 +303,7 @@ A        B                    |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -364,7 +364,7 @@ Row3                     |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -418,7 +418,7 @@ A    B                        |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -471,7 +471,7 @@ A           B       |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -518,7 +518,7 @@ XY                  |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -573,7 +573,7 @@ Single              |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -633,7 +633,7 @@ Row3                |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -693,7 +693,7 @@ Bottom              |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -753,7 +753,7 @@ Prop                |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -803,7 +803,7 @@ Row2                |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -861,7 +861,7 @@ Cell2               |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -917,7 +917,7 @@ X    Y                        |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -973,7 +973,7 @@ Data1   Data2  |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -1034,7 +1034,7 @@ A B                 |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -1088,7 +1088,7 @@ Col1          Col2          C3|
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -1139,7 +1139,7 @@ A    B C                      |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -1192,7 +1192,7 @@ X  Y                |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -1251,7 +1251,7 @@ A         B         C         |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -1309,7 +1309,7 @@ X      Y       Z              |
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -1367,7 +1367,7 @@ gColumngColumnngColu|
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -1712,7 +1712,7 @@ module TestTableMeasurements =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -1847,7 +1847,7 @@ module TestTablePerformance =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             // Just verify it renders without throwing
             App.pumpOnce
@@ -1895,7 +1895,7 @@ module TestTablePerformance =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer
@@ -1941,7 +1941,7 @@ module TestTablePerformance =
 
             let processWorld = WorldProcessor.passthrough
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
                 worldFreezer

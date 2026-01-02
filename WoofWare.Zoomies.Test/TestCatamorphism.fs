@@ -67,8 +67,9 @@ module TestCatamorphism =
         let console1, terminal1 = ConsoleHarness.make ()
         let console2, terminal2 = ConsoleHarness.make ()
 
-        let renderState1 = RenderState.make<unit> console1 MockTime.getStaticUtcNow None
-        let renderState2 = RenderState.make<unit> console2 MockTime.getStaticUtcNow None
+        let renderState1 = MockTime.makeRenderStateStatic<unit> console1 None
+
+        let renderState2 = MockTime.makeRenderStateStatic<unit> console2 None
 
         Render.oneStep renderState1 () (fun _ -> vdom)
         Render.oneStep renderState2 () (fun _ -> result)
@@ -92,8 +93,9 @@ module TestCatamorphism =
         let console1, terminal1 = ConsoleHarness.make ()
         let console2, terminal2 = ConsoleHarness.make ()
 
-        let renderState1 = RenderState.make<unit> console1 MockTime.getStaticUtcNow None
-        let renderState2 = RenderState.make<unit> console2 MockTime.getStaticUtcNow None
+        let renderState1 = MockTime.makeRenderStateStatic<unit> console1 None
+
+        let renderState2 = MockTime.makeRenderStateStatic<unit> console2 None
 
         Render.oneStep renderState1 () (fun _ -> vdom)
         Render.oneStep renderState2 () (fun _ -> result)
@@ -131,8 +133,9 @@ module TestCatamorphism =
         let console1, terminal1 = ConsoleHarness.make ()
         let console2, terminal2 = ConsoleHarness.make ()
 
-        let renderState1 = RenderState.make<unit> console1 MockTime.getStaticUtcNow None
-        let renderState2 = RenderState.make<unit> console2 MockTime.getStaticUtcNow None
+        let renderState1 = MockTime.makeRenderStateStatic<unit> console1 None
+
+        let renderState2 = MockTime.makeRenderStateStatic<unit> console2 None
 
         Render.oneStep renderState1 () (fun _ -> vdom)
         Render.oneStep renderState2 () (fun _ -> result)

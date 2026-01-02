@@ -30,7 +30,7 @@ type RenderState<'postLayoutEvent> =
             /// The key marked with isInitiallyFocused=true, if any
             InitiallyFocusedKey : NodeKey option ref
             /// This gets handed out to users every so often: it's the fragment of state that they will want to
-            /// construct the vdom with.
+            /// construct the vdom with. Uses VdomContext for incremental reactivity.
             VdomContext : VdomContext<'postLayoutEvent>
             /// Debug file writer for layout diagnostics (if WOOFWARE_ZOOMIES_DEBUG_TO_FILE is enabled)
             DebugWriter : IO.StreamWriter option
@@ -160,11 +160,11 @@ module RenderState =
 
     let internal make<'postLayoutEvent>
         (c : IConsole)
-        (getUtcNow : unit -> DateTime)
+        (vdomContext : VdomContext<'postLayoutEvent>)
         (debugWriter : IO.StreamWriter option)
         : RenderState<'postLayoutEvent>
         =
-        let bounds = getBounds c
+        let bounds = VdomContext.terminalBounds vdomContext
 
         let changeBuffer = Array2D.zeroCreate bounds.Height bounds.Width
 
@@ -178,7 +178,7 @@ module RenderState =
             FocusableKeys = OrderedSet ()
             FirstToFocusKey = ref None
             InitiallyFocusedKey = ref None
-            VdomContext = VdomContext.empty getUtcNow bounds
+            VdomContext = vdomContext
             DebugWriter = debugWriter
         }
 
