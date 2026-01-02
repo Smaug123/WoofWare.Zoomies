@@ -54,6 +54,7 @@
     <Compile Include="WorldFreezer.fs" />
     <Compile Include="IVdomContext.fs" />
     <Compile Include="IncrementalState.fs" />
+    <Compile Include="StateMachine.fs" />
     <Compile Include="VdomContext.fs" />
     <Compile Include="IncrTime.fs" />
     <Compile Include="Layout.fs" />
@@ -61,6 +62,7 @@
     <Compile Include="RenderState.fs" />
     <Compile Include="TreeReconciliation.fs" />
     <Compile Include="Render.fs" />
+    <Compile Include="AppConfig.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Components\Button.fs" />
     <Compile Include="Components\Toggle.fs" />

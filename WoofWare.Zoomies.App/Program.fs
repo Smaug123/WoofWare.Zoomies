@@ -4,6 +4,7 @@ open System
 open System.IO
 open System.Runtime.ExceptionServices
 open System.Threading.Tasks
+open WoofWare.Incremental
 open WoofWare.Zoomies
 open WoofWare.Zoomies.Components
 
@@ -75,75 +76,81 @@ module FileBrowser =
                 return FileLoadError (e.Message, generation) |> worldBridge.PostEvent
         }
 
-    let processWorld (worldBridge : IWorldBridge<AppEvent>) =
-        { new WorldProcessor<AppEvent, PostLayoutEvent, State> with
-            member _.ProcessWorld (changes, _prevVdom, state) =
-                let mutable selectedFileIndex = state.SelectedFileIndex
-                let mutable fileContent = state.FileContent
-                let mutable isLoading = state.IsLoading
-                let mutable generation = state.Generation
-                let mutable listState = state.ListState
+    /// Store world bridge for async operations. Set via OnSetup.
+    let worldBridgeRef : IWorldBridge<AppEvent> option ref = ref None
 
-                for change in changes do
-                    match change with
-                    | WorldStateChange.MouseEvent _
-                    | WorldStateChange.Keystroke _
-                    | WorldStateChange.Paste _ -> ()
+    /// Pure transition function: state -> event -> state
+    /// (Note: LoadButtonClicked spawns an async task, which is an effect,
+    /// but the state transition itself is deterministic.)
+    let transition (state : State) (event : AppEvent) : State =
+        match event with
+        | SelectFile index ->
+            if index >= 0 && index < state.Files.Length then
+                { state with
+                    SelectedFileIndex = Some index
+                }
+            else
+                state
 
-                    | WorldStateChange.ApplicationEvent (SelectFile index) ->
-                        // Select the file at the given index
-                        if index >= 0 && index < state.Files.Length then
-                            selectedFileIndex <- Some index
+        | CursorUp ->
+            { state with
+                ListState = state.ListState.MoveUp state.Files.Length
+            }
 
-                    | WorldStateChange.ApplicationEvent CursorUp -> listState <- listState.MoveUp state.Files.Length
+        | CursorDown ->
+            { state with
+                ListState = state.ListState.MoveDown state.Files.Length
+            }
 
-                    | WorldStateChange.ApplicationEvent CursorDown -> listState <- listState.MoveDown state.Files.Length
-
-                    | WorldStateChange.ApplicationEvent LoadButtonClicked ->
-                        match selectedFileIndex with
-                        | Some index when not isLoading && index >= 0 && index < state.Files.Length ->
-                            let selectedPath = state.Files.[index].FullPath
-                            isLoading <- true
-                            fileContent <- None
-                            generation <- generation + 1
-                            loadFileAsync generation worldBridge selectedPath |> ignore<Task<unit>>
-                        | _ -> ()
-
-                    | WorldStateChange.ApplicationEvent (FileLoaded (content, gen)) ->
-                        if generation = gen then
-                            fileContent <- Some content
-                            isLoading <- false
-
-                    | WorldStateChange.ApplicationEvent (FileLoadError (error, gen)) ->
-                        if generation = gen then
-                            fileContent <- Some $"Error: {error}"
-                            isLoading <- false
-
-                    | WorldStateChange.ApplicationEventException e ->
-                        ExceptionDispatchInfo.Throw e
-                        failwith "unreachable"
-
-                ProcessWorldResult.make
-                    {
-                        Files = state.Files
-                        SelectedFileIndex = selectedFileIndex
-                        FileContent = fileContent
-                        IsLoading = isLoading
-                        Generation = generation
-                        ListState = listState
-                    }
-
-            member _.ProcessPostLayoutEvents (events, _ctx, state) =
-                let mutable listState = state.ListState
-
-                for event in events do
-                    match event with
-                    | ViewportInfo info -> listState <- listState.EnsureVisible info.ViewportHeight
+        | LoadButtonClicked ->
+            match state.SelectedFileIndex, !worldBridgeRef with
+            | Some index, Some worldBridge when not state.IsLoading && index >= 0 && index < state.Files.Length ->
+                let selectedPath = state.Files.[index].FullPath
+                let newGeneration = state.Generation + 1
+                loadFileAsync newGeneration worldBridge selectedPath |> ignore<Task<unit>>
 
                 { state with
-                    ListState = listState
+                    IsLoading = true
+                    FileContent = None
+                    Generation = newGeneration
                 }
-        }
+            | _ -> state
+
+        | FileLoaded (content, gen) ->
+            if gen = state.Generation then
+                { state with
+                    FileContent = Some content
+                    IsLoading = false
+                }
+            else
+                state
+
+        | FileLoadError (error, gen) ->
+            if gen = state.Generation then
+                { state with
+                    FileContent = Some $"Error: {error}"
+                    IsLoading = false
+                }
+            else
+                state
+
+    /// Convert raw input to app events.
+    /// Return Some to inject the event; None to ignore (or let framework handle, e.g. Tab for focus).
+    let handleInput (change : WorldStateChange<AppEvent>) : AppEvent option =
+        match change with
+        | WorldStateChange.ApplicationEvent ev -> Some ev
+        | WorldStateChange.ApplicationEventException e ->
+            ExceptionDispatchInfo.Throw e
+            failwith "unreachable"
+        | _ -> None
+
+    /// Handle post-layout events (e.g., viewport info for scroll position).
+    let handlePostLayout (event : PostLayoutEvent) (state : State) : State =
+        match event with
+        | ViewportInfo info ->
+            { state with
+                ListState = state.ListState.EnsureVisible info.ViewportHeight
+            }
 
     let view (ctx : IVdomContext<PostLayoutEvent>) (state : State) : Vdom<DesiredBounds> =
         let leftPane =
@@ -208,8 +215,19 @@ module FileBrowser =
                 ActivationResolver.button loadButtonKey LoadButtonClicked
             ]
 
-    let run (getEnv : string -> string option) =
-        App.run getEnv State.Initial (fun _ -> true) processWorld (App.pureView view) resolver
+    let config : AppConfig<State, AppEvent, PostLayoutEvent> =
+        {
+            Initial = State.Initial
+            Transition = transition
+            View = App.pureView view
+            HandleInput = handleInput
+            HandlePostLayout = handlePostLayout
+            FocusHandling = FocusHandling.FrameworkManaged
+            ActivationResolver = resolver
+            OnSetup = fun bridge -> worldBridgeRef.Value <- Some bridge
+        }
+
+    let run (getEnv : string -> string option) = App.runWithConfig getEnv config
 
 module Program =
     let getEnv (varName : string) : string option =
