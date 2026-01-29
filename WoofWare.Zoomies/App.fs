@@ -721,8 +721,7 @@ module App =
             | FocusHandling.FrameworkManaged -> true
             | FocusHandling.UserManaged -> false
 
-        let stateBeforeChanges = stateMachine.CurrentState ()
-        let mutable injectedAny = false
+        let previousVdom = Observer.value vdomObserver
 
         for change in changes do
             if isCancelled () then
@@ -749,40 +748,31 @@ module App =
                         | Some appEvent ->
                             VdomContext.recordActivation focusedKey ctx
                             stateMachine.Inject appEvent
-                            injectedAny <- true
                         | None ->
                             // Try HandleInput
                             match config.HandleInput change with
-                            | Some appEvent ->
-                                stateMachine.Inject appEvent
-                                injectedAny <- true
+                            | Some appEvent -> stateMachine.Inject appEvent
                             | None -> ()
                     | None ->
                         // No focus, just try HandleInput
                         match config.HandleInput change with
-                        | Some appEvent ->
-                            stateMachine.Inject appEvent
-                            injectedAny <- true
+                        | Some appEvent -> stateMachine.Inject appEvent
                         | None -> ()
 
                 | _ ->
                     // Other change types (ApplicationEvent, MouseEvent, Paste, etc.)
                     match config.HandleInput change with
-                    | Some appEvent ->
-                        stateMachine.Inject appEvent
-                        injectedAny <- true
+                    | Some appEvent -> stateMachine.Inject appEvent
                     | None -> ()
 
-        // Stabilize to process injected events
-        if injectedAny then
-            incrState.Incr.Stabilize ()
+        // Stabilize to propagate all incremental changes (injected events, focus, etc.)
+        incrState.Incr.Stabilize ()
 
-        let stateAfterChanges = stateMachine.CurrentState ()
+        let currentVdom = Observer.value vdomObserver
 
-        // Re-render if state changed or dirty
-        if stateBeforeChanges <> stateAfterChanges || VdomContext.isDirty ctx then
-            Render.oneStepNoFlush renderState () (fun () -> Observer.value vdomObserver)
-            VdomContext.markClean ctx
+        // Re-render if vdom changed
+        if not (Object.referenceEquals previousVdom currentVdom) then
+            Render.oneStepNoFlush renderState () (fun () -> currentVdom)
 
             // Handle post-layout events
             let _hitLimit =
@@ -791,7 +781,10 @@ module App =
             Render.flush renderState
 
     /// Process when no changes occurred, using AppConfig approach.
+    /// The run loop already stabilized before calling this, so we just need to
+    /// check if the vdom changed and render if so.
     let private processNoChangesWithConfig<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
+        (previousVdom : Vdom<DesiredBounds>)
         (stateMachine : StateMachine<'state, 'appEvent>)
         (renderState : RenderState<'postLayoutEvent>)
         (config : AppConfig<'state, 'appEvent, 'postLayoutEvent>)
@@ -799,11 +792,10 @@ module App =
         (incrState : IncrementalState<'state>)
         : unit
         =
-        let ctx = RenderState.vdomContext renderState
+        let currentVdom = Observer.value vdomObserver
 
-        if VdomContext.isDirty ctx then
-            Render.oneStepNoFlush renderState () (fun () -> Observer.value vdomObserver)
-            VdomContext.markClean ctx
+        if not (Object.referenceEquals previousVdom currentVdom) then
+            Render.oneStepNoFlush renderState () (fun () -> currentVdom)
 
             let _hitLimit =
                 stabilizePostLayoutEventsWithConfig stateMachine renderState config vdomObserver incrState
@@ -898,7 +890,6 @@ module App =
 
                             // Initial render
                             Render.oneStepNoFlush renderState () (fun () -> Observer.value vdomObserver)
-                            VdomContext.markClean vdomContext
 
                             let _hitLimit =
                                 stabilizePostLayoutEventsWithConfig
@@ -925,12 +916,6 @@ module App =
                                 VdomContext.setCurrentStabilizationTime loopUtcNow vdomContext
                                 IncrementalState.advanceClockAndStabilize loopUtcNow incrState
 
-                                // Check if vdom changed due to time advancement
-                                let currentVdom = Observer.value vdomObserver
-
-                                if not (Object.referenceEquals previousVdom currentVdom) then
-                                    VdomContext.markDirty vdomContext
-
                                 // Process input
                                 let resizeGeneration = listener'.TerminalResizeGeneration
                                 RenderState.refreshTerminalSize renderState
@@ -940,7 +925,13 @@ module App =
 
                                 match listener'.Changes () with
                                 | ValueNone ->
-                                    processNoChangesWithConfig stateMachine renderState config vdomObserver incrState
+                                    processNoChangesWithConfig
+                                        previousVdom
+                                        stateMachine
+                                        renderState
+                                        config
+                                        vdomObserver
+                                        incrState
                                 | ValueSome changes ->
                                     processChangesWithConfig
                                         changes
@@ -955,7 +946,6 @@ module App =
                                 if listener'.TerminalResizeGeneration <> resizeGeneration then
                                     RenderState.clearScreen renderState
                                     renderState.PreviousVdom <- None
-                                    VdomContext.markDirty vdomContext
 
                                 previousVdom <- Observer.value vdomObserver
 
