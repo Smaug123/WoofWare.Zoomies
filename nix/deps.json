@@ -1,8 +1,8 @@
 [
   {
     "pname": "fantomas",
-    "version": "7.0.0",
-    "hash": "sha256-v4bXmvjZOYxl5RSIHuqVfDzBQdRz5SrmzZtD6SeEYTY="
+    "version": "7.0.5",
+    "hash": "sha256-fseS0ORahl/iK/uZmGOooTmrny8YL1KEwNNq27VxLj0="
   },
   {
     "pname": "Fantomas.Core",
@@ -291,18 +291,13 @@
   },
   {
     "pname": "TypeEquality",
-    "version": "0.3.0",
-    "hash": "sha256-V50xAOzzyUJrY+MYPRxtnqW5MVeATXCes89wPprv1r4="
-  },
-  {
-    "pname": "TypeEquality",
     "version": "0.4.2",
     "hash": "sha256-YxK6BGHjcuP76j5BbTDi814jxGqOevQSgS00IJcjZSA="
   },
   {
     "pname": "WoofWare.BalancedReducer",
-    "version": "1.0.2",
-    "hash": "sha256-3QJSfo3eyfcyz8EueNjEh/IOZJrBNCoD/g7cY0hh+YU="
+    "version": "1.0.5",
+    "hash": "sha256-kytlFgZCSJvupw5gT5yaqHgACvMjvxA+krd3EJZLoIk="
   },
   {
     "pname": "WoofWare.Expect",
@@ -311,8 +306,8 @@
   },
   {
     "pname": "WoofWare.Incremental",
-    "version": "0.1.5",
-    "hash": "sha256-LrDAouQQFV1V8cJi9e7JnOO68xzN9FRqmgAtIs1seXY="
+    "version": "0.1.18",
+    "hash": "sha256-DaziGULDMDVMR/PDVxM9VFPjjwCoVme+SFSPiHx2Z08="
   },
   {
     "pname": "WoofWare.Myriad.Plugins",
@@ -326,18 +321,18 @@
   },
   {
     "pname": "WoofWare.NUnitTestRunner",
-    "version": "0.3.4",
-    "hash": "sha256-OaBYMEAXUDiz9ei2/Zg4Q1A8BNDK1oaMB44uVz4UG/0="
+    "version": "0.3.12",
+    "hash": "sha256-PhSmPUkCcNbpSnxh0ijrNgrFeuY1LFvt9uiuQCcQ1DE="
   },
   {
     "pname": "WoofWare.TimingWheel",
-    "version": "0.6.1",
-    "hash": "sha256-zEupF3zeFaC2yigryXTcxbFuNgWPmltPtdQruJdrwOI="
+    "version": "0.7.1",
+    "hash": "sha256-2QDCVj9n1tGZSAWNf4YX8H7z8JlJzFBcmKiNsjs/mEI="
   },
   {
     "pname": "WoofWare.WeakHashTable",
-    "version": "1.1.1",
-    "hash": "sha256-Y1S6QSyaPIyGU1DljGCPycO0blRUaOndqmbdcnyxTIw="
+    "version": "1.2.2",
+    "hash": "sha256-wX/k4/CkLSPm9jq5g8Z1B1NA7+L6xaAAx8zO1aPPP0I="
   },
   {
     "pname": "WoofWare.Whippet.Fantomas",
