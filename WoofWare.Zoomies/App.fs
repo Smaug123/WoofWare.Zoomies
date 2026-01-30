@@ -571,6 +571,66 @@ module App =
 
             Render.flush renderState
 
+    /// Run one iteration of the incremental event loop.
+    /// This is the core loop body shared by App.run and available for testing.
+    ///
+    /// - Advances the clock and stabilizes
+    /// - Refreshes terminal size and prunes expired activations
+    /// - Processes input events (or no-change case)
+    /// - Handles terminal resize (clears screen if resize occurred)
+    /// - Updates previousVdom ref with current vdom
+    /// - Returns current state for convenience
+    let internal pumpOnceIncremental<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
+        (getUtcNow : unit -> DateTime)
+        (listener : WorldFreezer<'appEvent>)
+        (incrState : IncrementalState<'state>)
+        (stateMachine : StateMachine<'state, 'appEvent>)
+        (renderState : RenderState<'postLayoutEvent>)
+        (vdomObserver : Vdom<DesiredBounds> Observer)
+        (config : AppConfig<'state, 'appEvent, 'postLayoutEvent>)
+        (previousVdom : Vdom<DesiredBounds> ref)
+        (isCancelled : unit -> bool)
+        : 'state
+        =
+        let vdomContext = RenderState.vdomContext renderState
+
+        // Advance clock and stabilize
+        let loopUtcNow = getUtcNow ()
+        IncrementalState.advanceClockAndStabilize loopUtcNow incrState
+
+        // Process input
+        let resizeGeneration = listener.TerminalResizeGeneration
+        RenderState.refreshTerminalSize renderState
+        VdomContext.pruneExpiredActivations loopUtcNow vdomContext
+
+        listener.RefreshExternal ()
+
+        match listener.Changes () with
+        | ValueNone ->
+            processNoChangesWithConfig previousVdom.Value stateMachine renderState config vdomObserver incrState
+        | ValueSome changes ->
+            processChangesWithConfig
+                loopUtcNow
+                changes
+                stateMachine
+                renderState
+                config
+                vdomObserver
+                incrState
+                isCancelled
+
+        // Handle terminal resize
+        if listener.TerminalResizeGeneration <> resizeGeneration then
+            // Our knowledge of the current terminal's contents could be arbitrarily corrupted:
+            // we were drawing to the screen when it had an arbitrary size. Need a *complete* refresh.
+            RenderState.clearScreen renderState
+            renderState.PreviousVdom <- None
+            VdomContext.markDirty vdomContext
+
+        previousVdom.Value <- Observer.value vdomObserver
+
+        stateMachine.CurrentState ()
+
     /// Run an application using the new AppConfig-based API with StateMachine.
     /// Events flow through the Incremental graph via the StateMachine primitive.
     let run<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
@@ -670,7 +730,7 @@ module App =
                             Render.flush renderState
 
                             // Track the previous vdom value to detect time-based changes
-                            let mutable previousVdom = Observer.value vdomObserver
+                            let previousVdom = ref (Observer.value vdomObserver)
 
                             let isCancelled () =
                                 cancels > 0 || terminate.IsCancellationRequested
@@ -679,46 +739,17 @@ module App =
                             ready.SetResult ()
 
                             while not (isCancelled ()) do
-                                // Advance clock and stabilize
-                                let loopUtcNow = getUtcNow ()
-                                IncrementalState.advanceClockAndStabilize loopUtcNow incrState
-
-                                // Process input
-                                let resizeGeneration = listener'.TerminalResizeGeneration
-                                RenderState.refreshTerminalSize renderState
-                                VdomContext.pruneExpiredActivations loopUtcNow vdomContext
-
-                                listener'.RefreshExternal ()
-
-                                match listener'.Changes () with
-                                | ValueNone ->
-                                    processNoChangesWithConfig
-                                        previousVdom
-                                        stateMachine
-                                        renderState
-                                        config
-                                        vdomObserver
-                                        incrState
-                                | ValueSome changes ->
-                                    processChangesWithConfig
-                                        loopUtcNow
-                                        changes
-                                        stateMachine
-                                        renderState
-                                        config
-                                        vdomObserver
-                                        incrState
-                                        isCancelled
-
-                                // Handle terminal resize
-                                if listener'.TerminalResizeGeneration <> resizeGeneration then
-                                    // Our knowledge of the current terminal's contents could be arbitrarily corrupted:
-                                    // we were drawing to the screen when it had an arbitrary size. Need a *complete* refresh.
-                                    RenderState.clearScreen renderState
-                                    renderState.PreviousVdom <- None
-                                    VdomContext.markDirty vdomContext
-
-                                previousVdom <- Observer.value vdomObserver
+                                pumpOnceIncremental
+                                    getUtcNow
+                                    listener'
+                                    incrState
+                                    stateMachine
+                                    renderState
+                                    vdomObserver
+                                    config
+                                    previousVdom
+                                    isCancelled
+                                |> ignore
 
                                 if frameDelayMs > 0 then
                                     Thread.Sleep frameDelayMs

@@ -1,6 +1,7 @@
 namespace WoofWare.Zoomies.Test
 
 open System
+open WoofWare.Incremental
 open WoofWare.Zoomies
 
 /// A test harness that wraps an IncrementalState and provides time control.
@@ -137,3 +138,103 @@ module MockTime =
         let advanceWithContext ts = timer.Advance ts
 
         ctx, advanceWithContext
+
+/// Test infrastructure for running incremental pump cycles.
+/// Bundles all the mutable state needed to call App.pumpOnceIncremental.
+type IncrTestContext<'state, 'appEvent, 'postLayoutEvent> =
+    {
+        /// The incremental state holder (clock, bounds, focus).
+        IncrState : IncrementalState<'state>
+        /// The state machine for event-driven state updates.
+        StateMachine : StateMachine<'state, 'appEvent>
+        /// The render state for terminal output.
+        RenderState : RenderState<'postLayoutEvent>
+        /// Observer for the Vdom node.
+        VdomObserver : Vdom<DesiredBounds> Observer
+        /// Tracks the previous Vdom for detecting time-based changes.
+        PreviousVdom : Vdom<DesiredBounds> ref
+        /// Mutable time tracker for getUtcNow.
+        mutable CurrentTime : DateTime
+    }
+
+    interface IDisposable with
+        member this.Dispose () =
+            (this.RenderState :> IDisposable).Dispose ()
+
+[<RequireQualifiedAccess>]
+module IncrTestContext =
+    /// Create test context from an AppConfig and console.
+    /// This sets up all the infrastructure needed to call App.pumpOnceIncremental.
+    let make<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
+        (console : IConsole)
+        (config : AppConfig<'state, 'appEvent, 'postLayoutEvent>)
+        (debugWriter : System.IO.StreamWriter option)
+        : IncrTestContext<'state, 'appEvent, 'postLayoutEvent>
+        =
+        let initialBounds =
+            {
+                TopLeftX = 0
+                TopLeftY = 0
+                Width = console.WindowWidth ()
+                Height = console.WindowHeight ()
+            }
+
+        // Create IncrementalState
+        let incrState = IncrementalState.make config.Initial initialBounds None
+        let vdomContext = VdomContext.make incrState
+
+        // Create the StateMachine for event-driven state updates
+        let stateMachine =
+            StateMachine.create incrState.Incr.State config.Initial config.Transition
+
+        // Create the incremental Vdom Node using the StateMachine's state node
+        let vdomNode = config.View vdomContext stateMachine.StateNode
+
+        // Create an observer for the Vdom so we can read it after stabilization
+        let vdomObserver = incrState.Incr.Observe vdomNode
+
+        // Initial stabilization
+        let startTime = MockTime.defaultStartTime
+        IncrementalState.advanceClockAndStabilize startTime incrState
+
+        let renderState = RenderState.make console vdomContext debugWriter
+
+        {
+            IncrState = incrState
+            StateMachine = stateMachine
+            RenderState = renderState
+            VdomObserver = vdomObserver
+            PreviousVdom = ref (Observer.value vdomObserver)
+            CurrentTime = startTime
+        }
+
+    /// Get the current state from the state machine.
+    let currentState (ctx : IncrTestContext<'state, 'appEvent, 'postLayoutEvent>) : 'state =
+        ctx.StateMachine.CurrentState ()
+
+    /// Advance time by the given amount and return a getUtcNow function.
+    let advanceTime (ts : TimeSpan) (ctx : IncrTestContext<'state, 'appEvent, 'postLayoutEvent>) : unit =
+        ctx.CurrentTime <- ctx.CurrentTime + ts
+
+    /// Get a getUtcNow function that returns the context's current time.
+    let getUtcNow (ctx : IncrTestContext<'state, 'appEvent, 'postLayoutEvent>) : unit -> DateTime =
+        fun () -> ctx.CurrentTime
+
+    /// Run one pump cycle using the incremental pipeline.
+    /// This calls App.pumpOnceIncremental with the context's infrastructure.
+    let pumpOnce<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
+        (listener : WorldFreezer<'appEvent>)
+        (config : AppConfig<'state, 'appEvent, 'postLayoutEvent>)
+        (ctx : IncrTestContext<'state, 'appEvent, 'postLayoutEvent>)
+        : 'state
+        =
+        App.pumpOnceIncremental
+            (getUtcNow ctx)
+            listener
+            ctx.IncrState
+            ctx.StateMachine
+            ctx.RenderState
+            ctx.VdomObserver
+            config
+            ctx.PreviousVdom
+            (fun () -> false)
