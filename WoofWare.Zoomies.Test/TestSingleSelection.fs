@@ -10,7 +10,6 @@ open FsUnitTyped
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestSingleSelection =
-    let getUtcNow () = MockTime.defaultStartTime
 
     [<OneTimeSetUp>]
     let setUp () =
@@ -20,11 +19,6 @@ module TestSingleSelection =
     [<OneTimeTearDown>]
     let tearDown () =
         GlobalBuilderConfig.updateAllSnapshots ()
-
-    type State =
-        {
-            SelectedIndex : int option
-        }
 
     /// Simple event type for tests that only need viewport tracking
     type SimpleViewportEvent = | SimpleViewportInfo of SelectionListViewportInfo
@@ -37,7 +31,7 @@ module TestSingleSelection =
     [<Test>]
     let ``empty single-selection`` () =
         task {
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : unit) : Vdom<DesiredBounds> =
                 (SingleSelection.make' (singleSelectPrefix, [||], SelectionListState.AtStart)).Vdom
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
@@ -51,25 +45,11 @@ module TestSingleSelection =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                {
-                    SelectedIndex = None
-                }
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<State>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -88,7 +68,7 @@ module TestSingleSelection =
     [<Test>]
     let ``single-selection with three items none selected`` () =
         task {
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : unit) : Vdom<DesiredBounds> =
                 (SingleSelection.make' (
                     singleSelectPrefix,
                     [|
@@ -123,25 +103,11 @@ module TestSingleSelection =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                {
-                    SelectedIndex = None
-                }
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<State>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -160,7 +126,7 @@ module TestSingleSelection =
     [<Test>]
     let ``single-selection with one item selected`` () =
         task {
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : unit) : Vdom<DesiredBounds> =
                 (SingleSelection.make' (
                     singleSelectPrefix,
                     [|
@@ -195,25 +161,11 @@ module TestSingleSelection =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                {
-                    SelectedIndex = Some 1
-                }
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<State>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -232,7 +184,7 @@ module TestSingleSelection =
     [<Test>]
     let ``single-selection with focused item`` () =
         task {
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : unit) : Vdom<DesiredBounds> =
                 (SingleSelection.make' (
                     singleSelectPrefix,
                     [|
@@ -267,25 +219,11 @@ module TestSingleSelection =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                {
-                    SelectedIndex = None
-                }
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<State>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -304,7 +242,7 @@ module TestSingleSelection =
     [<Test>]
     let ``single-selection with focused and selected item`` () =
         task {
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : unit) : Vdom<DesiredBounds> =
                 (SingleSelection.make' (
                     singleSelectPrefix,
                     [|
@@ -339,25 +277,11 @@ module TestSingleSelection =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                {
-                    SelectedIndex = Some 1
-                }
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<State>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -372,6 +296,13 @@ module TestSingleSelection =
                 return ConsoleHarness.toString terminal
             }
         }
+
+    type FocusCycleState =
+        {
+            SelectedIndex : int option
+        }
+
+    type FocusCycleEvent = | FocusCycleNoOp
 
     [<Test>]
     let ``single-selection with framework integration and focus cycling`` () =
@@ -392,7 +323,7 @@ module TestSingleSelection =
                     }
                 |]
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : FocusCycleState) : Vdom<DesiredBounds> =
                 (SingleSelection.make (
                     ctx,
                     singleSelectPrefix,
@@ -415,30 +346,21 @@ module TestSingleSelection =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = true
-
-            let processWorld =
-                { new WorldProcessor<SimpleViewportEvent, unit, State> with
-                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_, _, state) = state
-                }
-
-            let renderState = MockTime.makeRenderStateStatic console None
-
-            // Initial render - no focus yet
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
+            let initialState : FocusCycleState =
                 {
                     SelectedIndex = None
                 }
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<State>
+
+            let transition state (_event : unit) = state
+
+            let config =
+                AppConfig.simple initialState transition (App.pureView vdom) ActivationResolver.none
+                |> AppConfig.withFocusHandling FocusHandling.FrameworkManaged
+
+            use ctx = IncrTestContext.make console config None
+
+            // Initial render - no focus yet
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Verify that initially no item is focused (no brackets around any radio button)
             expect {
@@ -457,19 +379,7 @@ module TestSingleSelection =
             // Press Tab to focus first item
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                {
-                    SelectedIndex = None
-                }
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<State>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -549,48 +459,6 @@ module TestSingleSelection =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = true
-
-            let processWorld =
-                { new WorldProcessor<SelectListEvent, SelectPostLayoutEvent, SelectListState> with
-                    member _.ProcessWorld (inputs, renderState, s) =
-                        let mutable newState = s
-
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent (SelectItem index) ->
-                                if index >= 0 && index < files.Length then
-                                    // Single selection: just set to this index
-                                    newState <-
-                                        { newState with
-                                            SelectedIndex = Some index
-                                        }
-                            | WorldStateChange.ApplicationEvent SelectCursorUp ->
-                                newState <-
-                                    { newState with
-                                        ListState = newState.ListState.MoveUp files.Length
-                                    }
-                            | WorldStateChange.ApplicationEvent SelectCursorDown ->
-                                newState <-
-                                    { newState with
-                                        ListState = newState.ListState.MoveDown files.Length
-                                    }
-                            | _ -> ()
-
-                        ProcessWorldResult.make newState
-
-                    member _.ProcessPostLayoutEvents (events, _, state) =
-                        let mutable newState = state
-
-                        for (SelectViewportInfo info) in events do
-                            newState <-
-                                { newState with
-                                    ListState = newState.ListState.EnsureVisible info.ViewportHeight
-                                }
-
-                        newState
-                }
-
             let resolver =
                 ActivationResolver.selectionList
                     singleSelectPrefix
@@ -599,56 +467,61 @@ module TestSingleSelection =
                     SelectCursorDown
                     SelectItem
 
-            let renderState = MockTime.makeRenderStateStatic console None
-
-            let initialState : SelectListState =
+            let initialState =
                 {
-                    SelectedIndex = None
+                    SelectListState.SelectedIndex = None
                     ListState = SelectionListState.AtStart
                 }
 
+            let transition (state : SelectListState) ev =
+                match ev with
+                | SelectItem index ->
+                    if index >= 0 && index < files.Length then
+                        { state with
+                            SelectListState.SelectedIndex = Some index
+                        }
+                    else
+                        state
+                | SelectCursorUp ->
+                    { state with
+                        SelectListState.ListState = state.ListState.MoveUp files.Length
+                    }
+                | SelectCursorDown ->
+                    { state with
+                        SelectListState.ListState = state.ListState.MoveDown files.Length
+                    }
+
+            let handleInput change =
+                match change with
+                | WorldStateChange.ApplicationEvent ev -> Some ev
+                | _ -> None
+
+            let handlePostLayout (SelectViewportInfo info) (state : SelectListState) =
+                { state with
+                    SelectListState.ListState = state.ListState.EnsureVisible info.ViewportHeight
+                }
+
+            let config =
+                AppConfig.make initialState transition (App.pureView vdom)
+                |> AppConfig.withHandleInput handleInput
+                |> AppConfig.withHandlePostLayout handlePostLayout
+                |> AppConfig.withActivationResolver resolver
+                |> AppConfig.withFocusHandling FocusHandling.FrameworkManaged
+
+            use ctx = IncrTestContext.make console config None
+
             // Initial render
-            let mutable state =
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    initialState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Tab to focus the list (list is a single focusable unit now)
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Press Space to select first item (cursor is at 0)
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -715,47 +588,6 @@ module TestSingleSelection =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = true
-
-            let processWorld =
-                { new WorldProcessor<SelectListEvent, SelectPostLayoutEvent, SelectListState> with
-                    member _.ProcessWorld (inputs, renderState, s) =
-                        let mutable newState = s
-
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent (SelectItem index) ->
-                                if index >= 0 && index < files.Length then
-                                    newState <-
-                                        { newState with
-                                            SelectedIndex = Some index
-                                        }
-                            | WorldStateChange.ApplicationEvent SelectCursorUp ->
-                                newState <-
-                                    { newState with
-                                        ListState = newState.ListState.MoveUp files.Length
-                                    }
-                            | WorldStateChange.ApplicationEvent SelectCursorDown ->
-                                newState <-
-                                    { newState with
-                                        ListState = newState.ListState.MoveDown files.Length
-                                    }
-                            | _ -> ()
-
-                        ProcessWorldResult.make newState
-
-                    member _.ProcessPostLayoutEvents (events, _, state) =
-                        let mutable newState = state
-
-                        for (SelectViewportInfo info) in events do
-                            newState <-
-                                { newState with
-                                    ListState = newState.ListState.EnsureVisible info.ViewportHeight
-                                }
-
-                        newState
-                }
-
             let resolver =
                 ActivationResolver.selectionList
                     singleSelectPrefix
@@ -764,86 +596,71 @@ module TestSingleSelection =
                     SelectCursorDown
                     SelectItem
 
-            let renderState = MockTime.makeRenderStateStatic console None
-
             // Start with Option A selected
-            let initialState : SelectListState =
+            let initialState =
                 {
-                    SelectedIndex = Some 0
+                    SelectListState.SelectedIndex = Some 0
                     ListState = SelectionListState.AtStart
                 }
 
+            let transition (state : SelectListState) ev =
+                match ev with
+                | SelectItem index ->
+                    if index >= 0 && index < files.Length then
+                        { state with
+                            SelectListState.SelectedIndex = Some index
+                        }
+                    else
+                        state
+                | SelectCursorUp ->
+                    { state with
+                        SelectListState.ListState = state.ListState.MoveUp files.Length
+                    }
+                | SelectCursorDown ->
+                    { state with
+                        SelectListState.ListState = state.ListState.MoveDown files.Length
+                    }
+
+            let handleInput change =
+                match change with
+                | WorldStateChange.ApplicationEvent ev -> Some ev
+                | _ -> None
+
+            let handlePostLayout (SelectViewportInfo info) (state : SelectListState) =
+                { state with
+                    SelectListState.ListState = state.ListState.EnsureVisible info.ViewportHeight
+                }
+
+            let config =
+                AppConfig.make initialState transition (App.pureView vdom)
+                |> AppConfig.withHandleInput handleInput
+                |> AppConfig.withHandlePostLayout handlePostLayout
+                |> AppConfig.withActivationResolver resolver
+                |> AppConfig.withFocusHandling FocusHandling.FrameworkManaged
+
+            use ctx = IncrTestContext.make console config None
+
             // Initial render
-            let mutable state =
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    initialState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Tab to focus the list
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Down arrow twice to move cursor to Option C
             world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.DownArrow, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.DownArrow, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Press Space to select Option C (cursor is at 2)
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Option A should no longer be selected, Option C should be selected
             expect {
@@ -863,7 +680,7 @@ module TestSingleSelection =
     [<Test>]
     let ``single-selection with long labels`` () =
         task {
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : unit) : Vdom<DesiredBounds> =
                 (SingleSelection.make' (
                     singleSelectPrefix,
                     [|
@@ -893,25 +710,11 @@ module TestSingleSelection =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                {
-                    SelectedIndex = Some 0
-                }
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<State>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -935,7 +738,7 @@ module TestSingleSelection =
     let ``list larger than viewport only shows visible items`` () =
         task {
             // 5 items in a viewport that can only show 3 lines
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : unit) : Vdom<DesiredBounds> =
                 (SingleSelection.make' (
                     singleSelectPrefix,
                     [|
@@ -980,25 +783,11 @@ module TestSingleSelection =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                {
-                    SelectedIndex = None
-                }
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<State>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Only first 3 items visible (viewport height = 3)
             expect {
@@ -1017,7 +806,7 @@ module TestSingleSelection =
     let ``scroll offset shows items starting from offset`` () =
         task {
             // 5 items, scroll offset at 2, viewport of 3
-            let vdom (_ : IVdomContext) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : unit) : Vdom<DesiredBounds> =
                 (SingleSelection.make' (
                     singleSelectPrefix,
                     [|
@@ -1062,25 +851,11 @@ module TestSingleSelection =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                {
-                    SelectedIndex = None
-                }
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<State>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Items 3, 4, 5 visible (offset 2, viewport 3)
             expect {
@@ -1160,46 +935,6 @@ module TestSingleSelection =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = true
-
-            let processWorld =
-                { new WorldProcessor<ArrowTestEvent, ArrowPostLayoutEvent, ArrowTestState> with
-                    member _.ProcessWorld (inputs, renderState, s) =
-                        let mutable newState = s
-
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent CursorUpEvt ->
-                                newState <-
-                                    { newState with
-                                        ListState = newState.ListState.MoveUp 5
-                                    }
-                            | WorldStateChange.ApplicationEvent CursorDownEvt ->
-                                newState <-
-                                    { newState with
-                                        ListState = newState.ListState.MoveDown 5
-                                    }
-                            | WorldStateChange.ApplicationEvent (SelectEvt index) ->
-                                newState <-
-                                    { newState with
-                                        SelectedIndex = Some index
-                                    }
-                            | _ -> ()
-
-                        ProcessWorldResult.make newState
-
-                    member _.ProcessPostLayoutEvents (events, _, state) =
-                        let mutable newState = state
-
-                        for (ArrowViewportInfo info) in events do
-                            newState <-
-                                { newState with
-                                    ListState = newState.ListState.EnsureVisible info.ViewportHeight
-                                }
-
-                        newState
-                }
-
             let resolver =
                 ActivationResolver.selectionList
                     singleSelectPrefix
@@ -1208,57 +943,59 @@ module TestSingleSelection =
                     CursorDownEvt
                     SelectEvt
 
-            let renderState = MockTime.makeRenderStateStatic console None
-
-            let initialState : ArrowTestState =
+            let initialState =
                 {
-                    SelectedIndex = None
+                    ArrowTestState.SelectedIndex = None
                     ListState = SelectionListState.AtStart
                 }
 
+            let transition (state : ArrowTestState) ev =
+                match ev with
+                | CursorUpEvt ->
+                    { state with
+                        ArrowTestState.ListState = state.ListState.MoveUp 5
+                    }
+                | CursorDownEvt ->
+                    { state with
+                        ArrowTestState.ListState = state.ListState.MoveDown 5
+                    }
+                | SelectEvt index ->
+                    { state with
+                        ArrowTestState.SelectedIndex = Some index
+                    }
+
+            let handleInput change =
+                match change with
+                | WorldStateChange.ApplicationEvent ev -> Some ev
+                | _ -> None
+
+            let handlePostLayout (ArrowViewportInfo info) (state : ArrowTestState) =
+                { state with
+                    ArrowTestState.ListState = state.ListState.EnsureVisible info.ViewportHeight
+                }
+
+            let config =
+                AppConfig.make initialState transition (App.pureView vdom)
+                |> AppConfig.withHandleInput handleInput
+                |> AppConfig.withHandlePostLayout handlePostLayout
+                |> AppConfig.withActivationResolver resolver
+                |> AppConfig.withFocusHandling FocusHandling.FrameworkManaged
+
+            use ctx = IncrTestContext.make console config None
+
             // Initial render
-            let mutable state =
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    initialState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Tab to focus the list
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Down arrow 4 times to reach item 5
             for _ in 1..4 do
                 world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.DownArrow, false, false, false))
 
-                state <-
-                    App.pumpOnce
-                        getUtcNow
-                        worldFreezer
-                        state
-                        haveFrameworkHandleFocus
-                        renderState
-                        processWorld
-                        vdom
-                        resolver
-                        (fun () -> false)
+                IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Cursor should be on item 5, list should have scrolled to show items 3, 4, 5
             expect {
@@ -1272,6 +1009,7 @@ module TestSingleSelection =
                 return ConsoleHarness.toString terminal
             }
 
+            let state = IncrTestContext.currentState ctx
             // Scroll should be at 2 (showing items 3, 4, 5)
             state.ListState.ScrollOffset |> shouldEqual 2
             // Cursor should be at index 4 (item 5)
@@ -1325,7 +1063,7 @@ module TestSingleSelection =
 
             let checkboxKey = NodeKey.make "checkbox"
 
-            let vdom (ctx : IVdomContext<_>) (s : FocusLeaveState) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<FocusLeavePostLayoutEvent>) (s : FocusLeaveState) : Vdom<DesiredBounds> =
                 let list =
                     (SingleSelection.make (
                         ctx,
@@ -1354,42 +1092,6 @@ module TestSingleSelection =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = true
-
-            let processWorld =
-                { new WorldProcessor<FocusLeaveEvent, FocusLeavePostLayoutEvent, FocusLeaveState> with
-                    member _.ProcessWorld (inputs, _, s) =
-                        let mutable newState = s
-
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent FocusLeaveCursorUp ->
-                                newState <-
-                                    { newState with
-                                        ListState = newState.ListState.MoveUp 5
-                                    }
-                            | WorldStateChange.ApplicationEvent FocusLeaveCursorDown ->
-                                newState <-
-                                    { newState with
-                                        ListState = newState.ListState.MoveDown 5
-                                    }
-                            | WorldStateChange.ApplicationEvent FocusLeaveSelect -> ()
-                            | _ -> ()
-
-                        ProcessWorldResult.make newState
-
-                    member _.ProcessPostLayoutEvents (events, _, state) =
-                        let mutable newState = state
-
-                        for (FocusLeaveViewportInfo info) in events do
-                            newState <-
-                                { newState with
-                                    ListState = newState.ListState.EnsureVisible info.ViewportHeight
-                                }
-
-                        newState
-                }
-
             let resolver =
                 ActivationResolver.selectionList
                     singleSelectPrefix
@@ -1398,57 +1100,56 @@ module TestSingleSelection =
                     FocusLeaveCursorDown
                     (fun _ -> FocusLeaveSelect)
 
-            let renderState = MockTime.makeRenderStateStatic console None
-
-            let initialState : FocusLeaveState =
+            let initialState =
                 {
-                    SelectedIndex = None
+                    FocusLeaveState.SelectedIndex = None
                     ListState = SelectionListState.AtStart
                 }
 
+            let transition (state : FocusLeaveState) ev =
+                match ev with
+                | FocusLeaveCursorUp ->
+                    { state with
+                        FocusLeaveState.ListState = state.ListState.MoveUp 5
+                    }
+                | FocusLeaveCursorDown ->
+                    { state with
+                        FocusLeaveState.ListState = state.ListState.MoveDown 5
+                    }
+                | FocusLeaveSelect -> state
+
+            let handleInput change =
+                match change with
+                | WorldStateChange.ApplicationEvent ev -> Some ev
+                | _ -> None
+
+            let handlePostLayout (FocusLeaveViewportInfo info) (state : FocusLeaveState) =
+                { state with
+                    FocusLeaveState.ListState = state.ListState.EnsureVisible info.ViewportHeight
+                }
+
+            let config =
+                AppConfig.make initialState transition (App.pureView vdom)
+                |> AppConfig.withHandleInput handleInput
+                |> AppConfig.withHandlePostLayout handlePostLayout
+                |> AppConfig.withActivationResolver resolver
+                |> AppConfig.withFocusHandling FocusHandling.FrameworkManaged
+
+            use ctx = IncrTestContext.make console config None
+
             // Initial render - nothing focused
-            let mutable state =
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    initialState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Tab to focus the list (first focusable element)
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Navigate down 4 times to reach item 5 and scroll
             for _ in 1..4 do
                 world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.DownArrow, false, false, false))
 
-                state <-
-                    App.pumpOnce
-                        getUtcNow
-                        worldFreezer
-                        state
-                        haveFrameworkHandleFocus
-                        renderState
-                        processWorld
-                        vdom
-                        resolver
-                        (fun () -> false)
+                IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Verify we're focused on item 5 and scrolled (showing items 3, 4, 5)
             // The checkbox is on the right (unfocused, shown as ☐)
@@ -1463,23 +1164,14 @@ module TestSingleSelection =
                 return ConsoleHarness.toString terminal
             }
 
+            let state = IncrTestContext.currentState ctx
             // Scroll offset should be 2
             state.ListState.ScrollOffset |> shouldEqual 2
 
             // Tab to move focus to the checkbox (away from the list)
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Scroll position preserved - still showing items 3, 4, 5, but now list is unfocused
             // Checkbox is now focused (shown with brackets around ☐)
@@ -1494,6 +1186,7 @@ module TestSingleSelection =
                 return ConsoleHarness.toString terminal
             }
 
+            let state = IncrTestContext.currentState ctx
             // Verify scroll offset is still 2
             state.ListState.ScrollOffset |> shouldEqual 2
         }
@@ -1562,47 +1255,6 @@ module TestSingleSelection =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = true
-
-            let processWorld =
-                { new WorldProcessor<NoDanceEvent, NoDancePostLayoutEvent, NoDanceState> with
-                    member _.ProcessWorld (inputs, renderState, s) =
-                        let mutable newState = s
-
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent NoDanceCursorUp ->
-                                newState <-
-                                    { newState with
-                                        ListState = newState.ListState.MoveUp 5
-                                    }
-                            | WorldStateChange.ApplicationEvent NoDanceCursorDown ->
-                                newState <-
-                                    { newState with
-                                        ListState = newState.ListState.MoveDown 5
-                                    }
-                            | WorldStateChange.ApplicationEvent (NoDanceSelect index) ->
-                                newState <-
-                                    { newState with
-                                        SelectedIndex = Some index
-                                    }
-                            | _ -> ()
-
-                        ProcessWorldResult.make newState
-
-                    member _.ProcessPostLayoutEvents (events, _, state) =
-                        let mutable newState = state
-
-                        for (NoDanceViewportInfo info) in events do
-                            // EnsureVisible won't change scroll if cursor is already visible
-                            newState <-
-                                { newState with
-                                    ListState = newState.ListState.EnsureVisible info.ViewportHeight
-                                }
-
-                        newState
-                }
-
             let resolver =
                 ActivationResolver.selectionList
                     singleSelectPrefix
@@ -1611,12 +1263,10 @@ module TestSingleSelection =
                     NoDanceCursorDown
                     NoDanceSelect
 
-            let renderState = MockTime.makeRenderStateStatic console None
-
             // Start with scroll at 1, cursor at 1 (showing items 2, 3, 4 with cursor on item 2)
-            let initialState : NoDanceState =
+            let initialState =
                 {
-                    SelectedIndex = None
+                    NoDanceState.SelectedIndex = None
                     ListState =
                         {
                             ScrollOffset = 1
@@ -1624,52 +1274,59 @@ module TestSingleSelection =
                         }
                 }
 
+            let transition (state : NoDanceState) ev =
+                match ev with
+                | NoDanceCursorUp ->
+                    { state with
+                        NoDanceState.ListState = state.ListState.MoveUp 5
+                    }
+                | NoDanceCursorDown ->
+                    { state with
+                        NoDanceState.ListState = state.ListState.MoveDown 5
+                    }
+                | NoDanceSelect index ->
+                    { state with
+                        NoDanceState.SelectedIndex = Some index
+                    }
+
+            let handleInput change =
+                match change with
+                | WorldStateChange.ApplicationEvent ev -> Some ev
+                | _ -> None
+
+            let handlePostLayout (NoDanceViewportInfo info) (state : NoDanceState) =
+                // EnsureVisible won't change scroll if cursor is already visible
+                { state with
+                    NoDanceState.ListState = state.ListState.EnsureVisible info.ViewportHeight
+                }
+
+            let config =
+                AppConfig.make initialState transition (App.pureView vdom)
+                |> AppConfig.withHandleInput handleInput
+                |> AppConfig.withHandlePostLayout handlePostLayout
+                |> AppConfig.withActivationResolver resolver
+                |> AppConfig.withFocusHandling FocusHandling.FrameworkManaged
+
+            use ctx = IncrTestContext.make console config None
+
             // Initial render (not focused yet, cursor at item 2)
-            let mutable state =
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    initialState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Tab to focus the list
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             // Scroll should still be at 1
             state.ListState.ScrollOffset |> shouldEqual 1
 
             // Down arrow to move cursor to item 3 - still within viewport
             world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.DownArrow, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             // Scroll should STILL be at 1 (no dancing)
             state.ListState.ScrollOffset |> shouldEqual 1
 
@@ -1807,48 +1464,6 @@ module TestSingleSelection =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = true
-
-            // This processWorld handles the viewport event to call EnsureVisible
-            let processWorld =
-                { new WorldProcessor<ViewportAwareEvent, ViewportAwarePostLayoutEvent, ViewportAwareState> with
-                    member _.ProcessWorld (inputs, renderState, s) =
-                        let mutable newState = s
-
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent ViewportAwareCursorUp ->
-                                newState <-
-                                    { newState with
-                                        ListState = newState.ListState.MoveUp 5
-                                    }
-                            | WorldStateChange.ApplicationEvent ViewportAwareCursorDown ->
-                                newState <-
-                                    { newState with
-                                        ListState = newState.ListState.MoveDown 5
-                                    }
-                            | WorldStateChange.ApplicationEvent (ViewportAwareSelect index) ->
-                                newState <-
-                                    { newState with
-                                        SelectedIndex = Some index
-                                    }
-                            | _ -> ()
-
-                        ProcessWorldResult.make newState
-
-                    member _.ProcessPostLayoutEvents (events, _, state) =
-                        let mutable newState = state
-
-                        for (ViewportAwareViewportInfo info) in events do
-                            // Use the viewport height from the render to ensure cursor is visible
-                            newState <-
-                                { newState with
-                                    ListState = newState.ListState.EnsureVisible info.ViewportHeight
-                                }
-
-                        newState
-                }
-
             let resolver =
                 ActivationResolver.selectionList
                     singleSelectPrefix
@@ -1857,58 +1472,62 @@ module TestSingleSelection =
                     ViewportAwareCursorDown
                     ViewportAwareSelect
 
-            let renderState = MockTime.makeRenderStateStatic console None
-
-            let initialState : ViewportAwareState =
+            let initialState =
                 {
-                    SelectedIndex = None
+                    ViewportAwareState.SelectedIndex = None
                     ListState = SelectionListState.AtStart
                 }
 
+            let transition (state : ViewportAwareState) ev =
+                match ev with
+                | ViewportAwareCursorUp ->
+                    { state with
+                        ViewportAwareState.ListState = state.ListState.MoveUp 5
+                    }
+                | ViewportAwareCursorDown ->
+                    { state with
+                        ViewportAwareState.ListState = state.ListState.MoveDown 5
+                    }
+                | ViewportAwareSelect index ->
+                    { state with
+                        ViewportAwareState.SelectedIndex = Some index
+                    }
+
+            let handleInput change =
+                match change with
+                | WorldStateChange.ApplicationEvent ev -> Some ev
+                | _ -> None
+
+            let handlePostLayout (ViewportAwareViewportInfo info) (state : ViewportAwareState) =
+                // Use the viewport height from the render to ensure cursor is visible
+                { state with
+                    ViewportAwareState.ListState = state.ListState.EnsureVisible info.ViewportHeight
+                }
+
+            let config =
+                AppConfig.make initialState transition (App.pureView vdom)
+                |> AppConfig.withHandleInput handleInput
+                |> AppConfig.withHandlePostLayout handlePostLayout
+                |> AppConfig.withActivationResolver resolver
+                |> AppConfig.withFocusHandling FocusHandling.FrameworkManaged
+
+            use ctx = IncrTestContext.make console config None
+
             // Initial render
-            let mutable state =
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    initialState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Tab to focus the list
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Down arrow 4 times to reach item 5 (index 4)
             for _ in 1..4 do
                 world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.DownArrow, false, false, false))
 
-                state <-
-                    App.pumpOnce
-                        getUtcNow
-                        worldFreezer
-                        state
-                        haveFrameworkHandleFocus
-                        renderState
-                        processWorld
-                        vdom
-                        resolver
-                        (fun () -> false)
+                IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             // Cursor should be at index 4 (item 5)
             state.ListState.CursorIndex |> shouldEqual 4
 

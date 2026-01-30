@@ -10,7 +10,6 @@ open WoofWare.Zoomies
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestFocusCycle =
-    let getUtcNow () = MockTime.defaultStartTime
 
     [<OneTimeSetUp>]
     let setUp () =
@@ -41,6 +40,8 @@ module TestFocusCycle =
                     Seq.zip this.Checkboxes other.Checkboxes |> Seq.forall (fun (x, y) -> x = y)
             | _ -> failwith "bad"
 
+    type CheckboxEvent = | Toggle of int
+
     let vdom (vdomContext : IVdomContext<_>) (state : State) =
         List.init
             4
@@ -49,6 +50,31 @@ module TestFocusCycle =
                 Components.Checkbox.make (vdomContext, key, state.Checkboxes.[i])
             )
         |> List.reduce (fun x y -> Vdom.panelSplitAbsolute (SplitDirection.Vertical, -3, x, y))
+
+    let transition (state : State) (event : CheckboxEvent) : State =
+        match event with
+        | Toggle i ->
+            { state with
+                Checkboxes = state.Checkboxes.SetItem (i, not state.Checkboxes.[i])
+            }
+
+    let activationResolver : ActivationResolver<CheckboxEvent, State> =
+        ActivationResolver (fun key keyInfo _state ->
+            if keyInfo.KeyChar = ' ' then
+                let keyStr = NodeKey.toHumanReadableString key
+                let prefix = "checkbox"
+
+                if keyStr.StartsWith (prefix, StringComparison.Ordinal) then
+                    let index = keyStr.Substring prefix.Length |> Int32.Parse
+                    Some (Toggle index)
+                else
+                    None
+            else
+                None
+        )
+
+    let makeConfig initial =
+        AppConfig.simple initial transition (App.pureView vdom) activationResolver
 
     [<Test>]
     let ``example 1`` () =
@@ -64,67 +90,16 @@ module TestFocusCycle =
                     world.KeyAvailable
                     world.ReadKey
 
-            let state =
+            let initial =
                 {
                     Checkboxes = ImmutableArray.Create<bool> [| false ; false ; false ; false |]
                 }
 
-            let haveFrameworkHandleFocus _ = true
+            let config = makeConfig initial
 
-            let processWorld =
-                { new WorldProcessor<_, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        let mutable newCheckboxes = state.Checkboxes
+            use ctx = IncrTestContext.make console config None
 
-                        for s in inputs do
-                            match s with
-                            | WorldStateChange.Keystroke c ->
-                                if c.KeyChar = ' ' then
-                                    match renderState.FocusedKey with
-                                    | None ->
-                                        // pressed space while nothing focused
-                                        ()
-                                    | Some focused ->
-                                        // a hack just to make the test smaller; in real life you should more explicitly
-                                        // model what checkboxes you have with some sort of map
-                                        let key = NodeKey.toHumanReadableString focused
-                                        let prefix = "checkbox"
-
-                                        if key.StartsWith (prefix, StringComparison.Ordinal) then
-                                            let key = key.Substring prefix.Length |> Int32.Parse
-                                            newCheckboxes <- newCheckboxes.SetItem (key, not newCheckboxes.[key])
-                                        else
-                                            failwith "unexpected key"
-                                else
-                                    failwith "unexpected key char"
-                            | WorldStateChange.MouseEvent _ -> failwith "no mouse events"
-                            | WorldStateChange.ApplicationEvent () -> failwith "no app events"
-                            | WorldStateChange.Paste _ -> failwith "no paste events"
-                            | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
-
-                        ProcessWorldResult.make
-                            {
-                                Checkboxes = newCheckboxes
-                            }
-
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
-
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            let mutable currentState = state
-
-            currentState <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    currentState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -138,17 +113,7 @@ module TestFocusCycle =
             // Nothing focused, so space does nothing
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
-            currentState <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    currentState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -162,17 +127,7 @@ module TestFocusCycle =
             // Move focus to the first focusable element
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            currentState <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    currentState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -185,17 +140,7 @@ module TestFocusCycle =
 
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
-            currentState <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    currentState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -208,17 +153,7 @@ module TestFocusCycle =
 
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            currentState <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    currentState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -231,17 +166,7 @@ module TestFocusCycle =
 
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
-            currentState <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    currentState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -254,17 +179,7 @@ module TestFocusCycle =
 
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            currentState <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    currentState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -277,17 +192,7 @@ module TestFocusCycle =
 
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
-            currentState <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    currentState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -300,17 +205,7 @@ module TestFocusCycle =
 
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            currentState <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    currentState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -323,17 +218,7 @@ module TestFocusCycle =
 
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
-            currentState <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    currentState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -346,17 +231,7 @@ module TestFocusCycle =
 
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            currentState <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    currentState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -382,65 +257,16 @@ module TestFocusCycle =
                     world.KeyAvailable
                     world.ReadKey
 
-            let state =
+            let initial =
                 {
                     Checkboxes = ImmutableArray.Create<bool> [| false ; false ; false ; false |]
                 }
 
-            let haveFrameworkHandleFocus _ = true
+            let config = makeConfig initial
 
-            let processWorld =
-                { new WorldProcessor<_, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, checkboxes) =
-                        let mutable newCheckboxes = checkboxes.Checkboxes
+            use ctx = IncrTestContext.make console config None
 
-                        for s in inputs do
-                            match s with
-                            | WorldStateChange.Keystroke c ->
-                                if c.KeyChar = ' ' then
-                                    match renderState.FocusedKey with
-                                    | None -> ()
-                                    | Some focused ->
-                                        // a hack just to make the test smaller; in real life you should more explicitly
-                                        // model what checkboxes you have with some sort of map
-                                        let key = NodeKey.toHumanReadableString focused
-                                        let prefix = "checkbox"
-
-                                        if key.StartsWith (prefix, StringComparison.Ordinal) then
-                                            let key = key.Substring prefix.Length |> Int32.Parse
-                                            newCheckboxes <- newCheckboxes.SetItem (key, not newCheckboxes.[key])
-                                        else
-                                            failwith "unexpected key"
-                                else
-                                    failwith "unexpected key char"
-                            | WorldStateChange.MouseEvent _ -> failwith "no mouse events"
-                            | WorldStateChange.ApplicationEvent () -> failwith "no app events"
-                            | WorldStateChange.Paste _ -> failwith "no paste events"
-                            | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
-
-                        ProcessWorldResult.make
-                            {
-                                Checkboxes = newCheckboxes
-                            }
-
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
-
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            let mutable currentState = state
-
-            currentState <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    currentState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -454,17 +280,7 @@ module TestFocusCycle =
             // Tab to focus first checkbox
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            currentState <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    currentState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -478,17 +294,7 @@ module TestFocusCycle =
             // Tab to focus second checkbox
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            currentState <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    currentState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -502,17 +308,7 @@ module TestFocusCycle =
             // Shift+Tab to go back to first checkbox
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, true, false, false))
 
-            currentState <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    currentState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -526,17 +322,7 @@ module TestFocusCycle =
             // Shift+Tab from first should wrap to last
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, true, false, false))
 
-            currentState <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    currentState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -550,17 +336,7 @@ module TestFocusCycle =
             // Check the last checkbox
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
-            currentState <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    currentState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -574,17 +350,7 @@ module TestFocusCycle =
             // Shift+Tab to third checkbox
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, true, false, false))
 
-            currentState <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    currentState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -595,6 +361,8 @@ module TestFocusCycle =
                 return ConsoleHarness.toString terminal
             }
         }
+
+    type BoolEvent = | ToggleBool
 
     [<Test>]
     let ``focus tracks the key when node keys are reassigned, not the element`` () =
@@ -611,8 +379,6 @@ module TestFocusCycle =
                     world.ReadKey
 
             // State tracks which element to render at a given key
-            let haveFrameworkHandleFocus _ = true
-
             let vdom (vdomContext : IVdomContext<_>) (renderCheckbox1 : bool) =
                 let sharedKey = NodeKey.make "shared-key"
                 let unsharedKey = NodeKey.make "unshared-key"
@@ -634,39 +400,27 @@ module TestFocusCycle =
 
                     Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, checkbox1, checkbox2)
 
-            let processWorld =
-                { new WorldProcessor<_, unit, bool> with
-                    member _.ProcessWorld (inputs, _, renderCheckbox1) =
-                        let mutable renderCheckbox1 = renderCheckbox1
+            let transition (renderCheckbox1 : bool) (event : BoolEvent) : bool =
+                match event with
+                | ToggleBool -> not renderCheckbox1
 
-                        for s in inputs do
-                            match s with
-                            | WorldStateChange.Keystroke _ -> renderCheckbox1 <- not renderCheckbox1
-                            | WorldStateChange.MouseEvent _ -> failwith "no mouse events"
-                            | WorldStateChange.ApplicationEvent () -> failwith "no app events"
-                            | WorldStateChange.Paste _ -> failwith "no paste events"
-                            | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
+            let handleInput (change : WorldStateChange<BoolEvent>) : BoolEvent option =
+                match change with
+                | WorldStateChange.Keystroke _ -> Some ToggleBool
+                | _ -> None
 
-                        ProcessWorldResult.make renderCheckbox1
-
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
-
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            let mutable renderCheckbox1 = true
-
-            renderCheckbox1 <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    renderCheckbox1
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
+            let config : AppConfig<bool, BoolEvent, unit> =
+                AppConfig.withInputHandler
+                    true
+                    transition
+                    (App.pureView vdom)
+                    handleInput
+                    (fun _ s -> s)
                     ActivationResolver.none
-                    (fun () -> false)
+
+            use ctx = IncrTestContext.make console config None
+
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -680,17 +434,7 @@ module TestFocusCycle =
             // Tab to focus the checkbox
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            renderCheckbox1 <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    renderCheckbox1
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -704,17 +448,7 @@ module TestFocusCycle =
             // Now reassign the key to a different element. Trigger a rerender:
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
-            renderCheckbox1 <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    renderCheckbox1
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Focus should remain on the element with shared-key, even though it's a different element
             expect {
@@ -726,6 +460,8 @@ module TestFocusCycle =
                 return ConsoleHarness.toString terminal
             }
         }
+
+    type IntEvent = | Increment
 
     [<Test>]
     let ``key reassignment to non-focusable element loses focus`` () =
@@ -764,41 +500,27 @@ module TestFocusCycle =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = true
+            let transition (tick : int) (event : IntEvent) : int =
+                match event with
+                | Increment -> tick + 1
 
-            let processWorld =
-                { new WorldProcessor<_, unit, int> with
-                    member _.ProcessWorld (inputs, _, state) =
-                        let mutable newState = state
+            let handleInput (change : WorldStateChange<IntEvent>) : IntEvent option =
+                match change with
+                | WorldStateChange.Keystroke _ -> Some Increment
+                | _ -> None
 
-                        for s in inputs do
-                            match s with
-                            | WorldStateChange.Keystroke _ -> newState <- newState + 1
-                            | WorldStateChange.MouseEvent _ -> failwith "no mouse events"
-                            | WorldStateChange.ApplicationEvent () -> failwith "no app events"
-                            | WorldStateChange.Paste _ -> failwith "no paste events"
-                            | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
-
-                        ProcessWorldResult.make newState
-
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
-
-            let mutable renderFocusable = 0
-
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            renderFocusable <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    renderFocusable
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
+            let config : AppConfig<int, IntEvent, unit> =
+                AppConfig.withInputHandler
+                    0
+                    transition
+                    (App.pureView vdom)
+                    handleInput
+                    (fun _ s -> s)
                     ActivationResolver.none
-                    (fun () -> false)
+
+            use ctx = IncrTestContext.make console config None
+
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -812,17 +534,7 @@ module TestFocusCycle =
             // Tab to focus the checkbox
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            renderFocusable <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    renderFocusable
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -836,17 +548,7 @@ module TestFocusCycle =
             // Now reassign the key to a non-focusable element
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
-            renderFocusable <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    renderFocusable
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // The element is no longer in the focusable list.
             // Vdom construction sees that on the previous tick, that element was focused, so it displays as focused.
@@ -862,17 +564,7 @@ more      [☐]   |
             // Give us a rerender and observe that on the previous tick, nothing was focused according to the framework
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
-            renderFocusable <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    renderFocusable
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -913,35 +605,25 @@ more      [☐]   |
 
                 Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 3, text, checkbox)
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, FakeUnit> with
-                    member _.ProcessWorld (worldChanges, _, state) =
-                        for change in worldChanges do
-                            match change with
-                            | Keystroke _ -> ()
-                            | MouseEvent _ -> failwith "no mouse events"
-                            | Paste _ -> failwith "no paste events"
-                            | ApplicationEvent () -> failwith "no app events"
-                            | ApplicationEventException _ -> failwith "no exceptions possible"
+            let transition (state : FakeUnit) (_ : unit) : FakeUnit = state
 
-                        ProcessWorldResult.make state
+            let handleInput (change : WorldStateChange<unit>) : unit option =
+                match change with
+                | WorldStateChange.Keystroke _ -> None
+                | _ -> None
 
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let config : AppConfig<FakeUnit, unit, unit> =
+                AppConfig.withInputHandler
+                    (FakeUnit.fake ())
+                    transition
+                    (App.pureView vdom)
+                    handleInput
+                    (fun _ s -> s)
+                    ActivationResolver.none
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -964,19 +646,10 @@ This is focusable text                                                          
             // Tab to focus the text
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Assert that focus moved to the text element
+            let renderState = ctx.RenderState
             RenderState.focusedKey renderState |> shouldEqual (Some textKey)
 
             expect {
@@ -1000,17 +673,7 @@ This is focusable text                                                          
             // Tab to focus the checkbox
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Assert that focus moved to the checkbox
             RenderState.focusedKey renderState |> shouldEqual (Some checkboxKey)
@@ -1036,17 +699,7 @@ This is focusable text                                                          
             // Tab back to text
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Assert that focus moved back to the text element
             RenderState.focusedKey renderState |> shouldEqual (Some textKey)
@@ -1103,35 +756,25 @@ This is focusable text                                                          
                     Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, checkbox2, checkbox3)
                 )
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, FakeUnit> with
-                    member _.ProcessWorld (worldChanges, _, state) =
-                        for change in worldChanges do
-                            match change with
-                            | Keystroke _ -> ()
-                            | MouseEvent _ -> failwith "no mouse events"
-                            | Paste _ -> failwith "no paste events"
-                            | ApplicationEvent () -> failwith "no app events"
-                            | ApplicationEventException _ -> failwith "no exceptions possible"
+            let transition (state : FakeUnit) (_ : unit) : FakeUnit = state
 
-                        ProcessWorldResult.make state
+            let handleInput (change : WorldStateChange<unit>) : unit option =
+                match change with
+                | WorldStateChange.Keystroke _ -> None
+                | _ -> None
 
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let config : AppConfig<FakeUnit, unit, unit> =
+                AppConfig.withInputHandler
+                    (FakeUnit.fake ())
+                    transition
+                    (App.pureView vdom)
+                    handleInput
+                    (fun _ s -> s)
+                    ActivationResolver.none
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -1147,17 +790,7 @@ This is focusable text                                                          
             // Tab should focus checkbox2 (marked with isFirstToFocus=true), not checkbox1
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -1173,17 +806,7 @@ This is focusable text                                                          
             // Tab again should cycle to checkbox3
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -1199,17 +822,7 @@ This is focusable text                                                          
             // Tab again should cycle to checkbox1
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -1225,17 +838,7 @@ This is focusable text                                                          
             // Tab again should cycle back to checkbox2
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -1282,36 +885,26 @@ This is focusable text                                                          
                     Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, checkbox2, checkbox3)
                 )
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, FakeUnit> with
-                    member _.ProcessWorld (worldChanges, _, state) =
-                        for change in worldChanges do
-                            match change with
-                            | Keystroke _ -> ()
-                            | MouseEvent _ -> failwith "no mouse events"
-                            | Paste _ -> failwith "no paste events"
-                            | ApplicationEvent () -> failwith "no app events"
-                            | ApplicationEventException _ -> failwith "no exceptions possible"
+            let transition (state : FakeUnit) (_ : unit) : FakeUnit = state
 
-                        ProcessWorldResult.make state
+            let handleInput (change : WorldStateChange<unit>) : unit option =
+                match change with
+                | WorldStateChange.Keystroke _ -> None
+                | _ -> None
 
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let config : AppConfig<FakeUnit, unit, unit> =
+                AppConfig.withInputHandler
+                    (FakeUnit.fake ())
+                    transition
+                    (App.pureView vdom)
+                    handleInput
+                    (fun _ s -> s)
+                    ActivationResolver.none
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
+            use ctx = IncrTestContext.make console config None
 
             // First render: checkbox2 should start with focus (marked with isInitiallyFocused=true)
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -1327,17 +920,7 @@ This is focusable text                                                          
             // Tab should cycle to checkbox3
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -1353,17 +936,7 @@ This is focusable text                                                          
             // Tab again should cycle to checkbox1
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -1379,17 +952,7 @@ This is focusable text                                                          
             // Shift+Tab should cycle backwards to checkbox3
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, true, false, false))
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -1405,17 +968,7 @@ This is focusable text                                                          
             // Shift+Tab again should cycle backwards to checkbox2
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, true, false, false))
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot

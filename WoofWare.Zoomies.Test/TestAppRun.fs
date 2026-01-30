@@ -187,9 +187,10 @@ module TestAppRun =
             // Create an incremental vdom that depends on time (spinner)
             let incrVdom (ctx : VdomContext<unit>) (_stateNode : unit Node) : Vdom<DesiredBounds> Node =
                 let incr = VdomContext.incr ctx
-                let clock = VdomContext.clock ctx
+                let timeNode = VdomContext.clockTimeNode ctx
                 // 10 fps = 100ms per frame
-                let frameNode = IncrTime.spinnerFrameNode incr clock LoadingSpinner.FrameCount 10.0
+                let frameNode =
+                    IncrTime.spinnerFrameNodeFromTimeNode incr timeNode LoadingSpinner.FrameCount 10.0
 
                 incr.Map
                     (fun frame ->
@@ -264,9 +265,12 @@ module TestAppRun =
                     Height = 24
                 }
 
-            let incrState = IncrementalState.make "initial" bounds None
+            let incrState = IncrementalState.make bounds None
             let incr = incrState.Incr
-            let ctx = VdomContext.make<string, unit> incrState
+            let ctx = VdomContext.make<unit> incrState
+
+            // Create a StateMachine for state changes
+            let stateMachine = StateMachine.create incr.State "initial" (fun _state ev -> ev)
 
             let mutable callCount = 0
 
@@ -274,8 +278,7 @@ module TestAppRun =
                 callCount <- callCount + 1
                 Vdom.textContent state
 
-            let stateNode = IncrementalState.stateNode incrState
-            let vdomNode = App.pureView pureVdom ctx stateNode
+            let vdomNode = App.pureView pureVdom ctx stateMachine.StateNode
 
             let observer = incr.Observe vdomNode
             incr.Stabilize ()
@@ -284,8 +287,8 @@ module TestAppRun =
             let _ = Observer.value observer
             callCount |> shouldEqual 1
 
-            // Change state
-            IncrementalState.setState "changed" incrState
+            // Change state via StateMachine
+            stateMachine.Inject "changed"
             incr.Stabilize ()
 
             let _ = Observer.value observer
@@ -303,9 +306,12 @@ module TestAppRun =
                     Height = 24
                 }
 
-            let incrState = IncrementalState.make () bounds1 None
+            let incrState = IncrementalState.make bounds1 None
             let incr = incrState.Incr
-            let ctx = VdomContext.make<unit, unit> incrState
+            let ctx = VdomContext.make<unit> incrState
+
+            // Create a StateMachine with unit state
+            let stateMachine = StateMachine.create incr.State () (fun s (_ : unit) -> s)
 
             let mutable callCount = 0
 
@@ -313,8 +319,7 @@ module TestAppRun =
                 callCount <- callCount + 1
                 Vdom.textContent $"Width: {ctx.TerminalBounds.Width}"
 
-            let stateNode = IncrementalState.stateNode incrState
-            let vdomNode = App.pureView pureVdom ctx stateNode
+            let vdomNode = App.pureView pureVdom ctx stateMachine.StateNode
 
             let observer = incr.Observe vdomNode
             incr.Stabilize ()
@@ -351,9 +356,12 @@ module TestAppRun =
                 }
 
             let key1 = NodeKey.make "key1"
-            let incrState = IncrementalState.make () bounds (Some key1)
+            let incrState = IncrementalState.make bounds (Some key1)
             let incr = incrState.Incr
-            let ctx = VdomContext.make<unit, unit> incrState
+            let ctx = VdomContext.make<unit> incrState
+
+            // Create a StateMachine with unit state
+            let stateMachine = StateMachine.create incr.State () (fun s (_ : unit) -> s)
 
             let mutable callCount = 0
 
@@ -364,8 +372,7 @@ module TestAppRun =
                 | Some key -> Vdom.textContent $"Focused: {key}"
                 | None -> Vdom.textContent "No focus"
 
-            let stateNode = IncrementalState.stateNode incrState
-            let vdomNode = App.pureView pureVdom ctx stateNode
+            let vdomNode = App.pureView pureVdom ctx stateMachine.StateNode
 
             let observer = incr.Observe vdomNode
             incr.Stabilize ()
@@ -394,9 +401,12 @@ module TestAppRun =
                     Height = 24
                 }
 
-            let incrState = IncrementalState.make "state" bounds None
+            let incrState = IncrementalState.make bounds None
             let incr = incrState.Incr
-            let ctx = VdomContext.make<string, unit> incrState
+            let ctx = VdomContext.make<unit> incrState
+
+            // Create a StateMachine with string state
+            let stateMachine = StateMachine.create incr.State "state" (fun _s ev -> ev)
 
             let mutable callCount = 0
 
@@ -404,8 +414,7 @@ module TestAppRun =
                 callCount <- callCount + 1
                 Vdom.textContent state
 
-            let stateNode = IncrementalState.stateNode incrState
-            let vdomNode = App.pureView pureVdom ctx stateNode
+            let vdomNode = App.pureView pureVdom ctx stateMachine.StateNode
 
             let observer = incr.Observe vdomNode
             incr.Stabilize ()

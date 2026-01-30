@@ -24,7 +24,7 @@ module TestVdomContext =
 
     /// Helper to observe a bool Node from wasRecentlyActivated.
     let observeWasRecentlyActivated (key : NodeKey) (ctx : VdomContext<unit>) : bool =
-        let incr = VdomContext.incr ctx
+        let incr = VdomContext.unsafeIncr ctx
         let node = VdomContext.wasRecentlyActivated key ctx
         let observer = incr.Observe node
         incr.Stabilize ()

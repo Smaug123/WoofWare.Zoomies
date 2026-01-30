@@ -8,7 +8,7 @@ open WoofWare.Zoomies
 type MockTimer =
     {
         /// The underlying IncrementalState.
-        IncrState : IncrementalState<unit>
+        IncrState : IncrementalState
         /// Advance time by the given amount and stabilize.
         Advance : TimeSpan -> DateTime
         /// Set the time to a specific DateTime and stabilize.
@@ -28,7 +28,7 @@ module MockTime =
 
     /// Create a MockTimer with the given initial time and bounds.
     let makeWithTime (startTime : DateTime) (bounds : Rectangle) : MockTimer =
-        let incrState = IncrementalState.make () bounds None
+        let incrState = IncrementalState.make bounds None
         // Advance the clock to the specified start time
         IncrementalState.advanceClockAndStabilize startTime incrState
         let mutable currentTime = startTime
@@ -76,7 +76,7 @@ module MockTime =
     /// Create a VdomContext for testing purposes with the given bounds.
     /// Uses a static mock time.
     let makeVdomContext<'postLayoutEvent> (bounds : Rectangle) : VdomContext<'postLayoutEvent> =
-        let incrState = IncrementalState.make () bounds None
+        let incrState = IncrementalState.make bounds None
         IncrementalState.advanceClockAndStabilize defaultStartTime incrState
         VdomContext.make incrState
 
@@ -109,7 +109,7 @@ module MockTime =
         (debugWriter : System.IO.StreamWriter option)
         : RenderState<'postLayoutEvent> * (TimeSpan -> DateTime)
         =
-        let vdomContext = VdomContext.make<unit, 'postLayoutEvent> timer.IncrState
+        let vdomContext = VdomContext.make<'postLayoutEvent> timer.IncrState
         let renderState = RenderState.make console vdomContext debugWriter
 
         let advanceWithContext ts = timer.Advance ts
@@ -133,7 +133,7 @@ module MockTime =
         (timer : MockTimer)
         : VdomContext<'postLayoutEvent> * (TimeSpan -> DateTime)
         =
-        let ctx = VdomContext.make<unit, 'postLayoutEvent> timer.IncrState
+        let ctx = VdomContext.make<'postLayoutEvent> timer.IncrState
 
         let advanceWithContext ts = timer.Advance ts
 
@@ -144,7 +144,7 @@ module MockTime =
 type IncrTestContext<'state, 'appEvent, 'postLayoutEvent> =
     {
         /// The incremental state holder (clock, bounds, focus).
-        IncrState : IncrementalState<'state>
+        IncrState : IncrementalState
         /// The state machine for event-driven state updates.
         StateMachine : StateMachine<'state, 'appEvent>
         /// The render state for terminal output.
@@ -180,7 +180,7 @@ module IncrTestContext =
             }
 
         // Create IncrementalState
-        let incrState = IncrementalState.make config.Initial initialBounds None
+        let incrState = IncrementalState.make initialBounds None
         let vdomContext = VdomContext.make incrState
 
         // Create the StateMachine for event-driven state updates
@@ -193,9 +193,8 @@ module IncrTestContext =
         // Create an observer for the Vdom so we can read it after stabilization
         let vdomObserver = incrState.Incr.Observe vdomNode
 
-        // Initial stabilization
+        // Defer stabilization until the first pump so callers can finish wiring observers.
         let startTime = MockTime.defaultStartTime
-        IncrementalState.advanceClockAndStabilize startTime incrState
 
         let renderState = RenderState.make console vdomContext debugWriter
 
@@ -204,7 +203,7 @@ module IncrTestContext =
             StateMachine = stateMachine
             RenderState = renderState
             VdomObserver = vdomObserver
-            PreviousVdom = ref (Observer.value vdomObserver)
+            PreviousVdom = ref Vdom.empty
             CurrentTime = startTime
         }
 

@@ -84,8 +84,6 @@ module TestIncrementalState =
 
     [<Test>]
     let ``IncrementalState.make creates state with correct initial values`` () =
-        let initialState = "test state"
-
         let initialBounds =
             {
                 TopLeftX = 0
@@ -96,30 +94,12 @@ module TestIncrementalState =
 
         let initialFocus = Some (NodeKey.make "focused")
 
-        let incrState = IncrementalState.make initialState initialBounds initialFocus
-
-        // Verify initial values can be read
-        incrState.Incr.Var.Value incrState.StateVar |> shouldEqual initialState
+        let incrState = IncrementalState.make initialBounds initialFocus
 
         incrState.Incr.Var.Value incrState.TerminalBoundsVar
         |> shouldEqual initialBounds
 
         incrState.Incr.Var.Value incrState.FocusedKeyVar |> shouldEqual initialFocus
-
-    [<Test>]
-    let ``IncrementalState.stateNode returns working node`` () =
-        let incrState = IncrementalState.make 42 emptyRect None
-        let node = IncrementalState.stateNode incrState
-        let observer = incrState.Incr.Observe node
-        incrState.Incr.Stabilize ()
-
-        Observer.value observer |> shouldEqual 42
-
-        // Update state and verify node reflects change
-        IncrementalState.setState 100 incrState
-        incrState.Incr.Stabilize ()
-
-        Observer.value observer |> shouldEqual 100
 
     [<Test>]
     let ``IncrementalState.boundsNode returns working node`` () =
@@ -131,7 +111,7 @@ module TestIncrementalState =
                 Height = 24
             }
 
-        let incrState = IncrementalState.make () bounds1 None
+        let incrState = IncrementalState.make bounds1 None
         let node = IncrementalState.boundsNode incrState
         let observer = incrState.Incr.Observe node
         incrState.Incr.Stabilize ()
@@ -155,7 +135,7 @@ module TestIncrementalState =
     [<Test>]
     let ``IncrementalState.focusedKeyNode returns working node`` () =
         let key1 = NodeKey.make "key1"
-        let incrState = IncrementalState.make () emptyRect (Some key1)
+        let incrState = IncrementalState.make emptyRect (Some key1)
         let node = IncrementalState.focusedKeyNode incrState
         let observer = incrState.Incr.Observe node
         incrState.Incr.Stabilize ()
@@ -171,7 +151,7 @@ module TestIncrementalState =
 
     [<Test>]
     let ``IncrementalState.clockTimeNode returns working node`` () =
-        let incrState = IncrementalState.make () emptyRect None
+        let incrState = IncrementalState.make emptyRect None
         let node = IncrementalState.clockTimeNode incrState
         let observer = incrState.Incr.Observe node
         incrState.Incr.Stabilize ()
@@ -201,8 +181,8 @@ module TestIncrementalState =
                 Height = 24
             }
 
-        let incrState = IncrementalState.make () bounds1 None
-        let ctx = VdomContext.make<unit, unit> incrState
+        let incrState = IncrementalState.make bounds1 None
+        let ctx = VdomContext.make<unit> incrState
 
         // Start clean
         VdomContext.markClean ctx
@@ -232,8 +212,8 @@ module TestIncrementalState =
                 Height = 24
             }
 
-        let incrState = IncrementalState.make () bounds None
-        let ctx = VdomContext.make<unit, unit> incrState
+        let incrState = IncrementalState.make bounds None
+        let ctx = VdomContext.make<unit> incrState
 
         // Start clean
         VdomContext.markClean ctx
@@ -248,8 +228,8 @@ module TestIncrementalState =
     [<Test>]
     let ``VdomContext.setFocusedKey marks dirty when focus changes`` () =
         let key1 = NodeKey.make "key1"
-        let incrState = IncrementalState.make () emptyRect (Some key1)
-        let ctx = VdomContext.make<unit, unit> incrState
+        let incrState = IncrementalState.make emptyRect (Some key1)
+        let ctx = VdomContext.make<unit> incrState
 
         // Start clean
         VdomContext.markClean ctx
@@ -265,8 +245,8 @@ module TestIncrementalState =
     [<Test>]
     let ``VdomContext.setFocusedKey does not mark dirty when focus unchanged`` () =
         let key = NodeKey.make "key1"
-        let incrState = IncrementalState.make () emptyRect (Some key)
-        let ctx = VdomContext.make<unit, unit> incrState
+        let incrState = IncrementalState.make emptyRect (Some key)
+        let ctx = VdomContext.make<unit> incrState
 
         // Start clean
         VdomContext.markClean ctx
@@ -280,8 +260,8 @@ module TestIncrementalState =
 
     [<Test>]
     let ``VdomContext.setFocusedKey handles None to Some transition`` () =
-        let incrState = IncrementalState.make () emptyRect None
-        let ctx = VdomContext.make<unit, unit> incrState
+        let incrState = IncrementalState.make emptyRect None
+        let ctx = VdomContext.make<unit> incrState
 
         // Start clean
         VdomContext.markClean ctx
@@ -297,8 +277,8 @@ module TestIncrementalState =
     [<Test>]
     let ``VdomContext.setFocusedKey handles Some to None transition`` () =
         let key = NodeKey.make "key1"
-        let incrState = IncrementalState.make () emptyRect (Some key)
-        let ctx = VdomContext.make<unit, unit> incrState
+        let incrState = IncrementalState.make emptyRect (Some key)
+        let ctx = VdomContext.make<unit> incrState
 
         // Start clean
         VdomContext.markClean ctx
@@ -321,8 +301,8 @@ module TestIncrementalState =
             }
 
         let key = NodeKey.make "test"
-        let incrState = IncrementalState.make () bounds (Some key)
-        let ctx = VdomContext.make<unit, unit> incrState
+        let incrState = IncrementalState.make bounds (Some key)
+        let ctx = VdomContext.make<unit> incrState
 
         // boundsNode
         let boundsNode = VdomContext.boundsNode ctx

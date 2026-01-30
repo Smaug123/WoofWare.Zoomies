@@ -63,67 +63,83 @@ module TestExternalEventSubscription =
     let ``Timer example`` () =
         task {
             /// So that the test harness can control the passage of time, we maintain a way to exfiltrate timers from the
-            /// WorldProcessor.
+            /// framework.
             let mutable globalTimer = None
             /// To verify that the subscription itself (not just the timer) is disposed
             let mutable globalSubscription : TrackingDisposable option = None
+            /// Captured world bridge for posting events and setting up subscriptions
+            let worldBridgeRef : IWorldBridge<TimerAppEvent> option ref = ref None
 
-            let processWorld (world : IWorldBridge<TimerAppEvent>) =
-                { new WorldProcessor<TimerAppEvent, unit, TimerState> with
-                    member _.ProcessWorld (changes, _, state) =
-                        let mutable newState = state
+            /// Mutable state tracker for subscription management
+            /// We need this because HandleInput doesn't have access to the current state
+            let subscriptionStateRef : IDisposable option ref = ref None
 
-                        for change in changes do
-                            match change with
-                            | WorldStateChange.ApplicationEvent StartTimer ->
-                                // Set up a timer that ticks every 5 seconds
-                                let timer = new MockTimer (5000.0)
+            /// Pure transition function: state -> event -> state.
+            /// Note: The timer subscription management happens in HandleInput as a side effect,
+            /// since we need access to the world bridge for subscriptions.
+            let transition (state : TimerState) (event : TimerAppEvent) : TimerState =
+                match event with
+                | StartTimer ->
+                    // HandleInput created the subscription; record it in state for cleanup.
+                    { state with
+                        TimerSubscription = subscriptionStateRef.Value
+                    }
+                | StopTimer ->
+                    // Dispose the subscription (side effect, but necessary for cleanup)
+                    state.TimerSubscription |> Option.iter (fun s -> s.Dispose ())
 
-                                match globalTimer with
-                                | None -> globalTimer <- Some timer
-                                | Some _ -> failwith "only should have got one StartTimer"
+                    globalTimer
+                    |> Option.iter (fun (timer : MockTimer) -> (timer :> IDisposable).Dispose ())
 
-                                let subscription = world.SubscribeEvent timer.Elapsed (fun _ -> TimerTick)
-                                let trackedSubscription = new TrackingDisposable (subscription)
-                                globalSubscription <- Some trackedSubscription
+                    { state with
+                        TimerSubscription = None
+                    }
+                | TimerTick ->
+                    { state with
+                        Counter = state.Counter + 1
+                    }
 
-                                newState <-
-                                    { newState with
-                                        TimerSubscription = Some (trackedSubscription :> IDisposable)
-                                    }
+            /// Handle input events - converts WorldStateChange to app events.
+            /// Also handles side effects for subscription management since we need the world bridge.
+            let handleInput (change : WorldStateChange<TimerAppEvent>) : TimerAppEvent option =
+                match change with
+                | WorldStateChange.Keystroke c when c.KeyChar = ' ' ->
+                    // Toggle timer on space
+                    match subscriptionStateRef.Value with
+                    | Some _ -> worldBridgeRef.Value |> Option.iter (fun bridge -> bridge.PostEvent StopTimer)
+                    | None -> worldBridgeRef.Value |> Option.iter (fun bridge -> bridge.PostEvent StartTimer)
 
-                            | WorldStateChange.ApplicationEvent StopTimer ->
-                                newState.TimerSubscription |> Option.iter (fun s -> s.Dispose ())
-                                globalTimer |> Option.get :> IDisposable |> _.Dispose()
+                    None // The event is posted async; we don't return it directly
 
-                                newState <-
-                                    { newState with
-                                        TimerSubscription = None
-                                    }
+                | WorldStateChange.ApplicationEvent StartTimer ->
+                    // Set up the timer subscription
+                    match worldBridgeRef.Value with
+                    | Some bridge ->
+                        let timer = new MockTimer (5000.0)
 
-                            | WorldStateChange.ApplicationEvent TimerTick ->
-                                newState <-
-                                    { newState with
-                                        Counter = newState.Counter + 1
-                                    }
+                        match globalTimer with
+                        | None -> globalTimer <- Some timer
+                        | Some _ -> failwith "only should have got one StartTimer"
 
-                            | WorldStateChange.Keystroke c when c.KeyChar = ' ' ->
-                                // Toggle timer on space
-                                match newState.TimerSubscription with
-                                | Some _ -> world.PostEvent StopTimer
-                                | None -> world.PostEvent StartTimer
+                        let subscription = bridge.SubscribeEvent timer.Elapsed (fun _ -> TimerTick)
+                        let trackedSubscription = new TrackingDisposable (subscription)
+                        globalSubscription <- Some trackedSubscription
+                        subscriptionStateRef.Value <- Some (trackedSubscription :> IDisposable)
+                    | None -> ()
 
-                            | _ -> ()
+                    Some StartTimer
 
-                        ProcessWorldResult.make newState
+                | WorldStateChange.ApplicationEvent StopTimer ->
+                    subscriptionStateRef.Value <- None
+                    Some StopTimer
 
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+                | WorldStateChange.ApplicationEvent TimerTick -> Some TimerTick
+
+                | _ -> None
 
             let vdom (_ : IVdomContext<_>) (state : TimerState) = Vdom.textContent $"%i{state.Counter}"
 
             let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 1)
-            let renderState = MockTime.makeRenderStateStatic console None
 
             let world = MockWorld.make ()
 
@@ -134,22 +150,25 @@ module TestExternalEventSubscription =
                     world.KeyAvailable
                     world.ReadKey
 
-            let processWorld = processWorld worldFreezer
+            let config : AppConfig<TimerState, TimerAppEvent, unit> =
+                {
+                    Initial = TimerState.Empty ()
+                    Transition = transition
+                    View = App.pureView vdom
+                    HandleInput = handleInput
+                    HandlePostLayout = fun _ s -> s
+                    FocusHandling = FocusHandling.FrameworkManaged
+                    ActivationResolver = ActivationResolver.none
+                    OnSetup = fun bridge -> worldBridgeRef.Value <- Some bridge
+                }
 
-            let mutable state = TimerState.Empty ()
-            let getUtcNow () = MockTime.defaultStartTime
+            // Call OnSetup to capture the world bridge
+            config.OnSetup (worldFreezer :> IWorldBridge<_>)
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            use ctx = IncrTestContext.make console config None
+
+            // Initial pump
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -163,17 +182,7 @@ module TestExternalEventSubscription =
             // Tell the app to start a timer
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -188,34 +197,14 @@ module TestExternalEventSubscription =
             // that doesn't contain that enqueue.
             globalTimer.IsNone |> shouldEqual true
             // But after another pump, we'll process the timer-start.
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             match globalTimer with
             | Some timer -> timer.Trigger ()
             | None -> failwith "expected a timer to be running"
 
             // The timer has triggered an app event!
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -230,17 +219,7 @@ module TestExternalEventSubscription =
             | Some timer -> timer.Trigger ()
             | None -> failwith "expected a timer to be running"
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -254,17 +233,7 @@ module TestExternalEventSubscription =
             // Tell the app to stop the timer
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -284,22 +253,12 @@ module TestExternalEventSubscription =
                 | None -> failwith "should be subscribed"
                 | Some globalSubscription -> globalSubscription.WasDisposed |> shouldEqual false
 
-                state <-
-                    App.pumpOnce
-                        getUtcNow
-                        worldFreezer
-                        state
-                        (fun _ -> true)
-                        renderState
-                        processWorld
-                        vdom
-                        ActivationResolver.none
-                        (fun () -> false)
+                IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
                 do! timer.Disposal
 
                 // Verify the subscription is torn down in state
-                state.TimerSubscription |> shouldEqual None
+                (IncrTestContext.currentState ctx).TimerSubscription |> shouldEqual None
 
                 // Verify the subscription itself (not just the timer) was disposed
                 match globalSubscription with
@@ -311,18 +270,8 @@ module TestExternalEventSubscription =
                 |> ignore<ObjectDisposedException>
 
                 // Pump once more and verify counter didn't increment from any stale tick
-                state <-
-                    App.pumpOnce
-                        getUtcNow
-                        worldFreezer
-                        state
-                        (fun _ -> true)
-                        renderState
-                        processWorld
-                        vdom
-                        ActivationResolver.none
-                        (fun () -> false)
+                IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
-                state.Counter |> shouldEqual 2
+                (IncrTestContext.currentState ctx).Counter |> shouldEqual 2
             | None -> failwith "expected a timer to be running"
         }

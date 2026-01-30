@@ -14,6 +14,7 @@ type VdomContext<'postLayoutEvent> =
             _FocusedKeyVar : NodeKey option Var
             _Clock : Clock
             _Incr : Incremental
+            _IncrView : IncrView
             /// Cached clock DateTime node from IncrementalState for time-based animations.
             _ClockDateTimeNode : DateTime Node
             mutable _IsDirty : bool
@@ -30,7 +31,9 @@ type VdomContext<'postLayoutEvent> =
 
         member this.FocusedKeyNode = this._Incr.Var.Watch this._FocusedKeyVar
 
-        member this.Incr = this._Incr
+        member this.Incr = this._IncrView
+
+        member this.UnsafeIncr = this._Incr
 
         member this.WasRecentlyActivated key =
             // Depend on both the activation generation (so we re-evaluate when activations change)
@@ -57,12 +60,13 @@ module VdomContext =
 
     /// Create a new VdomContext from an IncrementalState.
     /// Time is read from the incremental clock node for time-based animations.
-    let make<'userState, 'postLayoutEvent> (incrState : IncrementalState<'userState>) : VdomContext<'postLayoutEvent> =
+    let make<'postLayoutEvent> (incrState : IncrementalState) : VdomContext<'postLayoutEvent> =
         {
             _TerminalBoundsVar = incrState.TerminalBoundsVar
             _FocusedKeyVar = incrState.FocusedKeyVar
             _Clock = incrState.Clock
             _Incr = incrState.Incr
+            _IncrView = IncrView incrState.Incr
             _ClockDateTimeNode = incrState.ClockDateTimeNode
             _IsDirty = true
             _LastActivationTimes = Dictionary<NodeKey, DateTime> ()
@@ -185,8 +189,11 @@ module VdomContext =
     /// Get a base IVdomContext view of this context.
     let internal asBase<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : IVdomContext = ctx
 
-    /// Get the underlying Incremental instance.
-    let incr<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : Incremental = ctx._Incr
+    /// Get the safe Incremental view for building nodes.
+    let incr<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : IncrView = ctx._IncrView
+
+    /// Get the underlying Incremental instance. This is unsafe inside view functions.
+    let unsafeIncr<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : Incremental = ctx._Incr
 
     /// Get the clock for time-based reactivity.
     let clock<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : Clock = ctx._Clock

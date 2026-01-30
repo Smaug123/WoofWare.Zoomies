@@ -7,12 +7,11 @@ open WoofWare.Incremental
 open WoofWare.Zoomies
 open WoofWare.Zoomies.Components
 
-/// Tests for event loss bug when activation keystrokes interact with partial batch consumption
+/// Tests for event ordering when activation keystrokes interact with other keystrokes.
+/// These tests verify that activation events are correctly interleaved with surrounding keystrokes.
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestActivationWithPartialBatch =
-
-    let getUtcNow () = MockTime.defaultStartTime
 
     type AppEvent = | ButtonClicked
 
@@ -31,23 +30,47 @@ module TestActivationWithPartialBatch =
             AllEventsInOrder : ProcessedEvent list
         }
 
+    /// App event that includes both keystrokes and button clicks
+    type InputEvent =
+        | KeystrokeEvent of char
+        | ButtonClickEvent
+
+    let initialState =
+        {
+            ProcessedKeystrokes = []
+            ProcessedAppEvents = []
+            ButtonClickCount = 0
+            AllEventsInOrder = []
+        }
+
+    let transition (state : State) (event : InputEvent) : State =
+        match event with
+        | KeystrokeEvent c ->
+            { state with
+                ProcessedKeystrokes = state.ProcessedKeystrokes @ [ c ]
+                AllEventsInOrder = state.AllEventsInOrder @ [ Keystroke c ]
+            }
+        | ButtonClickEvent ->
+            { state with
+                ProcessedAppEvents = state.ProcessedAppEvents @ [ ButtonClicked ]
+                ButtonClickCount = state.ButtonClickCount + 1
+                AllEventsInOrder = state.AllEventsInOrder @ [ AppEvent ButtonClicked ]
+            }
+
     [<Test>]
-    let ``activation with partial batch consumption does not lose events`` () =
+    let ``activation does not lose events`` () =
         task {
             let buttonKey = NodeKey.make "test-button"
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
                 let text =
                     Vdom.textContent $"Clicks: {state.ButtonClickCount}, Keys: {state.ProcessedKeystrokes.Length}"
 
                 let buttonNode =
                     Button.make (ctx, buttonKey, "Click Me", isInitiallyFocused = true, isFirstToFocus = true)
 
-                let buttonObserver = ctx.Incr.Observe buttonNode
-                ctx.Incr.Stabilize ()
-                let button = Observer.value buttonObserver
-
-                Vdom.panelSplitAuto (SplitDirection.Horizontal, text, button)
+                buttonNode
+                |> ctx.Incr.Map (fun button -> Vdom.panelSplitAuto (SplitDirection.Horizontal, text, button))
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 3)
 
@@ -60,89 +83,44 @@ module TestActivationWithPartialBatch =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = true
-
-            let resolver = ActivationResolver.button buttonKey ButtonClicked
-
-            // Track how many times ProcessWorld is called
-            let mutable processWorldCallCount = 0
-
-            let processWorld =
-                { new WorldProcessor<AppEvent, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        processWorldCallCount <- processWorldCallCount + 1
-                        let mutable newState = state
-
-                        // On the first call to ProcessWorld in this test, we want to process only
-                        // one event and then request a Rerender to simulate partial batch consumption.
-                        // This tests whether events get lost when activation handling happens
-                        // immediately after a partial batch.
-                        let shouldPartiallyConsume = processWorldCallCount = 1
-
-                        let toProcess =
-                            if shouldPartiallyConsume then
-                                min 1 inputs.Length
-                            else
-                                inputs.Length
-
-                        // Process events
-                        for i = 0 to toProcess - 1 do
-                            match inputs.[i] with
-                            | WorldStateChange.Keystroke k ->
-                                newState <-
-                                    { newState with
-                                        ProcessedKeystrokes = newState.ProcessedKeystrokes @ [ k.KeyChar ]
-                                        AllEventsInOrder = newState.AllEventsInOrder @ [ Keystroke k.KeyChar ]
-                                    }
-                            | WorldStateChange.ApplicationEvent ButtonClicked ->
-                                newState <-
-                                    { newState with
-                                        ProcessedAppEvents = newState.ProcessedAppEvents @ [ ButtonClicked ]
-                                        ButtonClickCount = newState.ButtonClickCount + 1
-                                        AllEventsInOrder = newState.AllEventsInOrder @ [ AppEvent ButtonClicked ]
-                                    }
-                            | _ -> ()
-
-                        if shouldPartiallyConsume && toProcess < inputs.Length then
-                            // We only processed one event but there are more in the batch.
-                            // Request a rerender to force the framework to split the batch.
-                            ProcessWorldResult.make newState
-                            |> ProcessWorldResult.withRerender (toProcess - 1)
+            // ActivationResolver converts space/enter on button to ButtonClickEvent
+            let activationResolver =
+                ActivationResolver (fun key keystroke _state ->
+                    if key = buttonKey then
+                        if keystroke.Key = ConsoleKey.Spacebar || keystroke.Key = ConsoleKey.Enter then
+                            Some ButtonClickEvent
                         else
-                            ProcessWorldResult.make newState
+                            None
+                    else
+                        None
+                )
 
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            // HandleInput converts keystrokes to KeystrokeEvent
+            let handleInput change =
+                match change with
+                | WorldStateChange.Keystroke k -> Some (KeystrokeEvent k.KeyChar)
+                | _ -> None
 
-            let clock = MockTime.makeFromConsole console
-            let renderState, _ = MockTime.makeRenderStateFromTimer console clock None
-
-            let mutable state =
+            let config : AppConfig<State, InputEvent, unit> =
                 {
-                    ProcessedKeystrokes = []
-                    ProcessedAppEvents = []
-                    ButtonClickCount = 0
-                    AllEventsInOrder = []
+                    Initial = initialState
+                    Transition = transition
+                    View = App.pureViewIncr vdom
+                    HandleInput = handleInput
+                    HandlePostLayout = fun _ s -> s
+                    FocusHandling = FocusHandling.FrameworkManaged
+                    ActivationResolver = activationResolver
+                    OnSetup = fun _ -> ()
                 }
+
+            use ctx = IncrTestContext.make console config None
 
             // Initial render - button is focused
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
-            // Send a batch of events that will trigger the bug:
-            // - 'a' keystroke (will be processed in first batch, then Rerender requested)
-            // - 'b' keystroke (BUG: this gets lost)
-            // - 'c' keystroke (BUG: this gets lost)
-            // - Space keystroke (activation - triggers injection of ButtonClicked event)
+            // Send a batch of events:
+            // - 'a', 'b', 'c' keystrokes
+            // - Space keystroke (activation - triggers ButtonClickEvent)
             // - 'd' keystroke (after activation)
             world.SendKey (ConsoleKeyInfo ('a', ConsoleKey.NoName, false, false, false))
             world.SendKey (ConsoleKeyInfo ('b', ConsoleKey.NoName, false, false, false))
@@ -151,21 +129,12 @@ module TestActivationWithPartialBatch =
             world.SendKey (ConsoleKeyInfo ('d', ConsoleKey.NoName, false, false, false))
 
             // Process the batch
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
-            // Verify that ALL keystrokes were processed (not lost due to the bug)
+            let state = IncrTestContext.currentState ctx
+
+            // Verify that ALL keystrokes were processed (not lost)
             // Expected: ['a', 'b', 'c', 'd']
-            // With the bug: ['a', 'd'] - 'b' and 'c' are lost
             state.ProcessedKeystrokes |> shouldEqual [ 'a' ; 'b' ; 'c' ; 'd' ]
 
             // Verify that the button click was processed
@@ -174,17 +143,12 @@ module TestActivationWithPartialBatch =
         }
 
     [<Test>]
-    let ``multiple activations with partial batches do not lose events`` () =
+    let ``multiple activations do not lose events`` () =
         task {
             let buttonKey = NodeKey.make "test-button"
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
-                let buttonNode =
-                    Button.make (ctx, buttonKey, "Click Me", isInitiallyFocused = true, isFirstToFocus = true)
-
-                let buttonObserver = ctx.Incr.Observe buttonNode
-                ctx.Incr.Stabilize ()
-                Observer.value buttonObserver
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
+                Button.make (ctx, buttonKey, "Click Me", isInitiallyFocused = true, isFirstToFocus = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
@@ -197,68 +161,38 @@ module TestActivationWithPartialBatch =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = true
-
-            let resolver = ActivationResolver.button buttonKey ButtonClicked
-
-            // Always process only 1 event at a time to maximize the chance of hitting the bug
-            let processWorld =
-                { new WorldProcessor<AppEvent, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        let mutable newState = state
-
-                        // Always process only the first event
-                        let toProcess = min 1 inputs.Length
-
-                        for i = 0 to toProcess - 1 do
-                            match inputs.[i] with
-                            | WorldStateChange.Keystroke k ->
-                                newState <-
-                                    { newState with
-                                        ProcessedKeystrokes = newState.ProcessedKeystrokes @ [ k.KeyChar ]
-                                        AllEventsInOrder = newState.AllEventsInOrder @ [ Keystroke k.KeyChar ]
-                                    }
-                            | WorldStateChange.ApplicationEvent ButtonClicked ->
-                                newState <-
-                                    { newState with
-                                        ProcessedAppEvents = newState.ProcessedAppEvents @ [ ButtonClicked ]
-                                        ButtonClickCount = newState.ButtonClickCount + 1
-                                        AllEventsInOrder = newState.AllEventsInOrder @ [ AppEvent ButtonClicked ]
-                                    }
-                            | _ -> ()
-
-                        if toProcess < inputs.Length then
-                            ProcessWorldResult.make newState
-                            |> ProcessWorldResult.withRerender (toProcess - 1)
+            let activationResolver =
+                ActivationResolver (fun key keystroke _state ->
+                    if key = buttonKey then
+                        if keystroke.Key = ConsoleKey.Spacebar || keystroke.Key = ConsoleKey.Enter then
+                            Some ButtonClickEvent
                         else
-                            ProcessWorldResult.make newState
+                            None
+                    else
+                        None
+                )
 
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let handleInput change =
+                match change with
+                | WorldStateChange.Keystroke k -> Some (KeystrokeEvent k.KeyChar)
+                | _ -> None
 
-            let clock = MockTime.makeFromConsole console
-            let renderState, _ = MockTime.makeRenderStateFromTimer console clock None
-
-            let mutable state =
+            let config : AppConfig<State, InputEvent, unit> =
                 {
-                    ProcessedKeystrokes = []
-                    ProcessedAppEvents = []
-                    ButtonClickCount = 0
-                    AllEventsInOrder = []
+                    Initial = initialState
+                    Transition = transition
+                    View = App.pureViewIncr vdom
+                    HandleInput = handleInput
+                    HandlePostLayout = fun _ s -> s
+                    FocusHandling = FocusHandling.FrameworkManaged
+                    ActivationResolver = activationResolver
+                    OnSetup = fun _ -> ()
                 }
+
+            use ctx = IncrTestContext.make console config None
 
             // Initial render
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Send: a, b, c, Space (activate), d, e, Space (activate), f
             world.SendKey (ConsoleKeyInfo ('a', ConsoleKey.NoName, false, false, false))
@@ -270,17 +204,9 @@ module TestActivationWithPartialBatch =
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
             world.SendKey (ConsoleKeyInfo ('f', ConsoleKey.NoName, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
+
+            let state = IncrTestContext.currentState ctx
 
             // All keystrokes should be processed (note: space keys are consumed by activation, not passed through)
             state.ProcessedKeystrokes |> shouldEqual [ 'a' ; 'b' ; 'c' ; 'd' ; 'e' ; 'f' ]
@@ -290,22 +216,19 @@ module TestActivationWithPartialBatch =
         }
 
     [<Test>]
-    let ``Enter-based activation with partial batch consumption does not lose events`` () =
+    let ``Enter-based activation does not lose events`` () =
         task {
             let buttonKey = NodeKey.make "test-button"
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
                 let text =
                     Vdom.textContent $"Clicks: {state.ButtonClickCount}, Keys: {state.ProcessedKeystrokes.Length}"
 
                 let buttonNode =
                     Button.make (ctx, buttonKey, "Click Me", isInitiallyFocused = true, isFirstToFocus = true)
 
-                let buttonObserver = ctx.Incr.Observe buttonNode
-                ctx.Incr.Stabilize ()
-                let button = Observer.value buttonObserver
-
-                Vdom.panelSplitAuto (SplitDirection.Horizontal, text, button)
+                buttonNode
+                |> ctx.Incr.Map (fun button -> Vdom.panelSplitAuto (SplitDirection.Horizontal, text, button))
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 3)
 
@@ -318,75 +241,38 @@ module TestActivationWithPartialBatch =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = true
-
-            let resolver = ActivationResolver.button buttonKey ButtonClicked
-
-            let mutable processWorldCallCount = 0
-
-            let processWorld =
-                { new WorldProcessor<AppEvent, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        processWorldCallCount <- processWorldCallCount + 1
-                        let mutable newState = state
-
-                        let shouldPartiallyConsume = processWorldCallCount = 1
-
-                        let toProcess =
-                            if shouldPartiallyConsume then
-                                min 1 inputs.Length
-                            else
-                                inputs.Length
-
-                        for i = 0 to toProcess - 1 do
-                            match inputs.[i] with
-                            | WorldStateChange.Keystroke k ->
-                                newState <-
-                                    { newState with
-                                        ProcessedKeystrokes = newState.ProcessedKeystrokes @ [ k.KeyChar ]
-                                        AllEventsInOrder = newState.AllEventsInOrder @ [ Keystroke k.KeyChar ]
-                                    }
-                            | WorldStateChange.ApplicationEvent ButtonClicked ->
-                                newState <-
-                                    { newState with
-                                        ProcessedAppEvents = newState.ProcessedAppEvents @ [ ButtonClicked ]
-                                        ButtonClickCount = newState.ButtonClickCount + 1
-                                        AllEventsInOrder = newState.AllEventsInOrder @ [ AppEvent ButtonClicked ]
-                                    }
-                            | _ -> ()
-
-                        if shouldPartiallyConsume && toProcess < inputs.Length then
-                            ProcessWorldResult.make newState
-                            |> ProcessWorldResult.withRerender (toProcess - 1)
+            let activationResolver =
+                ActivationResolver (fun key keystroke _state ->
+                    if key = buttonKey then
+                        if keystroke.Key = ConsoleKey.Spacebar || keystroke.Key = ConsoleKey.Enter then
+                            Some ButtonClickEvent
                         else
-                            ProcessWorldResult.make newState
+                            None
+                    else
+                        None
+                )
 
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let handleInput change =
+                match change with
+                | WorldStateChange.Keystroke k -> Some (KeystrokeEvent k.KeyChar)
+                | _ -> None
 
-            let clock = MockTime.makeFromConsole console
-            let renderState, _ = MockTime.makeRenderStateFromTimer console clock None
-
-            let mutable state =
+            let config : AppConfig<State, InputEvent, unit> =
                 {
-                    ProcessedKeystrokes = []
-                    ProcessedAppEvents = []
-                    ButtonClickCount = 0
-                    AllEventsInOrder = []
+                    Initial = initialState
+                    Transition = transition
+                    View = App.pureViewIncr vdom
+                    HandleInput = handleInput
+                    HandlePostLayout = fun _ s -> s
+                    FocusHandling = FocusHandling.FrameworkManaged
+                    ActivationResolver = activationResolver
+                    OnSetup = fun _ -> ()
                 }
+
+            use ctx = IncrTestContext.make console config None
 
             // Initial render - button is focused
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Send events using Enter instead of Spacebar for activation
             world.SendKey (ConsoleKeyInfo ('a', ConsoleKey.NoName, false, false, false))
@@ -396,17 +282,9 @@ module TestActivationWithPartialBatch =
             world.SendKey (ConsoleKeyInfo ('\r', ConsoleKey.Enter, false, false, false))
             world.SendKey (ConsoleKeyInfo ('d', ConsoleKey.NoName, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
+
+            let state = IncrTestContext.currentState ctx
 
             // Verify ALL keystrokes were processed
             state.ProcessedKeystrokes |> shouldEqual [ 'a' ; 'b' ; 'c' ; 'd' ]
@@ -421,13 +299,8 @@ module TestActivationWithPartialBatch =
         task {
             let buttonKey = NodeKey.make "test-button"
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
-                let buttonNode =
-                    Button.make (ctx, buttonKey, "Click Me", isInitiallyFocused = true, isFirstToFocus = true)
-
-                let buttonObserver = ctx.Incr.Observe buttonNode
-                ctx.Incr.Stabilize ()
-                Observer.value buttonObserver
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
+                Button.make (ctx, buttonKey, "Click Me", isInitiallyFocused = true, isFirstToFocus = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
@@ -440,81 +313,50 @@ module TestActivationWithPartialBatch =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = true
+            let activationResolver =
+                ActivationResolver (fun key keystroke _state ->
+                    if key = buttonKey then
+                        if keystroke.Key = ConsoleKey.Spacebar || keystroke.Key = ConsoleKey.Enter then
+                            Some ButtonClickEvent
+                        else
+                            None
+                    else
+                        None
+                )
 
-            let resolver = ActivationResolver.button buttonKey ButtonClicked
+            let handleInput change =
+                match change with
+                | WorldStateChange.Keystroke k -> Some (KeystrokeEvent k.KeyChar)
+                | _ -> None
 
-            // Process all events at once (no partial batching) to clearly see the order
-            let processWorld =
-                { new WorldProcessor<AppEvent, unit, State> with
-                    member _.ProcessWorld (inputs, _renderState, state) =
-                        let mutable newState = state
-
-                        for i = 0 to inputs.Length - 1 do
-                            match inputs.[i] with
-                            | WorldStateChange.Keystroke k ->
-                                newState <-
-                                    { newState with
-                                        ProcessedKeystrokes = newState.ProcessedKeystrokes @ [ k.KeyChar ]
-                                        AllEventsInOrder = newState.AllEventsInOrder @ [ Keystroke k.KeyChar ]
-                                    }
-                            | WorldStateChange.ApplicationEvent ButtonClicked ->
-                                newState <-
-                                    { newState with
-                                        ProcessedAppEvents = newState.ProcessedAppEvents @ [ ButtonClicked ]
-                                        ButtonClickCount = newState.ButtonClickCount + 1
-                                        AllEventsInOrder = newState.AllEventsInOrder @ [ AppEvent ButtonClicked ]
-                                    }
-                            | _ -> ()
-
-                        ProcessWorldResult.make newState
-
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
-
-            let clock = MockTime.makeFromConsole console
-            let renderState, _ = MockTime.makeRenderStateFromTimer console clock None
-
-            let mutable state =
+            let config : AppConfig<State, InputEvent, unit> =
                 {
-                    ProcessedKeystrokes = []
-                    ProcessedAppEvents = []
-                    ButtonClickCount = 0
-                    AllEventsInOrder = []
+                    Initial = initialState
+                    Transition = transition
+                    View = App.pureViewIncr vdom
+                    HandleInput = handleInput
+                    HandlePostLayout = fun _ s -> s
+                    FocusHandling = FocusHandling.FrameworkManaged
+                    ActivationResolver = activationResolver
+                    OnSetup = fun _ -> ()
                 }
+
+            use ctx = IncrTestContext.make console config None
 
             // Initial render
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Send: 'a', 'b', Space (activate), 'c', 'd'
-            // The ButtonClicked app event should appear between 'b' and 'c' in the processing order
+            // The ButtonClickEvent should appear between 'b' and 'c' in the processing order
             world.SendKey (ConsoleKeyInfo ('a', ConsoleKey.NoName, false, false, false))
             world.SendKey (ConsoleKeyInfo ('b', ConsoleKey.NoName, false, false, false))
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
             world.SendKey (ConsoleKeyInfo ('c', ConsoleKey.NoName, false, false, false))
             world.SendKey (ConsoleKeyInfo ('d', ConsoleKey.NoName, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
+
+            let state = IncrTestContext.currentState ctx
 
             // The app event should be interleaved correctly: 'a', 'b', ButtonClicked, 'c', 'd'
             // The activation keystroke (Space) is consumed and replaced by the app event in its position
@@ -534,13 +376,8 @@ module TestActivationWithPartialBatch =
         task {
             let buttonKey = NodeKey.make "test-button"
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
-                let buttonNode =
-                    Button.make (ctx, buttonKey, "Click Me", isInitiallyFocused = true, isFirstToFocus = true)
-
-                let buttonObserver = ctx.Incr.Observe buttonNode
-                ctx.Incr.Stabilize ()
-                Observer.value buttonObserver
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
+                Button.make (ctx, buttonKey, "Click Me", isInitiallyFocused = true, isFirstToFocus = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
@@ -553,61 +390,38 @@ module TestActivationWithPartialBatch =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = true
+            let activationResolver =
+                ActivationResolver (fun key keystroke _state ->
+                    if key = buttonKey then
+                        if keystroke.Key = ConsoleKey.Spacebar || keystroke.Key = ConsoleKey.Enter then
+                            Some ButtonClickEvent
+                        else
+                            None
+                    else
+                        None
+                )
 
-            let resolver = ActivationResolver.button buttonKey ButtonClicked
+            let handleInput change =
+                match change with
+                | WorldStateChange.Keystroke k -> Some (KeystrokeEvent k.KeyChar)
+                | _ -> None
 
-            // Process all events at once
-            let processWorld =
-                { new WorldProcessor<AppEvent, unit, State> with
-                    member _.ProcessWorld (inputs, _renderState, state) =
-                        let mutable newState = state
-
-                        for i = 0 to inputs.Length - 1 do
-                            match inputs.[i] with
-                            | WorldStateChange.Keystroke k ->
-                                newState <-
-                                    { newState with
-                                        ProcessedKeystrokes = newState.ProcessedKeystrokes @ [ k.KeyChar ]
-                                        AllEventsInOrder = newState.AllEventsInOrder @ [ Keystroke k.KeyChar ]
-                                    }
-                            | WorldStateChange.ApplicationEvent ButtonClicked ->
-                                newState <-
-                                    { newState with
-                                        ProcessedAppEvents = newState.ProcessedAppEvents @ [ ButtonClicked ]
-                                        ButtonClickCount = newState.ButtonClickCount + 1
-                                        AllEventsInOrder = newState.AllEventsInOrder @ [ AppEvent ButtonClicked ]
-                                    }
-                            | _ -> ()
-
-                        ProcessWorldResult.make newState
-
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
-
-            let clock = MockTime.makeFromConsole console
-            let renderState, _ = MockTime.makeRenderStateFromTimer console clock None
-
-            let mutable state =
+            let config : AppConfig<State, InputEvent, unit> =
                 {
-                    ProcessedKeystrokes = []
-                    ProcessedAppEvents = []
-                    ButtonClickCount = 0
-                    AllEventsInOrder = []
+                    Initial = initialState
+                    Transition = transition
+                    View = App.pureViewIncr vdom
+                    HandleInput = handleInput
+                    HandlePostLayout = fun _ s -> s
+                    FocusHandling = FocusHandling.FrameworkManaged
+                    ActivationResolver = activationResolver
+                    OnSetup = fun _ -> ()
                 }
+
+            use ctx = IncrTestContext.make console config None
 
             // Initial render
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Send: 'a', Space (activate), 'b', Enter (activate), 'c'
             // This tests both activation keys and verifies ordering is maintained
@@ -617,17 +431,9 @@ module TestActivationWithPartialBatch =
             world.SendKey (ConsoleKeyInfo ('\r', ConsoleKey.Enter, false, false, false))
             world.SendKey (ConsoleKeyInfo ('c', ConsoleKey.NoName, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
+
+            let state = IncrTestContext.currentState ctx
 
             // Verify ordering: 'a', ButtonClicked, 'b', ButtonClicked, 'c'
             state.AllEventsInOrder

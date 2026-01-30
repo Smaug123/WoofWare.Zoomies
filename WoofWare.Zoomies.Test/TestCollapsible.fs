@@ -10,7 +10,6 @@ open WoofWare.Zoomies.Components
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestCollapsible =
-    let getUtcNow () = MockTime.defaultStartTime
 
     [<OneTimeSetUp>]
     let setUp () =
@@ -25,6 +24,8 @@ module TestCollapsible =
         {
             CollapsibleState : Collapsible.State
         }
+
+    type CollapsibleEvent = | ToggleCollapsible
 
     [<Test>]
     let ``collapsible toggles between collapsed and expanded states`` () =
@@ -47,60 +48,33 @@ module TestCollapsible =
                     world.KeyAvailable
                     world.ReadKey
 
-            let state =
+            let initial =
                 {
                     CollapsibleState = Collapsible.State.Collapsed
                 }
 
-            let haveFrameworkHandleFocus _ = true
+            let transition (state : State) (event : CollapsibleEvent) : State =
+                match event with
+                | ToggleCollapsible ->
+                    { state with
+                        CollapsibleState = state.CollapsibleState.ToggledExpansion ()
+                    }
 
-            let processWorld =
-                { new WorldProcessor<_, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        let mutable newState = state
+            let activationResolver : ActivationResolver<CollapsibleEvent, State> =
+                ActivationResolver (fun key keyInfo _state ->
+                    if keyInfo.KeyChar = ' ' && key = collapsibleKey then
+                        Some ToggleCollapsible
+                    else
+                        None
+                )
 
-                        for s in inputs do
-                            match s with
-                            | WorldStateChange.Keystroke c ->
-                                if c.KeyChar = ' ' then
-                                    match renderState.FocusedKey with
-                                    | None -> ()
-                                    | Some focused ->
-                                        if focused = collapsibleKey then
-                                            newState <-
-                                                {
-                                                    CollapsibleState = state.CollapsibleState.ToggledExpansion ()
-                                                }
-                                        else
-                                            failwith "unexpected key"
-                                else
-                                    failwith "unexpected key char"
-                            | WorldStateChange.MouseEvent _ -> failwith "no mouse events"
-                            | WorldStateChange.ApplicationEvent () -> failwith "no app events"
-                            | WorldStateChange.Paste _ -> failwith "no paste events"
-                            | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
+            let config =
+                AppConfig.simple initial transition (App.pureView vdom) activationResolver
 
-                        ProcessWorldResult.make newState
-
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
-
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            let mutable currentState = state
+            use ctx = IncrTestContext.make console config None
 
             // Initial render: collapsed and unfocused
-            currentState <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    currentState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -123,17 +97,7 @@ module TestCollapsible =
             // Tab to focus the collapsible
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            currentState <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    currentState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -156,17 +120,7 @@ module TestCollapsible =
             // Press space to expand
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
-            currentState <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    currentState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -189,17 +143,7 @@ This stuff was hidden                                       |
             // Press space again to collapse
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
-            currentState <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    currentState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -234,7 +178,7 @@ This stuff was hidden                                       |
                     world.KeyAvailable
                     world.ReadKey
 
-            let state =
+            let initial =
                 {
                     CollapsibleState = Collapsible.State.Collapsed
                 }
@@ -253,55 +197,28 @@ This stuff was hidden                                       |
 
                 Collapsible.make vdomContext collapsibleKey state.CollapsibleState "Multi-line section" childContent
 
-            let haveFrameworkHandleFocus _ = true
+            let transition (state : State) (event : CollapsibleEvent) : State =
+                match event with
+                | ToggleCollapsible ->
+                    { state with
+                        CollapsibleState = state.CollapsibleState.ToggledExpansion ()
+                    }
 
-            let processWorld =
-                { new WorldProcessor<_, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        let mutable newState = state
+            let activationResolver : ActivationResolver<CollapsibleEvent, State> =
+                ActivationResolver (fun key keyInfo _state ->
+                    if keyInfo.KeyChar = ' ' && key = collapsibleKey then
+                        Some ToggleCollapsible
+                    else
+                        None
+                )
 
-                        for s in inputs do
-                            match s with
-                            | WorldStateChange.Keystroke c ->
-                                if c.KeyChar = ' ' then
-                                    match renderState.FocusedKey with
-                                    | None -> ()
-                                    | Some focused ->
-                                        if focused = collapsibleKey then
-                                            newState <-
-                                                {
-                                                    CollapsibleState = state.CollapsibleState.ToggledExpansion ()
-                                                }
-                                        else
-                                            failwith "unexpected key"
-                                else
-                                    failwith "unexpected key char"
-                            | WorldStateChange.MouseEvent _ -> failwith "no mouse events"
-                            | WorldStateChange.ApplicationEvent () -> failwith "no app events"
-                            | WorldStateChange.Paste _ -> failwith "no paste events"
-                            | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
+            let config =
+                AppConfig.simple initial transition (App.pureView vdom) activationResolver
 
-                        ProcessWorldResult.make newState
-
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
-
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            let mutable currentState = state
+            use ctx = IncrTestContext.make console config None
 
             // Initial render: collapsed
-            currentState <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    currentState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -324,32 +241,12 @@ This stuff was hidden                                       |
             // Tab to focus
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            currentState <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    currentState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Expand
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
-            currentState <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    currentState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -384,7 +281,7 @@ Line 2 of content                                           |
                     world.KeyAvailable
                     world.ReadKey
 
-            let state =
+            let initial =
                 {
                     CollapsibleState =
                         {
@@ -394,64 +291,38 @@ Line 2 of content                                           |
 
             let longLabel = "This is a very long label that should wrap onto multiple lines"
 
-            let vdom (vdomContext : IVdomContext<_>) (state : State) =
-                let collapsibleKey = NodeKey.make "collapsible"
+            let collapsibleKey = NodeKey.make "collapsible"
 
+            let vdom (vdomContext : IVdomContext<_>) (state : State) =
                 let childContent = Vdom.textContent "Child content here"
 
                 Collapsible.make vdomContext collapsibleKey state.CollapsibleState longLabel childContent
 
-            let haveFrameworkHandleFocus _ = true
+            let transition (state : State) (event : CollapsibleEvent) : State =
+                match event with
+                | ToggleCollapsible ->
+                    { state with
+                        CollapsibleState =
+                            {
+                                IsExpanded = not state.CollapsibleState.IsExpanded
+                            }
+                    }
 
-            let processWorld =
-                { new WorldProcessor<_, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        let mutable newState = state
+            let activationResolver : ActivationResolver<CollapsibleEvent, State> =
+                ActivationResolver (fun key keyInfo _state ->
+                    if keyInfo.KeyChar = ' ' && key = collapsibleKey then
+                        Some ToggleCollapsible
+                    else
+                        None
+                )
 
-                        for s in inputs do
-                            match s with
-                            | WorldStateChange.Keystroke c ->
-                                if c.KeyChar = ' ' then
-                                    match renderState.FocusedKey with
-                                    | None -> ()
-                                    | Some focused ->
-                                        NodeKey.toHumanReadableString focused |> shouldEqual "collapsible"
+            let config =
+                AppConfig.simple initial transition (App.pureView vdom) activationResolver
 
-                                        newState <-
-                                            {
-                                                CollapsibleState =
-                                                    {
-                                                        IsExpanded = not state.CollapsibleState.IsExpanded
-                                                    }
-                                            }
-                                else
-                                    failwith "unexpected key char"
-                            | WorldStateChange.MouseEvent _ -> failwith "no mouse events"
-                            | WorldStateChange.ApplicationEvent () -> failwith "no app events"
-                            | WorldStateChange.Paste _ -> failwith "no paste events"
-                            | WorldStateChange.ApplicationEventException _ -> failwith "no exceptions possible"
-
-                        ProcessWorldResult.make newState
-
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
-
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            let mutable currentState = state
+            use ctx = IncrTestContext.make console config None
 
             // Initial render: collapsed and unfocused - long label wraps across multiple lines
-            currentState <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    currentState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -474,17 +345,7 @@ Line 2 of content                                           |
             // Tab to focus
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            currentState <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    currentState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -507,17 +368,7 @@ Line 2 of content                                           |
             // Expand
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
-            currentState <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    currentState
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot

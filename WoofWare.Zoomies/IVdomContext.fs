@@ -3,6 +3,16 @@ namespace WoofWare.Zoomies
 open System
 open WoofWare.Incremental
 
+[<Sealed>]
+/// Restricted Incremental API for use in view functions.
+/// This exposes only safe combinators that build nodes without forcing stabilization.
+type IncrView internal (incr : Incremental) =
+    member _.Map (f : 'a -> 'b) (node : 'a Node) : 'b Node = incr.Map f node
+    member _.Map2 (f : 'a -> 'b -> 'c) (node1 : 'a Node) (node2 : 'b Node) : 'c Node = incr.Map2 f node1 node2
+    member _.Bind (f : 'a -> 'b Node) (node : 'a Node) : 'b Node = incr.Bind f node
+    member _.Both (node1 : 'a Node) (node2 : 'b Node) : ('a * 'b) Node = incr.Both node1 node2
+    member _.Return (value : 'a) : 'a Node = incr.Return value
+
 [<RequireQualifiedAccess>]
 module VdomContextConstants =
     /// Number of milliseconds you get after activation of an activatable component like Button, before which the
@@ -25,8 +35,11 @@ type IVdomContext =
     /// so that focus changes trigger re-computation.
     abstract FocusedKeyNode : NodeKey option Node
 
-    /// Get the Incremental instance for creating incremental computations.
-    abstract Incr : Incremental
+    /// Get the safe Incremental view for building incremental computations.
+    abstract Incr : IncrView
+
+    /// Get the underlying Incremental instance. This is unsafe inside view functions.
+    abstract UnsafeIncr : Incremental
 
     /// Returns a Node that is true if the node with the given key was activated within the
     /// visual feedback window (approximately 500ms). The Node depends on the clock, so it

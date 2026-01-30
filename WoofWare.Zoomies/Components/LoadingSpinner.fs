@@ -32,3 +32,17 @@ module LoadingSpinner =
     let makeIncr (incr : Incremental) (clock : Clock) (fps : float) : Vdom<DesiredBounds> Node =
         let frameNode = IncrTime.spinnerFrameNode incr clock FrameCount fps
         incr.Map make frameNode
+
+    /// <summary>Creates an incremental loading spinner that updates using the provided time node.</summary>
+    /// <param name="incr">The safe Incremental view for creating nodes.</param>
+    /// <param name="timeNode">A node for the current time in nanoseconds since epoch.</param>
+    /// <param name="fps">Frames per second for the animation (typically 10-15 for a smooth spinner).</param>
+    /// <returns>A Node that produces a new Vdom each time the frame changes.</returns>
+    let makeIncrWithTimeNode
+        (incr : IncrView)
+        (timeNode : int64<WoofWare.TimingWheel.timeNs> Node)
+        (fps : float)
+        : Vdom<DesiredBounds> Node
+        =
+        let frameNode = IncrTime.spinnerFrameNodeFromTimeNode incr timeNode FrameCount fps
+        incr.Map make frameNode

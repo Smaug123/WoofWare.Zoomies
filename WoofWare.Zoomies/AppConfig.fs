@@ -110,3 +110,65 @@ module AppConfig =
             ActivationResolver = activationResolver
             OnSetup = fun _ -> ()
         }
+
+    /// Create a config with default HandleInput and HandlePostLayout.
+    /// Use the withXxx functions to customize.
+    let make<'state, 'appEvent, 'postLayoutEvent>
+        (initial : 'state)
+        (transition : 'state -> 'appEvent -> 'state)
+        (view : VdomContext<'postLayoutEvent> -> 'state Node -> Vdom<DesiredBounds> Node)
+        : AppConfig<'state, 'appEvent, 'postLayoutEvent>
+        =
+        {
+            Initial = initial
+            Transition = transition
+            View = view
+            HandleInput =
+                function
+                | WorldStateChange.ApplicationEvent ev -> Some ev
+                | _ -> None
+            HandlePostLayout = fun _ state -> state
+            FocusHandling = FocusHandling.FrameworkManaged
+            ActivationResolver = ActivationResolver.none
+            OnSetup = fun _ -> ()
+        }
+
+    /// Replace the HandleInput function on a config.
+    let withHandleInput<'state, 'appEvent, 'postLayoutEvent>
+        (handleInput : WorldStateChange<'appEvent> -> 'appEvent option)
+        (config : AppConfig<'state, 'appEvent, 'postLayoutEvent>)
+        : AppConfig<'state, 'appEvent, 'postLayoutEvent>
+        =
+        { config with
+            HandleInput = handleInput
+        }
+
+    /// Replace the FocusHandling on a config.
+    let withFocusHandling<'state, 'appEvent, 'postLayoutEvent>
+        (focusHandling : FocusHandling)
+        (config : AppConfig<'state, 'appEvent, 'postLayoutEvent>)
+        : AppConfig<'state, 'appEvent, 'postLayoutEvent>
+        =
+        { config with
+            FocusHandling = focusHandling
+        }
+
+    /// Replace the HandlePostLayout function on a config.
+    let withHandlePostLayout<'state, 'appEvent, 'postLayoutEvent>
+        (handlePostLayout : 'postLayoutEvent -> 'state -> 'state)
+        (config : AppConfig<'state, 'appEvent, 'postLayoutEvent>)
+        : AppConfig<'state, 'appEvent, 'postLayoutEvent>
+        =
+        { config with
+            HandlePostLayout = handlePostLayout
+        }
+
+    /// Replace the ActivationResolver on a config.
+    let withActivationResolver<'state, 'appEvent, 'postLayoutEvent>
+        (resolver : ActivationResolver<'appEvent, 'state>)
+        (config : AppConfig<'state, 'appEvent, 'postLayoutEvent>)
+        : AppConfig<'state, 'appEvent, 'postLayoutEvent>
+        =
+        { config with
+            ActivationResolver = resolver
+        }

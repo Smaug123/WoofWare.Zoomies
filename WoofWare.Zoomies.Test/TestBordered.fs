@@ -9,7 +9,6 @@ open WoofWare.Zoomies
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestBordered =
-    let getUtcNow () = MockTime.defaultStartTime
 
     [<OneTimeSetUp>]
     let setUp () =
@@ -19,6 +18,11 @@ module TestBordered =
     [<OneTimeTearDown>]
     let tearDown () =
         GlobalBuilderConfig.updateAllSnapshots ()
+
+    let private handleAnyKeystroke change =
+        match change with
+        | WorldStateChange.Keystroke _ -> Some ()
+        | _ -> None
 
     [<Test>]
     let ``Bordered does not repaint border when only child changes`` () =
@@ -97,7 +101,7 @@ module TestBordered =
 
             let borderedKey = NodeKey.make "bordered"
 
-            let vdom (vdomContext : IVdomContext<_>) (showBordered : bool) =
+            let vdom (_ : IVdomContext<_>) (showBordered : bool) =
                 if showBordered then
                     // A keyed Bordered with small text content
                     // The border should be drawn
@@ -110,30 +114,18 @@ module TestBordered =
                     // Fill the screen with characters to create "artifacts"
                     Vdom.textContent "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, bool> with
-                    member _.ProcessWorld (worldChanges, _, state) =
-                        // Toggle state on any keystroke
-                        let newState = if worldChanges.Length > 0 then not state else state
-                        ProcessWorldResult.make newState
+            let transition (state : bool) (_event : unit) : bool =
+                // Toggle state on any event
+                not state
 
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let config =
+                AppConfig.simple false transition (App.pureView vdom) ActivationResolver.none
+                |> AppConfig.withHandleInput handleAnyKeystroke
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
+            use ctx = IncrTestContext.make console config None
 
             // First render: fill with X's
-            let mutable state =
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    false
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -153,17 +145,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
 
             // Second render: show keyed Bordered
             // The border should be drawn, and the X's should be cleared
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -202,29 +184,18 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
                     // Short text - exposed area should be cleared
                     Vdom.textContent "AAA" |> Vdom.bordered
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, bool> with
-                    member _.ProcessWorld (worldChanges, _, state) =
-                        let newState = if worldChanges.Length > 0 then not state else state
-                        ProcessWorldResult.make newState
+            let transition (state : bool) (_event : unit) : bool =
+                // Toggle state on any event
+                not state
 
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let config =
+                AppConfig.simple true transition (App.pureView vdom) ActivationResolver.none
+                |> AppConfig.withHandleInput handleAnyKeystroke
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
+            use ctx = IncrTestContext.make console config None
 
             // First render: long text
-            let mutable state =
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    true
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -244,17 +215,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
 
             // Second render: short text
             // Border bounds unchanged, child bounds unchanged, but content shrinks
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -297,29 +258,18 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
                 // Wrap in another bordered to make it Unkeyed at the top level
                 bordered |> Vdom.withKey borderedKey |> Vdom.bordered
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, bool> with
-                    member _.ProcessWorld (worldChanges, _, state) =
-                        let newState = if worldChanges.Length > 0 then not state else state
-                        ProcessWorldResult.make newState
+            let transition (state : bool) (_event : unit) : bool =
+                // Toggle state on any event
+                not state
 
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let config =
+                AppConfig.simple true transition (App.pureView vdom) ActivationResolver.none
+                |> AppConfig.withHandleInput handleAnyKeystroke
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
+            use ctx = IncrTestContext.make console config None
 
             // First render: long text
-            let mutable state =
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    true
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -338,17 +288,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
             world.SendKey (ConsoleKeyInfo ('x', ConsoleKey.NoName, false, false, false))
 
             // Second render: short text
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot

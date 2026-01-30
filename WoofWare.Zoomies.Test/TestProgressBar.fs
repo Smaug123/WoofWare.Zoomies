@@ -8,7 +8,6 @@ open WoofWare.Zoomies.Components
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestProgressBar =
-    let getUtcNow () = MockTime.defaultStartTime
 
     [<OneTimeSetUp>]
     let setUp () =
@@ -37,22 +36,11 @@ module TestProgressBar =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -81,22 +69,11 @@ module TestProgressBar =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -125,22 +102,11 @@ module TestProgressBar =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -173,22 +139,11 @@ module TestProgressBar =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -219,22 +174,11 @@ Loading:[███░░░░░░░] 30%      |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -269,22 +213,11 @@ Loading:[███░░░░░░░] 30%      |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -317,22 +250,11 @@ Progress:[██████░░░░]         |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -361,23 +283,11 @@ Progress:[██████░░░░]         |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -410,22 +320,11 @@ Progress:[██████░░░░]         |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -454,22 +353,11 @@ Progress:[██████░░░░]         |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot

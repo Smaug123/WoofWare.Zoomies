@@ -9,7 +9,6 @@ open FsUnitTyped
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestTable =
-    let getUtcNow () = MockTime.defaultStartTime
 
     [<OneTimeSetUp>]
     let setUp () =
@@ -39,22 +38,11 @@ module TestTable =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -92,22 +80,11 @@ module TestTable =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -146,22 +123,11 @@ A2B2                |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -199,22 +165,11 @@ Bob  25                       |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -252,22 +207,11 @@ A2        B2        |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -306,22 +250,11 @@ A        B                    |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -368,22 +301,11 @@ Row3                     |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -423,22 +345,11 @@ A    B                        |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -477,22 +388,11 @@ A           B       |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -525,22 +425,11 @@ XY                  |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -581,22 +470,11 @@ Single              |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -642,22 +520,11 @@ Row3                |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -703,22 +570,11 @@ Bottom              |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -764,22 +620,11 @@ Prop                |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -815,22 +660,11 @@ Row2                |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -874,22 +708,11 @@ Cell2               |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -931,22 +754,11 @@ X    Y                        |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -988,22 +800,11 @@ Data1   Data2  |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -1050,22 +851,11 @@ A B                 |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -1105,22 +895,11 @@ Col1          Col2          C3|
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -1157,22 +936,11 @@ A    B C                      |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -1211,22 +979,11 @@ X  Y                |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // After sanitization all become Column.Proportion 0.01, dividing space equally
             expect {
@@ -1271,22 +1028,11 @@ A         B         C         |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -1330,22 +1076,11 @@ X      Y       Z              |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -1389,22 +1124,11 @@ gColumngColumnngColu|
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -1421,7 +1145,6 @@ Row3                |
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestTableMeasurements =
-    let getUtcNow () = MockTime.defaultStartTime
 
     type private Folded =
         {
@@ -1732,28 +1455,18 @@ module TestTableMeasurements =
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : unit) : Vdom<DesiredBounds> =
                 Table.make
                     (NodeKey.make "t_")
                     [| [| autoCell ; propCell |] |]
                     [| Column.Content ; Column.Proportion 1.0 |]
                     [||]
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                Unchecked.defaultof<State>
-                (fun _ -> false)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             let output = ConsoleHarness.toString terminal
 
@@ -1845,9 +1558,6 @@ module TestTableMeasurements =
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestTablePerformance =
-    let getUtcNow () = MockTime.defaultStartTime
-
-    type State = unit
 
     [<Test>]
     let ``10x10 table renders without errors`` () =
@@ -1861,7 +1571,7 @@ module TestTablePerformance =
                         |]
                 |]
 
-            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : unit) : Vdom<DesiredBounds> =
                 Table.makeContentSized (NodeKey.make "t_") cells
 
             let console, terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 30)
@@ -1875,23 +1585,12 @@ module TestTablePerformance =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
-
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
+            use ctx = IncrTestContext.make console config None
 
             // Just verify it renders without throwing
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Verify first row rendered
             let output = ConsoleHarness.toString terminal
@@ -1910,7 +1609,7 @@ module TestTablePerformance =
                         |]
                 |]
 
-            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : unit) : Vdom<DesiredBounds> =
                 Table.makeContentSized (NodeKey.make "t_") cells
 
             let console, terminal = ConsoleHarness.make' (fun () -> 200) (fun () -> 50)
@@ -1924,22 +1623,11 @@ module TestTablePerformance =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             let output = ConsoleHarness.toString terminal
             output |> shouldContainText "0"
@@ -1957,7 +1645,7 @@ module TestTablePerformance =
                         |]
                 |]
 
-            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : unit) : Vdom<DesiredBounds> =
                 Table.makeContentSized (NodeKey.make "t_") cells
 
             let console, terminal = ConsoleHarness.make' (fun () -> 400) (fun () -> 20)
@@ -1971,22 +1659,11 @@ module TestTablePerformance =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             let output = ConsoleHarness.toString terminal
             output |> shouldContainText "C0"

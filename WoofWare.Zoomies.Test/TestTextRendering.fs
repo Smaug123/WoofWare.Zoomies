@@ -8,7 +8,6 @@ open WoofWare.Zoomies
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestTextRendering =
-    let getUtcNow () = MockTime.defaultStartTime
 
     [<OneTimeSetUp>]
     let setUp () =
@@ -29,13 +28,11 @@ module TestTextRendering =
 
             // Create a vdom where text content has Width=0
             // With a terminal width of 1 and a 50/50 split, left gets 0 width, right gets 1 width
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 let leftText = Vdom.textContent "some text content"
                 let rightText = Vdom.textContent "other text"
                 // Split with 0.5 proportion, terminal has width 1, so left gets 0 width
                 Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, leftText, rightText)
-
-            let processWorld = WorldProcessor.passthrough
 
             let world = MockWorld.make ()
 
@@ -46,20 +43,12 @@ module TestTextRendering =
                     world.KeyAvailable
                     world.ReadKey
 
-            let renderState = MockTime.makeRenderStateStatic console None
+            let config = TestConfig.passthrough<unit> vdom
+
+            use ctx = IncrTestContext.make console config None
 
             // This should not throw an IndexOutOfRangeException
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Assert: only right side content is visible (proving left has 0 width)
             // If layout ever enforced a minimum width, this snapshot would change
@@ -90,7 +79,7 @@ r|
 
             // Create a vdom where keyed text content has Width=0
             // With a terminal width of 1 and a 50/50 split, left gets 0 width, right gets 1 width
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 let leftText = Vdom.textContent "some text content"
                 let rightText = Vdom.textContent "other text"
 
@@ -99,8 +88,6 @@ r|
                     Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, Vdom.withKey textKey leftText, rightText)
                 else
                     Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, leftText, Vdom.withKey textKey rightText)
-
-            let processWorld = WorldProcessor.passthrough
 
             let world = MockWorld.make ()
 
@@ -111,20 +98,12 @@ r|
                     world.KeyAvailable
                     world.ReadKey
 
-            let renderState = MockTime.makeRenderStateStatic console None
+            let config = TestConfig.passthrough<unit> vdom
+
+            use ctx = IncrTestContext.make console config None
 
             // This should not throw an IndexOutOfRangeException
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Assert: only right side content is visible (proving left has 0 width)
             // If layout ever enforced a minimum width, this snapshot would change
@@ -160,7 +139,7 @@ r|
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // A 25-character word in a 10-character wide terminal
                 // Should wrap to 3 lines: "AAAAAAAAAA" + "AAAAAAAAAA" + "AAAAA"
                 let longWord = String.replicate 25 "A"
@@ -170,21 +149,11 @@ r|
                 let bottom = Vdom.textContent "bottom"
                 Vdom.panelSplitAuto (SplitDirection.Horizontal, text, bottom)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -219,25 +188,15 @@ bottom    |
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Text with CRLF line endings - the \r should not be rendered as a visible character
                 Vdom.textContent "Line1\r\nLine2\r\nLine3"
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -267,25 +226,15 @@ Line3               |
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Text with old Mac-style CR line endings - should be treated as newlines
                 Vdom.textContent "Line1\rLine2\rLine3"
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -315,25 +264,15 @@ Line3               |
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Text with CRLF line endings and Centered alignment
                 Vdom.textContent ("AAA\r\nBBB\r\nCCC", alignment = ContentAlignment.Centered)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -363,25 +302,15 @@ Line3               |
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Text with old Mac-style CR line endings and Centered alignment
                 Vdom.textContent ("AAA\rBBB\rCCC", alignment = ContentAlignment.Centered)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -417,7 +346,7 @@ Line3               |
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Multi-line text that should be measured as needing 5 lines
                 let multiLineText =
                     String.concat newline [ "Line 1" ; "Line 2" ; "Line 3" ; "Line 4" ; "Line 5" ]
@@ -429,21 +358,11 @@ Line3               |
                 let footer = Vdom.textContent "Footer"
                 Vdom.panelSplitAuto (SplitDirection.Horizontal, text, footer)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // All 5 lines of text should be visible, plus the footer
             expect {
@@ -480,7 +399,7 @@ Footer              |
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Text with blank lines - should be measured as 5 lines total
                 // (Para1, blank, Para2, blank, Para3)
                 let textWithBlanks = "Para1\n\nPara2\n\nPara3"
@@ -489,21 +408,11 @@ Footer              |
                 let footer = Vdom.textContent "Footer"
                 Vdom.panelSplitAuto (SplitDirection.Horizontal, text, footer)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -536,25 +445,15 @@ Footer              |
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Text that exceeds width - with wrap=true (default), it wraps
                 Vdom.textContent ("Hello World, this is a long text", wrap = true)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -584,25 +483,15 @@ xt        |
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Text that exceeds width - with wrap=false, it truncates
                 Vdom.textContent ("Hello World, this is a long text", wrap = false)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -632,25 +521,15 @@ Hello Worl|
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Multi-line text with wrap=false - each line truncates independently
                 Vdom.textContent ("First line is long\nSecond is too\nShort", wrap = false)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -683,7 +562,7 @@ Short     |
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Long text with wrap=false - should only take 1 line in auto layout
                 let text =
                     Vdom.textContent ("This is a very long text that would wrap", wrap = false)
@@ -691,21 +570,11 @@ Short     |
                 let footer = Vdom.textContent "Footer"
                 Vdom.panelSplitAuto (SplitDirection.Horizontal, text, footer)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // The truncated text takes only 1 line, footer takes 1 line
             expect {
@@ -738,28 +607,18 @@ Footer    |
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Left side: wrap=true, Right side: wrap=false
                 let longText = "Long text here"
                 let leftText = Vdom.textContent (longText, wrap = true)
                 let rightText = Vdom.textContent (longText, wrap = false)
                 Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, leftText, rightText)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Left side wraps (10 chars wide), right side truncates (10 chars wide)
             expect {
@@ -791,28 +650,18 @@ here                |
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Long text that exceeds width - with wrap=true and Centered alignment
                 // "ABCDEFGHIJKLMNOPQRSTUVWXYZ" is 26 chars, width is 20
                 // Should wrap to: "ABCDEFGHIJKLMNOPQRST" (20 chars, centered = offset 0)
                 //                 "UVWXYZ" (6 chars, centered = offset 7)
                 Vdom.textContent ("ABCDEFGHIJKLMNOPQRSTUVWXYZ", alignment = ContentAlignment.Centered, wrap = true)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // First line fills width (no centering offset), second line is centered
             expect {
@@ -844,25 +693,15 @@ ABCDEFGHIJKLMNOPQRST|
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Long text with wrap=false and Centered alignment - should truncate
                 Vdom.textContent ("ABCDEFGHIJKLMNOPQRSTUVWXYZ", alignment = ContentAlignment.Centered, wrap = false)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Text is truncated at width boundary (left portion shown)
             expect {
@@ -893,28 +732,18 @@ ABCDEFGHIJKLMNOPQRST|
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Multi-line text where some lines need wrapping
                 // Line 1: "Short" (5 chars) - fits, centered
                 // Line 2: "This is too long" (16 chars) - wraps to "This is too " (12) + "long" (4)
                 // Line 3: "End" (3 chars) - fits, centered
                 Vdom.textContent ("Short\nThis is too long\nEnd", alignment = ContentAlignment.Centered, wrap = true)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // 4 lines of content (Short, "This is too ", "long", End), centered in 7 lines
             // startY = (7 - 4 + 1) / 2 = 2

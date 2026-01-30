@@ -8,7 +8,6 @@ open WoofWare.Zoomies
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestCheckbox =
-    let getUtcNow () = MockTime.defaultStartTime
 
     [<Test>]
     let ``Checkbox with focus does not write brackets when Height is 0`` () =
@@ -24,13 +23,11 @@ module TestCheckbox =
                     WindowHeight = fun _ -> 5
                 }
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
             let checkboxKey = NodeKey.make "checkbox"
 
             // Create a vdom where the checkbox has focus and is allocated bounds with Height=0
             // We use an absolute split to force the checkbox into a zero-height allocation
-            let vdom (vdomContext : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (vdomContext : IVdomContext<_>) (_ : unit) =
                 let topContent = Vdom.textContent "top"
 
                 let checkbox = Components.Checkbox.make (vdomContext, checkboxKey, false)
@@ -38,7 +35,7 @@ module TestCheckbox =
                 // Give the checkbox 0 rows (split at row 5 in a 5-row terminal)
                 Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 5, topContent, checkbox)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
             let world = MockWorld.make ()
 
@@ -49,41 +46,23 @@ module TestCheckbox =
                     world.KeyAvailable
                     world.ReadKey
 
+            use ctx = IncrTestContext.make console config None
+
             // Render without focus
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             terminalOps.Clear ()
 
             // Tab to give focus to the checkbox
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Verify focus actually moved to the checkbox
-            RenderState.focusedKey renderState |> shouldEqual (Some checkboxKey)
+            RenderState.focusedKey ctx.RenderState |> shouldEqual (Some checkboxKey)
 
             // Check that the checkbox has bounds with Height=0
-            let checkboxLayout = RenderState.layoutOf checkboxKey renderState
+            let checkboxLayout = RenderState.layoutOf checkboxKey ctx.RenderState
             checkboxLayout.IsSome |> shouldEqual true
             checkboxLayout.Value.Height |> shouldEqual 0
 

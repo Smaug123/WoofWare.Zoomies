@@ -7,59 +7,6 @@ open System.Threading
 open System.Threading.Tasks
 open WoofWare.Incremental
 
-[<Struct>]
-type RerenderRequest =
-    /// Don't request a rerender; just let me continue processing the current batch of events.
-    | Continue
-    /// Truncate the current batch of requests, rerender, and split the rest of the batch into a new iteration of the
-    /// render loop.
-    /// The index is the last element you processed.
-    /// For example, to say you've processed only one element of the batch, you'd return 0 here.
-    ///
-    /// This feature is here in case you hit a bug in the early cutoff mechanism and need to tell the system to
-    /// rerender, but I can't think of any legitimate reason to use this otherwise.
-    | Rerender of indexOfLastProcessedEvent : int
-
-/// Make one of these with `ProcessWorldResult.make`.
-[<Struct>]
-type ProcessWorldResult<'userState> =
-    private
-        {
-            NewState : 'userState
-            /// Set this to `Rerender` to request a rerender *now*, rather than continuing to process the rest of the batch
-            /// of incoming events.
-            /// You might want to do this, for example, if you want WoofWare.Zoomies to ask you again whether you're opted
-            /// into automatic focus tracking (which it only does before starting a render).
-            RequestRerender : RerenderRequest
-        }
-
-[<RequireQualifiedAccess>]
-module ProcessWorldResult =
-    let make<'userState> (s : 'userState) =
-        {
-            NewState = s
-            RequestRerender = RerenderRequest.Continue
-        }
-
-    /// Specify that you have only partially consumed the stream of `WorldStateChange`s (specifically, you have
-    /// processed the one at `lastProcessedIndex` but you have not processed any after that).
-    ///
-    /// If `lastProcessedIndex` is greater than or equal to the length of the input events span, we will correctly
-    /// understand that you have processed all entries, but will force a rerender (requesting your vdom again) even if
-    /// the cutoff system didn't want to rerender.
-    let withRerender (lastProcessedIndex : int) (s : ProcessWorldResult<'userState>) =
-        { s with
-            RequestRerender = RerenderRequest.Rerender lastProcessedIndex
-        }
-
-type WorldProcessor<'appEvent, 'postLayoutEvent, 'userState> =
-    abstract ProcessWorld :
-        events : ReadOnlySpan<WorldStateChange<'appEvent>> * previousRenderState : IVdomContext * 'userState ->
-            ProcessWorldResult<'userState>
-
-    abstract ProcessPostLayoutEvents :
-        events : ReadOnlySpan<'postLayoutEvent> * previousRenderState : IVdomContext * 'userState -> 'userState
-
 /// Handle to a running application, providing tasks for lifecycle events.
 type AppHandle =
     {
@@ -79,322 +26,6 @@ module App =
     [<Literal>]
     let private MAX_POST_LAYOUT_ITERATIONS = 100
 
-    /// Process post-layout events until the queue is empty or max iterations reached.
-    /// Returns the final state and whether max iterations was hit.
-    let internal stabilizePostLayoutEvents<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
-        (state : 'state)
-        (renderState : RenderState<'postLayoutEvent>)
-        (processWorld : WorldProcessor<'appEvent, 'postLayoutEvent, 'state>)
-        (vdom : IVdomContext<'postLayoutEvent> -> 'state -> Vdom<DesiredBounds>)
-        : 'state * bool
-        =
-        let ctx = RenderState.vdomContext renderState
-        // Caller must mark clean before calling; PostLayoutEvent can only set dirty during vdom construction,
-        // and processWorld receives IVdomContext (not IVdomContext<'postLayoutEvent>) so cannot post events.
-        assert (not (VdomContext.isDirty ctx))
-        let mutable currentState = state
-        let mutable iterations = 0
-        let mutable continueLoop = true
-
-        while continueLoop && iterations < MAX_POST_LAYOUT_ITERATIONS do
-            let layoutEvents = VdomContext.drainPostLayoutEvents ctx
-
-            if layoutEvents.Length = 0 then
-                continueLoop <- false
-            else
-                let newState =
-                    processWorld.ProcessPostLayoutEvents (
-                        ReadOnlySpan layoutEvents,
-                        VdomContext.asBase ctx,
-                        currentState
-                    )
-
-                // If state changed, we need to render and potentially get more post-layout events
-                if newState <> currentState then
-                    currentState <- newState
-                    Render.oneStepNoFlush renderState currentState (vdom (VdomContext.asTyped ctx))
-                    VdomContext.markClean ctx
-                    iterations <- iterations + 1
-                else
-                    // State didn't change, no need to render, we're done
-                    continueLoop <- false
-
-        currentState, iterations >= MAX_POST_LAYOUT_ITERATIONS
-
-    let internal processNoChanges<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
-        (state : 'state)
-        (renderState : RenderState<'postLayoutEvent>)
-        (processWorld : WorldProcessor<'appEvent, 'postLayoutEvent, 'state>)
-        (vdom : IVdomContext<'postLayoutEvent> -> 'state -> Vdom<DesiredBounds>)
-        : 'state
-        =
-        let ctx = RenderState.vdomContext renderState
-
-        if VdomContext.isDirty ctx then
-            Render.oneStepNoFlush renderState state (vdom (VdomContext.asTyped ctx))
-            VdomContext.markClean ctx
-
-            let finalState, _hitLimit =
-                stabilizePostLayoutEvents state renderState processWorld vdom
-
-            Render.flush renderState
-            finalState
-        else
-            state
-
-    let internal processChanges<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
-        (now : DateTime)
-        (changes : WorldStateChange<'appEvent>[])
-        (state : 'state)
-        (haveFrameworkHandleFocus : 'state -> bool)
-        (renderState : RenderState<'postLayoutEvent>)
-        (processWorld : WorldProcessor<'appEvent, 'postLayoutEvent, 'state>)
-        (vdom : IVdomContext<'postLayoutEvent> -> 'state -> Vdom<DesiredBounds>)
-        (resolveActivation : ActivationResolver<'appEvent, 'state>)
-        (isCancelled : unit -> bool)
-        : 'state
-        =
-        let ctx = RenderState.vdomContext renderState
-        let mutable startState = state
-        let mutable currentState = state
-        let mutable startOfBatch = 0
-
-        while startOfBatch < changes.Length && not (isCancelled ()) do
-            let mutable forceRerender = false
-
-            if haveFrameworkHandleFocus currentState then
-                // The point is to pass as large a batch as possible to ProcessWorld.
-                // Any character that isn't a tab will go into the batch.
-
-                let mutable nextToProcess = startOfBatch
-
-                let processBatch () =
-                    let processResult =
-                        processWorld.ProcessWorld (
-                            changes.AsSpan().Slice (startOfBatch, nextToProcess - startOfBatch),
-                            VdomContext.asBase ctx,
-                            currentState
-                        )
-
-                    currentState <- processResult.NewState
-
-                    match processResult.RequestRerender with
-                    | RerenderRequest.Continue ->
-                        // Successfully processed everything up but not including the tab.
-                        // Just proceed.
-                        startOfBatch <- nextToProcess
-                        nextToProcess <- Int32.MaxValue
-                    | RerenderRequest.Rerender lastProcessed ->
-                        forceRerender <- true
-
-                        let len = nextToProcess - startOfBatch
-
-                        if lastProcessed >= len - 1 then
-                            // Successfully processed everything up to but not including the tab.
-                            // Just proceed.
-                            startOfBatch <- nextToProcess
-                            nextToProcess <- Int32.MaxValue
-                        elif lastProcessed < 0 then
-                            failwith "bad index from processing result: was negative"
-                        else
-                            startOfBatch <- startOfBatch + lastProcessed + 1
-                            nextToProcess <- Int32.MaxValue
-
-                while nextToProcess < changes.Length do
-                    match Array.get changes nextToProcess with
-                    | WorldStateChange.Keystroke t when
-                        t.Key = ConsoleKey.Tab
-                        && (t.Modifiers = ConsoleModifiers.None || t.Modifiers = ConsoleModifiers.Shift)
-                        ->
-                        if nextToProcess = startOfBatch then
-                            // The tab is at the start of the batch, so we can process it on its own.
-
-                            // Advance focus to the next/prev focusable element
-                            if t.Modifiers = ConsoleModifiers.None then
-                                RenderState.advanceFocus renderState
-                            else
-                                assert (t.Modifiers = ConsoleModifiers.Shift)
-                                RenderState.retreatFocus renderState
-
-                            // successfully consumed everything up to here; the tab is next to process
-                            nextToProcess <- nextToProcess + 1
-                            startOfBatch <- nextToProcess
-
-                        else
-                            assert (nextToProcess > startOfBatch)
-
-                            // Split artificially at this boundary so that we have a completely fresh vdom just before
-                            // the tab.
-                            processBatch ()
-
-                    | WorldStateChange.Keystroke k ->
-                        // Check if the resolver handles this keystroke
-                        match VdomContext.focusedKey ctx with
-                        | Some focusedKey ->
-                            match resolveActivation.Invoke (focusedKey, k, currentState) with
-                            | Some appEvent ->
-                                // Activation! Process batch up to here, then inject event
-                                // Capture index before processBatch() sets nextToProcess to Int32.MaxValue
-                                let idxBeforeProcessing = nextToProcess
-
-                                if nextToProcess > startOfBatch then
-                                    processBatch ()
-
-                                // Check if processBatch() processed everything up to the activation.
-                                // If not (partial consumption), don't handle activation yet - loop back
-                                // to continue processing unprocessed events before the activation.
-                                if startOfBatch < idxBeforeProcessing then
-                                    // Still have unprocessed events before the activation
-                                    // Continue from where processBatch() left off
-                                    nextToProcess <- startOfBatch
-                                else
-                                    // Everything up to the activation has been processed
-                                    // Now handle the activation
-
-                                    // Record activation time for visual feedback
-                                    VdomContext.recordActivation now focusedKey ctx
-
-                                    // Inject the resolved event
-                                    let injectedEvent = [| WorldStateChange.ApplicationEvent appEvent |]
-
-                                    let processResult =
-                                        processWorld.ProcessWorld (
-                                            ReadOnlySpan injectedEvent,
-                                            VdomContext.asBase ctx,
-                                            currentState
-                                        )
-
-                                    currentState <- processResult.NewState
-
-                                    // Re-render for visual feedback
-                                    Render.oneStepNoFlush renderState currentState (vdom (VdomContext.asTyped ctx))
-
-                                    VdomContext.markClean ctx
-
-                                    // Stabilize post-layout events before continuing
-                                    let stabilizedState, _hitLimit =
-                                        stabilizePostLayoutEvents currentState renderState processWorld vdom
-
-                                    Render.flush renderState
-                                    currentState <- stabilizedState
-                                    startState <- currentState
-
-                                    // Successfully consumed the keystroke; move forward
-                                    // Use captured index to avoid arithmetic on sentinel value (Int32.MaxValue)
-                                    startOfBatch <- idxBeforeProcessing + 1
-                                    nextToProcess <- startOfBatch
-
-                            | None ->
-                                // Resolver didn't handle it, include in batch
-                                nextToProcess <- nextToProcess + 1
-
-                        | None ->
-                            // Nothing focused, include in batch
-                            nextToProcess <- nextToProcess + 1
-
-                    | _ -> nextToProcess <- nextToProcess + 1
-
-                // And finally, process any sequences which *don't* end in a tab.
-                // We check nextToProcess <> Int32.MaxValue because processBatch() sets it to Int32.MaxValue
-                // as a sentinel to indicate "we've already finished processing everything via early bailout".
-                // Without this check, we'd try to slice with Int32.MaxValue and get an out-of-bounds error.
-                if startOfBatch < changes.Length && nextToProcess <> Int32.MaxValue then
-                    processBatch ()
-
-            else
-                // Framework is not handling focus; just pass all keystrokes through.
-                let processResult =
-                    processWorld.ProcessWorld (
-                        changes.AsSpan().Slice startOfBatch,
-                        VdomContext.asBase ctx,
-                        currentState
-                    )
-
-                currentState <- processResult.NewState
-
-                match processResult.RequestRerender with
-                | RerenderRequest.Continue -> startOfBatch <- changes.Length
-                | RerenderRequest.Rerender truncatedAt ->
-                    forceRerender <- true
-
-                    if truncatedAt < 0 then
-                        failwith "bad index from processing result: was negative"
-                    elif truncatedAt >= changes.Length - startOfBatch - 1 then
-                        startOfBatch <- changes.Length
-                    else
-                        startOfBatch <- startOfBatch + truncatedAt + 1
-
-            if forceRerender || VdomContext.isDirty ctx || currentState <> startState then
-                Render.oneStepNoFlush renderState currentState (vdom (VdomContext.asTyped ctx))
-                VdomContext.markClean ctx
-
-                let stabilizedState, _hitLimit =
-                    stabilizePostLayoutEvents currentState renderState processWorld vdom
-
-                Render.flush renderState
-                currentState <- stabilizedState
-                startState <- currentState
-
-        currentState
-
-    let pumpOnce<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
-        (getUtcNow : unit -> DateTime)
-        (listener : WorldFreezer<'appEvent>)
-        (state : 'state)
-        (haveFrameworkHandleFocus : 'state -> bool)
-        (renderState : RenderState<'postLayoutEvent>)
-        (processWorld : WorldProcessor<'appEvent, 'postLayoutEvent, 'state>)
-        (vdom : IVdomContext<'postLayoutEvent> -> 'state -> Vdom<DesiredBounds>)
-        (resolveActivation : ActivationResolver<'appEvent, 'state>)
-        (isCancelled : unit -> bool)
-        : 'state
-        =
-        let ctx = RenderState.vdomContext renderState
-        let now = getUtcNow ()
-
-        let go state =
-            let resizeGeneration = listener.TerminalResizeGeneration
-            RenderState.refreshTerminalSize renderState
-            VdomContext.pruneExpiredActivations now ctx
-
-            listener.RefreshExternal ()
-
-            let changes = listener.Changes ()
-
-            let state =
-                match changes with
-                | ValueNone -> processNoChanges state renderState processWorld vdom
-                | ValueSome changes ->
-                    processChanges
-                        now
-                        changes
-                        state
-                        haveFrameworkHandleFocus
-                        renderState
-                        processWorld
-                        vdom
-                        resolveActivation
-                        isCancelled
-
-            if listener.TerminalResizeGeneration <> resizeGeneration then
-                // Our knowledge of the current terminal's contents could be arbitrarily corrupted:
-                // we were drawing to the screen when it had an arbitrary size. Need a *complete* refresh.
-                RenderState.clearScreen renderState
-                renderState.PreviousVdom <- None
-                VdomContext.markDirty ctx
-                true, state
-            else
-                false, state
-
-        let mutable state = state
-
-        while (let goAgain, state' = go state in
-               state <- state'
-               goAgain) do
-            ()
-
-        state
-
     /// Lift a pure view function into an incremental one.
     /// The resulting view depends on state, bounds, and focus - any change triggers full recomputation.
     /// For fine-grained incrementality, write an incremental view function directly.
@@ -412,6 +43,22 @@ module App =
                 (fun ((state, _bounds), _focus) -> view (VdomContext.asTyped ctx) state)
                 (incr.Both (incr.Both stateNode boundsNode) focusNode)
 
+    /// Like pureView but the view function returns an incremental Vdom node.
+    /// This allows proper composition of incremental components (like Button.make) without
+    /// needing to call Stabilize() inside the view function.
+    let pureViewIncr<'state, 'postLayoutEvent>
+        (view : IVdomContext<'postLayoutEvent> -> 'state -> Vdom<DesiredBounds> Node)
+        : VdomContext<'postLayoutEvent> -> 'state Node -> Vdom<DesiredBounds> Node
+        =
+        fun ctx stateNode ->
+            let incr = VdomContext.incr ctx
+            let boundsNode = VdomContext.boundsNode ctx
+            let focusNode = VdomContext.focusedKeyNode ctx
+
+            incr.Bind
+                (fun ((state, _bounds), _focus) -> view (VdomContext.asTyped ctx) state)
+                (incr.Both (incr.Both stateNode boundsNode) focusNode)
+
     /// Process post-layout events using the AppConfig approach.
     /// Returns the final state and whether max iterations was hit.
     let private stabilizePostLayoutEventsWithConfig<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
@@ -419,7 +66,7 @@ module App =
         (renderState : RenderState<'postLayoutEvent>)
         (config : AppConfig<'state, 'appEvent, 'postLayoutEvent>)
         (vdomObserver : Vdom<DesiredBounds> Observer)
-        (incrState : IncrementalState<'state>)
+        (incrState : IncrementalState)
         : bool
         =
         let ctx = RenderState.vdomContext renderState
@@ -455,6 +102,25 @@ module App =
 
         iterations >= MAX_POST_LAYOUT_ITERATIONS
 
+    /// Render once, and if render-time focus assignment changed the focused key,
+    /// stabilize and render again so incremental views pick up the new focus.
+    let private renderWithFocusStabilization<'postLayoutEvent>
+        (renderState : RenderState<'postLayoutEvent>)
+        (vdomObserver : Vdom<DesiredBounds> Observer)
+        (incrState : IncrementalState)
+        : unit
+        =
+        let ctx = RenderState.vdomContext renderState
+        let focusedBefore = VdomContext.focusedKey ctx
+
+        Render.oneStepNoFlush renderState () (fun () -> Observer.value vdomObserver)
+
+        let focusedAfter = VdomContext.focusedKey ctx
+
+        if focusedBefore.IsNone && focusedAfter.IsSome then
+            incrState.Incr.Stabilize ()
+            Render.oneStepNoFlush renderState () (fun () -> Observer.value vdomObserver)
+
     /// Process changes using the AppConfig approach with StateMachine.
     let private processChangesWithConfig<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
         (now : DateTime)
@@ -463,7 +129,7 @@ module App =
         (renderState : RenderState<'postLayoutEvent>)
         (config : AppConfig<'state, 'appEvent, 'postLayoutEvent>)
         (vdomObserver : Vdom<DesiredBounds> Observer)
-        (incrState : IncrementalState<'state>)
+        (incrState : IncrementalState)
         (isCancelled : unit -> bool)
         : unit
         =
@@ -537,7 +203,7 @@ module App =
 
         // Re-render if vdom changed or context is dirty (e.g., from resize, activation, etc.)
         if not (Object.referenceEquals previousVdom currentVdom) || VdomContext.isDirty ctx then
-            Render.oneStepNoFlush renderState () (fun () -> currentVdom)
+            renderWithFocusStabilization renderState vdomObserver incrState
             VdomContext.markClean ctx
 
             // Handle post-layout events
@@ -555,7 +221,7 @@ module App =
         (renderState : RenderState<'postLayoutEvent>)
         (config : AppConfig<'state, 'appEvent, 'postLayoutEvent>)
         (vdomObserver : Vdom<DesiredBounds> Observer)
-        (incrState : IncrementalState<'state>)
+        (incrState : IncrementalState)
         : unit
         =
         let currentVdom = Observer.value vdomObserver
@@ -563,7 +229,7 @@ module App =
 
         // Re-render if vdom changed or context is dirty (e.g., from resize, activation, etc.)
         if not (Object.referenceEquals previousVdom currentVdom) || VdomContext.isDirty ctx then
-            Render.oneStepNoFlush renderState () (fun () -> currentVdom)
+            renderWithFocusStabilization renderState vdomObserver incrState
             VdomContext.markClean ctx
 
             let _hitLimit =
@@ -583,7 +249,7 @@ module App =
     let internal pumpOnceIncremental<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
         (getUtcNow : unit -> DateTime)
         (listener : WorldFreezer<'appEvent>)
-        (incrState : IncrementalState<'state>)
+        (incrState : IncrementalState)
         (stateMachine : StateMachine<'state, 'appEvent>)
         (renderState : RenderState<'postLayoutEvent>)
         (vdomObserver : Vdom<DesiredBounds> Observer)
@@ -662,7 +328,7 @@ module App =
                         }
 
                     // Create IncrementalState (still needed for bounds, focus, clock)
-                    let incrState = IncrementalState.make config.Initial initialBounds None
+                    let incrState = IncrementalState.make initialBounds None
                     let vdomContext = VdomContext.make incrState
 
                     // Create the StateMachine for event-driven state updates
@@ -717,7 +383,7 @@ module App =
                             config.OnSetup listener'
 
                             // Initial render
-                            Render.oneStepNoFlush renderState () (fun () -> Observer.value vdomObserver)
+                            renderWithFocusStabilization renderState vdomObserver incrState
 
                             let _hitLimit =
                                 stabilizePostLayoutEventsWithConfig

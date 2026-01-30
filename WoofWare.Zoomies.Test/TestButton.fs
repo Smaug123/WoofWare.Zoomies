@@ -17,7 +17,6 @@ module private Object =
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestButton =
-    let getUtcNow () = MockTime.defaultStartTime
 
     [<OneTimeSetUp>]
     let setUp () =
@@ -40,7 +39,7 @@ module TestButton =
         task {
             let flipKey = NodeKey.make "flip-button"
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
                 let text =
                     if state.ShowFirstText then
                         "Hello, World!"
@@ -49,11 +48,13 @@ module TestButton =
 
                 let textVdom = Vdom.textContent text
                 let buttonNode = Button.make (ctx, flipKey, "Flip Text")
-                let buttonObserver = ctx.Incr.Observe buttonNode
-                ctx.Incr.Stabilize ()
-                let button = Observer.value buttonObserver
 
-                Vdom.panelSplitAuto (SplitDirection.Horizontal, textVdom, button)
+                // Use Incr.Map to compose the button incrementally
+                ctx.Incr.Map
+                    (fun (button : Vdom<DesiredBounds>) ->
+                        Vdom.panelSplitAuto (SplitDirection.Horizontal, textVdom, button)
+                    )
+                    buttonNode
 
             let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
@@ -66,50 +67,28 @@ module TestButton =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = true
-
             let resolver = ActivationResolver.button flipKey FlipText
 
-            let processWorld =
-                { new WorldProcessor<AppEvent, unit, State> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        let mutable newState = state
+            let transition (state : State) (event : AppEvent) : State =
+                match event with
+                | FlipText ->
+                    { state with
+                        ShowFirstText = not state.ShowFirstText
+                    }
 
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent FlipText ->
-                                newState <-
-                                    { newState with
-                                        ShowFirstText = not newState.ShowFirstText
-                                    }
-                            | _ -> ()
+            let config =
+                AppConfig.simple
+                    {
+                        ShowFirstText = true
+                    }
+                    transition
+                    (App.pureViewIncr vdom)
+                    resolver
 
-                        ProcessWorldResult.make newState
-
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
-
-            let clock = MockTime.makeFromConsole console
-
-            let renderState, _ = MockTime.makeRenderStateFromTimer console clock None
-
-            let mutable state =
-                {
-                    ShowFirstText = true
-                }
+            use ctx = IncrTestContext.make console config None
 
             // Initial render - button unfocused
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -125,17 +104,7 @@ Hello, World!                           |
             // Press tab to focus the button
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -151,17 +120,7 @@ Hello, World!                           |
             // Press space to activate the button
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -177,17 +136,7 @@ Goodbye, World!                         |
             // Press space again to flip back
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -218,7 +167,7 @@ Hello, World!                           |
             let button2Key = NodeKey.make "button2"
             let button3Key = NodeKey.make "button3"
 
-            let vdom (ctx : IVdomContext<_>) (state : MultiButtonState) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : MultiButtonState) : Vdom<DesiredBounds> Node =
                 let statusText = Vdom.textContent $"Last clicked: {state.LastClicked}"
 
                 let button1Node =
@@ -227,19 +176,22 @@ Hello, World!                           |
                 let button2Node = Button.make (ctx, button2Key, "Button 2")
                 let button3Node = Button.make (ctx, button3Key, "Button 3")
 
-                let button1Observer = ctx.Incr.Observe button1Node
-                let button2Observer = ctx.Incr.Observe button2Node
-                let button3Observer = ctx.Incr.Observe button3Node
-                ctx.Incr.Stabilize ()
-                let button1 = Observer.value button1Observer
-                let button2 = Observer.value button2Observer
-                let button3 = Observer.value button3Observer
+                // Compose buttons incrementally using nested Map2 (no Map3 available)
+                let button12Node =
+                    ctx.Incr.Map2
+                        (fun (b1 : Vdom<DesiredBounds>) (b2 : Vdom<DesiredBounds>) ->
+                            Vdom.panelSplitAuto (SplitDirection.Vertical, b1, b2)
+                        )
+                        button1Node
+                        button2Node
 
-                let buttons =
-                    Vdom.panelSplitAuto (SplitDirection.Vertical, button1, button2)
-                    |> fun b1b2 -> Vdom.panelSplitAuto (SplitDirection.Vertical, b1b2, button3)
-
-                Vdom.panelSplitAuto (SplitDirection.Horizontal, statusText, buttons)
+                ctx.Incr.Map2
+                    (fun (b12 : Vdom<DesiredBounds>) (b3 : Vdom<DesiredBounds>) ->
+                        let buttons = Vdom.panelSplitAuto (SplitDirection.Vertical, b12, b3)
+                        Vdom.panelSplitAuto (SplitDirection.Horizontal, statusText, buttons)
+                    )
+                    button12Node
+                    button3Node
 
             let console, terminal = ConsoleHarness.make' (fun () -> 50) (fun () -> 3)
 
@@ -252,8 +204,6 @@ Hello, World!                           |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = true
-
             let resolver =
                 ActivationResolver.combine
                     [
@@ -262,56 +212,34 @@ Hello, World!                           |
                         ActivationResolver.button button3Key Button3Clicked
                     ]
 
-            let processWorld =
-                { new WorldProcessor<MultiButtonEvent, unit, MultiButtonState> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        let mutable newState = state
+            let transition (state : MultiButtonState) (event : MultiButtonEvent) : MultiButtonState =
+                match event with
+                | Button1Clicked ->
+                    {
+                        LastClicked = "Button 1"
+                    }
+                | Button2Clicked ->
+                    {
+                        LastClicked = "Button 2"
+                    }
+                | Button3Clicked ->
+                    {
+                        LastClicked = "Button 3"
+                    }
 
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent Button1Clicked ->
-                                newState <-
-                                    {
-                                        LastClicked = "Button 1"
-                                    }
-                            | WorldStateChange.ApplicationEvent Button2Clicked ->
-                                newState <-
-                                    {
-                                        LastClicked = "Button 2"
-                                    }
-                            | WorldStateChange.ApplicationEvent Button3Clicked ->
-                                newState <-
-                                    {
-                                        LastClicked = "Button 3"
-                                    }
-                            | _ -> ()
+            let config =
+                AppConfig.simple
+                    {
+                        LastClicked = "None"
+                    }
+                    transition
+                    (App.pureViewIncr vdom)
+                    resolver
 
-                        ProcessWorldResult.make newState
-
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
-
-            let clock = MockTime.makeFromConsole console
-
-            let renderState, _ = MockTime.makeRenderStateFromTimer console clock None
-
-            let mutable state =
-                {
-                    LastClicked = "None"
-                }
+            use ctx = IncrTestContext.make console config None
 
             // Initial render - Button 1 focused (isFirstToFocus)
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -327,17 +255,7 @@ Last clicked: None                                |
             // Activate Button 1 with space
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -353,17 +271,7 @@ Last clicked: Button 1                            |
             // Tab to Button 2
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -379,17 +287,7 @@ Last clicked: Button 1                            |
             // Activate Button 2 with Enter
             world.SendKey (ConsoleKeyInfo ('\r', ConsoleKey.Enter, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -405,17 +303,7 @@ Last clicked: Button 2                            |
             // Tab to Button 3
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -431,17 +319,7 @@ Last clicked: Button 2                            |
             // Activate Button 3 with space
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -457,17 +335,7 @@ Last clicked: Button 3                            |
             // Tab back to Button 1 (cycles)
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -486,7 +354,7 @@ Last clicked: Button 3                            |
         task {
             let flipKey = NodeKey.make "flip-button"
 
-            let vdom (ctx : IVdomContext<_>) (state : bool) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : bool) : Vdom<DesiredBounds> Node =
                 let text = if state then "Hello, World!" else "Goodbye, World!"
 
                 let textVdom = Vdom.textContent text
@@ -494,11 +362,12 @@ Last clicked: Button 3                            |
                 let buttonNode =
                     Button.make (ctx, flipKey, "Flip Text", isInitiallyFocused = true, isFirstToFocus = true)
 
-                let buttonObserver = ctx.Incr.Observe buttonNode
-                ctx.Incr.Stabilize ()
-                let button = Observer.value buttonObserver
-
-                Vdom.panelSplitAuto (SplitDirection.Horizontal, textVdom, button)
+                // Compose incrementally
+                ctx.Incr.Map
+                    (fun (button : Vdom<DesiredBounds>) ->
+                        Vdom.panelSplitAuto (SplitDirection.Horizontal, textVdom, button)
+                    )
+                    buttonNode
 
             let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
@@ -511,46 +380,18 @@ Last clicked: Button 3                            |
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = true
-
             let resolver = ActivationResolver.button flipKey FlipText
 
-            let processWorld =
-                { new WorldProcessor<AppEvent, unit, bool> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        let mutable newState = state
+            let transition (state : bool) (event : AppEvent) : bool =
+                match event with
+                | FlipText -> not state
 
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent FlipText -> newState <- not newState
-                            | _ -> ()
+            let config = AppConfig.simple true transition (App.pureViewIncr vdom) resolver
 
-                        ProcessWorldResult.make newState
-
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
-
-            let clock = MockTime.makeFromConsole console
-
-            let renderState, advance = MockTime.makeRenderStateFromTimer console clock None
-
-            // Use clock.CurrentTime for getUtcNow so time advances properly
-            let getUtcNow = clock.CurrentTime
-
-            let mutable state = true
+            use ctx = IncrTestContext.make console config None
 
             // Initial render - button focused
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -566,17 +407,7 @@ Hello, World!                           |
             // Press space to activate the button
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -590,21 +421,11 @@ Goodbye, World!                         |
             }
 
             // See how the button press evolves over time. Wait til just before the timer elapses:
+            IncrTestContext.advanceTime
+                (TimeSpan.FromMilliseconds (VdomContextConstants.RECENT_ACTIVATION_TIMEOUT_MS - 0.01))
+                ctx
 
-            advance (TimeSpan.FromMilliseconds (VdomContextConstants.RECENT_ACTIVATION_TIMEOUT_MS - 0.01))
-            |> ignore<DateTime>
-
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -617,19 +438,9 @@ Goodbye, World!                         |
                 return ConsoleHarness.toString terminal
             }
 
-            advance (TimeSpan.FromMilliseconds 0.02) |> ignore<DateTime>
+            IncrTestContext.advanceTime (TimeSpan.FromMilliseconds 0.02) ctx
 
-            state <-
-                App.pumpOnce
-                    getUtcNow
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -662,9 +473,9 @@ Goodbye, World!                         |
             let otherKey = NodeKey.make "other"
 
             // Start with no focus
-            let incrState = IncrementalState.make () bounds None
+            let incrState = IncrementalState.make bounds None
             let incr = incrState.Incr
-            let ctx = VdomContext.make<unit, unit> incrState
+            let ctx = VdomContext.make<unit> incrState
 
             // Create a button node once
             let buttonNode = Button.make (ctx :> IVdomContext, buttonKey, "Test Button")

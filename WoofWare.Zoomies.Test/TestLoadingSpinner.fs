@@ -12,7 +12,6 @@ open WoofWare.Zoomies.Components
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestLoadingSpinner =
-    let getUtcNow () = MockTime.defaultStartTime
 
     [<OneTimeSetUp>]
     let setUp () =
@@ -23,12 +22,10 @@ module TestLoadingSpinner =
     let tearDown () =
         GlobalBuilderConfig.updateAllSnapshots ()
 
-    type State = unit
-
     [<Test>]
     let ``spinner frame 0`` () =
         task {
-            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> = LoadingSpinner.make 0
+            let vdom (_ : IVdomContext<_>) (_ : unit) : Vdom<DesiredBounds> = LoadingSpinner.make 0
 
             let console, terminal = ConsoleHarness.make' (fun () -> 5) (fun () -> 1)
 
@@ -41,22 +38,11 @@ module TestLoadingSpinner =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -71,7 +57,7 @@ module TestLoadingSpinner =
     [<Test>]
     let ``spinner frame 5`` () =
         task {
-            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> = LoadingSpinner.make 5
+            let vdom (_ : IVdomContext<_>) (_ : unit) : Vdom<DesiredBounds> = LoadingSpinner.make 5
 
             let console, terminal = ConsoleHarness.make' (fun () -> 5) (fun () -> 1)
 
@@ -84,22 +70,11 @@ module TestLoadingSpinner =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -115,7 +90,7 @@ module TestLoadingSpinner =
     let ``spinner frame wraps at FrameCount`` () =
         task {
             // Frame 10 should equal Frame 0
-            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
+            let vdom (_ : IVdomContext<_>) (_ : unit) : Vdom<DesiredBounds> =
                 LoadingSpinner.make LoadingSpinner.FrameCount
 
             let console, terminal = ConsoleHarness.make' (fun () -> 5) (fun () -> 1)
@@ -129,22 +104,11 @@ module TestLoadingSpinner =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -160,7 +124,7 @@ module TestLoadingSpinner =
     let ``spinner handles negative frame`` () =
         task {
             // Frame -1 should equal Frame 9 (last frame)
-            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> = LoadingSpinner.make -1
+            let vdom (_ : IVdomContext<_>) (_ : unit) : Vdom<DesiredBounds> = LoadingSpinner.make -1
 
             let console, terminal = ConsoleHarness.make' (fun () -> 5) (fun () -> 1)
 
@@ -173,22 +137,11 @@ module TestLoadingSpinner =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
+            let config = TestConfig.passthrough<unit> vdom
 
-            let processWorld = WorldProcessor.passthrough
+            use ctx = IncrTestContext.make console config None
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -240,43 +193,28 @@ module TestLoadingSpinner =
                     world.KeyAvailable
                     world.ReadKey
 
-            let haveFrameworkHandleFocus _ = false
-            let processWorld = WorldProcessor.passthrough
-
-            // Create incremental state with clock starting at epoch
-            let incr = Incremental.make ()
-            let startTime = TimeNs.ofInt64NsSinceEpoch 0L
-            let clock = incr.Clock.Create startTime
-
-            // Create the spinner node (10 fps = 100ms per frame)
-            let spinnerNode = LoadingSpinner.makeIncr incr clock 10.0
-
-            // Create persistent observer
-            let spinnerObserver = incr.Observe spinnerNode
-            incr.Stabilize ()
-
             // Capture the vdoms we pass to rendering for diagnostic purposes
             let capturedVdoms = ResizeArray<Vdom<DesiredBounds>> ()
 
-            let vdom (_ : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
-                let v = Observer.value spinnerObserver
-                capturedVdoms.Add v
-                v
+            let vdom (ctx : VdomContext<unit>) (_stateNode : unit Node) : Vdom<DesiredBounds> Node =
+                let incr = VdomContext.incr ctx
+                let timeNode = VdomContext.clockTimeNode ctx
+                let spinnerNode = LoadingSpinner.makeIncrWithTimeNode incr timeNode 10.0
 
-            let renderState = MockTime.makeRenderStateStatic<unit> console None
+                incr.Map
+                    (fun v ->
+                        capturedVdoms.Add v
+                        v
+                    )
+                    spinnerNode
+
+            let config : AppConfig<unit, unit, unit> =
+                AppConfig.simple () (fun s _ -> s) vdom ActivationResolver.none
+
+            use ctx = IncrTestContext.make console config None
 
             // Render at frame 0
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Verify vdom function was called
             capturedVdoms.Count |> shouldEqual 1
@@ -290,39 +228,22 @@ module TestLoadingSpinner =
                 return ConsoleHarness.toString terminal
             }
 
-            // Advance clock by 100ms (one frame at 10fps) and re-render
-            incr.Clock.AdvanceClock clock (TimeNs.ofInt64NsSinceEpoch 100_000_000L)
-            incr.Stabilize ()
+            // Advance time by 100ms (one frame at 10fps) and re-render
+            // The pumpOnce will advance the clock and stabilize, which should cause
+            // the spinner observer to have a new value.
+            IncrTestContext.advanceTime (TimeSpan.FromMilliseconds 100.0) ctx
 
             // Verify observer has new value BEFORE calling pumpOnce
-            let vdomBeforePump = Observer.value spinnerObserver
-            Object.ReferenceEquals (capturedVdoms.[0], vdomBeforePump) |> shouldEqual false // Should be different vdom
+            // (after stabilization which happens inside pumpOnce)
+            let vdom0 = capturedVdoms.[0]
 
-            // IMPORTANT: In tests that bypass run' and use pumpOnce directly with external
-            // incremental state, we must manually mark the context dirty after advancing the clock.
-            // The real run' function handles this automatically by checking if the vdom observer
-            // changed after stabilization.
-            let ctx = RenderState.vdomContext renderState
-            VdomContext.markDirty ctx
-
-            App.pumpOnce
-                getUtcNow
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Verify vdom function was called again
             capturedVdoms.Count |> shouldEqual 2
 
             // Verify the two vdoms are different
-            Object.ReferenceEquals (capturedVdoms.[0], capturedVdoms.[1])
-            |> shouldEqual false
+            Object.ReferenceEquals (vdom0, capturedVdoms.[1]) |> shouldEqual false
 
             expect {
                 snapshot
