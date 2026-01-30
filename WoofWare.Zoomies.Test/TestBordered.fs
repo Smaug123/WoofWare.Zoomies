@@ -9,6 +9,8 @@ open WoofWare.Zoomies
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestBordered =
+    let getUtcNow () = MockTime.defaultStartTime
+
     [<OneTimeSetUp>]
     let setUp () =
         // GlobalBuilderConfig.enterBulkUpdateMode ()
@@ -123,6 +125,7 @@ module TestBordered =
             // First render: fill with X's
             let mutable state =
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     false
                     (fun _ -> true)
@@ -152,6 +155,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
             // The border should be drawn, and the X's should be cleared
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     (fun _ -> true)
@@ -212,6 +216,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
             // First render: long text
             let mutable state =
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     true
                     (fun _ -> true)
@@ -241,6 +246,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
             // Border bounds unchanged, child bounds unchanged, but content shrinks
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     (fun _ -> true)
@@ -305,6 +311,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
             // First render: long text
             let mutable state =
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     true
                     (fun _ -> true)
@@ -333,6 +340,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
             // Second render: short text
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     (fun _ -> true)

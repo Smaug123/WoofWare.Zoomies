@@ -19,7 +19,7 @@ module TestAppRun =
         | Flush
 
     [<Test>]
-    let ``App.run' registers bracketed paste on startup and unregisters on quit`` () =
+    let ``App.run registers bracketed paste on startup and unregisters on quit`` () =
         task {
             let ops = ConcurrentQueue<ConsoleOp> ()
 
@@ -45,26 +45,22 @@ module TestAppRun =
 
             let vdom (_ctx : IVdomContext<_>) (_state : unit) : Vdom<DesiredBounds> = Vdom.empty
 
-            let processWorld (_bridge : IWorldBridge<unit>) = WorldProcessor.passthrough
-
-            let resolver = ActivationResolver.none
+            let config : AppConfig<unit, unit, unit> =
+                {
+                    Initial = ()
+                    Transition = fun s _ -> s
+                    View = App.pureView vdom
+                    HandleInput = fun _ -> None
+                    HandlePostLayout = fun _ s -> s
+                    FocusHandling = FocusHandling.FrameworkManaged
+                    ActivationResolver = ActivationResolver.none
+                    OnSetup = fun _ -> ()
+                }
 
             use cts = new CancellationTokenSource ()
 
             let appHandle =
-                App.run'
-                    cts.Token
-                    console
-                    (fun () -> TimeConversion.unixEpoch)
-                    ctrlCHandler
-                    worldFreezer
-                    ()
-                    (fun _ -> false)
-                    processWorld
-                    (App.pureView vdom)
-                    resolver
-                    None
-                    0
+                App.run cts.Token console (fun () -> TimeConversion.unixEpoch) ctrlCHandler worldFreezer config None 0
 
             // Wait for the app to be ready (initial setup and first render complete)
             do! appHandle.Ready
@@ -159,7 +155,7 @@ module TestAppRun =
     // ============================================================
 
     [<Test>]
-    let ``App.run' re-renders when time-based vdom changes`` () =
+    let ``App.run re-renders when time-based vdom changes`` () =
         task {
             // Track how many times vdom function is called
             let vdomCallCount = ref 0
@@ -203,26 +199,22 @@ module TestAppRun =
                     )
                     frameNode
 
-            let processWorld (_bridge : IWorldBridge<unit>) = WorldProcessor.passthrough
-
-            let resolver = ActivationResolver.none
+            let config : AppConfig<unit, unit, unit> =
+                {
+                    Initial = ()
+                    Transition = fun s _ -> s
+                    View = incrVdom
+                    HandleInput = fun _ -> None
+                    HandlePostLayout = fun _ s -> s
+                    FocusHandling = FocusHandling.FrameworkManaged
+                    ActivationResolver = ActivationResolver.none
+                    OnSetup = fun _ -> ()
+                }
 
             use cts = new CancellationTokenSource ()
 
             let appHandle =
-                App.run'
-                    cts.Token
-                    console
-                    getUtcNow
-                    ctrlCHandler
-                    worldFreezer
-                    ()
-                    (fun _ -> false)
-                    processWorld
-                    incrVdom
-                    resolver
-                    None
-                    0
+                App.run cts.Token console getUtcNow ctrlCHandler worldFreezer config None 0
 
             // Wait for the app to be ready
             do! appHandle.Ready

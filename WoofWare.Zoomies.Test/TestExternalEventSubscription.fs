@@ -137,9 +137,11 @@ module TestExternalEventSubscription =
             let processWorld = processWorld worldFreezer
 
             let mutable state = TimerState.Empty ()
+            let getUtcNow () = MockTime.defaultStartTime
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     (fun _ -> true)
@@ -163,6 +165,7 @@ module TestExternalEventSubscription =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     (fun _ -> true)
@@ -187,6 +190,7 @@ module TestExternalEventSubscription =
             // But after another pump, we'll process the timer-start.
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     (fun _ -> true)
@@ -203,6 +207,7 @@ module TestExternalEventSubscription =
             // The timer has triggered an app event!
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     (fun _ -> true)
@@ -227,6 +232,7 @@ module TestExternalEventSubscription =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     (fun _ -> true)
@@ -250,6 +256,7 @@ module TestExternalEventSubscription =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     (fun _ -> true)
@@ -279,6 +286,7 @@ module TestExternalEventSubscription =
 
                 state <-
                     App.pumpOnce
+                        getUtcNow
                         worldFreezer
                         state
                         (fun _ -> true)
@@ -305,6 +313,7 @@ module TestExternalEventSubscription =
                 // Pump once more and verify counter didn't increment from any stale tick
                 state <-
                     App.pumpOnce
+                        getUtcNow
                         worldFreezer
                         state
                         (fun _ -> true)

@@ -143,6 +143,7 @@ module App =
             state
 
     let internal processChanges<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
+        (now : DateTime)
         (changes : WorldStateChange<'appEvent>[])
         (state : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
@@ -251,7 +252,7 @@ module App =
                                     // Now handle the activation
 
                                     // Record activation time for visual feedback
-                                    VdomContext.recordActivation focusedKey ctx
+                                    VdomContext.recordActivation now focusedKey ctx
 
                                     // Inject the resolved event
                                     let injectedEvent = [| WorldStateChange.ApplicationEvent appEvent |]
@@ -337,6 +338,7 @@ module App =
         currentState
 
     let pumpOnce<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
+        (getUtcNow : unit -> DateTime)
         (listener : WorldFreezer<'appEvent>)
         (state : 'state)
         (haveFrameworkHandleFocus : 'state -> bool)
@@ -348,11 +350,12 @@ module App =
         : 'state
         =
         let ctx = RenderState.vdomContext renderState
+        let now = getUtcNow ()
 
         let go state =
             let resizeGeneration = listener.TerminalResizeGeneration
             RenderState.refreshTerminalSize renderState
-            VdomContext.pruneExpiredActivations ctx
+            VdomContext.pruneExpiredActivations now ctx
 
             listener.RefreshExternal ()
 
@@ -363,6 +366,7 @@ module App =
                 | ValueNone -> processNoChanges state renderState processWorld vdom
                 | ValueSome changes ->
                     processChanges
+                        now
                         changes
                         state
                         haveFrameworkHandleFocus
@@ -391,216 +395,8 @@ module App =
 
         state
 
-    /// We set up a ConsoleCancelEventHandler to suppress one Ctrl+C, and we also listen to stdin,
-    /// for as long as this task is running.
-    /// Cancel the CancellationToken to cause the render loop to quit and to unhook all these state listeners.
-    ///
-    /// Returns an AppHandle with:
-    /// - Ready: completes when initial setup is done and first render is complete
-    /// - Finished: completes when the app exits (faults if user logic raises an exception)
-    let run'<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
-        (terminate : CancellationToken)
-        (console : IConsole)
-        (getUtcNow : unit -> DateTime)
-        (ctrlC : CtrlCHandler)
-        (worldFreezer : unit -> WorldFreezer<'appEvent>)
-        (initialState : 'state)
-        (haveFrameworkHandleFocus : 'state -> bool)
-        (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'postLayoutEvent, 'state>)
-        (incrVdom : VdomContext<'postLayoutEvent> -> 'state Node -> Vdom<DesiredBounds> Node)
-        (resolveActivation : ActivationResolver<'appEvent, 'state>)
-        (debugWriter : StreamWriter option)
-        (frameDelayMs : int)
-        : AppHandle
-        =
-        // RunContinuationsAsynchronously so that we don't force continuation on the UI thread.
-        // I want to make sure the UI thread could in principle be torn down once execution of the UI has finished.
-        // Synchronous continuations would run on that thread.
-        let ready = TaskCompletionSource TaskCreationOptions.RunContinuationsAsynchronously
-
-        let complete =
-            TaskCompletionSource TaskCreationOptions.RunContinuationsAsynchronously
-
-        let _thread =
-            fun () ->
-                try
-                    // Get initial terminal bounds
-                    let initialBounds =
-                        {
-                            TopLeftX = 0
-                            TopLeftY = 0
-                            Width = console.WindowWidth ()
-                            Height = console.WindowHeight ()
-                        }
-
-                    // Set up incremental state for reactive updates
-                    let incrState = IncrementalState.make initialState initialBounds None
-                    let vdomContext = VdomContext.make incrState
-
-                    // Create the incremental Vdom Node
-                    let stateNode = IncrementalState.stateNode incrState
-                    let vdomNode = incrVdom vdomContext stateNode
-
-                    // Create an observer for the Vdom so we can read it after stabilization
-                    let vdomObserver = incrState.Incr.Observe vdomNode
-
-                    // Initial stabilization
-                    let initialUtcNow = getUtcNow ()
-                    VdomContext.setCurrentStabilizationTime initialUtcNow vdomContext
-                    IncrementalState.advanceClockAndStabilize initialUtcNow incrState
-
-                    // Create a wrapper that bridges the incremental system to the legacy API.
-                    // When state changes, we update the state Var and stabilize to propagate.
-                    // When state is unchanged, the graph is already stable from the main loop's
-                    // advanceClockAndStabilize call, so we just read the observer value.
-                    let vdom (ctx : IVdomContext<'postLayoutEvent>) (state : 'state) : Vdom<DesiredBounds> =
-                        // Update state Var if it changed
-                        let currentState = incrState.Incr.Var.Value incrState.StateVar
-
-                        if currentState <> state then
-                            IncrementalState.setState state incrState
-                            // Stabilize to propagate the state change through the graph
-                            let utcNow = getUtcNow ()
-                            VdomContext.setCurrentStabilizationTime utcNow vdomContext
-                            IncrementalState.advanceClockAndStabilize utcNow incrState
-
-                        // Observe and return the vdom - Observer module provides Value function
-                        Observer.value vdomObserver
-
-                    use renderState = RenderState.make console vdomContext debugWriter
-
-                    RenderState.enterAlternateScreen renderState
-                    RenderState.registerMouseMode renderState
-                    RenderState.registerBracketedPaste renderState
-                    RenderState.setCursorInvisible renderState
-
-                    let mutable cancels = 0
-
-                    let ctrlCHandler =
-                        ConsoleCancelEventHandler (fun _ args ->
-                            // Double-ctrlc to exit immediately
-                            if Interlocked.Increment &cancels = 1 then
-                                args.Cancel <- true
-                        )
-
-                    ctrlC.Register ctrlCHandler
-
-                    let mutable listener = None
-
-                    let exc =
-                        try
-                            let listener' = worldFreezer ()
-
-                            use _ =
-                                try
-                                    PosixSignalRegistration.Create (
-                                        PosixSignal.SIGWINCH,
-                                        fun _ -> listener'.NotifyTerminalResize ()
-                                    )
-                                with :? PlatformNotSupportedException ->
-                                    // SIGWINCH not supported on this platform (e.g., Windows).
-                                    // Recall that the `use` syntax is special-cased to not throw on null!
-                                    null
-
-                            listener <- Some listener'
-                            let processWorld = processWorld listener'
-
-                            // Initial render - now with processWorld available for post-layout events
-                            let mutable currentState =
-                                processNoChanges initialState renderState processWorld vdom
-
-                            // Track the previous vdom value to detect time-based changes
-                            let mutable previousVdom = Observer.value vdomObserver
-
-                            let isCancelled () =
-                                cancels > 0 || terminate.IsCancellationRequested
-
-                            // Signal that we're ready: initial setup complete, first render done
-                            ready.SetResult ()
-
-                            while not (isCancelled ()) do
-                                // Advance clock and stabilize to propagate time-based changes.
-                                // This must happen BEFORE checking isDirty in pumpOnce, so that
-                                // time-dependent components (like spinners) can trigger re-renders.
-                                let loopUtcNow = getUtcNow ()
-                                VdomContext.setCurrentStabilizationTime loopUtcNow vdomContext
-                                IncrementalState.advanceClockAndStabilize loopUtcNow incrState
-
-                                // Check if vdom changed due to time advancement
-                                let currentVdom = Observer.value vdomObserver
-
-                                if not (Object.referenceEquals previousVdom currentVdom) then
-                                    VdomContext.markDirty vdomContext
-
-                                currentState <-
-                                    pumpOnce
-                                        listener'
-                                        currentState
-                                        haveFrameworkHandleFocus
-                                        renderState
-                                        processWorld
-                                        vdom
-                                        resolveActivation
-                                        isCancelled
-
-                                // Update previousVdom to track the most recently observed vdom.
-                                // This ensures we don't mark dirty on the next iteration just
-                                // because pumpOnce rendered due to state changes.
-                                previousVdom <- Observer.value vdomObserver
-
-                                // Throttle to reduce CPU usage
-                                if frameDelayMs > 0 then
-                                    Thread.Sleep frameDelayMs
-
-                            None
-                        with e ->
-                            // If we fail before signaling ready, signal failure there too
-                            ready.TrySetException e |> ignore
-                            Some e
-
-                    ctrlC.Unregister ctrlCHandler
-
-                    match listener with
-                    | None -> ()
-                    | Some listener ->
-                        // ANALYZER: synchronous blocking call allowed: we're on a dedicated thread, so can't deadlock.
-                        (listener :> IAsyncDisposable).DisposeAsync().GetAwaiter().GetResult ()
-
-                    // Ideally the terminal emulator has a completely self-contained state in the alternate buffer,
-                    // which means our LIFO ordering here is confined to the alternate buffer, correctly leaving the
-                    // main buffer in whatever state it was in before we started executing.
-                    // According to the LLMs, some terminals *don't* confine state to the alternate buffer, but in that
-                    // case this order is still correct: we'll leave the cursor visible when such a terminal leaks cursor
-                    // visibility out into the main buffer. The resetAttributes call handles terminals that leak SGR
-                    // state (colors, bold, etc.) from the alternate buffer.
-                    RenderState.setCursorVisible renderState
-                    RenderState.unregisterBracketedPaste renderState
-                    RenderState.unregisterMouseMode renderState
-                    RenderState.resetAttributes renderState
-                    RenderState.exitAlternateScreen renderState
-                    // Flush any buffered output to ensure cleanup operations are written to the terminal
-                    RenderState.flush renderState
-
-                    match exc with
-                    | None -> complete.SetResult ()
-                    | Some exc ->
-                        // report critical exceptions to the user *after* disabling the alternate buffer, so they can
-                        // actually see them
-                        complete.SetException exc
-                with e ->
-                    // Ensure lifecycle tasks complete even if setup or cleanup fails
-                    ready.TrySetException e |> ignore
-                    complete.TrySetException e |> ignore
-            |> Thread
-            |> _.Start()
-
-        {
-            Ready = ready.Task
-            Finished = complete.Task
-        }
-
     /// Lift a pure view function into an incremental one.
-    /// The resulting view depends only on the state Node - any state change triggers full recomputation.
+    /// The resulting view depends on state, bounds, and focus - any change triggers full recomputation.
     /// For fine-grained incrementality, write an incremental view function directly.
     let pureView<'state, 'postLayoutEvent>
         (view : IVdomContext<'postLayoutEvent> -> 'state -> Vdom<DesiredBounds>)
@@ -615,51 +411,6 @@ module App =
             incr.Map
                 (fun ((state, _bounds), _focus) -> view (VdomContext.asTyped ctx) state)
                 (incr.Both (incr.Both stateNode boundsNode) focusNode)
-
-    let run<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
-        (getEnv : string -> string option)
-        (state : 'state)
-        (haveFrameworkHandleFocus : 'state -> bool)
-        (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'postLayoutEvent, 'state>)
-        (incrVdom : VdomContext<'postLayoutEvent> -> 'state Node -> Vdom<DesiredBounds> Node)
-        (resolveActivation : ActivationResolver<'appEvent, 'state>)
-        : AppHandle
-        =
-        // Check if debug logging is enabled
-        let debugWriter =
-            match getEnv "WOOFWARE_ZOOMIES_DEBUG_TO_FILE" with
-            | Some value when
-                value.Equals ("true", StringComparison.OrdinalIgnoreCase)
-                || value.Equals ("1", StringComparison.OrdinalIgnoreCase)
-                ->
-                // Create temp file with unpredictable name to prevent symlink attacks
-                let tempPath = Path.GetTempPath ()
-                let fileName = $"zoomies-layout-%O{Guid.NewGuid ()}.txt"
-                let fullPath = Path.Combine (tempPath, fileName)
-
-                // Create the file exclusively (will fail if it somehow already exists)
-                let stream =
-                    new FileStream (fullPath, FileMode.CreateNew, FileAccess.Write, FileShare.Read)
-
-                let writer = new StreamWriter (stream, AutoFlush = true)
-
-                Console.Error.WriteLine $"WoofWare.Zoomies: Debug layout logging enabled. Writing to: %s{fullPath}"
-                Some writer
-            | _ -> None
-
-        run'
-            CancellationToken.None
-            (IConsole.make getEnv)
-            (fun () -> DateTime.UtcNow)
-            (CtrlCHandler.make ())
-            WorldFreezer.listen
-            state
-            haveFrameworkHandleFocus
-            processWorld
-            incrVdom
-            resolveActivation
-            debugWriter
-            16
 
     /// Process post-layout events using the AppConfig approach.
     /// Returns the final state and whether max iterations was hit.
@@ -705,6 +456,7 @@ module App =
 
     /// Process changes using the AppConfig approach with StateMachine.
     let private processChangesWithConfig<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
+        (now : DateTime)
         (changes : WorldStateChange<'appEvent>[])
         (stateMachine : StateMachine<'state, 'appEvent>)
         (renderState : RenderState<'postLayoutEvent>)
@@ -722,6 +474,10 @@ module App =
             | FocusHandling.UserManaged -> false
 
         let previousVdom = Observer.value vdomObserver
+
+        // Track local state so each event in the batch sees cumulative state from prior events.
+        // We apply config.Transition locally rather than stabilizing after each event (expensive).
+        let mutable localState = stateMachine.CurrentState ()
 
         for change in changes do
             if isCancelled () then
@@ -744,25 +500,32 @@ module App =
                     // Check activation resolver first
                     match VdomContext.focusedKey ctx with
                     | Some focusedKey ->
-                        match config.ActivationResolver.Invoke (focusedKey, k, stateMachine.CurrentState ()) with
+                        match config.ActivationResolver.Invoke (focusedKey, k, localState) with
                         | Some appEvent ->
-                            VdomContext.recordActivation focusedKey ctx
+                            VdomContext.recordActivation now focusedKey ctx
                             stateMachine.Inject appEvent
+                            localState <- config.Transition localState appEvent
                         | None ->
                             // Try HandleInput
                             match config.HandleInput change with
-                            | Some appEvent -> stateMachine.Inject appEvent
+                            | Some appEvent ->
+                                stateMachine.Inject appEvent
+                                localState <- config.Transition localState appEvent
                             | None -> ()
                     | None ->
                         // No focus, just try HandleInput
                         match config.HandleInput change with
-                        | Some appEvent -> stateMachine.Inject appEvent
+                        | Some appEvent ->
+                            stateMachine.Inject appEvent
+                            localState <- config.Transition localState appEvent
                         | None -> ()
 
                 | _ ->
                     // Other change types (ApplicationEvent, MouseEvent, Paste, etc.)
                     match config.HandleInput change with
-                    | Some appEvent -> stateMachine.Inject appEvent
+                    | Some appEvent ->
+                        stateMachine.Inject appEvent
+                        localState <- config.Transition localState appEvent
                     | None -> ()
 
         // Stabilize to propagate all incremental changes (injected events, focus, etc.)
@@ -804,7 +567,7 @@ module App =
 
     /// Run an application using the new AppConfig-based API with StateMachine.
     /// Events flow through the Incremental graph via the StateMachine primitive.
-    let runWithConfig'<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
+    let run<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
         (terminate : CancellationToken)
         (console : IConsole)
         (getUtcNow : unit -> DateTime)
@@ -848,7 +611,6 @@ module App =
 
                     // Initial stabilization
                     let initialUtcNow = getUtcNow ()
-                    VdomContext.setCurrentStabilizationTime initialUtcNow vdomContext
                     IncrementalState.advanceClockAndStabilize initialUtcNow incrState
 
                     use renderState = RenderState.make console vdomContext debugWriter
@@ -913,13 +675,12 @@ module App =
                             while not (isCancelled ()) do
                                 // Advance clock and stabilize
                                 let loopUtcNow = getUtcNow ()
-                                VdomContext.setCurrentStabilizationTime loopUtcNow vdomContext
                                 IncrementalState.advanceClockAndStabilize loopUtcNow incrState
 
                                 // Process input
                                 let resizeGeneration = listener'.TerminalResizeGeneration
                                 RenderState.refreshTerminalSize renderState
-                                VdomContext.pruneExpiredActivations vdomContext
+                                VdomContext.pruneExpiredActivations loopUtcNow vdomContext
 
                                 listener'.RefreshExternal ()
 
@@ -934,6 +695,7 @@ module App =
                                         incrState
                                 | ValueSome changes ->
                                     processChangesWithConfig
+                                        loopUtcNow
                                         changes
                                         stateMachine
                                         renderState
@@ -985,39 +747,3 @@ module App =
             Ready = ready.Task
             Finished = complete.Task
         }
-
-    /// Run an application using the new AppConfig-based API with StateMachine.
-    /// This is the simplified entry point; use runWithConfig' for more control.
-    let runWithConfig<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
-        (getEnv : string -> string option)
-        (config : AppConfig<'state, 'appEvent, 'postLayoutEvent>)
-        : AppHandle
-        =
-        let debugWriter =
-            match getEnv "WOOFWARE_ZOOMIES_DEBUG_TO_FILE" with
-            | Some value when
-                value.Equals ("true", StringComparison.OrdinalIgnoreCase)
-                || value.Equals ("1", StringComparison.OrdinalIgnoreCase)
-                ->
-                let tempPath = Path.GetTempPath ()
-                let fileName = $"zoomies-layout-%O{Guid.NewGuid ()}.txt"
-                let fullPath = Path.Combine (tempPath, fileName)
-
-                let stream =
-                    new FileStream (fullPath, FileMode.CreateNew, FileAccess.Write, FileShare.Read)
-
-                let writer = new StreamWriter (stream, AutoFlush = true)
-
-                Console.Error.WriteLine $"WoofWare.Zoomies: Debug layout logging enabled. Writing to: %s{fullPath}"
-                Some writer
-            | _ -> None
-
-        runWithConfig'
-            CancellationToken.None
-            (IConsole.make getEnv)
-            (fun () -> DateTime.UtcNow)
-            (CtrlCHandler.make ())
-            WorldFreezer.listen
-            config
-            debugWriter
-            16

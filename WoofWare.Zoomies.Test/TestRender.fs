@@ -21,6 +21,8 @@ type State =
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestRender =
+    let getUtcNow () = MockTime.defaultStartTime
+
     [<OneTimeSetUp>]
     let setUp () =
         // GlobalBuilderConfig.enterBulkUpdateMode ()
@@ -143,6 +145,7 @@ module TestRender =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     (fun _ -> true)
@@ -175,6 +178,7 @@ module TestRender =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     (fun _ -> true)
@@ -207,6 +211,7 @@ module TestRender =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     (fun _ -> true)
@@ -239,6 +244,7 @@ module TestRender =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     (fun _ -> true)
@@ -271,6 +277,7 @@ only displayed when checked                this one is focusable!               
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     (fun _ -> true)
@@ -303,6 +310,7 @@ only displayed when checked                this one is focusable!               
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     (fun _ -> true)
@@ -335,6 +343,7 @@ only displayed when checked                this one is focusable!               
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     (fun _ -> true)
@@ -367,6 +376,7 @@ only displayed when checked                this one is focusable!               
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     (fun _ -> true)
@@ -399,6 +409,7 @@ only displayed when checked                this one is focusable!               
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     (fun _ -> true)

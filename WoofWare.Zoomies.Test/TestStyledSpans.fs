@@ -9,6 +9,8 @@ open FsUnitTyped
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestStyledSpans =
+    let getUtcNow () = MockTime.defaultStartTime
+
     [<OneTimeSetUp>]
     let setUp () =
         // GlobalBuilderConfig.enterBulkUpdateMode ()
@@ -50,6 +52,7 @@ module TestStyledSpans =
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -112,6 +115,7 @@ Hello     |
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -167,6 +171,7 @@ RGB       |
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -209,6 +214,7 @@ World|
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -258,6 +264,7 @@ World|
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -313,6 +320,7 @@ Hello|
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -365,6 +373,7 @@ World     |
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)

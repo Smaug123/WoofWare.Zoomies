@@ -9,6 +9,8 @@ open WoofWare.Zoomies
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestPanelSplit =
+    let getUtcNow () = MockTime.defaultStartTime
+
     [<OneTimeSetUp>]
     let setUp () =
         // GlobalBuilderConfig.enterBulkUpdateMode ()
@@ -124,6 +126,7 @@ module TestPanelSplit =
             // First render: fill with X's
             let mutable state =
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     false
                     (fun _ -> true)
@@ -153,6 +156,7 @@ module TestPanelSplit =
             // The X's should be cleared (replaced with spaces), not left as artifacts
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     (fun _ -> true)
@@ -209,6 +213,7 @@ module TestPanelSplit =
 
             // Render
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -263,6 +268,7 @@ module TestPanelSplit =
 
             // Render
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -312,6 +318,7 @@ module TestPanelSplit =
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -372,6 +379,7 @@ Hello world                                                        Hi           
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -424,6 +432,7 @@ onger piece text her|
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -477,6 +486,7 @@ o   d   |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -533,6 +543,7 @@ e multiple lines when rendered          |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -584,6 +595,7 @@ nt                            |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -637,6 +649,7 @@ nt                            |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -703,6 +716,7 @@ B|
             // First render: 50/50 split with X's filling the left side
             let mutable state =
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     true
                     (fun _ -> true)
@@ -731,6 +745,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX                                        
             // Second render: 25/75 split with only "AAA" on left
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     (fun _ -> true)
@@ -808,6 +823,7 @@ AAA                 right                                                       
             // First render: 50/50 split
             let mutable state =
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     true
                     (fun _ -> true)
@@ -823,6 +839,7 @@ AAA                 right                                                       
             // Second render: 25/75 split
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     (fun _ -> true)
@@ -885,6 +902,7 @@ AAA                 right                                                       
             // First render: 70/30 split with X's on the left
             let mutable state =
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     true
                     (fun _ -> true)
@@ -902,6 +920,7 @@ AAA                 right                                                       
             // Second render: 30/70 split
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     (fun _ -> true)
@@ -979,6 +998,7 @@ AAA                 right                                                       
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -1048,6 +1068,7 @@ small               ┌──────────────────┐
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -1100,6 +1121,7 @@ Left                               Right|
             let renderStateAuto = MockTime.makeRenderStateStatic consoleAuto None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -1122,6 +1144,7 @@ Left                               Right|
             let renderStateExpand = MockTime.makeRenderStateStatic consoleExpand None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -1190,6 +1213,7 @@ Left                               Right|
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -1255,6 +1279,7 @@ Bottom              |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -1317,6 +1342,7 @@ LeftRight                               |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -1401,6 +1427,7 @@ Bottom              |
             // First render with content
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     (fun _ -> true)
@@ -1428,6 +1455,7 @@ Line3               |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     (fun _ -> true)
@@ -1537,6 +1565,7 @@ OnlyThis            |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -1639,6 +1668,7 @@ LLLLLLLLLLLLRRRRRRRR|
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)

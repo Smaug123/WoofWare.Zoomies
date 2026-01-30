@@ -10,6 +10,8 @@ open WoofWare.Zoomies.Components
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestScrollBar =
+    let getUtcNow () = MockTime.defaultStartTime
+
     [<OneTimeSetUp>]
     let setUp () =
         // GlobalBuilderConfig.enterBulkUpdateMode ()
@@ -53,6 +55,7 @@ module TestScrollBar =
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -105,6 +108,7 @@ module TestScrollBar =
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -157,6 +161,7 @@ module TestScrollBar =
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -209,6 +214,7 @@ module TestScrollBar =
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -271,6 +277,7 @@ module TestScrollBar =
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -333,6 +340,7 @@ module TestScrollBar =
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -395,6 +403,7 @@ module TestScrollBar =
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -446,6 +455,7 @@ module TestScrollBar =
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -499,6 +509,7 @@ module TestScrollBar =
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -551,6 +562,7 @@ module TestScrollBar =
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -604,6 +616,7 @@ module TestScrollBar =
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -657,6 +670,7 @@ module TestScrollBar =
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -714,6 +728,7 @@ module TestScrollBar =
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -770,6 +785,7 @@ module TestScrollBar =
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -826,6 +842,7 @@ module TestScrollBar =
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -1168,6 +1185,7 @@ module TestScrollBar =
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -1221,6 +1239,7 @@ module TestScrollBar =
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -1274,6 +1293,7 @@ module TestScrollBar =
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -1327,6 +1347,7 @@ module TestScrollBar =
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -1379,6 +1400,7 @@ module TestScrollBar =
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -1436,6 +1458,7 @@ module TestScrollBar =
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus

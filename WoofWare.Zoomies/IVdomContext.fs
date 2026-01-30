@@ -1,6 +1,7 @@
 namespace WoofWare.Zoomies
 
 open System
+open WoofWare.Incremental
 
 [<RequireQualifiedAccess>]
 module VdomContextConstants =
@@ -19,9 +20,13 @@ type IVdomContext =
     /// If you're not using the automatic focus handling mechanism, this is always None.
     abstract FocusedKey : NodeKey option
 
-    /// Returns true if the node with the given key was activated within the
-    /// visual feedback window (approximately 500ms).
-    abstract WasRecentlyActivated : NodeKey -> bool
+    /// Get the Incremental instance for creating incremental computations.
+    abstract Incr : Incremental
+
+    /// Returns a Node that is true if the node with the given key was activated within the
+    /// visual feedback window (approximately 500ms). The Node depends on the clock, so it
+    /// will automatically update as time passes.
+    abstract WasRecentlyActivated : NodeKey -> bool Node
 
 /// Extended interface for components that need to post layout events.
 /// Layout events are processed after the render is complete, allowing components

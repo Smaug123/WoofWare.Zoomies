@@ -3,6 +3,7 @@ namespace WoofWare.Zoomies.Test
 open System
 open NUnit.Framework
 open WoofWare.Expect
+open WoofWare.Incremental
 open WoofWare.Zoomies
 open WoofWare.Zoomies.Components
 open FsUnitTyped
@@ -10,6 +11,8 @@ open FsUnitTyped
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestMultiSelection =
+    let getUtcNow () = MockTime.defaultStartTime
+
     [<OneTimeSetUp>]
     let setUp () =
         // GlobalBuilderConfig.enterBulkUpdateMode ()
@@ -56,6 +59,7 @@ module TestMultiSelection =
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 {
                     Selected = Set.empty
@@ -127,6 +131,7 @@ module TestMultiSelection =
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 {
                     Selected = Set.empty
@@ -198,6 +203,7 @@ module TestMultiSelection =
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 {
                     Selected = Set.empty
@@ -269,6 +275,7 @@ module TestMultiSelection =
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 {
                     Selected = Set.empty
@@ -340,6 +347,7 @@ module TestMultiSelection =
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 {
                     Selected = Set.empty
@@ -403,7 +411,10 @@ module TestMultiSelection =
                     ))
                         .Vdom
 
-                let button = Button.make (ctx, buttonKey, "OK")
+                let buttonNode = Button.make (ctx, buttonKey, "OK")
+                let buttonObserver = ctx.Incr.Observe buttonNode
+                ctx.Incr.Stabilize ()
+                let button = Observer.value buttonObserver
 
                 Vdom.panelSplitProportion (SplitDirection.Horizontal, 0.8, list, button)
 
@@ -430,6 +441,7 @@ module TestMultiSelection =
 
             // Initial render - no focus yet
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 {
                     Selected = Set.empty
@@ -446,6 +458,7 @@ module TestMultiSelection =
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 {
                     Selected = Set.empty
@@ -475,6 +488,7 @@ module TestMultiSelection =
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 {
                     Selected = Set.empty
@@ -504,6 +518,7 @@ module TestMultiSelection =
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, true, false, false))
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 {
                     Selected = Set.empty
@@ -663,6 +678,7 @@ module TestMultiSelection =
             // Initial render
             let mutable state =
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     initialState
                     haveFrameworkHandleFocus
@@ -677,6 +693,7 @@ module TestMultiSelection =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -691,6 +708,7 @@ module TestMultiSelection =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -754,6 +772,7 @@ module TestMultiSelection =
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 {
                     Selected = Set.empty
@@ -841,6 +860,7 @@ module TestMultiSelection =
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 {
                     Selected = Set.empty
@@ -922,6 +942,7 @@ module TestMultiSelection =
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 {
                     Selected = Set.empty
@@ -1069,6 +1090,7 @@ module TestMultiSelection =
             // Initial render
             let mutable state =
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     initialState
                     haveFrameworkHandleFocus
@@ -1083,6 +1105,7 @@ module TestMultiSelection =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -1098,6 +1121,7 @@ module TestMultiSelection =
 
                 state <-
                     App.pumpOnce
+                        getUtcNow
                         worldFreezer
                         state
                         haveFrameworkHandleFocus
@@ -1192,7 +1216,10 @@ module TestMultiSelection =
                     ))
                         .Vdom
 
-                let button = Button.make (ctx, buttonKey, "OK")
+                let buttonNode = Button.make (ctx, buttonKey, "OK")
+                let buttonObserver = ctx.Incr.Observe buttonNode
+                ctx.Incr.Stabilize ()
+                let button = Observer.value buttonObserver
 
                 Vdom.panelSplitProportion (SplitDirection.Horizontal, 0.75, list, button)
 
@@ -1261,6 +1288,7 @@ module TestMultiSelection =
             // Initial render
             let mutable state =
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     initialState
                     haveFrameworkHandleFocus
@@ -1275,6 +1303,7 @@ module TestMultiSelection =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -1290,6 +1319,7 @@ module TestMultiSelection =
 
                 state <-
                     App.pumpOnce
+                        getUtcNow
                         worldFreezer
                         state
                         haveFrameworkHandleFocus
@@ -1308,6 +1338,7 @@ module TestMultiSelection =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -1455,6 +1486,7 @@ module TestMultiSelection =
             // Initial render (not focused yet, cursor at item 2)
             let mutable state =
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     initialState
                     haveFrameworkHandleFocus
@@ -1469,6 +1501,7 @@ module TestMultiSelection =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -1486,6 +1519,7 @@ module TestMultiSelection =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -1691,6 +1725,7 @@ module TestMultiSelection =
             // Initial render
             let mutable state =
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     initialState
                     haveFrameworkHandleFocus
@@ -1705,6 +1740,7 @@ module TestMultiSelection =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -1720,6 +1756,7 @@ module TestMultiSelection =
 
                 state <-
                     App.pumpOnce
+                        getUtcNow
                         worldFreezer
                         state
                         haveFrameworkHandleFocus

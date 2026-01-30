@@ -8,6 +8,8 @@ open WoofWare.Zoomies.Components
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestProgressBar =
+    let getUtcNow () = MockTime.defaultStartTime
+
     [<OneTimeSetUp>]
     let setUp () =
         // GlobalBuilderConfig.enterBulkUpdateMode ()
@@ -42,6 +44,7 @@ module TestProgressBar =
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -85,6 +88,7 @@ module TestProgressBar =
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -128,6 +132,7 @@ module TestProgressBar =
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -175,6 +180,7 @@ module TestProgressBar =
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -220,6 +226,7 @@ Loading:[███░░░░░░░] 30%      |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -269,6 +276,7 @@ Loading:[███░░░░░░░] 30%      |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -316,6 +324,7 @@ Progress:[██████░░░░]         |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -359,6 +368,7 @@ Progress:[██████░░░░]         |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -407,6 +417,7 @@ Progress:[██████░░░░]         |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -450,6 +461,7 @@ Progress:[██████░░░░]         |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus

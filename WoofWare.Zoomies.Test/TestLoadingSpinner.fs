@@ -12,6 +12,8 @@ open WoofWare.Zoomies.Components
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestLoadingSpinner =
+    let getUtcNow () = MockTime.defaultStartTime
+
     [<OneTimeSetUp>]
     let setUp () =
         // GlobalBuilderConfig.enterBulkUpdateMode ()
@@ -46,6 +48,7 @@ module TestLoadingSpinner =
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -88,6 +91,7 @@ module TestLoadingSpinner =
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -132,6 +136,7 @@ module TestLoadingSpinner =
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -175,6 +180,7 @@ module TestLoadingSpinner =
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -261,6 +267,7 @@ module TestLoadingSpinner =
 
             // Render at frame 0
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -299,6 +306,7 @@ module TestLoadingSpinner =
             VdomContext.markDirty ctx
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus

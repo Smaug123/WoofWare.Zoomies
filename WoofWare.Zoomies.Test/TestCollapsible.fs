@@ -10,6 +10,8 @@ open WoofWare.Zoomies.Components
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestCollapsible =
+    let getUtcNow () = MockTime.defaultStartTime
+
     [<OneTimeSetUp>]
     let setUp () =
         // GlobalBuilderConfig.enterBulkUpdateMode ()
@@ -90,6 +92,7 @@ module TestCollapsible =
             // Initial render: collapsed and unfocused
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     haveFrameworkHandleFocus
@@ -122,6 +125,7 @@ module TestCollapsible =
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     haveFrameworkHandleFocus
@@ -154,6 +158,7 @@ module TestCollapsible =
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     haveFrameworkHandleFocus
@@ -186,6 +191,7 @@ This stuff was hidden                                       |
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     haveFrameworkHandleFocus
@@ -287,6 +293,7 @@ This stuff was hidden                                       |
             // Initial render: collapsed
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     haveFrameworkHandleFocus
@@ -319,6 +326,7 @@ This stuff was hidden                                       |
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     haveFrameworkHandleFocus
@@ -333,6 +341,7 @@ This stuff was hidden                                       |
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     haveFrameworkHandleFocus
@@ -434,6 +443,7 @@ Line 2 of content                                           |
             // Initial render: collapsed and unfocused - long label wraps across multiple lines
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     haveFrameworkHandleFocus
@@ -466,6 +476,7 @@ Line 2 of content                                           |
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     haveFrameworkHandleFocus
@@ -498,6 +509,7 @@ Line 2 of content                                           |
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     haveFrameworkHandleFocus

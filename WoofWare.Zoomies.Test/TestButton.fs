@@ -3,12 +3,15 @@ namespace WoofWare.Zoomies.Test
 open System
 open NUnit.Framework
 open WoofWare.Expect
+open WoofWare.Incremental
 open WoofWare.Zoomies
 open WoofWare.Zoomies.Components
 
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestButton =
+    let getUtcNow () = MockTime.defaultStartTime
+
     [<OneTimeSetUp>]
     let setUp () =
         // GlobalBuilderConfig.enterBulkUpdateMode ()
@@ -38,7 +41,10 @@ module TestButton =
                         "Goodbye, World!"
 
                 let textVdom = Vdom.textContent text
-                let button = Button.make (ctx, flipKey, "Flip Text")
+                let buttonNode = Button.make (ctx, flipKey, "Flip Text")
+                let buttonObserver = ctx.Incr.Observe buttonNode
+                ctx.Incr.Stabilize ()
+                let button = Observer.value buttonObserver
 
                 Vdom.panelSplitAuto (SplitDirection.Horizontal, textVdom, button)
 
@@ -88,6 +94,7 @@ module TestButton =
             // Initial render - button unfocused
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -113,6 +120,7 @@ Hello, World!                           |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -138,6 +146,7 @@ Hello, World!                           |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -163,6 +172,7 @@ Goodbye, World!                         |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -204,11 +214,19 @@ Hello, World!                           |
             let vdom (ctx : IVdomContext<_>) (state : MultiButtonState) : Vdom<DesiredBounds> =
                 let statusText = Vdom.textContent $"Last clicked: {state.LastClicked}"
 
-                let button1 =
+                let button1Node =
                     Button.make (ctx, button1Key, "Button 1", isFirstToFocus = true, isInitiallyFocused = true)
 
-                let button2 = Button.make (ctx, button2Key, "Button 2")
-                let button3 = Button.make (ctx, button3Key, "Button 3")
+                let button2Node = Button.make (ctx, button2Key, "Button 2")
+                let button3Node = Button.make (ctx, button3Key, "Button 3")
+
+                let button1Observer = ctx.Incr.Observe button1Node
+                let button2Observer = ctx.Incr.Observe button2Node
+                let button3Observer = ctx.Incr.Observe button3Node
+                ctx.Incr.Stabilize ()
+                let button1 = Observer.value button1Observer
+                let button2 = Observer.value button2Observer
+                let button3 = Observer.value button3Observer
 
                 let buttons =
                     Vdom.panelSplitAuto (SplitDirection.Vertical, button1, button2)
@@ -278,6 +296,7 @@ Hello, World!                           |
             // Initial render - Button 1 focused (isFirstToFocus)
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -303,6 +322,7 @@ Last clicked: None                                |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -328,6 +348,7 @@ Last clicked: Button 1                            |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -353,6 +374,7 @@ Last clicked: Button 1                            |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -378,6 +400,7 @@ Last clicked: Button 2                            |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -403,6 +426,7 @@ Last clicked: Button 2                            |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -428,6 +452,7 @@ Last clicked: Button 3                            |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -459,8 +484,12 @@ Last clicked: Button 3                            |
 
                 let textVdom = Vdom.textContent text
 
-                let button =
+                let buttonNode =
                     Button.make (ctx, flipKey, "Flip Text", isInitiallyFocused = true, isFirstToFocus = true)
+
+                let buttonObserver = ctx.Incr.Observe buttonNode
+                ctx.Incr.Stabilize ()
+                let button = Observer.value buttonObserver
 
                 Vdom.panelSplitAuto (SplitDirection.Horizontal, textVdom, button)
 
@@ -498,11 +527,15 @@ Last clicked: Button 3                            |
 
             let renderState, advance = MockTime.makeRenderStateFromTimer console clock None
 
+            // Use clock.CurrentTime for getUtcNow so time advances properly
+            let getUtcNow = clock.CurrentTime
+
             let mutable state = true
 
             // Initial render - button focused
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -528,6 +561,7 @@ Hello, World!                           |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -555,6 +589,7 @@ Goodbye, World!                         |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -579,6 +614,7 @@ Goodbye, World!                         |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus

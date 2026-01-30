@@ -5,12 +5,15 @@ open System.Collections.Immutable
 open NUnit.Framework
 open FsUnitTyped
 open WoofWare.Expect
+open WoofWare.Incremental
 open WoofWare.Zoomies
 open WoofWare.Zoomies.Components
 
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestTextBox =
+    let getUtcNow () = MockTime.defaultStartTime
+
     [<OneTimeSetUp>]
     let setUp () =
         // GlobalBuilderConfig.enterBulkUpdateMode ()
@@ -72,7 +75,10 @@ module TestTextBox =
                         isInitiallyFocused = true
                     )
 
-                let button = Button.make (ctx, buttonKey, "Submit")
+                let buttonNode = Button.make (ctx, buttonKey, "Submit")
+                let buttonObserver = ctx.Incr.Observe buttonNode
+                ctx.Incr.Stabilize ()
+                let button = Observer.value buttonObserver
 
                 Vdom.panelSplitAuto (SplitDirection.Horizontal, textbox, button)
 
@@ -109,6 +115,7 @@ module TestTextBox =
             // Initial render - textbox focused
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -134,6 +141,7 @@ module TestTextBox =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -206,6 +214,7 @@ module TestTextBox =
             // Initial render
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -220,6 +229,7 @@ module TestTextBox =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -234,6 +244,7 @@ module TestTextBox =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -248,6 +259,7 @@ module TestTextBox =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -300,6 +312,7 @@ module TestTextBox =
             // Initial render
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -314,6 +327,7 @@ module TestTextBox =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -331,6 +345,7 @@ module TestTextBox =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -348,6 +363,7 @@ module TestTextBox =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -365,6 +381,7 @@ module TestTextBox =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -382,6 +399,7 @@ module TestTextBox =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -399,6 +417,7 @@ module TestTextBox =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -459,6 +478,7 @@ Hello!|                                 |
             // Initial render
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -473,6 +493,7 @@ Hello!|                                 |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -490,6 +511,7 @@ Hello!|                                 |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -503,6 +525,7 @@ Hello!|                                 |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -519,6 +542,7 @@ Hello!|                                 |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -536,6 +560,7 @@ Hello!|                                 |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -553,6 +578,7 @@ Hello!|                                 |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -602,6 +628,7 @@ Hello!|                                 |
             // Initial render
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -616,6 +643,7 @@ Hello!|                                 |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -633,6 +661,7 @@ Hello!|                                 |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -650,6 +679,7 @@ Hello!|                                 |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -667,6 +697,7 @@ Hello!|                                 |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -684,6 +715,7 @@ Hello!|                                 |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -701,6 +733,7 @@ Hello!|                                 |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -796,6 +829,7 @@ Hello!|                                 |
             // Initial render - textbox1 focused
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -889,6 +923,7 @@ Unfocused                               |
             // Initial render
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -903,6 +938,7 @@ Unfocused                               |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -956,6 +992,7 @@ Unfocused                               |
             // Initial render
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -973,6 +1010,7 @@ Unfocused                               |
             // Process all keystrokes in one pump cycle
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -1023,6 +1061,7 @@ Unfocused                               |
             // Initial render
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -1037,6 +1076,7 @@ Unfocused                               |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -1054,6 +1094,7 @@ Unfocused                               |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -1103,6 +1144,7 @@ Unfocused                               |
             // Initial render
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -1117,6 +1159,7 @@ Unfocused                               |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -1134,6 +1177,7 @@ Unfocused                               |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -1183,6 +1227,7 @@ Unfocused                               |
             // Initial render
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -1197,6 +1242,7 @@ Unfocused                               |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -1214,6 +1260,7 @@ Unfocused                               |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -1263,6 +1310,7 @@ Unfocused                               |
             // Initial render
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -1277,6 +1325,7 @@ Unfocused                               |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -1326,6 +1375,7 @@ Unfocused                               |
             // Initial render
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -1340,6 +1390,7 @@ Unfocused                               |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -1389,6 +1440,7 @@ Unfocused                               |
             // Initial render
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -1403,6 +1455,7 @@ Unfocused                               |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -1420,6 +1473,7 @@ Unfocused                               |
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus

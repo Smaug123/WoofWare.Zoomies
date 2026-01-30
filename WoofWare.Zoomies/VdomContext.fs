@@ -19,25 +19,32 @@ type VdomContext<'postLayoutEvent> =
             mutable _IsDirty : bool
             _LastActivationTimes : Dictionary<NodeKey, DateTime>
             _PostLayoutEvents : ResizeArray<'postLayoutEvent>
-            /// Cached stabilization time, set before each stabilization cycle.
-            /// This is read during stabilization (when observer reads are forbidden).
-            mutable _CurrentStabilizationTime : DateTime
+            /// Incremented whenever activation state changes, so incremental nodes can depend on it.
+            _ActivationGenerationVar : int Var
         }
-
-    /// Get the current time (from the cached stabilization time).
-    member private this.GetUtcNowInternal () : DateTime = this._CurrentStabilizationTime
 
     interface IVdomContext<'postLayoutEvent> with
         member this.TerminalBounds = this._Incr.Var.Value this._TerminalBoundsVar
 
         member this.FocusedKey = this._Incr.Var.Value this._FocusedKeyVar
 
+        member this.Incr = this._Incr
+
         member this.WasRecentlyActivated key =
-            match this._LastActivationTimes.TryGetValue key with
-            | true, time ->
-                let elapsed = (this.GetUtcNowInternal () - time).TotalMilliseconds
-                elapsed < VdomContextConstants.RECENT_ACTIVATION_TIMEOUT_MS
-            | false, _ -> false
+            // Depend on both the activation generation (so we re-evaluate when activations change)
+            // and the clock (so we re-evaluate as time passes for timeout expiry).
+            let activationGenNode = this._Incr.Var.Watch this._ActivationGenerationVar
+
+            this._Incr.Map2
+                (fun _gen (now : DateTime) ->
+                    match this._LastActivationTimes.TryGetValue key with
+                    | true, time ->
+                        let elapsed = (now - time).TotalMilliseconds
+                        elapsed < VdomContextConstants.RECENT_ACTIVATION_TIMEOUT_MS
+                    | false, _ -> false
+                )
+                activationGenNode
+                this._ClockDateTimeNode
 
         member this.PostLayoutEvent event =
             this._PostLayoutEvents.Add event
@@ -47,7 +54,7 @@ type VdomContext<'postLayoutEvent> =
 module VdomContext =
 
     /// Create a new VdomContext from an IncrementalState.
-    /// Time is cached before each stabilization via setCurrentStabilizationTime.
+    /// Time is read from the incremental clock node for time-based animations.
     let make<'userState, 'postLayoutEvent> (incrState : IncrementalState<'userState>) : VdomContext<'postLayoutEvent> =
         {
             _TerminalBoundsVar = incrState.TerminalBoundsVar
@@ -58,7 +65,7 @@ module VdomContext =
             _IsDirty = true
             _LastActivationTimes = Dictionary<NodeKey, DateTime> ()
             _PostLayoutEvents = ResizeArray ()
-            _CurrentStabilizationTime = TimeConversion.unixEpoch
+            _ActivationGenerationVar = incrState.Incr.Var.Create 0
         }
 
     /// Get the terminal bounds.
@@ -85,31 +92,33 @@ module VdomContext =
             ctx._Incr.Var.Set ctx._FocusedKeyVar key
             ctx._IsDirty <- true
 
-    /// Get the current UTC time (from the cached stabilization time).
-    let getUtcNow<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : DateTime = ctx._CurrentStabilizationTime
-
-    /// Set the cached stabilization time. Call this before each stabilization.
-    let internal setCurrentStabilizationTime<'postLayoutEvent>
-        (time : DateTime)
+    /// Record that a node was just activated.
+    /// The `now` parameter should be the current time from `getUtcNow()` in the caller.
+    let internal recordActivation<'postLayoutEvent>
+        (now : DateTime)
+        (key : NodeKey)
         (ctx : VdomContext<'postLayoutEvent>)
         : unit
         =
-        ctx._CurrentStabilizationTime <- time
-
-    /// Record that a node was just activated.
-    let internal recordActivation<'postLayoutEvent> (key : NodeKey) (ctx : VdomContext<'postLayoutEvent>) : unit =
-        ctx._LastActivationTimes.[key] <- getUtcNow ctx
+        ctx._LastActivationTimes.[key] <- now
+        let gen = ctx._Incr.Var.Value ctx._ActivationGenerationVar
+        ctx._Incr.Var.Set ctx._ActivationGenerationVar (gen + 1)
         ctx._IsDirty <- true
 
     /// Clear activation state for a key.
     let internal clearActivation<'postLayoutEvent> (key : NodeKey) (ctx : VdomContext<'postLayoutEvent>) : unit =
         if ctx._LastActivationTimes.Remove key then
+            let gen = ctx._Incr.Var.Value ctx._ActivationGenerationVar
+            ctx._Incr.Var.Set ctx._ActivationGenerationVar (gen + 1)
             ctx._IsDirty <- true
 
     /// Remove any activation records that have expired.
-    let internal pruneExpiredActivations<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : unit =
-        let now = getUtcNow ctx
-
+    /// The `now` parameter should be the current time from `getUtcNow()` in the caller.
+    let internal pruneExpiredActivations<'postLayoutEvent>
+        (now : DateTime)
+        (ctx : VdomContext<'postLayoutEvent>)
+        : unit
+        =
         // The docs are very explicit.
         // https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2.getenumerator?view=net-6.0)
         // > .NET Core 3.0+ only: The only mutating methods which do not invalidate enumerators are Remove and Clear.
@@ -127,13 +136,28 @@ module VdomContext =
                 removed <- true
 
         if removed then
+            let gen = ctx._Incr.Var.Value ctx._ActivationGenerationVar
+            ctx._Incr.Var.Set ctx._ActivationGenerationVar (gen + 1)
             ctx._IsDirty <- true
 
-    /// Returns true if the node with the given key was activated within the visual feedback window.
-    let wasRecentlyActivated<'postLayoutEvent> (key : NodeKey) (ctx : VdomContext<'postLayoutEvent>) : bool =
-        match ctx._LastActivationTimes.TryGetValue key with
-        | true, time -> (getUtcNow ctx - time).TotalMilliseconds < VdomContextConstants.RECENT_ACTIVATION_TIMEOUT_MS
-        | false, _ -> false
+    /// Returns a Node that is true if the node with the given key was activated within the visual feedback window.
+    /// The Node depends on both activation state changes and the clock, so it will automatically update
+    /// when activations occur and as time passes.
+    let wasRecentlyActivated<'postLayoutEvent> (key : NodeKey) (ctx : VdomContext<'postLayoutEvent>) : bool Node =
+        // Depend on both the activation generation (so we re-evaluate when activations change)
+        // and the clock (so we re-evaluate as time passes for timeout expiry).
+        let activationGenNode = ctx._Incr.Var.Watch ctx._ActivationGenerationVar
+
+        ctx._Incr.Map2
+            (fun _gen (now : DateTime) ->
+                match ctx._LastActivationTimes.TryGetValue key with
+                | true, time ->
+                    let elapsed = (now - time).TotalMilliseconds
+                    elapsed < VdomContextConstants.RECENT_ACTIVATION_TIMEOUT_MS
+                | false, _ -> false
+            )
+            activationGenNode
+            ctx._ClockDateTimeNode
 
     /// Mark the context as dirty.
     let internal markDirty<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : unit = ctx._IsDirty <- true

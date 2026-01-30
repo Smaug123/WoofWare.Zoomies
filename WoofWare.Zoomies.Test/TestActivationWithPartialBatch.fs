@@ -3,6 +3,7 @@ namespace WoofWare.Zoomies.Test
 open System
 open FsUnitTyped
 open NUnit.Framework
+open WoofWare.Incremental
 open WoofWare.Zoomies
 open WoofWare.Zoomies.Components
 
@@ -10,6 +11,8 @@ open WoofWare.Zoomies.Components
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestActivationWithPartialBatch =
+
+    let getUtcNow () = MockTime.defaultStartTime
 
     type AppEvent = | ButtonClicked
 
@@ -37,8 +40,12 @@ module TestActivationWithPartialBatch =
                 let text =
                     Vdom.textContent $"Clicks: {state.ButtonClickCount}, Keys: {state.ProcessedKeystrokes.Length}"
 
-                let button =
+                let buttonNode =
                     Button.make (ctx, buttonKey, "Click Me", isInitiallyFocused = true, isFirstToFocus = true)
+
+                let buttonObserver = ctx.Incr.Observe buttonNode
+                ctx.Incr.Stabilize ()
+                let button = Observer.value buttonObserver
 
                 Vdom.panelSplitAuto (SplitDirection.Horizontal, text, button)
 
@@ -121,6 +128,7 @@ module TestActivationWithPartialBatch =
             // Initial render - button is focused
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -145,6 +153,7 @@ module TestActivationWithPartialBatch =
             // Process the batch
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -170,10 +179,12 @@ module TestActivationWithPartialBatch =
             let buttonKey = NodeKey.make "test-button"
 
             let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
-                let button =
+                let buttonNode =
                     Button.make (ctx, buttonKey, "Click Me", isInitiallyFocused = true, isFirstToFocus = true)
 
-                button
+                let buttonObserver = ctx.Incr.Observe buttonNode
+                ctx.Incr.Stabilize ()
+                Observer.value buttonObserver
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
@@ -239,6 +250,7 @@ module TestActivationWithPartialBatch =
             // Initial render
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -260,6 +272,7 @@ module TestActivationWithPartialBatch =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -285,8 +298,12 @@ module TestActivationWithPartialBatch =
                 let text =
                     Vdom.textContent $"Clicks: {state.ButtonClickCount}, Keys: {state.ProcessedKeystrokes.Length}"
 
-                let button =
+                let buttonNode =
                     Button.make (ctx, buttonKey, "Click Me", isInitiallyFocused = true, isFirstToFocus = true)
+
+                let buttonObserver = ctx.Incr.Observe buttonNode
+                ctx.Incr.Stabilize ()
+                let button = Observer.value buttonObserver
 
                 Vdom.panelSplitAuto (SplitDirection.Horizontal, text, button)
 
@@ -361,6 +378,7 @@ module TestActivationWithPartialBatch =
             // Initial render - button is focused
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -380,6 +398,7 @@ module TestActivationWithPartialBatch =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -403,7 +422,12 @@ module TestActivationWithPartialBatch =
             let buttonKey = NodeKey.make "test-button"
 
             let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
-                Button.make (ctx, buttonKey, "Click Me", isInitiallyFocused = true, isFirstToFocus = true)
+                let buttonNode =
+                    Button.make (ctx, buttonKey, "Click Me", isInitiallyFocused = true, isFirstToFocus = true)
+
+                let buttonObserver = ctx.Incr.Observe buttonNode
+                ctx.Incr.Stabilize ()
+                Observer.value buttonObserver
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
@@ -462,6 +486,7 @@ module TestActivationWithPartialBatch =
             // Initial render
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -481,6 +506,7 @@ module TestActivationWithPartialBatch =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -509,7 +535,12 @@ module TestActivationWithPartialBatch =
             let buttonKey = NodeKey.make "test-button"
 
             let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
-                Button.make (ctx, buttonKey, "Click Me", isInitiallyFocused = true, isFirstToFocus = true)
+                let buttonNode =
+                    Button.make (ctx, buttonKey, "Click Me", isInitiallyFocused = true, isFirstToFocus = true)
+
+                let buttonObserver = ctx.Incr.Observe buttonNode
+                ctx.Incr.Stabilize ()
+                Observer.value buttonObserver
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
@@ -568,6 +599,7 @@ module TestActivationWithPartialBatch =
             // Initial render
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -587,6 +619,7 @@ module TestActivationWithPartialBatch =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus

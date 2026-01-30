@@ -12,6 +12,8 @@ open WoofWare.Zoomies
 [<Parallelizable(ParallelScope.All)>]
 module TestBatchProcessing =
 
+    let getUtcNow () = MockTime.defaultStartTime
+
     /// Test helper that simulates processing events with varying batch sizes
     let processWithBatchStrategy
         (haveFrameworkHandleFocus : bool)
@@ -89,6 +91,7 @@ module TestBatchProcessing =
             while totalProcessed < keystrokes.Length && iterations < maxIterations do
                 currentState <-
                     App.pumpOnce
+                        getUtcNow
                         worldFreezer
                         currentState
                         (fun _ -> haveFrameworkHandleFocus)
@@ -265,6 +268,7 @@ module TestBatchProcessing =
             while totalProcessed < expectedProcessed && iterations < maxIterations do
                 currentState <-
                     App.pumpOnce
+                        getUtcNow
                         worldFreezer
                         currentState
                         (fun _ -> true) // Framework handles focus
@@ -420,6 +424,7 @@ module TestBatchProcessing =
             // Initial render
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     (fun s -> s.UseFrameworkFocus)
@@ -438,6 +443,7 @@ module TestBatchProcessing =
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     (fun s -> s.UseFrameworkFocus)
@@ -459,6 +465,7 @@ module TestBatchProcessing =
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     (fun s -> s.UseFrameworkFocus)
@@ -479,6 +486,7 @@ module TestBatchProcessing =
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     (fun s -> s.UseFrameworkFocus)
@@ -501,6 +509,7 @@ module TestBatchProcessing =
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     (fun s -> s.UseFrameworkFocus)
@@ -523,6 +532,7 @@ module TestBatchProcessing =
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     (fun s -> s.UseFrameworkFocus)
@@ -545,6 +555,7 @@ module TestBatchProcessing =
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     (fun s -> s.UseFrameworkFocus)
@@ -626,6 +637,7 @@ module TestBatchProcessing =
                 // Initial render
                 currentState <-
                     App.pumpOnce
+                        getUtcNow
                         worldFreezer
                         currentState
                         (fun _ -> false)
@@ -645,6 +657,7 @@ module TestBatchProcessing =
 
                 currentState <-
                     App.pumpOnce
+                        getUtcNow
                         worldFreezer
                         currentState
                         (fun _ -> false)

@@ -8,6 +8,8 @@ open WoofWare.Zoomies
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestTextRendering =
+    let getUtcNow () = MockTime.defaultStartTime
+
     [<OneTimeSetUp>]
     let setUp () =
         // GlobalBuilderConfig.enterBulkUpdateMode ()
@@ -48,6 +50,7 @@ module TestTextRendering =
 
             // This should not throw an IndexOutOfRangeException
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -112,6 +115,7 @@ r|
 
             // This should not throw an IndexOutOfRangeException
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -171,6 +175,7 @@ r|
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -223,6 +228,7 @@ bottom    |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -270,6 +276,7 @@ Line3               |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -317,6 +324,7 @@ Line3               |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -364,6 +372,7 @@ Line3               |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -425,6 +434,7 @@ Line3               |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -484,6 +494,7 @@ Footer              |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -534,6 +545,7 @@ Footer              |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -581,6 +593,7 @@ xt        |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -628,6 +641,7 @@ Hello Worl|
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -682,6 +696,7 @@ Short     |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -735,6 +750,7 @@ Footer    |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -787,6 +803,7 @@ here                |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -836,6 +853,7 @@ ABCDEFGHIJKLMNOPQRST|
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -887,6 +905,7 @@ ABCDEFGHIJKLMNOPQRST|
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)

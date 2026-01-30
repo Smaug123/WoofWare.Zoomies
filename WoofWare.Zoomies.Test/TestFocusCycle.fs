@@ -10,6 +10,8 @@ open WoofWare.Zoomies
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestFocusCycle =
+    let getUtcNow () = MockTime.defaultStartTime
+
     [<OneTimeSetUp>]
     let setUp () =
         // GlobalBuilderConfig.enterBulkUpdateMode ()
@@ -114,6 +116,7 @@ module TestFocusCycle =
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     haveFrameworkHandleFocus
@@ -137,6 +140,7 @@ module TestFocusCycle =
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     haveFrameworkHandleFocus
@@ -160,6 +164,7 @@ module TestFocusCycle =
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     haveFrameworkHandleFocus
@@ -182,6 +187,7 @@ module TestFocusCycle =
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     haveFrameworkHandleFocus
@@ -204,6 +210,7 @@ module TestFocusCycle =
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     haveFrameworkHandleFocus
@@ -226,6 +233,7 @@ module TestFocusCycle =
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     haveFrameworkHandleFocus
@@ -248,6 +256,7 @@ module TestFocusCycle =
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     haveFrameworkHandleFocus
@@ -270,6 +279,7 @@ module TestFocusCycle =
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     haveFrameworkHandleFocus
@@ -292,6 +302,7 @@ module TestFocusCycle =
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     haveFrameworkHandleFocus
@@ -314,6 +325,7 @@ module TestFocusCycle =
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     haveFrameworkHandleFocus
@@ -336,6 +348,7 @@ module TestFocusCycle =
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     haveFrameworkHandleFocus
@@ -419,6 +432,7 @@ module TestFocusCycle =
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     haveFrameworkHandleFocus
@@ -442,6 +456,7 @@ module TestFocusCycle =
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     haveFrameworkHandleFocus
@@ -465,6 +480,7 @@ module TestFocusCycle =
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     haveFrameworkHandleFocus
@@ -488,6 +504,7 @@ module TestFocusCycle =
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     haveFrameworkHandleFocus
@@ -511,6 +528,7 @@ module TestFocusCycle =
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     haveFrameworkHandleFocus
@@ -534,6 +552,7 @@ module TestFocusCycle =
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     haveFrameworkHandleFocus
@@ -557,6 +576,7 @@ module TestFocusCycle =
 
             currentState <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     currentState
                     haveFrameworkHandleFocus
@@ -638,6 +658,7 @@ module TestFocusCycle =
 
             renderCheckbox1 <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     renderCheckbox1
                     haveFrameworkHandleFocus
@@ -661,6 +682,7 @@ module TestFocusCycle =
 
             renderCheckbox1 <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     renderCheckbox1
                     haveFrameworkHandleFocus
@@ -684,6 +706,7 @@ module TestFocusCycle =
 
             renderCheckbox1 <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     renderCheckbox1
                     haveFrameworkHandleFocus
@@ -767,6 +790,7 @@ module TestFocusCycle =
 
             renderFocusable <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     renderFocusable
                     haveFrameworkHandleFocus
@@ -790,6 +814,7 @@ module TestFocusCycle =
 
             renderFocusable <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     renderFocusable
                     haveFrameworkHandleFocus
@@ -813,6 +838,7 @@ module TestFocusCycle =
 
             renderFocusable <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     renderFocusable
                     haveFrameworkHandleFocus
@@ -838,6 +864,7 @@ more      [☐]   |
 
             renderFocusable <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     renderFocusable
                     haveFrameworkHandleFocus
@@ -905,6 +932,7 @@ more      [☐]   |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -937,6 +965,7 @@ This is focusable text                                                          
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -972,6 +1001,7 @@ This is focusable text                                                          
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -1007,6 +1037,7 @@ This is focusable text                                                          
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -1091,6 +1122,7 @@ This is focusable text                                                          
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -1116,6 +1148,7 @@ This is focusable text                                                          
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -1141,6 +1174,7 @@ This is focusable text                                                          
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -1166,6 +1200,7 @@ This is focusable text                                                          
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -1191,6 +1226,7 @@ This is focusable text                                                          
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -1266,6 +1302,7 @@ This is focusable text                                                          
 
             // First render: checkbox2 should start with focus (marked with isInitiallyFocused=true)
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -1291,6 +1328,7 @@ This is focusable text                                                          
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -1316,6 +1354,7 @@ This is focusable text                                                          
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -1341,6 +1380,7 @@ This is focusable text                                                          
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, true, false, false))
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -1366,6 +1406,7 @@ This is focusable text                                                          
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, true, false, false))
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)

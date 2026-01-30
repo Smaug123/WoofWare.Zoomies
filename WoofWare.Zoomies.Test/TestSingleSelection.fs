@@ -10,6 +10,8 @@ open FsUnitTyped
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestSingleSelection =
+    let getUtcNow () = MockTime.defaultStartTime
+
     [<OneTimeSetUp>]
     let setUp () =
         // GlobalBuilderConfig.enterBulkUpdateMode ()
@@ -56,6 +58,7 @@ module TestSingleSelection =
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 {
                     SelectedIndex = None
@@ -127,6 +130,7 @@ module TestSingleSelection =
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 {
                     SelectedIndex = None
@@ -198,6 +202,7 @@ module TestSingleSelection =
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 {
                     SelectedIndex = Some 1
@@ -269,6 +274,7 @@ module TestSingleSelection =
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 {
                     SelectedIndex = None
@@ -340,6 +346,7 @@ module TestSingleSelection =
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 {
                     SelectedIndex = Some 1
@@ -420,6 +427,7 @@ module TestSingleSelection =
 
             // Initial render - no focus yet
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 {
                     SelectedIndex = None
@@ -450,6 +458,7 @@ module TestSingleSelection =
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 {
                     SelectedIndex = None
@@ -601,6 +610,7 @@ module TestSingleSelection =
             // Initial render
             let mutable state =
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     initialState
                     haveFrameworkHandleFocus
@@ -615,6 +625,7 @@ module TestSingleSelection =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -629,6 +640,7 @@ module TestSingleSelection =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -764,6 +776,7 @@ module TestSingleSelection =
             // Initial render
             let mutable state =
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     initialState
                     haveFrameworkHandleFocus
@@ -778,6 +791,7 @@ module TestSingleSelection =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -792,6 +806,7 @@ module TestSingleSelection =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -805,6 +820,7 @@ module TestSingleSelection =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -819,6 +835,7 @@ module TestSingleSelection =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -883,6 +900,7 @@ module TestSingleSelection =
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 {
                     SelectedIndex = Some 0
@@ -969,6 +987,7 @@ module TestSingleSelection =
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 {
                     SelectedIndex = None
@@ -1050,6 +1069,7 @@ module TestSingleSelection =
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 {
                     SelectedIndex = None
@@ -1199,6 +1219,7 @@ module TestSingleSelection =
             // Initial render
             let mutable state =
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     initialState
                     haveFrameworkHandleFocus
@@ -1213,6 +1234,7 @@ module TestSingleSelection =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -1228,6 +1250,7 @@ module TestSingleSelection =
 
                 state <-
                     App.pumpOnce
+                        getUtcNow
                         worldFreezer
                         state
                         haveFrameworkHandleFocus
@@ -1386,6 +1409,7 @@ module TestSingleSelection =
             // Initial render - nothing focused
             let mutable state =
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     initialState
                     haveFrameworkHandleFocus
@@ -1400,6 +1424,7 @@ module TestSingleSelection =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -1415,6 +1440,7 @@ module TestSingleSelection =
 
                 state <-
                     App.pumpOnce
+                        getUtcNow
                         worldFreezer
                         state
                         haveFrameworkHandleFocus
@@ -1445,6 +1471,7 @@ module TestSingleSelection =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -1600,6 +1627,7 @@ module TestSingleSelection =
             // Initial render (not focused yet, cursor at item 2)
             let mutable state =
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     initialState
                     haveFrameworkHandleFocus
@@ -1614,6 +1642,7 @@ module TestSingleSelection =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -1631,6 +1660,7 @@ module TestSingleSelection =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -1838,6 +1868,7 @@ module TestSingleSelection =
             // Initial render
             let mutable state =
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     initialState
                     haveFrameworkHandleFocus
@@ -1852,6 +1883,7 @@ module TestSingleSelection =
 
             state <-
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     state
                     haveFrameworkHandleFocus
@@ -1867,6 +1899,7 @@ module TestSingleSelection =
 
                 state <-
                     App.pumpOnce
+                        getUtcNow
                         worldFreezer
                         state
                         haveFrameworkHandleFocus

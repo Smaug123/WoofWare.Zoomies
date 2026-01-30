@@ -24,6 +24,8 @@ type PostLayoutState =
 [<Parallelizable(ParallelScope.All)>]
 module TestPostLayoutEvents =
 
+    let getUtcNow () = MockTime.defaultStartTime
+
     [<Test>]
     let ``component can post layout event during render`` () =
         task {
@@ -85,6 +87,7 @@ module TestPostLayoutEvents =
             // Run one pump cycle
             let finalState =
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     PostLayoutState.Initial
                     haveFrameworkHandleFocus
@@ -154,6 +157,7 @@ module TestPostLayoutEvents =
             let renderState = MockTime.makeRenderStateStatic console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 PostLayoutState.Initial
                 haveFrameworkHandleFocus
@@ -316,6 +320,7 @@ module TestPostLayoutEvents =
 
             let finalState =
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     ChainedStabilizationState.Initial
                     haveFrameworkHandleFocus
@@ -403,6 +408,7 @@ module TestPostLayoutEvents =
 
             let finalState =
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     InfiniteLoopState.Initial
                     haveFrameworkHandleFocus
@@ -539,6 +545,7 @@ module TestPostLayoutEvents =
 
             let finalState =
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     stateAfterInit
                     haveFrameworkHandleFocus
@@ -801,6 +808,7 @@ module TestPostLayoutEvents =
 
             let finalState =
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     stateAfterInit
                     haveFrameworkHandleFocus
@@ -1053,6 +1061,7 @@ module TestPostLayoutEvents =
             // 3. Only after stabilization completes does Flush copy pending buffer to display
             let _finalState =
                 App.pumpOnce
+                    getUtcNow
                     worldFreezer
                     IntermediateFrameState.Initial
                     haveFrameworkHandleFocus

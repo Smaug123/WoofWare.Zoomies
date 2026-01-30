@@ -9,6 +9,8 @@ open FsUnitTyped
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestTable =
+    let getUtcNow () = MockTime.defaultStartTime
+
     [<OneTimeSetUp>]
     let setUp () =
         // GlobalBuilderConfig.enterBulkUpdateMode ()
@@ -44,6 +46,7 @@ module TestTable =
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -96,6 +99,7 @@ module TestTable =
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -149,6 +153,7 @@ A2B2                |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -201,6 +206,7 @@ Bob  25                       |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -253,6 +259,7 @@ A2        B2        |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -306,6 +313,7 @@ A        B                    |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -367,6 +375,7 @@ Row3                     |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -421,6 +430,7 @@ A    B                        |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -474,6 +484,7 @@ A           B       |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -521,6 +532,7 @@ XY                  |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -576,6 +588,7 @@ Single              |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -636,6 +649,7 @@ Row3                |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -696,6 +710,7 @@ Bottom              |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -756,6 +771,7 @@ Prop                |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -806,6 +822,7 @@ Row2                |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -864,6 +881,7 @@ Cell2               |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -920,6 +938,7 @@ X    Y                        |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -976,6 +995,7 @@ Data1   Data2  |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -1037,6 +1057,7 @@ A B                 |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -1091,6 +1112,7 @@ Col1          Col2          C3|
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -1142,6 +1164,7 @@ A    B C                      |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -1195,6 +1218,7 @@ X  Y                |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -1254,6 +1278,7 @@ A         B         C         |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -1312,6 +1337,7 @@ X      Y       Z              |
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -1370,6 +1396,7 @@ gColumngColumnngColu|
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -1394,6 +1421,8 @@ Row3                |
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestTableMeasurements =
+    let getUtcNow () = MockTime.defaultStartTime
+
     type private Folded =
         {
             Run : Rectangle -> int option
@@ -1715,6 +1744,7 @@ module TestTableMeasurements =
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 Unchecked.defaultof<State>
                 (fun _ -> false)
@@ -1815,6 +1845,8 @@ module TestTableMeasurements =
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestTablePerformance =
+    let getUtcNow () = MockTime.defaultStartTime
+
     type State = unit
 
     [<Test>]
@@ -1851,6 +1883,7 @@ module TestTablePerformance =
 
             // Just verify it renders without throwing
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -1898,6 +1931,7 @@ module TestTablePerformance =
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus
@@ -1944,6 +1978,7 @@ module TestTablePerformance =
             let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 ()
                 haveFrameworkHandleFocus

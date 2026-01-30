@@ -8,6 +8,8 @@ open WoofWare.Zoomies
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestCheckbox =
+    let getUtcNow () = MockTime.defaultStartTime
+
     [<Test>]
     let ``Checkbox with focus does not write brackets when Height is 0`` () =
         task {
@@ -49,6 +51,7 @@ module TestCheckbox =
 
             // Render without focus
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
@@ -65,6 +68,7 @@ module TestCheckbox =
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
             App.pumpOnce
+                getUtcNow
                 worldFreezer
                 (FakeUnit.fake ())
                 (fun _ -> true)
