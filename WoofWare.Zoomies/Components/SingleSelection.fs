@@ -1,5 +1,6 @@
 namespace WoofWare.Zoomies.Components
 
+open WoofWare.Incremental
 open WoofWare.Zoomies
 
 /// An item in a single-selection list.
@@ -50,16 +51,20 @@ type SingleSelection =
             onViewportRendered : SelectionListViewportInfo -> 'postLayoutEvent,
             ?isFirstToFocus : bool
         )
-        : SelectionListResult
+        : SelectionListResult Node
         =
         if Array.isEmpty items then
-            {
-                Vdom = Vdom.empty
-                State = state
-            }
+            ctx.Incr.Return
+                {
+                    Vdom = Vdom.empty
+                    State = state
+                }
         else
+
+        ctx.FocusedKey
+        |> ctx.Incr.Map (fun focusedKey ->
             let totalItems = items.Length
-            let listHasFocus = ctx.FocusedKey = Some listKey
+            let listHasFocus = focusedKey = Some listKey
             // Clamp cursor to valid range
             let cursorIndex = max 0 (min state.CursorIndex (totalItems - 1))
             // Clamp selectedIndex to valid range
@@ -132,3 +137,4 @@ type SingleSelection =
                 Vdom = Vdom.withFocusTracking (focusable, ?isFirstToFocus = isFirstToFocus)
                 State = stateWithClampedCursor
             }
+        )

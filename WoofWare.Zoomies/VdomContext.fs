@@ -27,13 +27,13 @@ type VdomContext<'postLayoutEvent> =
     interface IVdomContext<'postLayoutEvent> with
         member this.TerminalBounds = this._Incr.Var.Value this._TerminalBoundsVar
 
-        member this.FocusedKey = this._Incr.Var.Value this._FocusedKeyVar
-
-        member this.FocusedKeyNode = this._Incr.Var.Watch this._FocusedKeyVar
+        member this.FocusedKey = this._Incr.Var.Watch this._FocusedKeyVar
 
         member this.Incr = this._IncrView
 
         member this.UnsafeIncr = this._Incr
+
+        member this.Builder = IncrementalBuilder.create this._Incr
 
         member this.WasRecentlyActivated key =
             // Depend on both the activation generation (so we re-evaluate when activations change)
@@ -191,6 +191,10 @@ module VdomContext =
 
     /// Get the safe Incremental view for building nodes.
     let incr<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : IncrView = ctx._IncrView
+
+    /// A computation expression for building incremental nodes using `VdomContext.incr`.
+    let incrBuilder<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : IncrementalBuilder =
+        IncrementalBuilder.create ctx._Incr
 
     /// Get the underlying Incremental instance. This is unsafe inside view functions.
     let unsafeIncr<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : Incremental = ctx._Incr

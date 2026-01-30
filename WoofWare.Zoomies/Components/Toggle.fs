@@ -1,5 +1,6 @@
 namespace WoofWare.Zoomies.Components
 
+open WoofWare.Incremental
 open WoofWare.Zoomies
 
 [<RequireQualifiedAccess>]
@@ -56,12 +57,15 @@ type Toggle =
             ?isFirstToFocus : bool,
             ?isInitiallyFocused : bool
         )
-        : Vdom<DesiredBounds>
+        : Vdom<DesiredBounds> Node
         =
-        let isFocused = ctx.FocusedKey = Some key
+        ctx.FocusedKey
+        |> ctx.Incr.Map (fun focusedKey ->
+            let isFocused = focusedKey = Some key
 
-        let toggle =
-            Toggle.make' (untoggledGlyph, toggledGlyph, isToggled, isFocused)
-            |> Vdom.withKey key
+            let toggle =
+                Toggle.make' (untoggledGlyph, toggledGlyph, isToggled, isFocused)
+                |> Vdom.withKey key
 
-        Vdom.withFocusTracking (toggle, ?isFirstToFocus = isFirstToFocus, ?isInitiallyFocused = isInitiallyFocused)
+            Vdom.withFocusTracking (toggle, ?isFirstToFocus = isFirstToFocus, ?isInitiallyFocused = isInitiallyFocused)
+        )

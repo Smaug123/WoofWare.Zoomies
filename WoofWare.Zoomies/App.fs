@@ -246,7 +246,7 @@ module App =
     /// - Handles terminal resize (clears screen if resize occurred)
     /// - Updates previousVdom ref with current vdom
     /// - Returns current state for convenience
-    let internal pumpOnceIncremental<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
+    let internal pumpOnce<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
         (getUtcNow : unit -> DateTime)
         (listener : WorldFreezer<'appEvent>)
         (incrState : IncrementalState)
@@ -405,7 +405,7 @@ module App =
                             ready.SetResult ()
 
                             while not (isCancelled ()) do
-                                pumpOnceIncremental
+                                pumpOnce
                                     getUtcNow
                                     listener'
                                     incrState

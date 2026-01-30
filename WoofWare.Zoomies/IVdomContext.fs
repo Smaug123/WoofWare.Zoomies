@@ -1,11 +1,10 @@
 namespace WoofWare.Zoomies
 
-open System
 open WoofWare.Incremental
 
-[<Sealed>]
 /// Restricted Incremental API for use in view functions.
 /// This exposes only safe combinators that build nodes without forcing stabilization.
+[<Sealed>]
 type IncrView internal (incr : Incremental) =
     member _.Map (f : 'a -> 'b) (node : 'a Node) : 'b Node = incr.Map f node
     member _.Map2 (f : 'a -> 'b -> 'c) (node1 : 'a Node) (node2 : 'b Node) : 'c Node = incr.Map2 f node1 node2
@@ -26,14 +25,8 @@ type IVdomContext =
     /// Get the dimensions of the terminal (on the previous render).
     abstract TerminalBounds : Rectangle
 
-    /// Get the NodeKey of the Vdom element, if any, which was focused in the last render.
-    /// If you're not using the automatic focus handling mechanism, this is always None.
-    abstract FocusedKey : NodeKey option
-
-    /// Get the focused key as an incremental Node for reactive computations.
-    /// Components should use this instead of FocusedKey when building incremental views
-    /// so that focus changes trigger re-computation.
-    abstract FocusedKeyNode : NodeKey option Node
+    /// Get the currently focused key.
+    abstract FocusedKey : NodeKey option Node
 
     /// Get the safe Incremental view for building incremental computations.
     abstract Incr : IncrView
@@ -45,6 +38,9 @@ type IVdomContext =
     /// visual feedback window (approximately 500ms). The Node depends on the clock, so it
     /// will automatically update as time passes.
     abstract WasRecentlyActivated : NodeKey -> bool Node
+
+    /// Computation expression for creating Incremental nodes.
+    abstract Builder : IncrementalBuilder
 
 /// Extended interface for components that need to post layout events.
 /// Layout events are processed after the render is complete, allowing components

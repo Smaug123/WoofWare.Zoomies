@@ -1,5 +1,6 @@
 namespace WoofWare.Zoomies.Components
 
+open WoofWare.Incremental
 open WoofWare.Zoomies
 
 [<RequireQualifiedAccess>]
@@ -64,11 +65,17 @@ type TextBox =
             ?isInitiallyFocused : bool,
             ?wrap : bool
         )
-        : Vdom<DesiredBounds>
+        : Vdom<DesiredBounds> Node
         =
-        let isFocused = ctx.FocusedKey = Some key
+        ctx.FocusedKey
+        |> ctx.Incr.Map (fun k -> k = Some key)
+        |> ctx.Incr.Map (fun isFocused ->
+            let textbox =
+                TextBox.make' (content, cursorPos, isFocused, ?wrap = wrap) |> Vdom.withKey key
 
-        let textbox =
-            TextBox.make' (content, cursorPos, isFocused, ?wrap = wrap) |> Vdom.withKey key
-
-        Vdom.withFocusTracking (textbox, ?isFirstToFocus = isFirstToFocus, ?isInitiallyFocused = isInitiallyFocused)
+            Vdom.withFocusTracking (
+                textbox,
+                ?isFirstToFocus = isFirstToFocus,
+                ?isInitiallyFocused = isInitiallyFocused
+            )
+        )

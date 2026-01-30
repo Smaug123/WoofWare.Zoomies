@@ -47,7 +47,7 @@ type Button =
         (ctx : IVdomContext, key : NodeKey, label : string, ?isFirstToFocus : bool, ?isInitiallyFocused : bool)
         : Vdom<DesiredBounds> Node
         =
-        let isFocusedNode = ctx.Incr.Map (fun k -> k = Some key) ctx.FocusedKeyNode
+        let isFocusedNode = ctx.Incr.Map (fun k -> k = Some key) ctx.FocusedKey
         let isPressedNode = ctx.WasRecentlyActivated key
 
         ctx.Incr.Map2

@@ -140,7 +140,7 @@ module MockTime =
         ctx, advanceWithContext
 
 /// Test infrastructure for running incremental pump cycles.
-/// Bundles all the mutable state needed to call App.pumpOnceIncremental.
+/// Bundles all the mutable state needed to call App.pumpOnce.
 type IncrTestContext<'state, 'appEvent, 'postLayoutEvent> =
     {
         /// The incremental state holder (clock, bounds, focus).
@@ -164,7 +164,7 @@ type IncrTestContext<'state, 'appEvent, 'postLayoutEvent> =
 [<RequireQualifiedAccess>]
 module IncrTestContext =
     /// Create test context from an AppConfig and console.
-    /// This sets up all the infrastructure needed to call App.pumpOnceIncremental.
+    /// This sets up all the infrastructure needed to call App.pumpOnce.
     let make<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
         (console : IConsole)
         (config : AppConfig<'state, 'appEvent, 'postLayoutEvent>)
@@ -220,14 +220,14 @@ module IncrTestContext =
         fun () -> ctx.CurrentTime
 
     /// Run one pump cycle using the incremental pipeline.
-    /// This calls App.pumpOnceIncremental with the context's infrastructure.
+    /// This calls App.pumpOnce with the context's infrastructure.
     let pumpOnce<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
         (listener : WorldFreezer<'appEvent>)
         (config : AppConfig<'state, 'appEvent, 'postLayoutEvent>)
         (ctx : IncrTestContext<'state, 'appEvent, 'postLayoutEvent>)
         : 'state
         =
-        App.pumpOnceIncremental
+        App.pumpOnce
             (getUtcNow ctx)
             listener
             ctx.IncrState

@@ -155,73 +155,63 @@ module FileBrowser =
 
     let incrView (ctx : VdomContext<PostLayoutEvent>) (stateNode : State Node) : Vdom<DesiredBounds> Node =
         let incr = VdomContext.incr ctx
-        let boundsNode = VdomContext.boundsNode ctx
-        let focusNode = VdomContext.focusedKeyNode ctx
 
-        // Combine state, bounds and focus into a single node
-        let combinedNode =
-            incr.Map2 (fun a b -> struct (a, b)) stateNode boundsNode
-            |> incr.Map2 (fun struct (a, b) c -> struct (a, b, c))
-            <| focusNode
+        VdomContext.incrBuilder ctx {
+            // need a dependency on these so that we rerender
+            let! _bounds = VdomContext.boundsNode ctx
+            let! _focus = VdomContext.focusedKeyNode ctx
+            let! state = stateNode
 
-        incr.Bind
-            (fun struct (state, _bounds, _focus) ->
-                let title = Vdom.textContent "Files in current directory:"
+            let title = Vdom.textContent "Files in current directory:"
 
-                let fileList =
-                    if Array.isEmpty state.Files then
-                        Vdom.textContent "(no files found)"
-                    else
-                        let items =
-                            state.Files
-                            |> Array.map (fun entry ->
-                                {
-                                    Id = entry.Key
-                                    Label = entry.Name
-                                }
-                            )
+            let! fileList =
+                if Array.isEmpty state.Files then
+                    (VdomContext.incr ctx).Return (Vdom.textContent "(no files found)")
+                else
+                    let items =
+                        state.Files
+                        |> Array.map (fun entry ->
+                            {
+                                Id = entry.Key
+                                Label = entry.Name
+                            }
+                        )
 
-                        (SingleSelection.make (
-                            ctx :> IVdomContext<PostLayoutEvent>,
-                            fileListKey,
-                            items,
-                            state.SelectedFileIndex,
-                            state.ListState,
-                            ViewportInfo,
-                            isFirstToFocus = true
-                        ))
-                            .Vdom
-
-                let buttonLabel =
-                    match state.SelectedFileIndex with
-                    | None -> "Select a file"
-                    | Some _ -> "Load selected file"
-
-                let buttonNode = Button.make (ctx :> IVdomContext, loadButtonKey, buttonLabel)
-
-                let rightPane =
-                    let content =
-                        match state.IsLoading, state.FileContent, state.SelectedFileIndex with
-                        | true, _, _ -> "Loading..."
-                        | false, Some content, _ -> content
-                        | false, None, None -> "Select a file and press the button to view its contents."
-                        | false, None, Some _ -> "Press the button to load the selected file."
-
-                    Vdom.textContent content |> Vdom.bordered
-
-                // Map over the button node to compose it into the layout
-                incr.Map
-                    (fun (button : Vdom<DesiredBounds>) ->
-                        let leftPane =
-                            Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 1, title, fileList)
-                            |> fun content -> Vdom.panelSplitAbsolute (SplitDirection.Horizontal, -1, content, button)
-                            |> Vdom.bordered
-
-                        Vdom.panelSplitProportion (SplitDirection.Vertical, 0.3, leftPane, rightPane)
+                    SingleSelection.make (
+                        ctx :> IVdomContext<PostLayoutEvent>,
+                        fileListKey,
+                        items,
+                        state.SelectedFileIndex,
+                        state.ListState,
+                        ViewportInfo,
+                        isFirstToFocus = true
                     )
-                    buttonNode
-            )
-            combinedNode
+                    |> incr.Map _.Vdom
+
+            let buttonLabel =
+                match state.SelectedFileIndex with
+                | None -> "Select a file"
+                | Some _ -> "Load selected file"
+
+            let! button = Button.make (ctx :> IVdomContext, loadButtonKey, buttonLabel)
+
+            let rightPane =
+                let content =
+                    match state.IsLoading, state.FileContent, state.SelectedFileIndex with
+                    | true, _, _ -> "Loading..."
+                    | false, Some content, _ -> content
+                    | false, None, None -> "Select a file and press the button to view its contents."
+                    | false, None, Some _ -> "Press the button to load the selected file."
+
+                Vdom.textContent content |> Vdom.bordered
+
+            let leftPane =
+                Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 1, title, fileList)
+                |> fun content -> Vdom.panelSplitAbsolute (SplitDirection.Horizontal, -1, content, button)
+                |> Vdom.bordered
+
+            return Vdom.panelSplitProportion (SplitDirection.Vertical, 0.3, leftPane, rightPane)
+        }
 
     let resolver : ActivationResolver<AppEvent, State> =
         ActivationResolver.combine
