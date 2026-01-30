@@ -28,6 +28,8 @@ type VdomContext<'postLayoutEvent> =
 
         member this.FocusedKey = this._Incr.Var.Value this._FocusedKeyVar
 
+        member this.FocusedKeyNode = this._Incr.Var.Watch this._FocusedKeyVar
+
         member this.Incr = this._Incr
 
         member this.WasRecentlyActivated key =

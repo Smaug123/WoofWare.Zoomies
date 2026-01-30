@@ -421,3 +421,97 @@ module TestAppRun =
             let _ = Observer.value observer
             callCount |> shouldEqual 1
         }
+
+    // ============================================================
+    // Resize forcing re-render tests
+    // ============================================================
+
+    [<Test>]
+    let ``App.run re-renders after terminal resize even when vdom does not depend on bounds`` () =
+        task {
+            // Track flush calls to detect re-renders
+            let flushCount = ref 0
+            let mutable capturedListener : WorldFreezer<unit> option = None
+
+            // Mutable console dimensions
+            let mutable consoleWidth = 80
+            let mutable consoleHeight = 10
+
+            let console : IConsole =
+                {
+                    WindowWidth = fun () -> consoleWidth
+                    WindowHeight = fun () -> consoleHeight
+                    ColorMode = ColorMode.Color
+                    Execute = fun _ -> ()
+                    Flush = fun () -> flushCount.Value <- flushCount.Value + 1
+                }
+
+            let ctrlCHandler, _, _ = FakeCtrlCHandler.make ()
+            let world = MockWorld.make ()
+
+            let worldFreezer () =
+                let listener =
+                    WorldFreezer.listen'
+                        UnrecognisedEscapeCodeBehaviour.Throw
+                        StopwatchMock.Empty
+                        world.KeyAvailable
+                        world.ReadKey
+
+                capturedListener <- Some listener
+                listener
+
+            // Create a vdom that does NOT depend on bounds, focus, or time.
+            // This is a static vdom that will have the same reference on every stabilization.
+            let staticVdom = Vdom.textContent "Hello"
+
+            let incrVdom (ctx : VdomContext<unit>) (_stateNode : unit Node) : Vdom<DesiredBounds> Node =
+                let incr = VdomContext.incr ctx
+                incr.Return staticVdom
+
+            let config : AppConfig<unit, unit, unit> =
+                {
+                    Initial = ()
+                    Transition = fun s _ -> s
+                    View = incrVdom
+                    HandleInput = fun _ -> None
+                    HandlePostLayout = fun _ s -> s
+                    FocusHandling = FocusHandling.FrameworkManaged
+                    ActivationResolver = ActivationResolver.none
+                    OnSetup = fun _ -> ()
+                }
+
+            use cts = new CancellationTokenSource ()
+
+            let appHandle =
+                App.run cts.Token console (fun () -> TimeConversion.unixEpoch) ctrlCHandler worldFreezer config None 0
+
+            // Wait for the app to be ready (initial setup and first render complete)
+            do! appHandle.Ready
+
+            // Record flush count after initial render
+            let initialFlushCount = flushCount.Value
+            initialFlushCount >= 1 |> shouldEqual true
+
+            // Change console dimensions and notify resize
+            consoleWidth <- 120
+            consoleHeight <- 40
+
+            match capturedListener with
+            | Some l -> l.NotifyTerminalResize ()
+            | None -> failwith "Listener not set"
+
+            // Poll until flush count increases (re-render happened)
+            let mutable attempts = 0
+
+            while flushCount.Value <= initialFlushCount && attempts < 500 do
+                do! System.Threading.Tasks.Task.Delay 10
+                attempts <- attempts + 1
+
+            // Verify that a re-render happened (flush was called again)
+            flushCount.Value > initialFlushCount |> shouldEqual true
+
+            // Cancel to stop the app
+            cts.Cancel ()
+
+            do! appHandle.Finished
+        }

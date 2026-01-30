@@ -1,11 +1,18 @@
 namespace WoofWare.Zoomies.Test
 
 open System
+open FsUnitTyped
 open NUnit.Framework
 open WoofWare.Expect
 open WoofWare.Incremental
 open WoofWare.Zoomies
 open WoofWare.Zoomies.Components
+
+[<RequireQualifiedAccess>]
+module private Object =
+    let referenceEquals<'a when 'a : not struct> (x : 'a) (y : 'a) =
+        // Type-safe wrapper for ReferenceEquals
+        Object.ReferenceEquals (x, y)
 
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
@@ -635,4 +642,73 @@ Goodbye, World!                         |
                 return ConsoleHarness.toString terminal
             }
 
+        }
+
+    [<Test>]
+    let ``Button.make Node updates when focus changes incrementally`` () =
+        task {
+            // This test verifies that Button.make properly depends on FocusedKeyNode
+            // so the returned Node updates when focus changes without needing to re-call Button.make
+
+            let bounds =
+                {
+                    TopLeftX = 0
+                    TopLeftY = 0
+                    Width = 80
+                    Height = 24
+                }
+
+            let buttonKey = NodeKey.make "test-button"
+            let otherKey = NodeKey.make "other"
+
+            // Start with no focus
+            let incrState = IncrementalState.make () bounds None
+            let incr = incrState.Incr
+            let ctx = VdomContext.make<unit, unit> incrState
+
+            // Create a button node once
+            let buttonNode = Button.make (ctx :> IVdomContext, buttonKey, "Test Button")
+
+            // Observe the node
+            let observer = incr.Observe buttonNode
+            incr.Stabilize ()
+
+            // Initial state: button is not focused
+            let vdom1 = Observer.value observer
+
+            // Verify button shows unfocused style (single brackets with spaces)
+            let text1 = Vdom.debugDump vdom1
+            text1.Contains "[  Test Button  ]" |> shouldEqual true
+
+            // Change focus to the button
+            IncrementalState.setFocusedKey (Some buttonKey) incrState
+            incr.Stabilize ()
+
+            // Now the node should have updated to show focused style
+            let vdom2 = Observer.value observer
+
+            // Verify button shows focused style (double brackets)
+            let text2 = Vdom.debugDump vdom2
+            text2.Contains "[[ Test Button ]]" |> shouldEqual true
+
+            // Verify the vdom reference actually changed (not just same object)
+            Object.referenceEquals vdom1 vdom2 |> shouldEqual false
+
+            // Change focus to a different key
+            IncrementalState.setFocusedKey (Some otherKey) incrState
+            incr.Stabilize ()
+
+            // Button should be unfocused again
+            let vdom3 = Observer.value observer
+            let text3 = Vdom.debugDump vdom3
+            text3.Contains "[  Test Button  ]" |> shouldEqual true
+
+            // Clear focus entirely
+            IncrementalState.setFocusedKey None incrState
+            incr.Stabilize ()
+
+            // Button should still be unfocused
+            let vdom4 = Observer.value observer
+            let text4 = Vdom.debugDump vdom4
+            text4.Contains "[  Test Button  ]" |> shouldEqual true
         }

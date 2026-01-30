@@ -20,6 +20,11 @@ type IVdomContext =
     /// If you're not using the automatic focus handling mechanism, this is always None.
     abstract FocusedKey : NodeKey option
 
+    /// Get the focused key as an incremental Node for reactive computations.
+    /// Components should use this instead of FocusedKey when building incremental views
+    /// so that focus changes trigger re-computation.
+    abstract FocusedKeyNode : NodeKey option Node
+
     /// Get the Incremental instance for creating incremental computations.
     abstract Incr : Incremental
 

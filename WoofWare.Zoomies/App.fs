@@ -432,21 +432,22 @@ module App =
             if layoutEvents.Length = 0 then
                 continueLoop <- false
             else
-                let previousState = stateMachine.CurrentState ()
+                let stateBeforeBatch = stateMachine.CurrentState ()
 
                 for ev in layoutEvents do
-                    let newState = config.HandlePostLayout ev (stateMachine.CurrentState ())
+                    let currentState = stateMachine.CurrentState ()
+                    let newState = config.HandlePostLayout ev currentState
 
-                    if previousState <> newState then
+                    if currentState <> newState then
                         stateMachine.SetState newState
 
                 // Stabilize to propagate state changes
                 incrState.Incr.Stabilize ()
 
-                let currentState = stateMachine.CurrentState ()
+                let stateAfterBatch = stateMachine.CurrentState ()
 
                 // If state changed, re-render
-                if previousState <> currentState then
+                if stateBeforeBatch <> stateAfterBatch then
                     Render.oneStepNoFlush renderState () (fun () -> Observer.value vdomObserver)
                     iterations <- iterations + 1
                 else
@@ -532,10 +533,12 @@ module App =
         incrState.Incr.Stabilize ()
 
         let currentVdom = Observer.value vdomObserver
+        let ctx = RenderState.vdomContext renderState
 
-        // Re-render if vdom changed
-        if not (Object.referenceEquals previousVdom currentVdom) then
+        // Re-render if vdom changed or context is dirty (e.g., from resize, activation, etc.)
+        if not (Object.referenceEquals previousVdom currentVdom) || VdomContext.isDirty ctx then
             Render.oneStepNoFlush renderState () (fun () -> currentVdom)
+            VdomContext.markClean ctx
 
             // Handle post-layout events
             let _hitLimit =
@@ -556,9 +559,12 @@ module App =
         : unit
         =
         let currentVdom = Observer.value vdomObserver
+        let ctx = RenderState.vdomContext renderState
 
-        if not (Object.referenceEquals previousVdom currentVdom) then
+        // Re-render if vdom changed or context is dirty (e.g., from resize, activation, etc.)
+        if not (Object.referenceEquals previousVdom currentVdom) || VdomContext.isDirty ctx then
             Render.oneStepNoFlush renderState () (fun () -> currentVdom)
+            VdomContext.markClean ctx
 
             let _hitLimit =
                 stabilizePostLayoutEventsWithConfig stateMachine renderState config vdomObserver incrState
@@ -706,8 +712,11 @@ module App =
 
                                 // Handle terminal resize
                                 if listener'.TerminalResizeGeneration <> resizeGeneration then
+                                    // Our knowledge of the current terminal's contents could be arbitrarily corrupted:
+                                    // we were drawing to the screen when it had an arbitrary size. Need a *complete* refresh.
                                     RenderState.clearScreen renderState
                                     renderState.PreviousVdom <- None
+                                    VdomContext.markDirty vdomContext
 
                                 previousVdom <- Observer.value vdomObserver
 
