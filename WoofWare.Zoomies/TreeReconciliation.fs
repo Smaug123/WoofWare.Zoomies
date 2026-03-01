@@ -703,14 +703,4 @@ module internal TreeReconciliation =
             | None -> ()
 
             // Convert to RenderedNode
-            match vdom with
-            | Vdom.Unkeyed unkeyedVdom ->
-                arrangedToRendered
-                    keyToNode
-                    focusableKeys
-                    firstToFocusKey
-                    initiallyFocusedKey
-                    previousRender
-                    arranged
-                    (Vdom.Unkeyed unkeyedVdom)
-            | Vdom.Keyed _ -> failwith "Top-level vdom must be unkeyed"
+            arrangedToRendered keyToNode focusableKeys firstToFocusKey initiallyFocusedKey previousRender arranged vdom

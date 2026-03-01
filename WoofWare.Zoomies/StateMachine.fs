@@ -5,6 +5,13 @@ open WoofWare.Incremental
 
 /// A state machine that manages state updates via events flowing through the Incremental graph.
 /// Events are queued and processed on stabilization, folding them into state using the transition function.
+///
+/// Two usage patterns:
+/// - Simple queue-fold: call `Inject` to enqueue events, then stabilize. The machine drains the queue
+///   and folds events into state automatically.
+/// - External batch fold: call `SetState` directly after performing your own event routing and folding
+///   (e.g. when the caller needs complex pre-routing such as activation resolvers or Tab handling,
+///   as App.fs does).
 type StateMachine<'state, 'event> =
     {
         /// The current state as an Incremental node.
@@ -12,12 +19,16 @@ type StateMachine<'state, 'event> =
         StateNode : 'state Node
 
         /// Inject an event to be processed on the next stabilization.
+        /// The machine drains the queue and folds events in injection order.
+        /// Use this for simple event processing without pre-routing.
         Inject : 'event -> unit
 
         /// Read the current state synchronously.
         CurrentState : unit -> 'state
 
         /// Set the state directly, bypassing the event queue.
+        /// This is the primary API when callers perform their own event routing and batch fold
+        /// (as App.fs does for activation resolvers and Tab handling).
         SetState : 'state -> unit
     }
 

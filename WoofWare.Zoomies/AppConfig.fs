@@ -1,5 +1,6 @@
 namespace WoofWare.Zoomies
 
+open System.Runtime.ExceptionServices
 open WoofWare.Incremental
 
 /// How the framework should handle focus cycling (Tab/Shift+Tab)
@@ -63,6 +64,9 @@ module AppConfig =
             HandleInput =
                 function
                 | WorldStateChange.ApplicationEvent ev -> Some ev
+                | WorldStateChange.ApplicationEventException exc ->
+                    ExceptionDispatchInfo.Throw exc
+                    failwith "unreachable"
                 | _ -> None
             HandlePostLayout = fun _ state -> state
             FocusHandling = FocusHandling.FrameworkManaged
@@ -106,6 +110,9 @@ module AppConfig =
             HandleInput =
                 function
                 | WorldStateChange.ApplicationEvent ev -> Some ev
+                | WorldStateChange.ApplicationEventException exc ->
+                    ExceptionDispatchInfo.Throw exc
+                    failwith "unreachable"
                 | _ -> None
             HandlePostLayout = fun _ state -> state
             FocusHandling = FocusHandling.FrameworkManaged

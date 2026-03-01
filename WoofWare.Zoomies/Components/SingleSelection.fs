@@ -41,11 +41,11 @@ type SingleSelection =
     /// (ActivationResolver.selectionList). The difference is semantic: in MultiSelection,
     /// Space toggles the item; in SingleSelection, Space selects the item (your Transition
     /// handler should set the selection to the cursor index rather than toggling).
-    static member make<'postLayoutEvent>
+    static member make<'id, 'postLayoutEvent>
         (
             ctx : IVdomContext<'postLayoutEvent>,
             listKey : NodeKey,
-            items : SingleSelectionItem<NodeKey>[],
+            items : SingleSelectionItem<'id>[],
             selectedIndex : int option,
             state : SelectionListState,
             onViewportRendered : SelectionListViewportInfo -> 'postLayoutEvent,

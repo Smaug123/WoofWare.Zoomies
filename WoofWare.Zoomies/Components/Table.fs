@@ -181,17 +181,19 @@ module Table =
         assert (result.Length = expectedCount)
         result
 
-    /// Sanitize proportion values to ensure they are positive and real; clamp noncompliant values to epsilon
+    /// Sanitize column specs to ensure they have valid values; clamp noncompliant values.
     let private sanitizeColumn (spec : Column) : Column =
         match spec with
         | Column.Proportion p when p <= 0.0 || System.Double.IsNaN p || System.Double.IsInfinity p ->
             Column.Proportion 0.01
+        | Column.Fixed w when w < 0 -> Column.Fixed 0
         | other -> other
 
-    /// Sanitize proportion values to ensure they are positive and real; clamp noncompliant values to epsilon
+    /// Sanitize row specs to ensure they have valid values; clamp noncompliant values.
     let private sanitizeRow (spec : Row) : Row =
         match spec with
         | Row.Proportion p when p <= 0.0 || System.Double.IsNaN p || System.Double.IsInfinity p -> Row.Proportion 0.01
+        | Row.Fixed h when h < 0 -> Row.Fixed 0
         | other -> other
 
     /// Allocate column widths from available width, respecting per-column minima.

@@ -44,7 +44,7 @@ type Button =
     /// Returns a Vdom Node because the pressed state depends on time (it expires after a timeout).
     /// </remarks>
     static member make
-        (ctx : IVdomContext, key : NodeKey, label : string, ?isFirstToFocus : bool, ?isInitiallyFocused : bool)
+        (ctx : #IVdomContext, key : NodeKey, label : string, ?isFirstToFocus : bool, ?isInitiallyFocused : bool)
         : Vdom<DesiredBounds> Node
         =
         let isFocusedNode = ctx.Incr.Map (fun k -> k = Some key) ctx.FocusedKey

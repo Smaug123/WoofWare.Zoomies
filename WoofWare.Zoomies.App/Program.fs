@@ -188,7 +188,7 @@ module FileBrowser =
                 | None -> "Select a file"
                 | Some _ -> "Load selected file"
 
-            let! button = Button.make (ctx :> IVdomContext, loadButtonKey, buttonLabel)
+            let! button = Button.make (ctx, loadButtonKey, buttonLabel)
 
             let rightPane =
                 let content =
