@@ -50,16 +50,13 @@ type PostLayoutEvent =
     // point.
     | Emergency of bool
 
-let processWorld (worldBridge : IWorldBridge<_>) =
-    { new WorldProcessor<_, PostLayoutEvent, State> with
-        member _.ProcessPostLayoutEvents (events, _ctx, state) =
-            let mutable component1IsEmergency = state.Emergency
-            for evt in events do
-                match evt with
-                | PostLayoutEvent.Emergency e -> component1IsEmergency <- e
-            { state with Emergency = component1IsEmergency }
-        member _.ProcessWorld (_, _, _) = failwith "whatever you had before"
-    }
+let handlePostLayout (evt : PostLayoutEvent) (state : State) : State =
+    match evt with
+    | PostLayoutEvent.Emergency e -> { state with Emergency = e }
+
+let config =
+    AppConfig.make initialState transition view
+    |> AppConfig.withHandlePostLayout handlePostLayout
 ```
 
 An important point about performance: it's fine to process an `Emergency` event in `ProcessPostLayoutEvents` on every tick.
@@ -93,7 +90,7 @@ let tooSmallWrapper (ctx : IVdomContext<PostLayoutEvent>) (state : State) : Vdom
             // This Vdom is not going to paint to the screen, so it's not
             // very important what goes here.
             // Emitting the event on the line above, and altering our state in
-            // the WorldProcessor in response, causes Zoomies to rerender before
+            // HandlePostLayout in response, causes Zoomies to rerender before
             // the current render even paints;
             // and we will be setting up the top-level VDOM to render something
             // different on seeing that new state.

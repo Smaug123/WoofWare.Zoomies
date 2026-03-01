@@ -28,58 +28,11 @@ module internal Layout =
             Children : ArrangedNode list
         }
 
-    /// Helper: count wrapped lines for a single line of text (no newlines)
+    /// Helper: count lines after character-chunk wrapping, respecting explicit newlines.
+    /// Uses the same wrapping algorithm as the renderer: lines break at exact
+    /// character boundaries (every `width` characters) rather than at word boundaries.
     /// Precondition: width >= 1
-    let private wordWrapCountSingleLine (line : string) (width : int) : int =
-        let words = line.Split ([| ' ' ; '\t' |], StringSplitOptions.None)
-
-        if words.Length = 0 then
-            1
-        else
-            let mutable lineCount = 1
-            let mutable currentLineWidth = 0
-
-            for word in words do
-                let wordLen = word.Length
-
-                if wordLen = 0 then
-                    // Empty word (from consecutive separators), skip
-                    ()
-                else
-                    // Calculate how many lines this word will take if placed starting on a new line
-                    // Words longer than width wrap character-by-character (like rendering does)
-                    let linesForWord =
-                        if wordLen <= width then
-                            1
-                        else
-                            (wordLen + width - 1) / width // Ceiling division
-
-                    // Calculate the width of the final line after placing this word
-                    let finalLineWidth =
-                        if wordLen <= width then
-                            wordLen
-                        else
-                            let remainder = wordLen % width
-                            if remainder = 0 then width else remainder
-
-                    if currentLineWidth = 0 then
-                        // First word on line - place it starting here
-                        lineCount <- lineCount + linesForWord - 1
-                        currentLineWidth <- finalLineWidth
-                    elif currentLineWidth + 1 + wordLen <= width then
-                        // Word fits on current line (with space separator)
-                        currentLineWidth <- currentLineWidth + 1 + wordLen
-                    else
-                        // Word doesn't fit, start new line
-                        lineCount <- lineCount + 1 // Move to new line
-                        lineCount <- lineCount + linesForWord - 1 // Additional lines if word is long
-                        currentLineWidth <- finalLineWidth
-
-            lineCount
-
-    /// Helper: count lines after word-wrapping, respecting explicit newlines
-    /// Precondition: width >= 1
-    let private wordWrapCount (text : string) (width : int) : int =
+    let private charWrapCount (text : string) (width : int) : int =
         // Normalize line endings: CRLF -> LF, lone CR -> LF
         let text = text.Replace("\r\n", "\n").Replace ("\r", "\n")
         let lines = text.Split '\n'
@@ -90,11 +43,10 @@ module internal Layout =
             let mutable totalLines = 0
 
             for line in lines do
-                if String.IsNullOrEmpty line then
-                    // Empty line counts as 1
+                if line.Length = 0 then
                     totalLines <- totalLines + 1
                 else
-                    totalLines <- totalLines + wordWrapCountSingleLine line width
+                    totalLines <- totalLines + (line.Length + width - 1) / width
 
             max 1 totalLines
 
@@ -138,7 +90,7 @@ module internal Layout =
                 fun w ->
                     if wrap then
                         let safeWidth = max 1 w
-                        let wrappedLines = wordWrapCount text safeWidth
+                        let wrappedLines = charWrapCount text safeWidth
                         max 1 wrappedLines
                     else
                         noWrapLineCount
@@ -146,7 +98,7 @@ module internal Layout =
                 fun w ->
                     if wrap then
                         let safeWidth = max 1 w
-                        let wrappedLines = wordWrapCount text safeWidth
+                        let wrappedLines = charWrapCount text safeWidth
                         max 1 wrappedLines
                     else
                         noWrapLineCount
@@ -154,7 +106,7 @@ module internal Layout =
                 fun w ->
                     if wrap then
                         let safeWidth = max 1 w
-                        Some (wordWrapCount text safeWidth)
+                        Some (charWrapCount text safeWidth)
                     else
                         Some noWrapLineCount
         }

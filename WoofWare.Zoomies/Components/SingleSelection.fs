@@ -34,12 +34,12 @@ type SingleSelection =
     /// Cursor highlight only shows when the list has focus.
     ///
     /// The component posts onViewportRendered during render with the viewport height.
-    /// Handle this event in ProcessWorld to call state.EnsureVisible(viewportHeight)
+    /// Handle this event in HandlePostLayout to call state.EnsureVisible(viewportHeight)
     /// and keep the cursor visible.
     ///
     /// Note: This component uses the same ActivationResolver as MultiSelection
     /// (ActivationResolver.selectionList). The difference is semantic: in MultiSelection,
-    /// Space toggles the item; in SingleSelection, Space selects the item (your ProcessWorld
+    /// Space toggles the item; in SingleSelection, Space selects the item (your Transition
     /// handler should set the selection to the cursor index rather than toggling).
     static member make<'postLayoutEvent>
         (

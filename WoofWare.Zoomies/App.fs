@@ -139,9 +139,6 @@ module App =
         let initialState = stateMachine.CurrentState ()
         let mutable localState = initialState
 
-        // Defer Tab handling: positive = advance, negative = retreat.
-        let mutable pendingFocusMovement = 0
-
         for change in changes do
             if isCancelled () then
                 ()
@@ -152,10 +149,12 @@ module App =
                     && t.Key = ConsoleKey.Tab
                     && (t.Modifiers = ConsoleModifiers.None || t.Modifiers = ConsoleModifiers.Shift)
                     ->
+                    // Apply focus movement immediately so subsequent keystrokes in
+                    // the same batch see the updated focus.
                     if t.Modifiers = ConsoleModifiers.None then
-                        pendingFocusMovement <- pendingFocusMovement + 1
+                        RenderState.advanceFocus renderState
                     else
-                        pendingFocusMovement <- pendingFocusMovement - 1
+                        RenderState.retreatFocus renderState
 
                 | WorldStateChange.Keystroke k ->
                     match VdomContext.focusedKey ctx with
@@ -189,29 +188,14 @@ module App =
         if not (Object.referenceEquals previousVdom currentVdom) || VdomContext.isDirty ctx then
             renderWithFocusStabilization renderState vdomObserver incrState
 
-            let _hitLimit =
+            let hitLimit =
                 stabilizePostLayoutEventsWithConfig stateMachine renderState config vdomObserver incrState
 
-            // Reset dirty flag after post-layout processing
-            VdomContext.markClean ctx
-            Render.flush renderState
+            // Only mark clean if we fully stabilized; if the iteration limit was hit,
+            // leave the context dirty so the next pump picks up the remaining work.
+            if not hitLimit then
+                VdomContext.markClean ctx
 
-        if pendingFocusMovement <> 0 then
-            if pendingFocusMovement > 0 then
-                for _ in 1..pendingFocusMovement do
-                    RenderState.advanceFocus renderState
-            else
-                for _ in 1 .. -pendingFocusMovement do
-                    RenderState.retreatFocus renderState
-
-            incrState.Incr.Stabilize ()
-            renderWithFocusStabilization renderState vdomObserver incrState
-
-            let _hitLimit =
-                stabilizePostLayoutEventsWithConfig stateMachine renderState config vdomObserver incrState
-
-            // Reset dirty flag after post-layout processing
-            VdomContext.markClean ctx
             Render.flush renderState
 
     /// Process when no changes occurred: render if the vdom changed.
@@ -230,10 +214,12 @@ module App =
         if not (Object.referenceEquals previousVdom currentVdom) || VdomContext.isDirty ctx then
             renderWithFocusStabilization renderState vdomObserver incrState
 
-            let _hitLimit =
+            let hitLimit =
                 stabilizePostLayoutEventsWithConfig stateMachine renderState config vdomObserver incrState
 
-            VdomContext.markClean ctx
+            if not hitLimit then
+                VdomContext.markClean ctx
+
             Render.flush renderState
 
     /// Run one iteration of the incremental event loop.
@@ -362,13 +348,18 @@ module App =
                             config.OnSetup listener'
                             renderWithFocusStabilization renderState vdomObserver incrState
 
-                            let _hitLimit =
+                            let hitLimit =
                                 stabilizePostLayoutEventsWithConfig
                                     stateMachine
                                     renderState
                                     config
                                     vdomObserver
                                     incrState
+
+                            // If the limit wasn't hit, we're fully stabilized; mark clean.
+                            // Otherwise leave dirty so the first pump picks up remaining work.
+                            if not hitLimit then
+                                VdomContext.markClean vdomContext
 
                             Render.flush renderState
 

@@ -720,8 +720,8 @@ Cell2               |
 ShortThis is a longe          |
      r text that sho          |
      uld wrap                 |
-                              |
 X    Y                        |
+                              |
 "
 
                 return ConsoleHarness.toString terminal

@@ -1,6 +1,8 @@
 namespace WoofWare.Zoomies.Test
 
 open System
+open FsCheck
+open FsUnitTyped
 open NUnit.Framework
 open WoofWare.Expect
 open WoofWare.Zoomies
@@ -762,3 +764,121 @@ This is too |
                 return ConsoleHarness.toString terminal
             }
         }
+
+    /// Reference implementation: count how many lines the renderer would produce
+    /// for a single line of text (no newlines) at a given width, using character-chunk wrapping.
+    let private charWrapLineCount (lineLength : int) (width : int) : int =
+        if lineLength = 0 then
+            1
+        else
+            (lineLength + width - 1) / width
+
+    /// Reference implementation: count total rendered lines for text with newlines.
+    let private expectedRenderedLineCount (text : string) (width : int) : int =
+        let text = text.Replace("\r\n", "\n").Replace ("\r", "\n")
+        let lines = text.Split '\n'
+
+        if lines.Length = 0 then
+            1
+        else
+            let mutable total = 0
+
+            for line in lines do
+                total <- total + charWrapLineCount line.Length width
+
+            max 1 total
+
+    [<Test>]
+    let ``wrap measurement matches rendering: auto-split allocates correct height`` () =
+        // Property: for any printable text and width >= 1, the auto-split layout
+        // allocates exactly the right number of rows (matching what the renderer produces).
+        // We verify by checking that the footer appears immediately after the text region.
+        let prop (text : NonNull<string>) (PositiveInt widthRaw) =
+            // Restrict to printable ASCII to avoid terminal weirdness.
+            let text = text.Get |> String.filter (fun c -> c >= ' ' && c <= '~')
+
+            let width = max 1 (widthRaw % 80 + 1)
+            let expectedLines = expectedRenderedLineCount text width
+            let height = expectedLines + 2
+
+            let console, terminal = ConsoleHarness.make' (fun () -> width) (fun () -> height)
+
+            let world = MockWorld.make ()
+
+            let worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
+                let content = Vdom.textContent (text, wrap = true)
+                let footer = Vdom.textContent "F"
+                Vdom.panelSplitAuto (SplitDirection.Horizontal, content, footer)
+
+            let config = TestConfig.passthrough<unit> vdom
+
+            use ctx = IncrTestContext.make console config None
+
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
+
+            let output = ConsoleHarness.toString terminal
+            // ConsoleHarness.toString starts with a leading newline, so skip it.
+            let outputLines = output.TrimStart('\n').TrimEnd('\n').Split '\n'
+
+            // The footer "F" should appear at exactly row `expectedLines`
+            // (0-indexed), meaning the text got exactly `expectedLines` rows.
+            if expectedLines < height then
+                let footerRow = outputLines.[expectedLines]
+                let footerChar = footerRow.TrimEnd('|').TrimEnd ()
+
+                footerChar |> shouldEqual "F"
+
+        Check.One (propConfig, prop)
+
+    [<Test>]
+    let ``wrap measurement matches rendering for text containing newlines`` () =
+        // Same property but with text containing embedded newlines.
+        let prop (segments : NonNull<string> list) (PositiveInt widthRaw) =
+            let segments =
+                segments
+                |> List.map (fun s -> s.Get |> String.filter (fun c -> c >= ' ' && c <= '~'))
+
+            let text = String.concat "\n" segments
+            let width = max 1 (widthRaw % 80 + 1)
+            let expectedLines = expectedRenderedLineCount text width
+            let height = expectedLines + 2
+
+            let console, terminal = ConsoleHarness.make' (fun () -> width) (fun () -> height)
+
+            let world = MockWorld.make ()
+
+            let worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
+                let content = Vdom.textContent (text, wrap = true)
+                let footer = Vdom.textContent "F"
+                Vdom.panelSplitAuto (SplitDirection.Horizontal, content, footer)
+
+            let config = TestConfig.passthrough<unit> vdom
+
+            use ctx = IncrTestContext.make console config None
+
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
+
+            let output = ConsoleHarness.toString terminal
+            let outputLines = output.TrimStart('\n').TrimEnd('\n').Split '\n'
+
+            if expectedLines < height then
+                let footerRow = outputLines.[expectedLines]
+                let footerChar = footerRow.TrimEnd('|').TrimEnd ()
+
+                footerChar |> shouldEqual "F"
+
+        Check.One (propConfig, prop)

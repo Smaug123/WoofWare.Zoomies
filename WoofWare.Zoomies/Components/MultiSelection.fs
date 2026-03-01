@@ -40,7 +40,7 @@ type MultiSelection =
     /// Cursor highlight only shows when the list has focus.
     ///
     /// The component posts onViewportRendered during render with the viewport height.
-    /// Handle this event in ProcessWorld to call state.EnsureVisible(viewportHeight)
+    /// Handle this event in HandlePostLayout to call state.EnsureVisible(viewportHeight)
     /// and keep the cursor visible.
     static member make<'postLayoutEvent>
         (

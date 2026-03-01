@@ -90,7 +90,7 @@ let render (state: State) (renderState: RenderState) =
 
     let checkbox1 =
         Vdom.checkbox
-            // `state.Focus` got updated in the WorldProcessor loop:
+            // `state.Focus` got updated in the event handling loop:
             // the user identified a Tab key coming in, and used it
             // to update the value of their user-controlled Focus field.
             (state.Focus = '1')

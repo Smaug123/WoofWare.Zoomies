@@ -250,7 +250,7 @@ let render (bounds : Rectangle) =
         // continue as before
 ```
 
-To *use* this information, we handle the post-layout event in `WorldProcessor` by updating user state.
+To *use* this information, we handle the post-layout event in `AppConfig.HandlePostLayout` by updating user state.
 
 ```fsharp
 type MyUserState =
@@ -264,29 +264,17 @@ type MyUserState =
         VisibleRowCount : int
     }
 
-let processWorld (worldBridge : IWorldBridge<MyAppEvent>) =
-    { new WorldProcessor<MyAppEvent, MyPostLayoutEvent, MyUserState> with
-        member _.ProcessWorld (changes, prevVdomContext, state) =
-            // Handle user input events (keystrokes, etc.) here;
-            // this is where we would handle e.g. the up/down keystrokes
-            // that move focus within the list
-            ProcessWorldResult.make state
+let handlePostLayout (event : MyPostLayoutEvent) (state : MyUserState) : MyUserState =
+    match event with
+    | MyPostLayoutEvent.MultiSelectSize (_key, newIndexOfFirst, newVisibleCount) ->
+        { state with
+            IndexOfFirstVisibleRow = newIndexOfFirst
+            VisibleRowCount = newVisibleCount
+        }
 
-        member _.ProcessPostLayoutEvents (events : ReadOnlySpan<MyPostLayoutEvent>, _ctx : IVdomContext, state : MyUserState) : MyUserState =
-            let mutable indexOfFirst = state.IndexOfFirstVisibleRow
-            let mutable visibleCount = state.VisibleRowCount
-
-            for event in events do
-                match event with
-                | MyPostLayoutEvent.MultiSelectSize (key, newIndexOfFirst, newVisibleCount) ->
-                    indexOfFirst <- newIndexOfFirst
-                    visibleCount <- newVisibleCount
-
-            { state with
-                IndexOfFirstVisibleRow = indexOfFirst
-                VisibleRowCount = visibleCount
-            }
-    }
+let config =
+    AppConfig.make initialState transition view
+    |> AppConfig.withHandlePostLayout handlePostLayout
 ```
 
 Now we can update the `render` function to use the persisted viewport information:
@@ -332,7 +320,7 @@ Post-layout events solve the problem of components that need layout information 
 
 1. **Post events during render**: When your component learns its bounds, call `ctx.PostLayoutEvent(...)` to communicate this back to user state.
 
-2. **Handle events in `ProcessPostLayoutEvents`**: Update your state with the viewport information so it persists across renders.
+2. **Handle events in `HandlePostLayout`**: Update your state with the viewport information so it persists across renders.
 
 3. **Use persisted state on next render**: Your component can use the stored information to maintain stable display when the UI is hidden and re-shown.
 

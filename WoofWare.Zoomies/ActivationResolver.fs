@@ -4,7 +4,7 @@ open System
 
 /// Transforms keystrokes on focused elements into application events.
 /// Return Some to intercept the keystroke and emit the event.
-/// Return None to pass the keystroke through to ProcessWorld unchanged.
+/// Return None to pass the keystroke through to Transition unchanged.
 ///
 /// The state passed into the `ActivationResolver` is the source of truth.
 /// You should not close over external state that may change during app
@@ -62,9 +62,9 @@ module ActivationResolver =
     ///
     /// If you need tab-insertion while using framework focus, this is currently not supported
     /// without modifying the framework's focus-handling code. Workaround: use manual-focus mode
-    /// (haveFrameworkHandleFocus = false) and handle Tab in ProcessWorld.
+    /// (haveFrameworkHandleFocus = false) and handle Tab in Transition.
     ///
-    /// In manual-focus mode, all keystrokes including Tab are passed directly to ProcessWorld
+    /// In manual-focus mode, all keystrokes including Tab are passed directly to Transition
     /// without consulting resolvers.
     let textBox (key : NodeKey) (makeEvent : TextBoxAction -> 'e) : ActivationResolver<'e, 's> =
         ActivationResolver (fun k keystroke _ ->

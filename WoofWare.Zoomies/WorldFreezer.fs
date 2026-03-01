@@ -170,7 +170,7 @@ type UnrecognisedEscapeCodeBehaviour =
 type IWorldBridge<'appEvent> =
     /// Post an application event to the queue of events that forms the world.
     ///
-    /// After this method returns, it's guaranteed that `WorldProcessor.ProcessWorld` will see the event "soon" (or has
+    /// After this method returns, it's guaranteed that `AppConfig.Transition` will see the event "soon" (or has
     /// already seen it, if the render loop won the race with the `ret` instruction in `PostEvent`): the
     /// framework is allowed to break up batches of events, so you might not see it on the *next* render loop if there
     /// are other events ahead of this one in the queue, but the event is guaranteed to have been inserted into a
