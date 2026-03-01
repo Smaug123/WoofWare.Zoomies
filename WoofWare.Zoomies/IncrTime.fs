@@ -47,7 +47,9 @@ module IncrTime =
         (interval : TimeSpan)
         : int64 Node
         =
-        let intervalNs = int64 interval.TotalMilliseconds * 1_000_000L
+        // Ticks are 100ns units; multiply by 100 to get nanoseconds without floating-point truncation.
+        // Gracefully handle non-positive intervals (same pattern as spinnerFrameNodeFromTimeNode).
+        let intervalNs = if interval.Ticks <= 0L then 0L else interval.Ticks * 100L
 
         incr.Map
             (fun (timeNs : int64<timeNs>) ->

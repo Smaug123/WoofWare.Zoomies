@@ -33,7 +33,7 @@ The framework:
 - Never throws exceptions on bad user input; invalid inputs are handled gracefully
 - Aims to avoid doing work unless necessary
 
-Ultimately, the framework will incorporate something like Jane Street's Bonsai for efficient incremental updates.
+The framework uses an incremental computation engine (inspired by Jane Street's Incremental) to efficiently propagate state changes, with aggressive early cutoff to avoid unnecessary work.
 
 ## Licence
 

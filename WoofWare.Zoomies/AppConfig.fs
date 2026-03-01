@@ -9,9 +9,11 @@ type FocusHandling =
     /// Tab cycles focus forward, Shift+Tab cycles backward.
     /// These keystrokes are consumed by the framework and not passed to user code.
     | FrameworkManaged
-    /// User handles focus. Tab keystrokes are passed through as regular input.
-    /// The user is responsible for managing focus state and calling the appropriate
-    /// focus management functions.
+    /// User handles focus. Tab keystrokes are passed through as regular input
+    /// (they are not consumed by the framework for focus cycling).
+    /// The user is responsible for managing focus state entirely in their own
+    /// application state; the framework's internal focus-tracking APIs are not
+    /// exposed publicly in this mode.
     | UserManaged
 
 /// Configuration for running an app with StateMachine-based event handling.

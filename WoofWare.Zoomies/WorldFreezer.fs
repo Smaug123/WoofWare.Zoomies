@@ -521,10 +521,15 @@ type WorldFreezer<'appEvent> =
             this._Changes.Enqueue (RawWorldStateChange.ApplicationEvent evt)
 
         member this.SubscribeEvent evt toAppEvent =
+            // Increment first, then check _IsDisposing, to close the TOCTOU race with DisposeAsync.
+            // DisposeAsync waits for _ActiveSubscriptionRequests to hit 0 before disposing subscriptions,
+            // so incrementing first ensures DisposeAsync will see our in-flight subscription.
+            Interlocked.Increment this._ActiveSubscriptionRequests |> ignore<int>
+
             if this._IsDisposing.Value > 0 then
+                Interlocked.Decrement this._ActiveSubscriptionRequests |> ignore<int>
                 raise (ObjectDisposedException "WorldFreezer")
             else
-                Interlocked.Increment this._ActiveSubscriptionRequests |> ignore<int>
 
                 let handler =
                     Handler<'a> (fun _ args ->
