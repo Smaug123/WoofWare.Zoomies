@@ -497,6 +497,8 @@ type Vdom =
     static member withKey (key : NodeKey) (vdom : Vdom<'bounds>) : KeyedVdom<'bounds> =
         match vdom with
         | Vdom.Keyed (KeyedVdom (_prevKey, vdom)) -> KeyedVdom (key, vdom)
+        | Vdom.Unkeyed (UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, KeyedVdom (_prevKey, inner))) ->
+            KeyedVdom (key, UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, KeyedVdom (key, inner)))
         | Vdom.Unkeyed vdom -> KeyedVdom (key, vdom)
 
     /// Mark a keyed node as focusable, for the purposes of the automatic focus tracking system.

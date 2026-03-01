@@ -48,7 +48,7 @@ module ActivationResolver =
                 None
             elif keystroke.Key = ConsoleKey.Backspace then
                 Some onBackspace
-            elif keystroke.KeyChar <> '\000' then
+            elif keystroke.KeyChar <> '\000' && not (Char.IsControl keystroke.KeyChar) then
                 Some (onChar keystroke.KeyChar)
             else
                 None

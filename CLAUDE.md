@@ -43,9 +43,9 @@ Always format with Fantomas before committing, and run the analyzers with `./ana
 
 ### Debug Layout Logging
 
-Set the environment variable `WOOFWARE_ZOOMIES_DEBUG_TO_FILE=true` (or `=1`) to enable debug layout logging. When enabled, the framework will write detailed layout information to a temporary file with a path like `/tmp/zoomies-layout-<guid>.txt`. The file path will be printed to stderr when the application starts.
+`App.run` accepts an optional `debugWriter : StreamWriter option` parameter. When `Some writer` is provided, the framework writes detailed layout information to that writer every frame.
 
-This is useful for diagnosing layout issues by seeing how the framework is arranging components in the virtual DOM.
+The sample app (`WoofWare.Zoomies.App`) reads the environment variable `WOOFWARE_ZOOMIES_DEBUG_TO_FILE=true` (or `=1`) and, if set, creates a `StreamWriter` to a temporary file like `/tmp/zoomies-layout-<guid>.txt`, printing the path to stderr. This env var handling is app-specific, not part of the core framework.
 
 # Architecture
 
