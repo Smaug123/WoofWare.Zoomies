@@ -98,7 +98,7 @@ module TestTextBox =
                     }
                     textBoxTransition
                     (App.pureViewIncr vdom)
-                    resolver
+                |> AppConfig.withActivationResolver resolver
 
             use ctx = IncrTestContext.make console config None
 
@@ -234,7 +234,7 @@ module TestTextBox =
                     }
                     textBoxTransition
                     (App.pureViewIncr vdom)
-                    resolver
+                |> AppConfig.withActivationResolver resolver
 
             use ctx = IncrTestContext.make console config None
 
@@ -336,7 +336,7 @@ Hello!|                                 |
                     }
                     textBoxTransition
                     (App.pureViewIncr vdom)
-                    resolver
+                |> AppConfig.withActivationResolver resolver
 
             use ctx = IncrTestContext.make console config None
 
@@ -421,7 +421,7 @@ Hello!|                                 |
                     }
                     textBoxTransition
                     (App.pureViewIncr vdom)
-                    resolver
+                |> AppConfig.withActivationResolver resolver
 
             use ctx = IncrTestContext.make console config None
 
@@ -557,7 +557,7 @@ Hello!|                                 |
                     }
                     (fun state _ -> state) // No-op transition for this test
                     (App.pureViewIncr vdom)
-                    resolver
+                |> AppConfig.withActivationResolver resolver
 
             use ctx = IncrTestContext.make console config None
 
@@ -641,7 +641,7 @@ Unfocused                               |
                     }
                     textBoxTransition
                     (App.pureViewIncr vdom)
-                    resolver
+                |> AppConfig.withActivationResolver resolver
 
             use ctx = IncrTestContext.make console config None
 
@@ -691,7 +691,7 @@ Unfocused                               |
                     }
                     textBoxTransition
                     (App.pureViewIncr vdom)
-                    resolver
+                |> AppConfig.withActivationResolver resolver
 
             use ctx = IncrTestContext.make console config None
 
@@ -742,7 +742,7 @@ Unfocused                               |
                     }
                     textBoxTransition
                     (App.pureViewIncr vdom)
-                    resolver
+                |> AppConfig.withActivationResolver resolver
 
             use ctx = IncrTestContext.make console config None
 
@@ -797,7 +797,7 @@ Unfocused                               |
                     }
                     textBoxTransition
                     (App.pureViewIncr vdom)
-                    resolver
+                |> AppConfig.withActivationResolver resolver
 
             use ctx = IncrTestContext.make console config None
 
@@ -852,7 +852,7 @@ Unfocused                               |
                     }
                     textBoxTransition
                     (App.pureViewIncr vdom)
-                    resolver
+                |> AppConfig.withActivationResolver resolver
 
             use ctx = IncrTestContext.make console config None
 
@@ -907,7 +907,7 @@ Unfocused                               |
                     }
                     textBoxTransition
                     (App.pureViewIncr vdom)
-                    resolver
+                |> AppConfig.withActivationResolver resolver
 
             use ctx = IncrTestContext.make console config None
 
@@ -953,7 +953,7 @@ Unfocused                               |
                     }
                     textBoxTransition
                     (App.pureViewIncr vdom)
-                    resolver
+                |> AppConfig.withActivationResolver resolver
 
             use ctx = IncrTestContext.make console config None
 
@@ -999,7 +999,7 @@ Unfocused                               |
                     }
                     textBoxTransition
                     (App.pureViewIncr vdom)
-                    resolver
+                |> AppConfig.withActivationResolver resolver
 
             use ctx = IncrTestContext.make console config None
 

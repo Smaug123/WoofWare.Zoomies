@@ -88,7 +88,8 @@ module TestFocusCycle =
         )
 
     let makeConfig initial =
-        AppConfig.simple initial transition (App.pureViewIncr vdom) activationResolver
+        AppConfig.simple initial transition (App.pureViewIncr vdom)
+        |> AppConfig.withActivationResolver activationResolver
 
     [<Test>]
     let ``example 1`` () =

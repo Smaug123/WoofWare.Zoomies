@@ -562,8 +562,8 @@ module Table =
             heights
 
     /// Creates a table with specified cells and sizing.
-    /// Gracefully handles ragged rows (pads with Vdom.empty) and spec mismatches (defaults to Auto for missing or
-    /// invalid specs).
+    /// Gracefully handles ragged rows (pads with Vdom.empty) and spec mismatches (defaults to Content for missing
+    /// specs, and clamps invalid values to sensible minimums).
     /// Accepts both keyed and unkeyed cells and preserves them as-is.
     /// If you want stable focus tracking across table re-renders, provide keyed cells with meaningful keys.
     ///

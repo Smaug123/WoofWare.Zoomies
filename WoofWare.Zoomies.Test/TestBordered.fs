@@ -119,7 +119,7 @@ module TestBordered =
                 not state
 
             let config =
-                AppConfig.simple false transition (App.pureView vdom) ActivationResolver.none
+                AppConfig.simple false transition (App.pureView vdom)
                 |> AppConfig.withHandleInput handleAnyKeystroke
 
             use ctx = IncrTestContext.make console config None
@@ -189,7 +189,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
                 not state
 
             let config =
-                AppConfig.simple true transition (App.pureView vdom) ActivationResolver.none
+                AppConfig.simple true transition (App.pureView vdom)
                 |> AppConfig.withHandleInput handleAnyKeystroke
 
             use ctx = IncrTestContext.make console config None
@@ -263,7 +263,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|
                 not state
 
             let config =
-                AppConfig.simple true transition (App.pureView vdom) ActivationResolver.none
+                AppConfig.simple true transition (App.pureView vdom)
                 |> AppConfig.withHandleInput handleAnyKeystroke
 
             use ctx = IncrTestContext.make console config None

@@ -112,7 +112,8 @@ module TestRender =
         )
 
     let makeConfig () : AppConfig<State, RenderTestEvent, unit> =
-        AppConfig.simple (State.Empty ()) transition (App.pureViewIncr vdom) activationResolver
+        AppConfig.simple (State.Empty ()) transition (App.pureViewIncr vdom)
+        |> AppConfig.withActivationResolver activationResolver
 
     [<Test>]
     let ``there is no rerender if nothing changes`` () =

@@ -10,11 +10,11 @@ type FocusHandling =
     /// Tab cycles focus forward, Shift+Tab cycles backward.
     /// These keystrokes are consumed by the framework and not passed to user code.
     | FrameworkManaged
-    /// User handles focus. Tab keystrokes are passed through as regular input
-    /// (they are not consumed by the framework for focus cycling).
-    /// The user is responsible for managing focus state entirely in their own
-    /// application state; the framework's internal focus-tracking APIs are not
-    /// exposed publicly in this mode.
+    /// Framework does not intercept Tab/Shift+Tab for focus cycling;
+    /// they are passed through as regular keystrokes to ActivationResolver and HandleInput.
+    /// Focus tracking still operates: focusable nodes are registered, isInitiallyFocused
+    /// assigns focus on the first render, and stale focus is cleared when a node disappears.
+    /// The ActivationResolver still fires for the currently-focused element.
     | UserManaged
 
 /// Configuration for running an app with StateMachine-based event handling.
@@ -50,11 +50,11 @@ type AppConfig<'state, 'appEvent, 'postLayoutEvent> =
 module AppConfig =
 
     /// Create a minimal config with framework-managed focus and no post-layout handling.
+    /// To add an activation resolver, pipe the result through `AppConfig.withActivationResolver`.
     let simple<'state, 'appEvent>
         (initial : 'state)
         (transition : 'state -> 'appEvent -> 'state)
         (view : VdomContext<unit> -> 'state Node -> Vdom<DesiredBounds> Node)
-        (activationResolver : ActivationResolver<'appEvent, 'state>)
         : AppConfig<'state, 'appEvent, unit>
         =
         {
@@ -70,7 +70,7 @@ module AppConfig =
                 | _ -> None
             HandlePostLayout = fun _ state -> state
             FocusHandling = FocusHandling.FrameworkManaged
-            ActivationResolver = activationResolver
+            ActivationResolver = ActivationResolver.none
             OnSetup = fun _ -> ()
         }
 

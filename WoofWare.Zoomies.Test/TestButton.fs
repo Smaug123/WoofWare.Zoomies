@@ -83,7 +83,7 @@ module TestButton =
                     }
                     transition
                     (App.pureViewIncr vdom)
-                    resolver
+                |> AppConfig.withActivationResolver resolver
 
             use ctx = IncrTestContext.make console config None
 
@@ -234,7 +234,7 @@ Hello, World!                           |
                     }
                     transition
                     (App.pureViewIncr vdom)
-                    resolver
+                |> AppConfig.withActivationResolver resolver
 
             use ctx = IncrTestContext.make console config None
 
@@ -386,7 +386,9 @@ Last clicked: Button 3                            |
                 match event with
                 | FlipText -> not state
 
-            let config = AppConfig.simple true transition (App.pureViewIncr vdom) resolver
+            let config =
+                AppConfig.simple true transition (App.pureViewIncr vdom)
+                |> AppConfig.withActivationResolver resolver
 
             use ctx = IncrTestContext.make console config None
 

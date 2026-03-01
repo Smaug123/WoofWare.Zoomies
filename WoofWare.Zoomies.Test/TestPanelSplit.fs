@@ -115,7 +115,7 @@ module TestPanelSplit =
             let transition state _ = not state
 
             let config =
-                AppConfig.simple false transition (App.pureView vdom) ActivationResolver.none
+                AppConfig.simple false transition (App.pureView vdom)
                 |> AppConfig.withHandleInput (fun change ->
                     match change with
                     | WorldStateChange.Keystroke _ -> Some Toggle
@@ -597,7 +597,7 @@ B|
             let transition state _ = not state
 
             let config =
-                AppConfig.simple true transition (App.pureView vdom) ActivationResolver.none
+                AppConfig.simple true transition (App.pureView vdom)
                 |> AppConfig.withHandleInput (fun change ->
                     match change with
                     | WorldStateChange.Keystroke _ -> Some Toggle
@@ -686,7 +686,7 @@ AAA                 right                                                       
             let transition state _ = not state
 
             let config =
-                AppConfig.simple true transition (App.pureView vdom) ActivationResolver.none
+                AppConfig.simple true transition (App.pureView vdom)
                 |> AppConfig.withHandleInput (fun change ->
                     match change with
                     | WorldStateChange.Keystroke _ -> Some Toggle
@@ -747,7 +747,7 @@ AAA                 right                                                       
             let transition state _ = not state
 
             let config =
-                AppConfig.simple true transition (App.pureView vdom) ActivationResolver.none
+                AppConfig.simple true transition (App.pureView vdom)
                 |> AppConfig.withHandleInput (fun change ->
                     match change with
                     | WorldStateChange.Keystroke _ -> Some Toggle
@@ -1183,7 +1183,7 @@ Bottom              |
             let transition state _ = not state
 
             let config =
-                AppConfig.simple true transition (App.pureView vdom) ActivationResolver.none
+                AppConfig.simple true transition (App.pureView vdom)
                 |> AppConfig.withHandleInput (fun change ->
                     match change with
                     | WorldStateChange.Keystroke _ -> Some Toggle

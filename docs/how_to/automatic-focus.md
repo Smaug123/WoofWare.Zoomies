@@ -18,8 +18,9 @@ When building your `AppConfig`, set the `FocusHandling` field:
 ```fsharp
 let config =
     AppConfig.make initialState transition view
+    // FrameworkManaged is the default, so this line is optional:
     |> AppConfig.withFocusHandling FocusHandling.FrameworkManaged
 ```
 
-`FocusHandling.FrameworkManaged` tells the framework to intercept Tab/Shift+Tab keystrokes and cycle focus among `withFocusTracking` nodes.
-`FocusHandling.UserManaged` passes all keystrokes through to your `HandleInput`/`ActivationResolver` without any framework focus handling.
+`FocusHandling.FrameworkManaged` (the default) tells the framework to intercept Tab/Shift+Tab keystrokes and cycle focus among `withFocusTracking` nodes.
+`FocusHandling.UserManaged` stops the framework from intercepting Tab/Shift+Tab for focus cycling; they are passed through as regular keystrokes to your `ActivationResolver` and `HandleInput`. Focus tracking still operates in this mode: focusable nodes are registered, `isInitiallyFocused` assigns focus on the first render, and the `ActivationResolver` still fires for the currently-focused element.

@@ -682,25 +682,20 @@ module internal TreeReconciliation =
         (debugWriter : IO.StreamWriter option)
         : RenderedNode
         =
-        // Early cutoff: if previous render exists with same bounds, try reusing it
         // Note: We don't check VDOM reference equality at the top level because the VDOM
         // is often created fresh each frame. Instead, we run the layout and rely on
         // nested early cutoffs within the tree to preserve unchanged subtrees.
-        let earlyCutoff = None
 
-        match earlyCutoff with
-        | Some result -> result
-        | None ->
-            // Run the two-pass layout
-            let arranged = Layout.layout vdom bounds
+        // Run the two-pass layout
+        let arranged = Layout.layout vdom bounds
 
-            // Debug: dump layout to file if enabled
-            match debugWriter with
-            | Some writer ->
-                fprintfn writer "=== Frame %s ===" (DateTime.Now.ToString "HH:mm:ss.fff")
-                dump writer 0 arranged
-                fprintfn writer ""
-            | None -> ()
+        // Debug: dump layout to file if enabled
+        match debugWriter with
+        | Some writer ->
+            fprintfn writer "=== Frame %s ===" (DateTime.Now.ToString "HH:mm:ss.fff")
+            dump writer 0 arranged
+            fprintfn writer ""
+        | None -> ()
 
-            // Convert to RenderedNode
-            arrangedToRendered keyToNode focusableKeys firstToFocusKey initiallyFocusedKey previousRender arranged vdom
+        // Convert to RenderedNode
+        arrangedToRendered keyToNode focusableKeys firstToFocusKey initiallyFocusedKey previousRender arranged vdom

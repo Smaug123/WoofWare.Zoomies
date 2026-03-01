@@ -70,7 +70,8 @@ module TestCollapsible =
                 )
 
             let config =
-                AppConfig.simple initial transition (App.pureViewIncr vdom) activationResolver
+                AppConfig.simple initial transition (App.pureViewIncr vdom)
+                |> AppConfig.withActivationResolver activationResolver
 
             use ctx = IncrTestContext.make console config None
 
@@ -214,7 +215,8 @@ This stuff was hidden                                       |
                 )
 
             let config =
-                AppConfig.simple initial transition (App.pureViewIncr vdom) activationResolver
+                AppConfig.simple initial transition (App.pureViewIncr vdom)
+                |> AppConfig.withActivationResolver activationResolver
 
             use ctx = IncrTestContext.make console config None
 
@@ -318,7 +320,8 @@ Line 2 of content                                           |
                 )
 
             let config =
-                AppConfig.simple initial transition (App.pureViewIncr vdom) activationResolver
+                AppConfig.simple initial transition (App.pureViewIncr vdom)
+                |> AppConfig.withActivationResolver activationResolver
 
             use ctx = IncrTestContext.make console config None
 

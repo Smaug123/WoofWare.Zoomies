@@ -368,7 +368,6 @@ module TestMultiSelection =
                     }
                     (fun s _ -> s)
                     (App.pureViewIncr vdom)
-                    ActivationResolver.none
 
             use ctx = IncrTestContext.make console config None
 

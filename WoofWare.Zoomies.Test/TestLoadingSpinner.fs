@@ -208,8 +208,7 @@ module TestLoadingSpinner =
                     )
                     spinnerNode
 
-            let config : AppConfig<unit, unit, unit> =
-                AppConfig.simple () (fun s _ -> s) vdom ActivationResolver.none
+            let config : AppConfig<unit, unit, unit> = AppConfig.simple () (fun s _ -> s) vdom
 
             use ctx = IncrTestContext.make console config None
 

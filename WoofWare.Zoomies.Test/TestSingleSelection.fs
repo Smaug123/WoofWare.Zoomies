@@ -357,7 +357,7 @@ module TestSingleSelection =
             let transition state (_event : unit) = state
 
             let config =
-                AppConfig.simple initialState transition (App.pureViewIncr vdom) ActivationResolver.none
+                AppConfig.simple initialState transition (App.pureViewIncr vdom)
                 |> AppConfig.withFocusHandling FocusHandling.FrameworkManaged
 
             use ctx = IncrTestContext.make console config None

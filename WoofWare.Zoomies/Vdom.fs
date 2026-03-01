@@ -514,7 +514,8 @@ type Vdom =
     /// rather than starting with no elements focused. At most one node should have `isInitiallyFocused = true`
     /// in a given VDOM tree.
     ///
-    /// This annotation does nothing if WoofWare.Zoomies is running with automatic focus tracking turned off.
+    /// In UserManaged focus mode, isFirstToFocus has no effect (Tab cycling is disabled), but
+    /// isInitiallyFocused still assigns focus on the first render.
     static member withFocusTracking
         (vdom : KeyedVdom<'bounds>, ?isFirstToFocus : bool, ?isInitiallyFocused : bool)
         : Vdom<'bounds>
