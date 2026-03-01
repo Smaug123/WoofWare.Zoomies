@@ -12,17 +12,12 @@ type StateMachine<'state, 'event> =
         StateNode : 'state Node
 
         /// Inject an event to be processed on the next stabilization.
-        /// The event is queued and will be folded into state when Stabilize is called.
         Inject : 'event -> unit
 
         /// Read the current state synchronously.
-        /// This returns the state as of the last stabilization (or initial state if not yet stabilized),
-        /// plus any events that have been processed during the current stabilization.
         CurrentState : unit -> 'state
 
         /// Set the state directly, bypassing the event queue.
-        /// This is useful for post-layout events or other cases where immediate state update is needed.
-        /// The node will be marked stale and recompute on next stabilization.
         SetState : 'state -> unit
     }
 
@@ -30,12 +25,7 @@ type StateMachine<'state, 'event> =
 module StateMachine =
 
     /// Create a new state machine with the given initial state and transition function.
-    ///
-    /// The transition function is called for each event in the order they were injected,
-    /// folding them into the state: newState = fold transition initial events.
-    ///
-    /// Events are batched between stabilizations - multiple Inject calls before a Stabilize
-    /// will all be processed in a single recomputation.
+    /// Events are folded in injection order on each stabilization.
     let create<'state, 'event>
         (state : State)
         (initial : 'state)

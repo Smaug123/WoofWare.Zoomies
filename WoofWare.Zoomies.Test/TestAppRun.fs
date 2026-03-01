@@ -62,23 +62,15 @@ module TestAppRun =
             let appHandle =
                 App.run cts.Token console (fun () -> TimeConversion.unixEpoch) ctrlCHandler worldFreezer config None 0
 
-            // Wait for the app to be ready (initial setup and first render complete)
             do! appHandle.Ready
-
-            // Cancel to trigger quit
             cts.Cancel ()
-
-            // Wait for the app to finish
             do! appHandle.Finished
 
-            // Check that we got the expected operations
             let opsList = ops.ToArray () |> Array.toList
 
-            // Helper to find first index of a terminal op
             let findTerminalOp op =
                 opsList |> List.tryFindIndex (fun consoleOp -> consoleOp = TerminalOp op)
 
-            // Helper to find last index of a terminal op
             let findLastTerminalOp op =
                 opsList
                 |> List.mapi (fun i consoleOp -> i, consoleOp)
@@ -86,55 +78,39 @@ module TestAppRun =
                 |> List.tryLast
                 |> Option.map fst
 
-            // RegisterBracketedPaste should appear early (after EnterAlternateScreen, RegisterMouseMode)
             let registerIndex = findTerminalOp TerminalOp.RegisterBracketedPaste
             let unregisterIndex = findTerminalOp TerminalOp.UnregisterBracketedPaste
 
             registerIndex.IsSome |> shouldEqual true
             unregisterIndex.IsSome |> shouldEqual true
-
-            // Unregister should come after register
             unregisterIndex.Value > registerIndex.Value |> shouldEqual true
 
-            // Verify order: Register should come after EnterAlternateScreen
             let enterAltScreenIndex = findTerminalOp TerminalOp.EnterAlternateScreen
-
             enterAltScreenIndex.IsSome |> shouldEqual true
             registerIndex.Value > enterAltScreenIndex.Value |> shouldEqual true
 
-            // Verify order: Register should come after RegisterMouseMode
             let registerMouseModeIndex = findTerminalOp TerminalOp.RegisterMouseMode
-
             registerMouseModeIndex.IsSome |> shouldEqual true
             registerIndex.Value > registerMouseModeIndex.Value |> shouldEqual true
 
-            // Verify order: Unregister should come before ExitAlternateScreen
             let exitAltScreenIndex = findTerminalOp TerminalOp.ExitAlternateScreen
-
             exitAltScreenIndex.IsSome |> shouldEqual true
             unregisterIndex.Value < exitAltScreenIndex.Value |> shouldEqual true
 
-            // Verify SetCursorVisibility true is called during cleanup.
-            // Use findLastTerminalOp because SetCursorVisibility true may also be called during rendering
-            // (e.g., when showing a cursor in a text box). The cleanup SetCursorVisibility true is the last one.
+            // Use findLastTerminalOp: SetCursorVisibility true may also be called during rendering.
             let setCursorVisibleIndex = findLastTerminalOp (TerminalOp.SetCursorVisibility true)
             setCursorVisibleIndex.IsSome |> shouldEqual true
-            // The cleanup SetCursorVisibility true must come after startup ops (proving it's in teardown, not setup)
             setCursorVisibleIndex.Value > registerIndex.Value |> shouldEqual true
 
-            // Verify UnregisterMouseMode is called during cleanup
             let unregisterMouseModeIndex = findTerminalOp TerminalOp.UnregisterMouseMode
             unregisterMouseModeIndex.IsSome |> shouldEqual true
 
-            // Verify cleanup order: SetCursorVisibility true comes before UnregisterBracketedPaste
+            // Cleanup order: SetCursorVisible < UnregisterBracketedPaste < UnregisterMouseMode < ExitAlternateScreen
             setCursorVisibleIndex.Value < unregisterIndex.Value |> shouldEqual true
-            // UnregisterBracketedPaste comes before UnregisterMouseMode
             unregisterIndex.Value < unregisterMouseModeIndex.Value |> shouldEqual true
-            // UnregisterMouseMode comes before ExitAlternateScreen
             unregisterMouseModeIndex.Value < exitAltScreenIndex.Value |> shouldEqual true
 
-            // Verify that a flush is called after all shutdown operations
-            // This ensures buffered cleanup ops are written to the terminal
+            // Final flush comes after all cleanup ops and is the very last action
             let lastFlushIndex =
                 opsList
                 |> List.mapi (fun i op -> i, op)
@@ -143,10 +119,7 @@ module TestAppRun =
                 |> Option.map fst
 
             lastFlushIndex.IsSome |> shouldEqual true
-            // The final flush should come after ExitAlternateScreen (the last cleanup operation)
             lastFlushIndex.Value > exitAltScreenIndex.Value |> shouldEqual true
-
-            // Verify the final flush is the very last console action
             lastFlushIndex.Value |> shouldEqual (opsList.Length - 1)
         }
 
@@ -155,100 +128,68 @@ module TestAppRun =
     // ============================================================
 
     [<Test>]
-    let ``App.run re-renders when time-based vdom changes`` () =
-        task {
-            // Track how many times vdom function is called
-            let vdomCallCount = ref 0
-            let capturedFrames = ConcurrentQueue<int> ()
+    let ``pumpOnce re-renders when time-based vdom changes`` () =
+        let vdomCallCount = ref 0
+        let capturedFrames = ResizeArray<int> ()
 
-            // Mock time source - start at a fixed time
-            let mutable mockTime = MockTime.defaultStartTime
-            let getUtcNow () = mockTime
+        let console : IConsole =
+            {
+                WindowWidth = fun () -> 80
+                WindowHeight = fun () -> 10
+                ColorMode = ColorMode.Color
+                Execute = fun _ -> ()
+                Flush = fun () -> ()
+            }
 
-            let console : IConsole =
-                {
-                    WindowWidth = fun () -> 80
-                    WindowHeight = fun () -> 10
-                    ColorMode = ColorMode.Color
-                    Execute = fun _ -> ()
-                    Flush = fun () -> ()
-                }
+        let world = MockWorld.make ()
 
-            let ctrlCHandler, _, _ = FakeCtrlCHandler.make ()
-            let world = MockWorld.make ()
+        let listener =
+            WorldFreezer.listen'
+                UnrecognisedEscapeCodeBehaviour.Throw
+                StopwatchMock.Empty
+                world.KeyAvailable
+                world.ReadKey
 
-            let worldFreezer () =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+        let incrVdom (ctx : VdomContext<unit>) (_stateNode : unit Node) : Vdom<DesiredBounds> Node =
+            let incr = VdomContext.incr ctx
+            let timeNode = VdomContext.clockTimeNode ctx
+            // 10 fps = 100ms per frame
+            let frameNode =
+                IncrTime.spinnerFrameNodeFromTimeNode incr timeNode LoadingSpinner.FrameCount 10.0
 
-            // Create an incremental vdom that depends on time (spinner)
-            let incrVdom (ctx : VdomContext<unit>) (_stateNode : unit Node) : Vdom<DesiredBounds> Node =
-                let incr = VdomContext.incr ctx
-                let timeNode = VdomContext.clockTimeNode ctx
-                // 10 fps = 100ms per frame
-                let frameNode =
-                    IncrTime.spinnerFrameNodeFromTimeNode incr timeNode LoadingSpinner.FrameCount 10.0
+            incr.Map
+                (fun frame ->
+                    vdomCallCount.Value <- vdomCallCount.Value + 1
+                    capturedFrames.Add frame
+                    LoadingSpinner.make frame
+                )
+                frameNode
 
-                incr.Map
-                    (fun frame ->
-                        vdomCallCount.Value <- vdomCallCount.Value + 1
-                        capturedFrames.Enqueue frame
-                        LoadingSpinner.make frame
-                    )
-                    frameNode
+        let config : AppConfig<unit, unit, unit> =
+            {
+                Initial = ()
+                Transition = fun s _ -> s
+                View = incrVdom
+                HandleInput = fun _ -> None
+                HandlePostLayout = fun _ s -> s
+                FocusHandling = FocusHandling.FrameworkManaged
+                ActivationResolver = ActivationResolver.none
+                OnSetup = fun _ -> ()
+            }
 
-            let config : AppConfig<unit, unit, unit> =
-                {
-                    Initial = ()
-                    Transition = fun s _ -> s
-                    View = incrVdom
-                    HandleInput = fun _ -> None
-                    HandlePostLayout = fun _ s -> s
-                    FocusHandling = FocusHandling.FrameworkManaged
-                    ActivationResolver = ActivationResolver.none
-                    OnSetup = fun _ -> ()
-                }
+        use ctx = IncrTestContext.make console config None
 
-            use cts = new CancellationTokenSource ()
+        // Initial pump renders the first frame
+        IncrTestContext.pumpOnce listener config ctx |> ignore
+        vdomCallCount.Value |> shouldEqual 1
 
-            let appHandle =
-                App.run cts.Token console getUtcNow ctrlCHandler worldFreezer config None 0
+        // Advance past one 100ms frame boundary and pump again
+        IncrTestContext.advanceTime (TimeSpan.FromMilliseconds 150.0) ctx
+        IncrTestContext.pumpOnce listener config ctx |> ignore
 
-            // Wait for the app to be ready
-            do! appHandle.Ready
-
-            // At this point, the vdom should have been called at least once
-            vdomCallCount.Value >= 1 |> shouldEqual true
-
-            // Record initial frame count
-            let initialCallCount = vdomCallCount.Value
-
-            // Advance mock time by 150ms (more than one 100ms frame)
-            mockTime <- mockTime + TimeSpan.FromMilliseconds 150.0
-
-            // Poll until vdom is called again (generous timeout, completes almost instantly)
-            let mutable attempts = 0
-
-            while vdomCallCount.Value <= initialCallCount && attempts < 500 do
-                do! System.Threading.Tasks.Task.Delay 10
-                attempts <- attempts + 1
-
-            // The vdom should have been called again due to time advancement
-            // (The main loop advances clock and marks dirty when vdom changes)
-            vdomCallCount.Value > initialCallCount |> shouldEqual true
-
-            // Verify we got different frames
-            let frames = capturedFrames.ToArray ()
-            frames.Length >= 2 |> shouldEqual true
-
-            // Cancel to stop the app
-            cts.Cancel ()
-
-            do! appHandle.Finished
-        }
+        vdomCallCount.Value |> shouldEqual 2
+        capturedFrames.Count |> shouldEqual 2
+        capturedFrames.[0] <> capturedFrames.[1] |> shouldEqual true
 
     // ============================================================
     // App.pureView tests
@@ -269,7 +210,6 @@ module TestAppRun =
             let incr = incrState.Incr
             let ctx = VdomContext.make<unit> incrState
 
-            // Create a StateMachine for state changes
             let stateMachine = StateMachine.create incr.State "initial" (fun _state ev -> ev)
 
             let mutable callCount = 0
@@ -283,11 +223,9 @@ module TestAppRun =
             let observer = incr.Observe vdomNode
             incr.Stabilize ()
 
-            // Initial call
             let _ = Observer.value observer
             callCount |> shouldEqual 1
 
-            // Change state via StateMachine
             stateMachine.Inject "changed"
             incr.Stabilize ()
 
@@ -310,7 +248,6 @@ module TestAppRun =
             let incr = incrState.Incr
             let ctx = VdomContext.make<unit> incrState
 
-            // Create a StateMachine with unit state
             let stateMachine = StateMachine.create incr.State () (fun s (_ : unit) -> s)
 
             let mutable callCount = 0
@@ -324,11 +261,9 @@ module TestAppRun =
             let observer = incr.Observe vdomNode
             incr.Stabilize ()
 
-            // Initial call
             let _ = Observer.value observer
             callCount |> shouldEqual 1
 
-            // Change bounds
             let bounds2 =
                 {
                     TopLeftX = 0
@@ -360,7 +295,6 @@ module TestAppRun =
             let incr = incrState.Incr
             let ctx = VdomContext.make<unit> incrState
 
-            // Create a StateMachine with unit state
             let stateMachine = StateMachine.create incr.State () (fun s (_ : unit) -> s)
 
             let mutable callCount = 0
@@ -381,11 +315,9 @@ module TestAppRun =
             let observer = incr.Observe vdomNode
             incr.Stabilize ()
 
-            // Initial call
             let _ = Observer.value observer
             callCount |> shouldEqual 1
 
-            // Change focus
             let key2 = NodeKey.make "key2"
             IncrementalState.setFocusedKey (Some key2) incrState
             incr.Stabilize ()
@@ -409,7 +341,6 @@ module TestAppRun =
             let incr = incrState.Incr
             let ctx = VdomContext.make<unit> incrState
 
-            // Create a StateMachine with string state
             let stateMachine = StateMachine.create incr.State "state" (fun _s ev -> ev)
 
             let mutable callCount = 0
@@ -423,14 +354,10 @@ module TestAppRun =
             let observer = incr.Observe vdomNode
             incr.Stabilize ()
 
-            // Initial call
             let _ = Observer.value observer
             callCount |> shouldEqual 1
 
-            // Stabilize again without changing anything
             incr.Stabilize ()
-
-            // Should not have been called again
             let _ = Observer.value observer
             callCount |> shouldEqual 1
         }
@@ -440,91 +367,62 @@ module TestAppRun =
     // ============================================================
 
     [<Test>]
-    let ``App.run re-renders after terminal resize even when vdom does not depend on bounds`` () =
-        task {
-            // Track flush calls to detect re-renders
-            let flushCount = ref 0
-            let mutable capturedListener : WorldFreezer<unit> option = None
+    let ``pumpOnce re-renders after terminal resize even when vdom does not depend on bounds`` () =
+        let flushCount = ref 0
 
-            // Mutable console dimensions
-            let mutable consoleWidth = 80
-            let mutable consoleHeight = 10
+        let mutable consoleWidth = 80
+        let mutable consoleHeight = 10
 
-            let console : IConsole =
-                {
-                    WindowWidth = fun () -> consoleWidth
-                    WindowHeight = fun () -> consoleHeight
-                    ColorMode = ColorMode.Color
-                    Execute = fun _ -> ()
-                    Flush = fun () -> flushCount.Value <- flushCount.Value + 1
-                }
+        let console : IConsole =
+            {
+                WindowWidth = fun () -> consoleWidth
+                WindowHeight = fun () -> consoleHeight
+                ColorMode = ColorMode.Color
+                Execute = fun _ -> ()
+                Flush = fun () -> flushCount.Value <- flushCount.Value + 1
+            }
 
-            let ctrlCHandler, _, _ = FakeCtrlCHandler.make ()
-            let world = MockWorld.make ()
+        let world = MockWorld.make ()
 
-            let worldFreezer () =
-                let listener =
-                    WorldFreezer.listen'
-                        UnrecognisedEscapeCodeBehaviour.Throw
-                        StopwatchMock.Empty
-                        world.KeyAvailable
-                        world.ReadKey
+        let listener =
+            WorldFreezer.listen'
+                UnrecognisedEscapeCodeBehaviour.Throw
+                StopwatchMock.Empty
+                world.KeyAvailable
+                world.ReadKey
 
-                capturedListener <- Some listener
-                listener
+        // Static vdom: same reference on every stabilization
+        let staticVdom = Vdom.textContent "Hello"
 
-            // Create a vdom that does NOT depend on bounds, focus, or time.
-            // This is a static vdom that will have the same reference on every stabilization.
-            let staticVdom = Vdom.textContent "Hello"
+        let incrVdom (ctx : VdomContext<unit>) (_stateNode : unit Node) : Vdom<DesiredBounds> Node =
+            let incr = VdomContext.incr ctx
+            incr.Return staticVdom
 
-            let incrVdom (ctx : VdomContext<unit>) (_stateNode : unit Node) : Vdom<DesiredBounds> Node =
-                let incr = VdomContext.incr ctx
-                incr.Return staticVdom
+        let config : AppConfig<unit, unit, unit> =
+            {
+                Initial = ()
+                Transition = fun s _ -> s
+                View = incrVdom
+                HandleInput = fun _ -> None
+                HandlePostLayout = fun _ s -> s
+                FocusHandling = FocusHandling.FrameworkManaged
+                ActivationResolver = ActivationResolver.none
+                OnSetup = fun _ -> ()
+            }
 
-            let config : AppConfig<unit, unit, unit> =
-                {
-                    Initial = ()
-                    Transition = fun s _ -> s
-                    View = incrVdom
-                    HandleInput = fun _ -> None
-                    HandlePostLayout = fun _ s -> s
-                    FocusHandling = FocusHandling.FrameworkManaged
-                    ActivationResolver = ActivationResolver.none
-                    OnSetup = fun _ -> ()
-                }
+        use ctx = IncrTestContext.make console config None
 
-            use cts = new CancellationTokenSource ()
+        // Initial pump
+        IncrTestContext.pumpOnce listener config ctx |> ignore
+        let initialFlushCount = flushCount.Value
+        initialFlushCount >= 1 |> shouldEqual true
 
-            let appHandle =
-                App.run cts.Token console (fun () -> TimeConversion.unixEpoch) ctrlCHandler worldFreezer config None 0
+        // Resize and notify
+        consoleWidth <- 120
+        consoleHeight <- 40
+        listener.NotifyTerminalResize ()
 
-            // Wait for the app to be ready (initial setup and first render complete)
-            do! appHandle.Ready
+        // Next pump picks up the resize and re-renders
+        IncrTestContext.pumpOnce listener config ctx |> ignore
 
-            // Record flush count after initial render
-            let initialFlushCount = flushCount.Value
-            initialFlushCount >= 1 |> shouldEqual true
-
-            // Change console dimensions and notify resize
-            consoleWidth <- 120
-            consoleHeight <- 40
-
-            match capturedListener with
-            | Some l -> l.NotifyTerminalResize ()
-            | None -> failwith "Listener not set"
-
-            // Poll until flush count increases (re-render happened)
-            let mutable attempts = 0
-
-            while flushCount.Value <= initialFlushCount && attempts < 500 do
-                do! System.Threading.Tasks.Task.Delay 10
-                attempts <- attempts + 1
-
-            // Verify that a re-render happened (flush was called again)
-            flushCount.Value > initialFlushCount |> shouldEqual true
-
-            // Cancel to stop the app
-            cts.Cancel ()
-
-            do! appHandle.Finished
-        }
+        flushCount.Value > initialFlushCount |> shouldEqual true

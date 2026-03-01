@@ -4,7 +4,7 @@ open System
 open WoofWare.Incremental
 open WoofWare.Zoomies
 
-/// A test harness that wraps an IncrementalState and provides time control.
+/// Test harness wrapping IncrementalState with time control.
 type MockTimer =
     {
         /// The underlying IncrementalState.
@@ -101,8 +101,7 @@ module MockTime =
                 Height = console.WindowHeight ()
             }
 
-    /// Create a RenderState for testing from a MockTimer.
-    /// Returns both the RenderState and a function to advance time that updates the clock.
+    /// Create a RenderState for testing from a MockTimer, with a function to advance time.
     let makeRenderStateFromTimer<'postLayoutEvent>
         (console : IConsole)
         (timer : MockTimer)
@@ -117,7 +116,6 @@ module MockTime =
         renderState, advanceWithContext
 
     /// Create a RenderState for testing with a static mock time.
-    /// This is for tests that don't need to control time.
     let makeRenderStateStatic<'postLayoutEvent>
         (console : IConsole)
         (debugWriter : System.IO.StreamWriter option)
@@ -126,9 +124,7 @@ module MockTime =
         let vdomContext = makeVdomContextFromConsole<'postLayoutEvent> console
         RenderState.make console vdomContext debugWriter
 
-    /// Create a VdomContext from a MockTimer.
-    /// Returns both the context and a function to advance time.
-    /// Use this when you need to control time and test VdomContext together.
+    /// Create a VdomContext from a MockTimer, with a function to advance time.
     let makeVdomContextFromTimer<'postLayoutEvent>
         (timer : MockTimer)
         : VdomContext<'postLayoutEvent> * (TimeSpan -> DateTime)
@@ -140,7 +136,6 @@ module MockTime =
         ctx, advanceWithContext
 
 /// Test infrastructure for running incremental pump cycles.
-/// Bundles all the mutable state needed to call App.pumpOnce.
 type IncrTestContext<'state, 'appEvent, 'postLayoutEvent> =
     {
         /// The incremental state holder (clock, bounds, focus).
@@ -164,7 +159,6 @@ type IncrTestContext<'state, 'appEvent, 'postLayoutEvent> =
 [<RequireQualifiedAccess>]
 module IncrTestContext =
     /// Create test context from an AppConfig and console.
-    /// This sets up all the infrastructure needed to call App.pumpOnce.
     let make<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
         (console : IConsole)
         (config : AppConfig<'state, 'appEvent, 'postLayoutEvent>)
@@ -179,21 +173,14 @@ module IncrTestContext =
                 Height = console.WindowHeight ()
             }
 
-        // Create IncrementalState
         let incrState = IncrementalState.make initialBounds None
         let vdomContext = VdomContext.make incrState
 
-        // Create the StateMachine for event-driven state updates
         let stateMachine =
             StateMachine.create incrState.Incr.State config.Initial config.Transition
 
-        // Create the incremental Vdom Node using the StateMachine's state node
         let vdomNode = config.View vdomContext stateMachine.StateNode
-
-        // Create an observer for the Vdom so we can read it after stabilization
         let vdomObserver = incrState.Incr.Observe vdomNode
-
-        // Defer stabilization until the first pump so callers can finish wiring observers.
         let startTime = MockTime.defaultStartTime
 
         let renderState = RenderState.make console vdomContext debugWriter

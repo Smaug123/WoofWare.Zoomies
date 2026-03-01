@@ -11,10 +11,7 @@ module IncrTime =
     /// Nanoseconds per second.
     let private nsPerSecond = 1_000_000_000L
 
-    /// Create a Node that yields the current spinner frame index.
-    /// The spinner has `frameCount` frames and runs at `fps` frames per second.
-    /// The node updates when the clock advances past a frame boundary.
-    /// Uses default cutoff (polyEqual) so only propagates when frame index changes.
+    /// Create a Node yielding the current spinner frame index (0 to frameCount-1).
     let spinnerFrameNodeFromTimeNode
         (incr : IncrView)
         (timeNode : int64<timeNs> Node)
@@ -43,9 +40,7 @@ module IncrTime =
         let timeNode = incr.Clock.WatchNow clock
         spinnerFrameNodeFromTimeNode (IncrView incr) timeNode frameCount fps
 
-    /// Create a Node that yields a tick count that increments at the given interval.
-    /// This can be used to trigger periodic updates.
-    /// Uses default cutoff (polyEqual) so only propagates when tick count changes.
+    /// Create a Node that yields a tick count incrementing at the given interval.
     let periodicTickNodeFromTimeNode
         (incr : IncrView)
         (timeNode : int64<timeNs> Node)

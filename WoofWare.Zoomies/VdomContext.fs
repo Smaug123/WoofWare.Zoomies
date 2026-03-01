@@ -5,8 +5,6 @@ open System.Collections.Generic
 open WoofWare.Incremental
 
 /// VdomContext implementation backed by Incremental nodes.
-/// Terminal bounds, focused key, and time are read from incremental sources.
-/// Activation tracking and post-layout events remain mutable (they occur during render).
 type VdomContext<'postLayoutEvent> =
     internal
         {
@@ -15,7 +13,7 @@ type VdomContext<'postLayoutEvent> =
             _Clock : Clock
             _Incr : Incremental
             _IncrView : IncrView
-            /// Cached clock DateTime node from IncrementalState for time-based animations.
+            /// Cached clock DateTime node.
             _ClockDateTimeNode : DateTime Node
             mutable _IsDirty : bool
             _LastActivationTimes : Dictionary<NodeKey, DateTime>
@@ -36,8 +34,6 @@ type VdomContext<'postLayoutEvent> =
         member this.Builder = IncrementalBuilder.create this._Incr
 
         member this.WasRecentlyActivated key =
-            // Depend on both the activation generation (so we re-evaluate when activations change)
-            // and the clock (so we re-evaluate as time passes for timeout expiry).
             let activationGenNode = this._Incr.Var.Watch this._ActivationGenerationVar
 
             this._Incr.Map2
@@ -59,7 +55,6 @@ type VdomContext<'postLayoutEvent> =
 module VdomContext =
 
     /// Create a new VdomContext from an IncrementalState.
-    /// Time is read from the incremental clock node for time-based animations.
     let make<'postLayoutEvent> (incrState : IncrementalState) : VdomContext<'postLayoutEvent> =
         {
             _TerminalBoundsVar = incrState.TerminalBoundsVar
@@ -99,7 +94,6 @@ module VdomContext =
             ctx._IsDirty <- true
 
     /// Record that a node was just activated.
-    /// The `now` parameter should be the current time from `getUtcNow()` in the caller.
     let internal recordActivation<'postLayoutEvent>
         (now : DateTime)
         (key : NodeKey)
@@ -118,19 +112,13 @@ module VdomContext =
             ctx._Incr.Var.Set ctx._ActivationGenerationVar (gen + 1)
             ctx._IsDirty <- true
 
-    /// Remove any activation records that have expired.
-    /// The `now` parameter should be the current time from `getUtcNow()` in the caller.
+    /// Remove expired activation records.
     let internal pruneExpiredActivations<'postLayoutEvent>
         (now : DateTime)
         (ctx : VdomContext<'postLayoutEvent>)
         : unit
         =
-        // The docs are very explicit.
-        // https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2.getenumerator?view=net-6.0)
-        // > .NET Core 3.0+ only: The only mutating methods which do not invalidate enumerators are Remove and Clear.
-        // https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2.remove?view=net-6.0
-        // > .NET Core 3.0+ only: this mutating method may be safely called without invalidating active enumerators on the Dictionary<TKey,TValue> instance. This does not imply thread safety.
-        // We also explicitly test this safety property in TestVdomContext.fs.
+        // .NET Core 3.0+: Remove does not invalidate enumerators. Tested in TestVdomContext.fs.
         let mutable removed = false
 
         for KeyValue (key, time) in ctx._LastActivationTimes do
@@ -146,12 +134,8 @@ module VdomContext =
             ctx._Incr.Var.Set ctx._ActivationGenerationVar (gen + 1)
             ctx._IsDirty <- true
 
-    /// Returns a Node that is true if the node with the given key was activated within the visual feedback window.
-    /// The Node depends on both activation state changes and the clock, so it will automatically update
-    /// when activations occur and as time passes.
+    /// Returns a Node that is true if the given key was activated within the visual feedback window.
     let wasRecentlyActivated<'postLayoutEvent> (key : NodeKey) (ctx : VdomContext<'postLayoutEvent>) : bool Node =
-        // Depend on both the activation generation (so we re-evaluate when activations change)
-        // and the clock (so we re-evaluate as time passes for timeout expiry).
         let activationGenNode = ctx._Incr.Var.Watch ctx._ActivationGenerationVar
 
         ctx._Incr.Map2
@@ -217,7 +201,6 @@ module VdomContext =
         =
         ctx._Incr.Clock.WatchNow ctx._Clock
 
-    /// Get the clock time as a DateTime Node for convenience.
-    /// Uses the cached node from IncrementalState for proper time-based animation updates.
+    /// Get the clock time as a DateTime Node.
     let clockDateTimeNode<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : DateTime Node =
         ctx._ClockDateTimeNode

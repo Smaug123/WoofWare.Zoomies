@@ -77,19 +77,11 @@ module FileBrowser =
                 return FileLoadError (e.Message, generation) |> worldBridge.PostEvent
         }
 
-    /// Store world bridge for async operations. Set via OnSetup.
-    ///
-    /// ARCHITECTURAL NOTE: This global ref is a pragmatic workaround for the demo app.
-    /// The ideal pattern would be for `transition` to return both state AND a list of
-    /// "commands" (effects to execute), with the framework executing those commands.
-    /// That would keep the transition pure. For now, we accept this compromise in the
-    /// demo app - the ref is set once on setup and never changes, so it's deterministic
-    /// in practice, just not in principle.
+    /// Captured world bridge for async operations (set once via OnSetup).
+    /// Ideally `transition` would return (state * Effect list) to keep it pure,
+    /// but a global ref suffices for this demo.
     let worldBridgeRef : IWorldBridge<AppEvent> option ref = ref None
 
-    /// Transition function: state -> event -> state.
-    /// NOTE: LoadButtonClicked spawns an async task via the global worldBridgeRef,
-    /// which is a side effect. See the architectural note above.
     let transition (state : State) (event : AppEvent) : State =
         match event with
         | SelectFile index ->
@@ -143,7 +135,6 @@ module FileBrowser =
                 state
 
     /// Convert raw input to app events.
-    /// Return Some to inject the event; None to ignore (or let framework handle, e.g. Tab for focus).
     let handleInput (change : WorldStateChange<AppEvent>) : AppEvent option =
         match change with
         | WorldStateChange.ApplicationEvent ev -> Some ev

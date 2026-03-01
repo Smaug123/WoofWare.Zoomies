@@ -27,8 +27,7 @@ module App =
     let private MAX_POST_LAYOUT_ITERATIONS = 100
 
     /// Lift a pure view function into an incremental one.
-    /// The resulting view depends on state, bounds, and focus - any change triggers full recomputation.
-    /// For fine-grained incrementality, write an incremental view function directly.
+    /// Depends on state, bounds, and focus; any change triggers full recomputation.
     let pureView<'state, 'postLayoutEvent>
         (view : IVdomContext<'postLayoutEvent> -> 'state -> Vdom<DesiredBounds>)
         : VdomContext<'postLayoutEvent> -> 'state Node -> Vdom<DesiredBounds> Node
@@ -44,8 +43,6 @@ module App =
                 (incr.Both (incr.Both stateNode boundsNode) focusNode)
 
     /// Like pureView but the view function returns an incremental Vdom node.
-    /// This allows proper composition of incremental components (like Button.make) without
-    /// needing to call Stabilize() inside the view function.
     let pureViewIncr<'state, 'postLayoutEvent>
         (view : IVdomContext<'postLayoutEvent> -> 'state -> Vdom<DesiredBounds> Node)
         : VdomContext<'postLayoutEvent> -> 'state Node -> Vdom<DesiredBounds> Node
@@ -59,8 +56,7 @@ module App =
                 (fun ((state, _bounds), _focus) -> view (VdomContext.asTyped ctx) state)
                 (incr.Both (incr.Both stateNode boundsNode) focusNode)
 
-    /// Render once, and if render-time focus assignment changed the focused key,
-    /// stabilize and render again so incremental views pick up the new focus.
+    /// Render, re-stabilizing if focus changed during render.
     let private renderWithFocusStabilization<'postLayoutEvent>
         (renderState : RenderState<'postLayoutEvent>)
         (vdomObserver : Vdom<DesiredBounds> Observer)
@@ -74,13 +70,11 @@ module App =
 
         let focusedAfter = VdomContext.focusedKey ctx
 
-        // Re-stabilize if focus changed at all (not just None→Some, but also Some→Some)
         if focusedBefore <> focusedAfter then
             incrState.Incr.Stabilize ()
             Render.oneStepNoFlush renderState () (fun () -> Observer.value vdomObserver)
 
-    /// Process post-layout events using the AppConfig approach.
-    /// Returns the final state and whether max iterations was hit.
+    /// Process post-layout events. Returns true if the iteration limit was hit.
     let private stabilizePostLayoutEventsWithConfig<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
         (stateMachine : StateMachine<'state, 'appEvent>)
         (renderState : RenderState<'postLayoutEvent>)
@@ -108,12 +102,10 @@ module App =
                     if currentState <> newState then
                         stateMachine.SetState newState
 
-                // Stabilize to propagate state changes
                 incrState.Incr.Stabilize ()
 
                 let stateAfterBatch = stateMachine.CurrentState ()
 
-                // If state changed, re-render (with focus stabilization for proper propagation)
                 if stateBeforeBatch <> stateAfterBatch then
                     renderWithFocusStabilization renderState vdomObserver incrState
                     iterations <- iterations + 1
@@ -122,7 +114,7 @@ module App =
 
         iterations >= MAX_POST_LAYOUT_ITERATIONS
 
-    /// Process changes using the AppConfig approach with StateMachine.
+    /// Process a batch of input changes.
     let private processChangesWithConfig<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
         (now : DateTime)
         (changes : WorldStateChange<'appEvent>[])
@@ -143,36 +135,29 @@ module App =
 
         let previousVdom = Observer.value vdomObserver
 
-        // Track local state so each event in the batch sees cumulative state from prior events.
-        // We apply config.Transition locally rather than stabilizing after each event (expensive).
-        // We use SetState at the end rather than Inject during the loop to avoid running
-        // transition twice (once here, once in StateMachine on stabilization).
+        // Fold events locally, then SetState once at the end (avoids per-event stabilization).
         let initialState = stateMachine.CurrentState ()
         let mutable localState = initialState
 
-        // Defer Tab handling until after stabilization when the focusable list is fresh.
-        // Track net focus movement: positive = advance, negative = retreat.
+        // Defer Tab handling: positive = advance, negative = retreat.
         let mutable pendingFocusMovement = 0
 
         for change in changes do
             if isCancelled () then
                 ()
             else
-                // Check for Tab focus handling - defer until after render
                 match change with
                 | WorldStateChange.Keystroke t when
                     haveFrameworkHandleFocus
                     && t.Key = ConsoleKey.Tab
                     && (t.Modifiers = ConsoleModifiers.None || t.Modifiers = ConsoleModifiers.Shift)
                     ->
-                    // Defer focus cycling until after stabilization/render
                     if t.Modifiers = ConsoleModifiers.None then
                         pendingFocusMovement <- pendingFocusMovement + 1
                     else
                         pendingFocusMovement <- pendingFocusMovement - 1
 
                 | WorldStateChange.Keystroke k ->
-                    // Check activation resolver first
                     match VdomContext.focusedKey ctx with
                     | Some focusedKey ->
                         match config.ActivationResolver.Invoke (focusedKey, k, localState) with
@@ -180,47 +165,38 @@ module App =
                             VdomContext.recordActivation now focusedKey ctx
                             localState <- config.Transition localState appEvent
                         | None ->
-                            // Try HandleInput
                             match config.HandleInput change with
                             | Some appEvent -> localState <- config.Transition localState appEvent
                             | None -> ()
                     | None ->
-                        // No focus, just try HandleInput
                         match config.HandleInput change with
                         | Some appEvent -> localState <- config.Transition localState appEvent
                         | None -> ()
 
                 | _ ->
-                    // Other change types (ApplicationEvent, MouseEvent, Paste, etc.)
                     match config.HandleInput change with
                     | Some appEvent -> localState <- config.Transition localState appEvent
                     | None -> ()
 
-        // Set final state if changed (avoids duplicate transition execution)
         if initialState <> localState then
             stateMachine.SetState localState
 
-        // Stabilize to propagate all incremental changes (state, focus, etc.)
         incrState.Incr.Stabilize ()
 
         let currentVdom = Observer.value vdomObserver
         let ctx = RenderState.vdomContext renderState
 
-        // Re-render if vdom changed or context is dirty (e.g., from resize, activation, etc.)
         if not (Object.referenceEquals previousVdom currentVdom) || VdomContext.isDirty ctx then
             renderWithFocusStabilization renderState vdomObserver incrState
 
-            // Handle post-layout events
             let _hitLimit =
                 stabilizePostLayoutEventsWithConfig stateMachine renderState config vdomObserver incrState
 
-            // markClean after post-layout so isDirty doesn't leak to next pump
+            // Reset dirty flag after post-layout processing
             VdomContext.markClean ctx
             Render.flush renderState
 
-        // Now apply deferred Tab focus changes with fresh focusable list
         if pendingFocusMovement <> 0 then
-            // Apply net focus movement
             if pendingFocusMovement > 0 then
                 for _ in 1..pendingFocusMovement do
                     RenderState.advanceFocus renderState
@@ -228,20 +204,17 @@ module App =
                 for _ in 1 .. -pendingFocusMovement do
                     RenderState.retreatFocus renderState
 
-            // Focus changed, need to stabilize and re-render
             incrState.Incr.Stabilize ()
             renderWithFocusStabilization renderState vdomObserver incrState
 
             let _hitLimit =
                 stabilizePostLayoutEventsWithConfig stateMachine renderState config vdomObserver incrState
 
-            // markClean after post-layout so isDirty doesn't leak to next pump
+            // Reset dirty flag after post-layout processing
             VdomContext.markClean ctx
             Render.flush renderState
 
-    /// Process when no changes occurred, using AppConfig approach.
-    /// The run loop already stabilized before calling this, so we just need to
-    /// check if the vdom changed and render if so.
+    /// Process when no changes occurred: render if the vdom changed.
     let private processNoChangesWithConfig<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
         (previousVdom : Vdom<DesiredBounds>)
         (stateMachine : StateMachine<'state, 'appEvent>)
@@ -254,26 +227,16 @@ module App =
         let currentVdom = Observer.value vdomObserver
         let ctx = RenderState.vdomContext renderState
 
-        // Re-render if vdom changed or context is dirty (e.g., from resize, activation, etc.)
         if not (Object.referenceEquals previousVdom currentVdom) || VdomContext.isDirty ctx then
             renderWithFocusStabilization renderState vdomObserver incrState
 
             let _hitLimit =
                 stabilizePostLayoutEventsWithConfig stateMachine renderState config vdomObserver incrState
 
-            // markClean after post-layout so isDirty doesn't leak to next pump
             VdomContext.markClean ctx
             Render.flush renderState
 
     /// Run one iteration of the incremental event loop.
-    /// This is the core loop body shared by App.run and available for testing.
-    ///
-    /// - Advances the clock and stabilizes
-    /// - Refreshes terminal size and prunes expired activations
-    /// - Processes input events (or no-change case)
-    /// - Handles terminal resize (clears screen if resize occurred)
-    /// - Updates previousVdom ref with current vdom
-    /// - Returns current state for convenience
     let internal pumpOnce<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
         (getUtcNow : unit -> DateTime)
         (listener : WorldFreezer<'appEvent>)
@@ -288,11 +251,9 @@ module App =
         =
         let vdomContext = RenderState.vdomContext renderState
 
-        // Advance clock and stabilize
         let loopUtcNow = getUtcNow ()
         IncrementalState.advanceClockAndStabilize loopUtcNow incrState
 
-        // Process input
         let resizeGeneration = listener.TerminalResizeGeneration
         RenderState.refreshTerminalSize renderState
         VdomContext.pruneExpiredActivations loopUtcNow vdomContext
@@ -313,7 +274,6 @@ module App =
                 incrState
                 isCancelled
 
-        // Handle terminal resize
         if listener.TerminalResizeGeneration <> resizeGeneration then
             // Our knowledge of the current terminal's contents could be arbitrarily corrupted:
             // we were drawing to the screen when it had an arbitrary size. Need a *complete* refresh.
@@ -325,8 +285,7 @@ module App =
 
         stateMachine.CurrentState ()
 
-    /// Run an application using the new AppConfig-based API with StateMachine.
-    /// Events flow through the Incremental graph via the StateMachine primitive.
+    /// Run an application using AppConfig.
     let run<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
         (terminate : CancellationToken)
         (console : IConsole)
@@ -346,7 +305,6 @@ module App =
         let _thread =
             fun () ->
                 try
-                    // Get initial terminal bounds
                     let initialBounds =
                         {
                             TopLeftX = 0
@@ -355,21 +313,15 @@ module App =
                             Height = console.WindowHeight ()
                         }
 
-                    // Create IncrementalState (still needed for bounds, focus, clock)
                     let incrState = IncrementalState.make initialBounds None
                     let vdomContext = VdomContext.make incrState
 
-                    // Create the StateMachine for event-driven state updates
                     let stateMachine =
                         StateMachine.create incrState.Incr.State config.Initial config.Transition
 
-                    // Create the incremental Vdom Node using the StateMachine's state node
                     let vdomNode = config.View vdomContext stateMachine.StateNode
-
-                    // Create an observer for the Vdom so we can read it after stabilization
                     let vdomObserver = incrState.Incr.Observe vdomNode
 
-                    // Initial stabilization
                     let initialUtcNow = getUtcNow ()
                     IncrementalState.advanceClockAndStabilize initialUtcNow incrState
 
@@ -407,10 +359,7 @@ module App =
 
                             listener <- Some listener'
 
-                            // Call OnSetup to give user access to the world bridge
                             config.OnSetup listener'
-
-                            // Initial render
                             renderWithFocusStabilization renderState vdomObserver incrState
 
                             let _hitLimit =
@@ -423,13 +372,11 @@ module App =
 
                             Render.flush renderState
 
-                            // Track the previous vdom value to detect time-based changes
                             let previousVdom = ref (Observer.value vdomObserver)
 
                             let isCancelled () =
                                 cancels > 0 || terminate.IsCancellationRequested
 
-                            // Signal that we're ready
                             ready.SetResult ()
 
                             while not (isCancelled ()) do

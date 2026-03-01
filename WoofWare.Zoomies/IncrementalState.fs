@@ -44,13 +44,10 @@ type IncrementalState =
         /// The currently focused NodeKey, updated when focus changes.
         FocusedKeyVar : NodeKey option Var
 
-        /// Cached clock time node as DateTime (derived from Clock.WatchNow).
-        /// Cached because each call to Incr.Map creates a new node.
+        /// Cached clock time as DateTime (each Incr.Map call creates a new node).
         ClockDateTimeNode : DateTime Node
 
-        /// Tracks the last time we advanced to, for monotonicity.
-        /// If system time jumps backwards, we advance by 1 tick instead
-        /// to avoid violating timing-wheel invariants.
+        /// Last time we advanced to (for monotonicity).
         mutable LastAdvancedTimeNs : int64<timeNs>
     }
 
@@ -58,14 +55,10 @@ type IncrementalState =
 module IncrementalState =
 
     /// Create a new IncrementalState with the given initial values.
-    /// The clock is initialized at Unix epoch so it can be advanced to any desired time.
     let make (initialBounds : Rectangle) (initialFocusedKey : NodeKey option) : IncrementalState =
         let incr = Incremental.make ()
-        // Start the clock at Unix epoch so we can advance forward to any time
-        // (including times in the past relative to "now" for testing)
         let epochNs = TimeConversion.dateTimeToNs TimeConversion.unixEpoch
         let clock = incr.Clock.Create epochNs
-        // Create the clock DateTime node once and cache it
         let clockNsNode = incr.Clock.WatchNow clock
         let clockDateTimeNode = incr.Map TimeConversion.nsToDateTime clockNsNode
 
@@ -95,13 +88,11 @@ module IncrementalState =
     /// This allows components to depend on time incrementally.
     let clockTimeNode (s : IncrementalState) : int64<WoofWare.TimingWheel.timeNs> Node = s.Incr.Clock.WatchNow s.Clock
 
-    /// Get the clock time as a DateTime Node for convenience.
-    /// Uses the cached node to ensure all observers use the same node.
+    /// Get the clock time as a DateTime Node (cached).
     let clockDateTimeNode (s : IncrementalState) : DateTime Node = s.ClockDateTimeNode
 
-    /// Advance the clock to the given time and stabilize the computation graph.
-    /// If the requested time is not after the last advanced time (e.g., system clock jumped backwards),
-    /// we advance by 1 nanosecond instead to maintain monotonicity and avoid timing-wheel invariant violations.
+    /// Advance the clock to the given time and stabilize.
+    /// If time has not advanced (e.g. clock jumped backwards), advances by 1ns to maintain monotonicity.
     let advanceClockAndStabilize (time : DateTime) (s : IncrementalState) : unit =
         let requestedNs = TimeConversion.dateTimeToNs time
         // Ensure monotonicity: always advance by at least 1ns
