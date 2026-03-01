@@ -17,6 +17,15 @@ module TestConfig =
         AppConfig.make () (fun _s _ev -> ()) (App.pureView view)
         |> AppConfig.withFocusHandling FocusHandling.FrameworkManaged
 
+    /// Create a passthrough AppConfig with unit state that ignores all inputs, for incremental views.
+    /// Use for tests that just need to render and don't care about state changes.
+    let passthroughIncr<'postLayoutEvent>
+        (view : IVdomContext<'postLayoutEvent> -> unit -> Vdom<DesiredBounds> Node)
+        : AppConfig<unit, unit, 'postLayoutEvent>
+        =
+        AppConfig.make () (fun _s _ev -> ()) (App.pureViewIncr view)
+        |> AppConfig.withFocusHandling FocusHandling.FrameworkManaged
+
     /// Create an AppConfig with custom state handling using a pure view.
     /// The handleInput function converts WorldStateChange to optional app events.
     let withState<'state, 'appEvent, 'postLayoutEvent when 'state : equality>

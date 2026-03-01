@@ -5,6 +5,7 @@ open System.Collections.Immutable
 open FsUnitTyped
 open NUnit.Framework
 open WoofWare.Expect
+open WoofWare.Incremental
 open WoofWare.Zoomies
 
 [<TestFixture>]
@@ -42,14 +43,27 @@ module TestFocusCycle =
 
     type CheckboxEvent = | Toggle of int
 
-    let vdom (vdomContext : IVdomContext<_>) (state : State) =
-        List.init
-            4
-            (fun i ->
-                let key = NodeKey.make $"checkbox%i{i}"
-                Components.Checkbox.make (vdomContext, key, state.Checkboxes.[i])
-            )
-        |> List.reduce (fun x y -> Vdom.panelSplitAbsolute (SplitDirection.Vertical, -3, x, y))
+    let vdom (vdomContext : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
+        let incr = vdomContext.Incr
+
+        let checkboxNodes =
+            List.init
+                4
+                (fun i ->
+                    let key = NodeKey.make $"checkbox%i{i}"
+                    Components.Checkbox.make (vdomContext, key, state.Checkboxes.[i])
+                )
+
+        // Combine all checkbox nodes incrementally
+        checkboxNodes
+        |> List.reduce (fun nodeX nodeY ->
+            incr.Map2
+                (fun (x : Vdom<DesiredBounds>) (y : Vdom<DesiredBounds>) ->
+                    Vdom.panelSplitAbsolute (SplitDirection.Vertical, -3, x, y)
+                )
+                nodeX
+                nodeY
+        )
 
     let transition (state : State) (event : CheckboxEvent) : State =
         match event with
@@ -74,7 +88,7 @@ module TestFocusCycle =
         )
 
     let makeConfig initial =
-        AppConfig.simple initial transition (App.pureView vdom) activationResolver
+        AppConfig.simple initial transition (App.pureViewIncr vdom) activationResolver
 
     [<Test>]
     let ``example 1`` () =
@@ -379,26 +393,39 @@ module TestFocusCycle =
                     world.ReadKey
 
             // State tracks which element to render at a given key
-            let vdom (vdomContext : IVdomContext<_>) (renderCheckbox1 : bool) =
+            let vdom (vdomContext : IVdomContext<_>) (renderCheckbox1 : bool) : Vdom<DesiredBounds> Node =
+                let incr = vdomContext.Incr
                 let sharedKey = NodeKey.make "shared-key"
                 let unsharedKey = NodeKey.make "unshared-key"
 
                 if renderCheckbox1 then
                     // First frame: checkbox at shared-key
-                    let checkbox1 = Components.Checkbox.make (vdomContext, sharedKey, isChecked = false)
+                    let checkbox1Node =
+                        Components.Checkbox.make (vdomContext, sharedKey, isChecked = false)
 
-                    let checkbox2 =
+                    let checkbox2Node =
                         Components.Checkbox.make (vdomContext, unsharedKey, isChecked = false)
 
-                    Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, checkbox1, checkbox2)
+                    incr.Map2
+                        (fun (checkbox1 : Vdom<DesiredBounds>) (checkbox2 : Vdom<DesiredBounds>) ->
+                            Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, checkbox1, checkbox2)
+                        )
+                        checkbox1Node
+                        checkbox2Node
                 else
                     // Second frame: different checkbox at shared-key
-                    let checkbox1 =
+                    let checkbox1Node =
                         Components.Checkbox.make (vdomContext, unsharedKey, isChecked = false)
 
-                    let checkbox2 = Components.Checkbox.make (vdomContext, sharedKey, isChecked = false)
+                    let checkbox2Node =
+                        Components.Checkbox.make (vdomContext, sharedKey, isChecked = false)
 
-                    Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, checkbox1, checkbox2)
+                    incr.Map2
+                        (fun (checkbox1 : Vdom<DesiredBounds>) (checkbox2 : Vdom<DesiredBounds>) ->
+                            Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, checkbox1, checkbox2)
+                        )
+                        checkbox1Node
+                        checkbox2Node
 
             let transition (renderCheckbox1 : bool) (event : BoolEvent) : bool =
                 match event with
@@ -413,7 +440,7 @@ module TestFocusCycle =
                 AppConfig.withInputHandler
                     true
                     transition
-                    (App.pureView vdom)
+                    (App.pureViewIncr vdom)
                     handleInput
                     (fun _ s -> s)
                     ActivationResolver.none
@@ -470,8 +497,7 @@ module TestFocusCycle =
 
             let world = MockWorld.make ()
 
-            let vdom (vdomContext : IVdomContext<_>) (tick : int) =
-                let currentFocus = vdomContext.FocusedKey
+            let vdom (vdomContext : IVdomContext<_>) (tick : int) : Vdom<DesiredBounds> Node =
                 let sharedKey = NodeKey.make "shared-key"
 
                 match tick with
@@ -481,16 +507,22 @@ module TestFocusCycle =
                 | 1 ->
                     // Second frame: non-focusable element.
                     // The previous render had focus on the key `sharedKey`.
-                    let isFocused = currentFocus = Some sharedKey
+                    vdomContext.FocusedKey
+                    |> vdomContext.Incr.Map (fun currentFocus ->
+                        let isFocused = currentFocus = Some sharedKey
 
-                    let nonFocusable =
-                        Components.Checkbox.make' (false, isFocused) |> Vdom.withKey sharedKey
+                        let nonFocusable =
+                            Components.Checkbox.make' (false, isFocused) |> Vdom.withKey sharedKey
 
-                    Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, Vdom.textContent "more", nonFocusable)
+                        Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, Vdom.textContent "more", nonFocusable)
+                    )
                 | 2 ->
                     // Third frame: nothing should now be focused, because the previous frame had no focusable elements.
-                    currentFocus |> shouldEqual None
-                    Vdom.textContent ""
+                    vdomContext.FocusedKey
+                    |> vdomContext.Incr.Map (fun currentFocus ->
+                        currentFocus |> shouldEqual None
+                        Vdom.textContent ""
+                    )
                 | _ -> failwith "unexpected"
 
             use worldFreezer =
@@ -513,7 +545,7 @@ module TestFocusCycle =
                 AppConfig.withInputHandler
                     0
                     transition
-                    (App.pureView vdom)
+                    (App.pureViewIncr vdom)
                     handleInput
                     (fun _ s -> s)
                     ActivationResolver.none
@@ -551,11 +583,11 @@ module TestFocusCycle =
             IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // The element is no longer in the focusable list.
-            // Vdom construction sees that on the previous tick, that element was focused, so it displays as focused.
+            // Focus is cleared and the change is properly propagated via re-stabilization.
             expect {
                 snapshot
                     @"
-more      [☐]   |
+more       ☐    |
 "
 
                 return ConsoleHarness.toString terminal
@@ -593,17 +625,20 @@ more      [☐]   |
             let textKey = NodeKey.make "focusable-text"
             let checkboxKey = NodeKey.make "checkbox"
 
-            let vdom (vdomContext : IVdomContext<_>) (_ : FakeUnit) =
-                let currentFocus = vdomContext.FocusedKey
+            let vdom (vdomContext : IVdomContext<_>) (_ : FakeUnit) : Vdom<DesiredBounds> Node =
+                let checkboxNode = Components.Checkbox.make (vdomContext, checkboxKey, false)
 
-                let text =
-                    Vdom.textContent ("This is focusable text", isFocused = (currentFocus = Some textKey))
-                    |> Vdom.withKey textKey
-                    |> Vdom.withFocusTracking
+                vdomContext.Incr.Map2
+                    (fun currentFocus (checkbox : Vdom<DesiredBounds>) ->
+                        let text =
+                            Vdom.textContent ("This is focusable text", isFocused = (currentFocus = Some textKey))
+                            |> Vdom.withKey textKey
+                            |> Vdom.withFocusTracking
 
-                let checkbox = Components.Checkbox.make (vdomContext, checkboxKey, false)
-
-                Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 3, text, checkbox)
+                        Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 3, text, checkbox)
+                    )
+                    vdomContext.FocusedKey
+                    checkboxNode
 
             let transition (state : FakeUnit) (_ : unit) : FakeUnit = state
 
@@ -616,7 +651,7 @@ more      [☐]   |
                 AppConfig.withInputHandler
                     (FakeUnit.fake ())
                     transition
-                    (App.pureView vdom)
+                    (App.pureViewIncr vdom)
                     handleInput
                     (fun _ s -> s)
                     ActivationResolver.none
@@ -737,24 +772,34 @@ This is focusable text                                                          
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (vdomContext : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (vdomContext : IVdomContext<_>) (_ : FakeUnit) : Vdom<DesiredBounds> Node =
+                let incr = vdomContext.Incr
                 let checkbox1Key = NodeKey.make "checkbox1"
                 let checkbox2Key = NodeKey.make "checkbox2"
                 let checkbox3Key = NodeKey.make "checkbox3"
 
-                let checkbox1 = Components.Checkbox.make (vdomContext, checkbox1Key, false)
+                let checkbox1Node = Components.Checkbox.make (vdomContext, checkbox1Key, false)
 
-                let checkbox2 =
+                let checkbox2Node =
                     Components.Checkbox.make (vdomContext, checkbox2Key, false, isFirstToFocus = true)
 
-                let checkbox3 = Components.Checkbox.make (vdomContext, checkbox3Key, false)
+                let checkbox3Node = Components.Checkbox.make (vdomContext, checkbox3Key, false)
 
-                Vdom.panelSplitProportion (
-                    SplitDirection.Vertical,
-                    0.33,
-                    checkbox1,
-                    Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, checkbox2, checkbox3)
-                )
+                // Combine checkbox2 and checkbox3 first, then combine with checkbox1
+                let checkbox23Node =
+                    incr.Map2
+                        (fun (checkbox2 : Vdom<DesiredBounds>) (checkbox3 : Vdom<DesiredBounds>) ->
+                            Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, checkbox2, checkbox3)
+                        )
+                        checkbox2Node
+                        checkbox3Node
+
+                incr.Map2
+                    (fun (checkbox1 : Vdom<DesiredBounds>) (checkbox23 : Vdom<DesiredBounds>) ->
+                        Vdom.panelSplitProportion (SplitDirection.Vertical, 0.33, checkbox1, checkbox23)
+                    )
+                    checkbox1Node
+                    checkbox23Node
 
             let transition (state : FakeUnit) (_ : unit) : FakeUnit = state
 
@@ -767,7 +812,7 @@ This is focusable text                                                          
                 AppConfig.withInputHandler
                     (FakeUnit.fake ())
                     transition
-                    (App.pureView vdom)
+                    (App.pureViewIncr vdom)
                     handleInput
                     (fun _ s -> s)
                     ActivationResolver.none
@@ -866,24 +911,34 @@ This is focusable text                                                          
                     world.KeyAvailable
                     world.ReadKey
 
-            let vdom (vdomContext : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (vdomContext : IVdomContext<_>) (_ : FakeUnit) : Vdom<DesiredBounds> Node =
+                let incr = vdomContext.Incr
                 let checkbox1Key = NodeKey.make "checkbox1"
                 let checkbox2Key = NodeKey.make "checkbox2"
                 let checkbox3Key = NodeKey.make "checkbox3"
 
-                let checkbox1 = Components.Checkbox.make (vdomContext, checkbox1Key, false)
+                let checkbox1Node = Components.Checkbox.make (vdomContext, checkbox1Key, false)
 
-                let checkbox2 =
+                let checkbox2Node =
                     Components.Checkbox.make (vdomContext, checkbox2Key, false, isInitiallyFocused = true)
 
-                let checkbox3 = Components.Checkbox.make (vdomContext, checkbox3Key, false)
+                let checkbox3Node = Components.Checkbox.make (vdomContext, checkbox3Key, false)
 
-                Vdom.panelSplitProportion (
-                    SplitDirection.Vertical,
-                    0.33,
-                    checkbox1,
-                    Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, checkbox2, checkbox3)
-                )
+                // Combine checkbox2 and checkbox3 first, then combine with checkbox1
+                let checkbox23Node =
+                    incr.Map2
+                        (fun (checkbox2 : Vdom<DesiredBounds>) (checkbox3 : Vdom<DesiredBounds>) ->
+                            Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, checkbox2, checkbox3)
+                        )
+                        checkbox2Node
+                        checkbox3Node
+
+                incr.Map2
+                    (fun (checkbox1 : Vdom<DesiredBounds>) (checkbox23 : Vdom<DesiredBounds>) ->
+                        Vdom.panelSplitProportion (SplitDirection.Vertical, 0.33, checkbox1, checkbox23)
+                    )
+                    checkbox1Node
+                    checkbox23Node
 
             let transition (state : FakeUnit) (_ : unit) : FakeUnit = state
 
@@ -896,7 +951,7 @@ This is focusable text                                                          
                 AppConfig.withInputHandler
                     (FakeUnit.fake ())
                     transition
-                    (App.pureView vdom)
+                    (App.pureViewIncr vdom)
                     handleInput
                     (fun _ s -> s)
                     ActivationResolver.none

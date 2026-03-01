@@ -6,6 +6,7 @@ open System.Threading.Tasks
 open FsCheck
 open FsUnitTyped
 open NUnit.Framework
+open WoofWare.Incremental
 open WoofWare.Zoomies
 
 [<TestFixture>]
@@ -175,20 +176,25 @@ module TestBatchProcessing =
                 | _ -> None
 
             // Use a vdom with focusable elements so the framework can intercept tabs
-            let vdom (vdomContext : IVdomContext<_>) (_state : ImmutableArray<char>) =
+            let vdom (vdomContext : IVdomContext<_>) (_state : ImmutableArray<char>) : Vdom<DesiredBounds> Node =
                 let checkbox0 =
                     Components.Checkbox.make (vdomContext, NodeKey.make "checkbox0", false)
 
                 let checkbox1 =
                     Components.Checkbox.make (vdomContext, NodeKey.make "checkbox1", false)
 
-                Vdom.panelSplitAbsolute (SplitDirection.Vertical, -3, checkbox0, checkbox1)
+                vdomContext.Incr.Map2
+                    (fun (c0 : Vdom<DesiredBounds>) (c1 : Vdom<DesiredBounds>) ->
+                        Vdom.panelSplitAbsolute (SplitDirection.Vertical, -3, c0, c1)
+                    )
+                    checkbox0
+                    checkbox1
 
             let config : AppConfig<ImmutableArray<char>, KeystrokeEvent, unit> =
                 {
                     Initial = initialState
                     Transition = transition
-                    View = App.pureView vdom
+                    View = App.pureViewIncr vdom
                     HandleInput = handleInput
                     HandlePostLayout = fun _ s -> s
                     FocusHandling = FocusHandling.FrameworkManaged
@@ -269,20 +275,25 @@ module TestBatchProcessing =
                 | _ -> None
 
             // Use a vdom with focusable elements
-            let vdom (vdomContext : IVdomContext<_>) (_state : ImmutableArray<char>) =
+            let vdom (vdomContext : IVdomContext<_>) (_state : ImmutableArray<char>) : Vdom<DesiredBounds> Node =
                 let checkbox0 =
                     Components.Checkbox.make (vdomContext, NodeKey.make "checkbox0", false)
 
                 let checkbox1 =
                     Components.Checkbox.make (vdomContext, NodeKey.make "checkbox1", false)
 
-                Vdom.panelSplitAbsolute (SplitDirection.Vertical, -3, checkbox0, checkbox1)
+                vdomContext.Incr.Map2
+                    (fun (c0 : Vdom<DesiredBounds>) (c1 : Vdom<DesiredBounds>) ->
+                        Vdom.panelSplitAbsolute (SplitDirection.Vertical, -3, c0, c1)
+                    )
+                    checkbox0
+                    checkbox1
 
             let config : AppConfig<ImmutableArray<char>, KeystrokeEvent, unit> =
                 {
                     Initial = initialState
                     Transition = transition
-                    View = App.pureView vdom
+                    View = App.pureViewIncr vdom
                     HandleInput = handleInput
                     HandlePostLayout = fun _ s -> s
                     FocusHandling = FocusHandling.UserManaged
@@ -331,20 +342,25 @@ module TestBatchProcessing =
                 | _ -> None
 
             // Use a vdom with focusable elements
-            let vdom (vdomContext : IVdomContext<_>) (_state : ImmutableArray<char>) =
+            let vdom (vdomContext : IVdomContext<_>) (_state : ImmutableArray<char>) : Vdom<DesiredBounds> Node =
                 let checkbox0 =
                     Components.Checkbox.make (vdomContext, NodeKey.make "checkbox0", false)
 
                 let checkbox1 =
                     Components.Checkbox.make (vdomContext, NodeKey.make "checkbox1", false)
 
-                Vdom.panelSplitAbsolute (SplitDirection.Vertical, -3, checkbox0, checkbox1)
+                vdomContext.Incr.Map2
+                    (fun (c0 : Vdom<DesiredBounds>) (c1 : Vdom<DesiredBounds>) ->
+                        Vdom.panelSplitAbsolute (SplitDirection.Vertical, -3, c0, c1)
+                    )
+                    checkbox0
+                    checkbox1
 
             let config : AppConfig<ImmutableArray<char>, KeystrokeEvent, unit> =
                 {
                     Initial = initialState
                     Transition = transition
-                    View = App.pureView vdom
+                    View = App.pureViewIncr vdom
                     HandleInput = handleInput
                     HandlePostLayout = fun _ s -> s
                     FocusHandling = FocusHandling.FrameworkManaged

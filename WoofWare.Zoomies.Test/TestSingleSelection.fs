@@ -3,6 +3,7 @@ namespace WoofWare.Zoomies.Test
 open System
 open NUnit.Framework
 open WoofWare.Expect
+open WoofWare.Incremental
 open WoofWare.Zoomies
 open WoofWare.Zoomies.Components
 open FsUnitTyped
@@ -323,17 +324,19 @@ module TestSingleSelection =
                     }
                 |]
 
-            let vdom (ctx : IVdomContext<_>) (state : FocusCycleState) : Vdom<DesiredBounds> =
-                (SingleSelection.make (
-                    ctx,
-                    singleSelectPrefix,
-                    makeItems (),
-                    state.SelectedIndex,
-                    SelectionListState.AtStart,
-                    (fun _ -> ()),
-                    isFirstToFocus = true
-                ))
-                    .Vdom
+            let vdom (ctx : IVdomContext<_>) (state : FocusCycleState) : Vdom<DesiredBounds> Node =
+                let result : SelectionListResult Node =
+                    SingleSelection.make (
+                        ctx,
+                        singleSelectPrefix,
+                        makeItems (),
+                        state.SelectedIndex,
+                        SelectionListState.AtStart,
+                        (fun _ -> ()),
+                        isFirstToFocus = true
+                    )
+
+                ctx.Incr.Map (fun (r : SelectionListResult) -> r.Vdom) result
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
 
@@ -354,7 +357,7 @@ module TestSingleSelection =
             let transition state (_event : unit) = state
 
             let config =
-                AppConfig.simple initialState transition (App.pureView vdom) ActivationResolver.none
+                AppConfig.simple initialState transition (App.pureViewIncr vdom) ActivationResolver.none
                 |> AppConfig.withFocusHandling FocusHandling.FrameworkManaged
 
             use ctx = IncrTestContext.make console config None
@@ -436,17 +439,19 @@ module TestSingleSelection =
                     }
                 )
 
-            let vdom (ctx : IVdomContext<_>) (s : SelectListState) : Vdom<DesiredBounds> =
-                (SingleSelection.make (
-                    ctx,
-                    singleSelectPrefix,
-                    makeItems (),
-                    s.SelectedIndex,
-                    s.ListState,
-                    SelectViewportInfo,
-                    isFirstToFocus = true
-                ))
-                    .Vdom
+            let vdom (ctx : IVdomContext<_>) (s : SelectListState) : Vdom<DesiredBounds> Node =
+                let result : SelectionListResult Node =
+                    SingleSelection.make (
+                        ctx,
+                        singleSelectPrefix,
+                        makeItems (),
+                        s.SelectedIndex,
+                        s.ListState,
+                        SelectViewportInfo,
+                        isFirstToFocus = true
+                    )
+
+                ctx.Incr.Map (fun (r : SelectionListResult) -> r.Vdom) result
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
 
@@ -502,7 +507,7 @@ module TestSingleSelection =
                 }
 
             let config =
-                AppConfig.make initialState transition (App.pureView vdom)
+                AppConfig.make initialState transition (App.pureViewIncr vdom)
                 |> AppConfig.withHandleInput handleInput
                 |> AppConfig.withHandlePostLayout handlePostLayout
                 |> AppConfig.withActivationResolver resolver
@@ -565,17 +570,19 @@ module TestSingleSelection =
                     }
                 )
 
-            let vdom (ctx : IVdomContext<_>) (s : SelectListState) : Vdom<DesiredBounds> =
-                (SingleSelection.make (
-                    ctx,
-                    singleSelectPrefix,
-                    makeItems (),
-                    s.SelectedIndex,
-                    s.ListState,
-                    SelectViewportInfo,
-                    isFirstToFocus = true
-                ))
-                    .Vdom
+            let vdom (ctx : IVdomContext<_>) (s : SelectListState) : Vdom<DesiredBounds> Node =
+                let result : SelectionListResult Node =
+                    SingleSelection.make (
+                        ctx,
+                        singleSelectPrefix,
+                        makeItems (),
+                        s.SelectedIndex,
+                        s.ListState,
+                        SelectViewportInfo,
+                        isFirstToFocus = true
+                    )
+
+                ctx.Incr.Map (fun (r : SelectionListResult) -> r.Vdom) result
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
 
@@ -632,7 +639,7 @@ module TestSingleSelection =
                 }
 
             let config =
-                AppConfig.make initialState transition (App.pureView vdom)
+                AppConfig.make initialState transition (App.pureViewIncr vdom)
                 |> AppConfig.withHandleInput handleInput
                 |> AppConfig.withHandlePostLayout handlePostLayout
                 |> AppConfig.withActivationResolver resolver
@@ -912,17 +919,19 @@ module TestSingleSelection =
                     }
                 |]
 
-            let vdom (ctx : IVdomContext<_>) (s : ArrowTestState) : Vdom<DesiredBounds> =
-                (SingleSelection.make (
-                    ctx,
-                    singleSelectPrefix,
-                    makeItems (),
-                    s.SelectedIndex,
-                    s.ListState,
-                    ArrowViewportInfo,
-                    isFirstToFocus = true
-                ))
-                    .Vdom
+            let vdom (ctx : IVdomContext<_>) (s : ArrowTestState) : Vdom<DesiredBounds> Node =
+                let result : SelectionListResult Node =
+                    SingleSelection.make (
+                        ctx,
+                        singleSelectPrefix,
+                        makeItems (),
+                        s.SelectedIndex,
+                        s.ListState,
+                        ArrowViewportInfo,
+                        isFirstToFocus = true
+                    )
+
+                ctx.Incr.Map (fun (r : SelectionListResult) -> r.Vdom) result
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 3)
 
@@ -975,7 +984,7 @@ module TestSingleSelection =
                 }
 
             let config =
-                AppConfig.make initialState transition (App.pureView vdom)
+                AppConfig.make initialState transition (App.pureViewIncr vdom)
                 |> AppConfig.withHandleInput handleInput
                 |> AppConfig.withHandlePostLayout handlePostLayout
                 |> AppConfig.withActivationResolver resolver
@@ -1063,9 +1072,9 @@ module TestSingleSelection =
 
             let checkboxKey = NodeKey.make "checkbox"
 
-            let vdom (ctx : IVdomContext<FocusLeavePostLayoutEvent>) (s : FocusLeaveState) : Vdom<DesiredBounds> =
-                let list =
-                    (SingleSelection.make (
+            let vdom (ctx : IVdomContext<FocusLeavePostLayoutEvent>) (s : FocusLeaveState) : Vdom<DesiredBounds> Node =
+                let listResult : SelectionListResult Node =
+                    SingleSelection.make (
                         ctx,
                         singleSelectPrefix,
                         makeItems (),
@@ -1073,13 +1082,19 @@ module TestSingleSelection =
                         s.ListState,
                         FocusLeaveViewportInfo,
                         isFirstToFocus = true
-                    ))
-                        .Vdom
+                    )
+
+                let listVdom = ctx.Incr.Map (fun (r : SelectionListResult) -> r.Vdom) listResult
 
                 let checkbox = Checkbox.make (ctx, checkboxKey, false)
 
                 // Split: list on left, checkbox on right
-                Vdom.panelSplitProportion (SplitDirection.Vertical, 0.8, list, checkbox)
+                ctx.Incr.Map2
+                    (fun (list : Vdom<DesiredBounds>) (cb : Vdom<DesiredBounds>) ->
+                        Vdom.panelSplitProportion (SplitDirection.Vertical, 0.8, list, cb)
+                    )
+                    listVdom
+                    checkbox
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 3)
 
@@ -1129,7 +1144,7 @@ module TestSingleSelection =
                 }
 
             let config =
-                AppConfig.make initialState transition (App.pureView vdom)
+                AppConfig.make initialState transition (App.pureViewIncr vdom)
                 |> AppConfig.withHandleInput handleInput
                 |> AppConfig.withHandlePostLayout handlePostLayout
                 |> AppConfig.withActivationResolver resolver
@@ -1233,16 +1248,18 @@ module TestSingleSelection =
                     }
                 |]
 
-            let vdom (ctx : IVdomContext<_>) (s : NoDanceState) : Vdom<DesiredBounds> =
-                (SingleSelection.make (
-                    ctx,
-                    singleSelectPrefix,
-                    makeItems (),
-                    s.SelectedIndex,
-                    s.ListState,
-                    NoDanceViewportInfo
-                ))
-                    .Vdom
+            let vdom (ctx : IVdomContext<_>) (s : NoDanceState) : Vdom<DesiredBounds> Node =
+                let result : SelectionListResult Node =
+                    SingleSelection.make (
+                        ctx,
+                        singleSelectPrefix,
+                        makeItems (),
+                        s.SelectedIndex,
+                        s.ListState,
+                        NoDanceViewportInfo
+                    )
+
+                ctx.Incr.Map (fun (r : SelectionListResult) -> r.Vdom) result
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 3)
 
@@ -1301,7 +1318,7 @@ module TestSingleSelection =
                 }
 
             let config =
-                AppConfig.make initialState transition (App.pureView vdom)
+                AppConfig.make initialState transition (App.pureViewIncr vdom)
                 |> AppConfig.withHandleInput handleInput
                 |> AppConfig.withHandlePostLayout handlePostLayout
                 |> AppConfig.withActivationResolver resolver
@@ -1441,17 +1458,19 @@ module TestSingleSelection =
                     }
                 |]
 
-            let vdom (ctx : IVdomContext<_>) (s : ViewportAwareState) : Vdom<DesiredBounds> =
-                (SingleSelection.make (
-                    ctx,
-                    singleSelectPrefix,
-                    makeItems (),
-                    s.SelectedIndex,
-                    s.ListState,
-                    ViewportAwareViewportInfo,
-                    isFirstToFocus = true
-                ))
-                    .Vdom
+            let vdom (ctx : IVdomContext<_>) (s : ViewportAwareState) : Vdom<DesiredBounds> Node =
+                let result : SelectionListResult Node =
+                    SingleSelection.make (
+                        ctx,
+                        singleSelectPrefix,
+                        makeItems (),
+                        s.SelectedIndex,
+                        s.ListState,
+                        ViewportAwareViewportInfo,
+                        isFirstToFocus = true
+                    )
+
+                ctx.Incr.Map (fun (r : SelectionListResult) -> r.Vdom) result
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 3)
 
@@ -1505,7 +1524,7 @@ module TestSingleSelection =
                 }
 
             let config =
-                AppConfig.make initialState transition (App.pureView vdom)
+                AppConfig.make initialState transition (App.pureViewIncr vdom)
                 |> AppConfig.withHandleInput handleInput
                 |> AppConfig.withHandlePostLayout handlePostLayout
                 |> AppConfig.withActivationResolver resolver

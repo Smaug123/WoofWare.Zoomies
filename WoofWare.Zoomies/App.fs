@@ -59,6 +59,26 @@ module App =
                 (fun ((state, _bounds), _focus) -> view (VdomContext.asTyped ctx) state)
                 (incr.Both (incr.Both stateNode boundsNode) focusNode)
 
+    /// Render once, and if render-time focus assignment changed the focused key,
+    /// stabilize and render again so incremental views pick up the new focus.
+    let private renderWithFocusStabilization<'postLayoutEvent>
+        (renderState : RenderState<'postLayoutEvent>)
+        (vdomObserver : Vdom<DesiredBounds> Observer)
+        (incrState : IncrementalState)
+        : unit
+        =
+        let ctx = RenderState.vdomContext renderState
+        let focusedBefore = VdomContext.focusedKey ctx
+
+        Render.oneStepNoFlush renderState () (fun () -> Observer.value vdomObserver)
+
+        let focusedAfter = VdomContext.focusedKey ctx
+
+        // Re-stabilize if focus changed at all (not just None→Some, but also Some→Some)
+        if focusedBefore <> focusedAfter then
+            incrState.Incr.Stabilize ()
+            Render.oneStepNoFlush renderState () (fun () -> Observer.value vdomObserver)
+
     /// Process post-layout events using the AppConfig approach.
     /// Returns the final state and whether max iterations was hit.
     let private stabilizePostLayoutEventsWithConfig<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
@@ -93,33 +113,14 @@ module App =
 
                 let stateAfterBatch = stateMachine.CurrentState ()
 
-                // If state changed, re-render
+                // If state changed, re-render (with focus stabilization for proper propagation)
                 if stateBeforeBatch <> stateAfterBatch then
-                    Render.oneStepNoFlush renderState () (fun () -> Observer.value vdomObserver)
+                    renderWithFocusStabilization renderState vdomObserver incrState
                     iterations <- iterations + 1
                 else
                     continueLoop <- false
 
         iterations >= MAX_POST_LAYOUT_ITERATIONS
-
-    /// Render once, and if render-time focus assignment changed the focused key,
-    /// stabilize and render again so incremental views pick up the new focus.
-    let private renderWithFocusStabilization<'postLayoutEvent>
-        (renderState : RenderState<'postLayoutEvent>)
-        (vdomObserver : Vdom<DesiredBounds> Observer)
-        (incrState : IncrementalState)
-        : unit
-        =
-        let ctx = RenderState.vdomContext renderState
-        let focusedBefore = VdomContext.focusedKey ctx
-
-        Render.oneStepNoFlush renderState () (fun () -> Observer.value vdomObserver)
-
-        let focusedAfter = VdomContext.focusedKey ctx
-
-        if focusedBefore.IsNone && focusedAfter.IsSome then
-            incrState.Incr.Stabilize ()
-            Render.oneStepNoFlush renderState () (fun () -> Observer.value vdomObserver)
 
     /// Process changes using the AppConfig approach with StateMachine.
     let private processChangesWithConfig<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
@@ -144,24 +145,31 @@ module App =
 
         // Track local state so each event in the batch sees cumulative state from prior events.
         // We apply config.Transition locally rather than stabilizing after each event (expensive).
-        let mutable localState = stateMachine.CurrentState ()
+        // We use SetState at the end rather than Inject during the loop to avoid running
+        // transition twice (once here, once in StateMachine on stabilization).
+        let initialState = stateMachine.CurrentState ()
+        let mutable localState = initialState
+
+        // Defer Tab handling until after stabilization when the focusable list is fresh.
+        // Track net focus movement: positive = advance, negative = retreat.
+        let mutable pendingFocusMovement = 0
 
         for change in changes do
             if isCancelled () then
                 ()
             else
-                // Check for Tab focus handling
+                // Check for Tab focus handling - defer until after render
                 match change with
                 | WorldStateChange.Keystroke t when
                     haveFrameworkHandleFocus
                     && t.Key = ConsoleKey.Tab
                     && (t.Modifiers = ConsoleModifiers.None || t.Modifiers = ConsoleModifiers.Shift)
                     ->
-                    // Handle focus cycling
+                    // Defer focus cycling until after stabilization/render
                     if t.Modifiers = ConsoleModifiers.None then
-                        RenderState.advanceFocus renderState
+                        pendingFocusMovement <- pendingFocusMovement + 1
                     else
-                        RenderState.retreatFocus renderState
+                        pendingFocusMovement <- pendingFocusMovement - 1
 
                 | WorldStateChange.Keystroke k ->
                     // Check activation resolver first
@@ -170,32 +178,29 @@ module App =
                         match config.ActivationResolver.Invoke (focusedKey, k, localState) with
                         | Some appEvent ->
                             VdomContext.recordActivation now focusedKey ctx
-                            stateMachine.Inject appEvent
                             localState <- config.Transition localState appEvent
                         | None ->
                             // Try HandleInput
                             match config.HandleInput change with
-                            | Some appEvent ->
-                                stateMachine.Inject appEvent
-                                localState <- config.Transition localState appEvent
+                            | Some appEvent -> localState <- config.Transition localState appEvent
                             | None -> ()
                     | None ->
                         // No focus, just try HandleInput
                         match config.HandleInput change with
-                        | Some appEvent ->
-                            stateMachine.Inject appEvent
-                            localState <- config.Transition localState appEvent
+                        | Some appEvent -> localState <- config.Transition localState appEvent
                         | None -> ()
 
                 | _ ->
                     // Other change types (ApplicationEvent, MouseEvent, Paste, etc.)
                     match config.HandleInput change with
-                    | Some appEvent ->
-                        stateMachine.Inject appEvent
-                        localState <- config.Transition localState appEvent
+                    | Some appEvent -> localState <- config.Transition localState appEvent
                     | None -> ()
 
-        // Stabilize to propagate all incremental changes (injected events, focus, etc.)
+        // Set final state if changed (avoids duplicate transition execution)
+        if initialState <> localState then
+            stateMachine.SetState localState
+
+        // Stabilize to propagate all incremental changes (state, focus, etc.)
         incrState.Incr.Stabilize ()
 
         let currentVdom = Observer.value vdomObserver
@@ -204,12 +209,34 @@ module App =
         // Re-render if vdom changed or context is dirty (e.g., from resize, activation, etc.)
         if not (Object.referenceEquals previousVdom currentVdom) || VdomContext.isDirty ctx then
             renderWithFocusStabilization renderState vdomObserver incrState
-            VdomContext.markClean ctx
 
             // Handle post-layout events
             let _hitLimit =
                 stabilizePostLayoutEventsWithConfig stateMachine renderState config vdomObserver incrState
 
+            // markClean after post-layout so isDirty doesn't leak to next pump
+            VdomContext.markClean ctx
+            Render.flush renderState
+
+        // Now apply deferred Tab focus changes with fresh focusable list
+        if pendingFocusMovement <> 0 then
+            // Apply net focus movement
+            if pendingFocusMovement > 0 then
+                for _ in 1..pendingFocusMovement do
+                    RenderState.advanceFocus renderState
+            else
+                for _ in 1 .. -pendingFocusMovement do
+                    RenderState.retreatFocus renderState
+
+            // Focus changed, need to stabilize and re-render
+            incrState.Incr.Stabilize ()
+            renderWithFocusStabilization renderState vdomObserver incrState
+
+            let _hitLimit =
+                stabilizePostLayoutEventsWithConfig stateMachine renderState config vdomObserver incrState
+
+            // markClean after post-layout so isDirty doesn't leak to next pump
+            VdomContext.markClean ctx
             Render.flush renderState
 
     /// Process when no changes occurred, using AppConfig approach.
@@ -230,11 +257,12 @@ module App =
         // Re-render if vdom changed or context is dirty (e.g., from resize, activation, etc.)
         if not (Object.referenceEquals previousVdom currentVdom) || VdomContext.isDirty ctx then
             renderWithFocusStabilization renderState vdomObserver incrState
-            VdomContext.markClean ctx
 
             let _hitLimit =
                 stabilizePostLayoutEventsWithConfig stateMachine renderState config vdomObserver incrState
 
+            // markClean after post-layout so isDirty doesn't leak to next pump
+            VdomContext.markClean ctx
             Render.flush renderState
 
     /// Run one iteration of the incremental event loop.

@@ -329,21 +329,26 @@ module TestMultiSelection =
             let buttonKey = NodeKey.make "button"
 
             let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
-                let list =
-                    (MultiSelection.make (
+                let listResultNode : SelectionListResult Node =
+                    MultiSelection.make (
                         ctx,
                         multiSelectPrefix,
                         makeItems state,
                         SelectionListState.AtStart,
                         (fun _ -> ()),
                         isFirstToFocus = true
-                    ))
-                        .Vdom
+                    )
+
+                let listNode = listResultNode |> ctx.Incr.Map (fun result -> result.Vdom)
 
                 let buttonNode = Button.make (ctx, buttonKey, "OK")
 
-                buttonNode
-                |> ctx.Incr.Map (fun button -> Vdom.panelSplitProportion (SplitDirection.Horizontal, 0.8, list, button))
+                ctx.Incr.Map2
+                    (fun (list : Vdom<DesiredBounds>) (button : Vdom<DesiredBounds>) ->
+                        Vdom.panelSplitProportion (SplitDirection.Horizontal, 0.8, list, button)
+                    )
+                    listNode
+                    buttonNode
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
 
@@ -470,16 +475,18 @@ module TestMultiSelection =
                     }
                 )
 
-            let vdom (ctx : IVdomContext<_>) (s : ToggleListState) : Vdom<DesiredBounds> =
-                (MultiSelection.make (
-                    ctx,
-                    multiSelectPrefix,
-                    makeItems s,
-                    s.ListState,
-                    ToggleViewportInfo,
-                    isFirstToFocus = true
-                ))
-                    .Vdom
+            let vdom (ctx : IVdomContext<_>) (s : ToggleListState) : Vdom<DesiredBounds> Node =
+                let resultNode : SelectionListResult Node =
+                    MultiSelection.make (
+                        ctx,
+                        multiSelectPrefix,
+                        makeItems s,
+                        s.ListState,
+                        ToggleViewportInfo,
+                        isFirstToFocus = true
+                    )
+
+                resultNode |> ctx.Incr.Map (fun result -> result.Vdom)
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
 
@@ -541,7 +548,7 @@ module TestMultiSelection =
                 AppConfig.withInputHandler
                     initialState
                     transition
-                    (App.pureView vdom)
+                    (App.pureViewIncr vdom)
                     (function
                     | WorldStateChange.ApplicationEvent ev -> Some ev
                     | _ -> None)
@@ -817,16 +824,18 @@ module TestMultiSelection =
                     }
                 |]
 
-            let vdom (ctx : IVdomContext<_>) (s : ArrowTestState) : Vdom<DesiredBounds> =
-                (MultiSelection.make (
-                    ctx,
-                    multiSelectPrefix,
-                    makeItems (),
-                    s.ListState,
-                    ArrowViewportInfo,
-                    isFirstToFocus = true
-                ))
-                    .Vdom
+            let vdom (ctx : IVdomContext<_>) (s : ArrowTestState) : Vdom<DesiredBounds> Node =
+                let resultNode : SelectionListResult Node =
+                    MultiSelection.make (
+                        ctx,
+                        multiSelectPrefix,
+                        makeItems (),
+                        s.ListState,
+                        ArrowViewportInfo,
+                        isFirstToFocus = true
+                    )
+
+                resultNode |> ctx.Incr.Map (fun result -> result.Vdom)
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 3)
 
@@ -875,7 +884,7 @@ module TestMultiSelection =
                 AppConfig.withInputHandler
                     initialState
                     transition
-                    (App.pureView vdom)
+                    (App.pureViewIncr vdom)
                     (function
                     | WorldStateChange.ApplicationEvent ev -> Some ev
                     | _ -> None)
@@ -973,23 +982,26 @@ module TestMultiSelection =
             let buttonKey = NodeKey.make "button"
 
             let vdom (ctx : IVdomContext<FocusLeavePostLayoutEvent>) (s : FocusLeaveState) : Vdom<DesiredBounds> Node =
-                let list =
-                    (MultiSelection.make (
+                let listResultNode : SelectionListResult Node =
+                    MultiSelection.make (
                         ctx,
                         multiSelectPrefix,
                         makeItems (),
                         s.ListState,
                         FocusLeaveViewportInfo,
                         isFirstToFocus = true
-                    ))
-                        .Vdom
+                    )
+
+                let listNode = listResultNode |> ctx.Incr.Map (fun result -> result.Vdom)
 
                 let buttonNode = Button.make (ctx, buttonKey, "OK")
 
-                buttonNode
-                |> ctx.Incr.Map (fun button ->
-                    Vdom.panelSplitProportion (SplitDirection.Horizontal, 0.75, list, button)
-                )
+                ctx.Incr.Map2
+                    (fun (list : Vdom<DesiredBounds>) (button : Vdom<DesiredBounds>) ->
+                        Vdom.panelSplitProportion (SplitDirection.Horizontal, 0.75, list, button)
+                    )
+                    listNode
+                    buttonNode
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 4)
 
@@ -1136,8 +1148,11 @@ module TestMultiSelection =
                     }
                 |]
 
-            let vdom (ctx : IVdomContext<_>) (s : NoDanceState) : Vdom<DesiredBounds> =
-                (MultiSelection.make (ctx, multiSelectPrefix, makeItems (), s.ListState, NoDanceViewportInfo)).Vdom
+            let vdom (ctx : IVdomContext<_>) (s : NoDanceState) : Vdom<DesiredBounds> Node =
+                let resultNode : SelectionListResult Node =
+                    MultiSelection.make (ctx, multiSelectPrefix, makeItems (), s.ListState, NoDanceViewportInfo)
+
+                resultNode |> ctx.Incr.Map (fun result -> result.Vdom)
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 3)
 
@@ -1192,7 +1207,7 @@ module TestMultiSelection =
                 AppConfig.withInputHandler
                     initialState
                     transition
-                    (App.pureView vdom)
+                    (App.pureViewIncr vdom)
                     (function
                     | WorldStateChange.ApplicationEvent ev -> Some ev
                     | _ -> None)
@@ -1337,16 +1352,18 @@ module TestMultiSelection =
                     }
                 |]
 
-            let vdom (ctx : IVdomContext<_>) (s : ViewportAwareState) : Vdom<DesiredBounds> =
-                (MultiSelection.make (
-                    ctx,
-                    multiSelectPrefix,
-                    makeItems (),
-                    s.ListState,
-                    ViewportAwareViewportInfo,
-                    isFirstToFocus = true
-                ))
-                    .Vdom
+            let vdom (ctx : IVdomContext<_>) (s : ViewportAwareState) : Vdom<DesiredBounds> Node =
+                let resultNode : SelectionListResult Node =
+                    MultiSelection.make (
+                        ctx,
+                        multiSelectPrefix,
+                        makeItems (),
+                        s.ListState,
+                        ViewportAwareViewportInfo,
+                        isFirstToFocus = true
+                    )
+
+                resultNode |> ctx.Incr.Map (fun result -> result.Vdom)
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 3)
 
@@ -1396,7 +1413,7 @@ module TestMultiSelection =
                 AppConfig.withInputHandler
                     initialState
                     transition
-                    (App.pureView vdom)
+                    (App.pureViewIncr vdom)
                     (function
                     | WorldStateChange.ApplicationEvent ev -> Some ev
                     | _ -> None)

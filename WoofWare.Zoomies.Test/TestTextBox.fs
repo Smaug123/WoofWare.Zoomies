@@ -53,7 +53,7 @@ module TestTextBox =
             let buttonKey = NodeKey.make "button"
 
             let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
-                let textbox =
+                let textboxNode =
                     TextBox.make (
                         ctx,
                         textBoxKey,
@@ -65,8 +65,12 @@ module TestTextBox =
 
                 let buttonNode = Button.make (ctx, buttonKey, "Submit")
 
-                buttonNode
-                |> ctx.Incr.Map (fun button -> Vdom.panelSplitAuto (SplitDirection.Horizontal, textbox, button))
+                ctx.Incr.Map2
+                    (fun (textbox : Vdom<DesiredBounds>) (button : Vdom<DesiredBounds>) ->
+                        Vdom.panelSplitAuto (SplitDirection.Horizontal, textbox, button)
+                    )
+                    textboxNode
+                    buttonNode
 
             let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
@@ -142,7 +146,7 @@ module TestTextBox =
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : IVdomContext<_>) (_ : KeystrokeState) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (_ : KeystrokeState) : Vdom<DesiredBounds> Node =
                 TextBox.make (ctx, textBoxKey, "", 0, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -161,7 +165,7 @@ module TestTextBox =
                 {
                     Initial = ImmutableArray.Empty
                     Transition = fun state k -> state.Add k
-                    View = App.pureView vdom
+                    View = App.pureViewIncr vdom
                     HandleInput =
                         function
                         | WorldStateChange.Keystroke k -> Some k
@@ -206,7 +210,7 @@ module TestTextBox =
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -229,7 +233,7 @@ module TestTextBox =
                         Cursor = 0
                     }
                     textBoxTransition
-                    (App.pureView vdom)
+                    (App.pureViewIncr vdom)
                     resolver
 
             use ctx = IncrTestContext.make console config None
@@ -308,7 +312,7 @@ Hello!|                                 |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -331,7 +335,7 @@ Hello!|                                 |
                         Cursor = 5
                     }
                     textBoxTransition
-                    (App.pureView vdom)
+                    (App.pureViewIncr vdom)
                     resolver
 
             use ctx = IncrTestContext.make console config None
@@ -393,7 +397,7 @@ Hello!|                                 |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -416,7 +420,7 @@ Hello!|                                 |
                         Cursor = 5
                     }
                     textBoxTransition
-                    (App.pureView vdom)
+                    (App.pureViewIncr vdom)
                     resolver
 
             use ctx = IncrTestContext.make console config None
@@ -514,13 +518,18 @@ Hello!|                                 |
             let textBox1Key = NodeKey.make "textbox1"
             let textBox2Key = NodeKey.make "textbox2"
 
-            let vdom (ctx : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
-                let textbox1 =
+            let vdom (ctx : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> Node =
+                let textbox1Node =
                     TextBox.make (ctx, textBox1Key, "Focused", 3, isInitiallyFocused = true, isFirstToFocus = true)
 
-                let textbox2 = TextBox.make (ctx, textBox2Key, "Unfocused", 0)
+                let textbox2Node = TextBox.make (ctx, textBox2Key, "Unfocused", 0)
 
-                Vdom.panelSplitAuto (SplitDirection.Horizontal, textbox1, textbox2)
+                ctx.Incr.Map2
+                    (fun (textbox1 : Vdom<DesiredBounds>) (textbox2 : Vdom<DesiredBounds>) ->
+                        Vdom.panelSplitAuto (SplitDirection.Horizontal, textbox1, textbox2)
+                    )
+                    textbox1Node
+                    textbox2Node
 
             let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
@@ -547,7 +556,7 @@ Hello!|                                 |
                         Cursor = 0
                     }
                     (fun state _ -> state) // No-op transition for this test
-                    (App.pureView vdom)
+                    (App.pureViewIncr vdom)
                     resolver
 
             use ctx = IncrTestContext.make console config None
@@ -608,7 +617,7 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -631,7 +640,7 @@ Unfocused                               |
                         Cursor = 5 // At end
                     }
                     textBoxTransition
-                    (App.pureView vdom)
+                    (App.pureViewIncr vdom)
                     resolver
 
             use ctx = IncrTestContext.make console config None
@@ -658,7 +667,7 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -681,7 +690,7 @@ Unfocused                               |
                         Cursor = 0
                     }
                     textBoxTransition
-                    (App.pureView vdom)
+                    (App.pureViewIncr vdom)
                     resolver
 
             use ctx = IncrTestContext.make console config None
@@ -709,7 +718,7 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -732,7 +741,7 @@ Unfocused                               |
                         Cursor = 5 // Middle of text
                     }
                     textBoxTransition
-                    (App.pureView vdom)
+                    (App.pureViewIncr vdom)
                     resolver
 
             use ctx = IncrTestContext.make console config None
@@ -764,7 +773,7 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -787,7 +796,7 @@ Unfocused                               |
                         Cursor = 3
                     }
                     textBoxTransition
-                    (App.pureView vdom)
+                    (App.pureViewIncr vdom)
                     resolver
 
             use ctx = IncrTestContext.make console config None
@@ -819,7 +828,7 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -842,7 +851,7 @@ Unfocused                               |
                         Cursor = 2
                     }
                     textBoxTransition
-                    (App.pureView vdom)
+                    (App.pureViewIncr vdom)
                     resolver
 
             use ctx = IncrTestContext.make console config None
@@ -874,7 +883,7 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -897,7 +906,7 @@ Unfocused                               |
                         Cursor = 5
                     }
                     textBoxTransition
-                    (App.pureView vdom)
+                    (App.pureViewIncr vdom)
                     resolver
 
             use ctx = IncrTestContext.make console config None
@@ -920,7 +929,7 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -943,7 +952,7 @@ Unfocused                               |
                         Cursor = 6
                     }
                     textBoxTransition
-                    (App.pureView vdom)
+                    (App.pureViewIncr vdom)
                     resolver
 
             use ctx = IncrTestContext.make console config None
@@ -966,7 +975,7 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
@@ -989,7 +998,7 @@ Unfocused                               |
                         Cursor = 11 // After "World"
                     }
                     textBoxTransition
-                    (App.pureView vdom)
+                    (App.pureViewIncr vdom)
                     resolver
 
             use ctx = IncrTestContext.make console config None

@@ -365,14 +365,18 @@ module TestAppRun =
 
             let mutable callCount = 0
 
-            let pureVdom (ctx : IVdomContext<unit>) (_ : unit) : Vdom<DesiredBounds> =
-                callCount <- callCount + 1
+            let pureVdom (ctx : IVdomContext<unit>) (_ : unit) : Vdom<DesiredBounds> Node =
+                ctx.Incr.Map
+                    (fun focusedKey ->
+                        callCount <- callCount + 1
 
-                match ctx.FocusedKey with
-                | Some key -> Vdom.textContent $"Focused: {key}"
-                | None -> Vdom.textContent "No focus"
+                        match focusedKey with
+                        | Some key -> Vdom.textContent $"Focused: {key}"
+                        | None -> Vdom.textContent "No focus"
+                    )
+                    ctx.FocusedKey
 
-            let vdomNode = App.pureView pureVdom ctx stateMachine.StateNode
+            let vdomNode = App.pureViewIncr pureVdom ctx stateMachine.StateNode
 
             let observer = incr.Observe vdomNode
             incr.Stabilize ()

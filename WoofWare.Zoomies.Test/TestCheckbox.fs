@@ -3,6 +3,7 @@ namespace WoofWare.Zoomies.Test
 open System
 open FsUnitTyped
 open NUnit.Framework
+open WoofWare.Incremental
 open WoofWare.Zoomies
 
 [<TestFixture>]
@@ -27,15 +28,19 @@ module TestCheckbox =
 
             // Create a vdom where the checkbox has focus and is allocated bounds with Height=0
             // We use an absolute split to force the checkbox into a zero-height allocation
-            let vdom (vdomContext : IVdomContext<_>) (_ : unit) =
+            let vdom (vdomContext : IVdomContext<_>) (_ : unit) : Vdom<DesiredBounds> Node =
                 let topContent = Vdom.textContent "top"
 
-                let checkbox = Components.Checkbox.make (vdomContext, checkboxKey, false)
+                let checkboxNode = Components.Checkbox.make (vdomContext, checkboxKey, false)
 
                 // Give the checkbox 0 rows (split at row 5 in a 5-row terminal)
-                Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 5, topContent, checkbox)
+                vdomContext.Incr.Map
+                    (fun (checkbox : Vdom<DesiredBounds>) ->
+                        Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 5, topContent, checkbox)
+                    )
+                    checkboxNode
 
-            let config = TestConfig.passthrough<unit> vdom
+            let config = TestConfig.passthroughIncr<unit> vdom
 
             let world = MockWorld.make ()
 

@@ -4,6 +4,7 @@ open System
 open FsUnitTyped
 open NUnit.Framework
 open WoofWare.Expect
+open WoofWare.Incremental
 open WoofWare.Zoomies
 
 type State =
@@ -35,7 +36,9 @@ module TestRender =
     let tearDown () =
         GlobalBuilderConfig.updateAllSnapshots ()
 
-    let vdom (vdomContext : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
+    let vdom (vdomContext : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
+        let incr = vdomContext.Incr
+
         let left =
             Vdom.textContent
                 "not praising the praiseworthy keeps people uncompetitive; not prizing rare treasures keeps people from stealing; not looking at the desirable keeps the mind quiet"
@@ -49,31 +52,43 @@ module TestRender =
 
         let toggle1Key = NodeKey.make "toggle1"
 
-        let bottomHalf =
+        let bottomHalfNode =
             Components.LabelledCheckbox.make (vdomContext, "Press Space to toggle", toggle1Key, state.IsToggle1Checked)
-
-        let vdom =
-            Vdom.panelSplitAbsolute (SplitDirection.Horizontal, -3, topHalf, bottomHalf)
 
         if state.IsToggle1Checked then
             let toggle2Key = NodeKey.make "toggle2"
 
-            let inner =
-                Vdom.panelSplitProportion (
-                    SplitDirection.Vertical,
-                    0.5,
-                    Vdom.textContent "only displayed when checked",
-                    Components.LabelledCheckbox.make (
-                        vdomContext,
-                        "this one is focusable!",
-                        toggle2Key,
-                        state.IsToggle2Checked
-                    )
+            let innerCheckboxNode =
+                Components.LabelledCheckbox.make (
+                    vdomContext,
+                    "this one is focusable!",
+                    toggle2Key,
+                    state.IsToggle2Checked
                 )
 
-            Vdom.panelSplitProportion (SplitDirection.Horizontal, 0.7, vdom, inner)
+            incr.Map2
+                (fun (bottomHalf : Vdom<DesiredBounds>) (innerCheckbox : Vdom<DesiredBounds>) ->
+                    let vdom =
+                        Vdom.panelSplitAbsolute (SplitDirection.Horizontal, -3, topHalf, bottomHalf)
+
+                    let inner =
+                        Vdom.panelSplitProportion (
+                            SplitDirection.Vertical,
+                            0.5,
+                            Vdom.textContent "only displayed when checked",
+                            innerCheckbox
+                        )
+
+                    Vdom.panelSplitProportion (SplitDirection.Horizontal, 0.7, vdom, inner)
+                )
+                bottomHalfNode
+                innerCheckboxNode
         else
-            vdom
+            incr.Map
+                (fun (bottomHalf : Vdom<DesiredBounds>) ->
+                    Vdom.panelSplitAbsolute (SplitDirection.Horizontal, -3, topHalf, bottomHalf)
+                )
+                bottomHalfNode
 
     let transition (state : State) (event : RenderTestEvent) : State =
         match event with
@@ -97,7 +112,7 @@ module TestRender =
         )
 
     let makeConfig () : AppConfig<State, RenderTestEvent, unit> =
-        AppConfig.simple (State.Empty ()) transition (App.pureView vdom) activationResolver
+        AppConfig.simple (State.Empty ()) transition (App.pureViewIncr vdom) activationResolver
 
     [<Test>]
     let ``there is no rerender if nothing changes`` () =
@@ -108,15 +123,17 @@ module TestRender =
                 Execute = fun x -> terminalOps.Add x
             }
 
-        let state = State.Empty ()
+        // Use a simple inline vdom for this render-layer test
+        let simpleVdom (_ : unit) =
+            Vdom.textContent "Static content that doesn't change" |> Vdom.bordered
 
         let renderState = MockTime.makeRenderStateStatic<unit> console None
 
-        Render.oneStep renderState state (vdom (VdomContext.asTyped<unit> (RenderState.vdomContext renderState)))
+        Render.oneStep renderState () simpleVdom
 
         terminalOps.Clear ()
 
-        Render.oneStep renderState state (vdom (VdomContext.asTyped<unit> (RenderState.vdomContext renderState)))
+        Render.oneStep renderState () simpleVdom
 
         terminalOps |> shouldBeEmpty
 

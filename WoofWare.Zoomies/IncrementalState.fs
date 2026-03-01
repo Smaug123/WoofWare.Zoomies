@@ -47,6 +47,11 @@ type IncrementalState =
         /// Cached clock time node as DateTime (derived from Clock.WatchNow).
         /// Cached because each call to Incr.Map creates a new node.
         ClockDateTimeNode : DateTime Node
+
+        /// Tracks the last time we advanced to, for monotonicity.
+        /// If system time jumps backwards, we advance by 1 tick instead
+        /// to avoid violating timing-wheel invariants.
+        mutable LastAdvancedTimeNs : int64<timeNs>
     }
 
 [<RequireQualifiedAccess>]
@@ -70,6 +75,7 @@ module IncrementalState =
             TerminalBoundsVar = incr.Var.Create initialBounds
             FocusedKeyVar = incr.Var.Create initialFocusedKey
             ClockDateTimeNode = clockDateTimeNode
+            LastAdvancedTimeNs = epochNs
         }
 
     /// Get the terminal bounds as a Node for incremental computations.
@@ -94,8 +100,19 @@ module IncrementalState =
     let clockDateTimeNode (s : IncrementalState) : DateTime Node = s.ClockDateTimeNode
 
     /// Advance the clock to the given time and stabilize the computation graph.
+    /// If the requested time is not after the last advanced time (e.g., system clock jumped backwards),
+    /// we advance by 1 nanosecond instead to maintain monotonicity and avoid timing-wheel invariant violations.
     let advanceClockAndStabilize (time : DateTime) (s : IncrementalState) : unit =
-        s.Incr.Clock.AdvanceClock s.Clock (TimeConversion.dateTimeToNs time)
+        let requestedNs = TimeConversion.dateTimeToNs time
+        // Ensure monotonicity: always advance by at least 1ns
+        let targetNs =
+            if requestedNs > s.LastAdvancedTimeNs then
+                requestedNs
+            else
+                s.LastAdvancedTimeNs + 1L<timeNs>
+
+        s.LastAdvancedTimeNs <- targetNs
+        s.Incr.Clock.AdvanceClock s.Clock targetNs
         s.Incr.Stabilize ()
 
     /// Stabilize the computation graph without advancing the clock.

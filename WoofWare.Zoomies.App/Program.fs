@@ -78,11 +78,18 @@ module FileBrowser =
         }
 
     /// Store world bridge for async operations. Set via OnSetup.
+    ///
+    /// ARCHITECTURAL NOTE: This global ref is a pragmatic workaround for the demo app.
+    /// The ideal pattern would be for `transition` to return both state AND a list of
+    /// "commands" (effects to execute), with the framework executing those commands.
+    /// That would keep the transition pure. For now, we accept this compromise in the
+    /// demo app - the ref is set once on setup and never changes, so it's deterministic
+    /// in practice, just not in principle.
     let worldBridgeRef : IWorldBridge<AppEvent> option ref = ref None
 
-    /// Pure transition function: state -> event -> state
-    /// (Note: LoadButtonClicked spawns an async task, which is an effect,
-    /// but the state transition itself is deterministic.)
+    /// Transition function: state -> event -> state.
+    /// NOTE: LoadButtonClicked spawns an async task via the global worldBridgeRef,
+    /// which is a side effect. See the architectural note above.
     let transition (state : State) (event : AppEvent) : State =
         match event with
         | SelectFile index ->
@@ -157,9 +164,6 @@ module FileBrowser =
         let incr = VdomContext.incr ctx
 
         VdomContext.incrBuilder ctx {
-            // need a dependency on these so that we rerender
-            let! _bounds = VdomContext.boundsNode ctx
-            let! _focus = VdomContext.focusedKeyNode ctx
             let! state = stateNode
 
             let title = Vdom.textContent "Files in current directory:"

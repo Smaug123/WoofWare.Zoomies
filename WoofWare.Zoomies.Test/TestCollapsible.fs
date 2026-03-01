@@ -4,6 +4,7 @@ open System
 open NUnit.Framework
 open FsUnitTyped
 open WoofWare.Expect
+open WoofWare.Incremental
 open WoofWare.Zoomies
 open WoofWare.Zoomies.Components
 
@@ -32,7 +33,7 @@ module TestCollapsible =
         task {
             let collapsibleKey = NodeKey.make "collapsible"
 
-            let vdom (vdomContext : IVdomContext<_>) (state : State) =
+            let vdom (vdomContext : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
                 let childContent = Vdom.textContent "This stuff was hidden"
 
                 Collapsible.make vdomContext collapsibleKey state.CollapsibleState "Collapsible section" childContent
@@ -69,7 +70,7 @@ module TestCollapsible =
                 )
 
             let config =
-                AppConfig.simple initial transition (App.pureView vdom) activationResolver
+                AppConfig.simple initial transition (App.pureViewIncr vdom) activationResolver
 
             use ctx = IncrTestContext.make console config None
 
@@ -185,7 +186,7 @@ This stuff was hidden                                       |
 
             let collapsibleKey = NodeKey.make "collapsible"
 
-            let vdom (vdomContext : IVdomContext<_>) (state : State) =
+            let vdom (vdomContext : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
                 let childContent =
                     let line1 =
                         Vdom.textContent "Line 1 of content" |> Vdom.withKey (NodeKey.make "line1")
@@ -213,7 +214,7 @@ This stuff was hidden                                       |
                 )
 
             let config =
-                AppConfig.simple initial transition (App.pureView vdom) activationResolver
+                AppConfig.simple initial transition (App.pureViewIncr vdom) activationResolver
 
             use ctx = IncrTestContext.make console config None
 
@@ -293,7 +294,7 @@ Line 2 of content                                           |
 
             let collapsibleKey = NodeKey.make "collapsible"
 
-            let vdom (vdomContext : IVdomContext<_>) (state : State) =
+            let vdom (vdomContext : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
                 let childContent = Vdom.textContent "Child content here"
 
                 Collapsible.make vdomContext collapsibleKey state.CollapsibleState longLabel childContent
@@ -317,7 +318,7 @@ Line 2 of content                                           |
                 )
 
             let config =
-                AppConfig.simple initial transition (App.pureView vdom) activationResolver
+                AppConfig.simple initial transition (App.pureViewIncr vdom) activationResolver
 
             use ctx = IncrTestContext.make console config None
 
