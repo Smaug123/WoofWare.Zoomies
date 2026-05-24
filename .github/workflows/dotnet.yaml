@@ -22,7 +22,7 @@ jobs:
       contents: read
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       with:
         fetch-depth: 0 # so that NerdBank.GitVersioning has access to history
     - name: Install Nix
@@ -43,7 +43,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@ab0a9732c6464e5bb81efb82a2103c7d98f0946f
       - name: Enable Nix cache
@@ -60,7 +60,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@ab0a9732c6464e5bb81efb82a2103c7d98f0946f
       - name: Enable Nix cache
@@ -75,7 +75,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@ab0a9732c6464e5bb81efb82a2103c7d98f0946f
       - name: Enable Nix cache
@@ -91,7 +91,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0 # so that NerdBank.GitVersioning has access to history
       - name: Install Nix
@@ -118,7 +118,7 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@ab0a9732c6464e5bb81efb82a2103c7d98f0946f
       - name: Enable Nix cache
