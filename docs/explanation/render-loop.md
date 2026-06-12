@@ -7,10 +7,15 @@ index: 2
 
 # The render loop
 
-The event loop in WoofWare.Zoomies happens in distinct steps.
-We start at the point where something has caused the framework to decide to rerender: perhaps user state has changed in response to an input from the world, or perhaps the terminal has resized, for example.
+The event loop in WoofWare.Zoomies is event-driven: between renders, the framework sleeps until something happens.
+The wake sources are: a keystroke arrives, an application event is posted through the `IWorldBridge`, the terminal is resized, the Incremental clock's next alarm comes due (animation frames, activation-highlight expiry), or the input decoder's internal timeout elapses (distinguishing a bare Escape press from an ANSI escape sequence).
+An idle application does no work at all.
 
-1. Zoomies invokes the application author's code, asking it for a Vdom. (The function invoked is the Vdom-producing argument to `App.run`.) The author gets an `IVdomContext<_>`, so they know the terminal size on the previous render, and the key (if any) of the component which the [automatic focus-tracking mechanism](../how_to/automatic-focus.md) had focused on the last tick.
+Once awake, rendering happens in distinct steps.
+We start at the point where something has caused the framework to decide to rerender: perhaps user state has changed in response to an input from the world, or perhaps the terminal has resized, for example.
+The decision itself is made by the Incremental graph: the framework renders when the observed vdom value changes (or when the renderer knows its picture of the terminal is invalid, after a resize).
+
+1. Zoomies invokes the application author's `View` function (from the `AppConfig`), asking it for a Vdom. The `View` function receives a `VdomContext<_>` and the current state as an incremental `Node`, so the author can observe the terminal size, the focused key from the previous render, and the current application state.
 1. The author's code returns a Vdom.
 1. Zoomies traverses the Vdom measuring each component, to collect layout constraints for each: the "measure" phase.
   * The built-in primitives of WoofWare.Zoomies all implicitly declare their size preferences, but there is one which cannot: `Vdom.flexibleContent`.

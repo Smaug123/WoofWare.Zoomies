@@ -1,5 +1,6 @@
 namespace WoofWare.Zoomies.Components
 
+open WoofWare.Incremental
 open WoofWare.Zoomies
 
 [<RequireQualifiedAccess>]
@@ -40,13 +41,24 @@ type Button =
     /// This component automatically handles focus and pressed visual states by consulting the VdomContext.
     /// You must also provide an ActivationResolver to `App.run` to handle button activation events; the Vdom is only
     /// concerned with layout, not action.
+    /// Returns a Vdom Node because the pressed state depends on time (it expires after a timeout).
     /// </remarks>
     static member make
-        (ctx : IVdomContext, key : NodeKey, label : string, ?isFirstToFocus : bool, ?isInitiallyFocused : bool)
+        (ctx : #IVdomContext, key : NodeKey, label : string, ?isFirstToFocus : bool, ?isInitiallyFocused : bool)
+        : Vdom<DesiredBounds> Node
         =
-        let isFocused = ctx.FocusedKey = Some key
-        let isPressed = ctx.WasRecentlyActivated key
+        let isFocusedNode = ctx.Incr.Map (fun k -> k = Some key) ctx.FocusedKey
+        let isPressedNode = ctx.WasRecentlyActivated key
 
-        let button = Button.make' (label, isFocused, isPressed) |> Vdom.withKey key
+        ctx.Incr.Map2
+            (fun isFocused isPressed ->
+                let button = Button.make' (label, isFocused, isPressed) |> Vdom.withKey key
 
-        Vdom.withFocusTracking (button, ?isFirstToFocus = isFirstToFocus, ?isInitiallyFocused = isInitiallyFocused)
+                Vdom.withFocusTracking (
+                    button,
+                    ?isFirstToFocus = isFirstToFocus,
+                    ?isInitiallyFocused = isInitiallyFocused
+                )
+            )
+            isFocusedNode
+            isPressedNode

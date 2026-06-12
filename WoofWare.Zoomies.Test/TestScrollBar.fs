@@ -10,6 +10,7 @@ open WoofWare.Zoomies.Components
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestScrollBar =
+
     [<OneTimeSetUp>]
     let setUp () =
         // GlobalBuilderConfig.enterBulkUpdateMode ()
@@ -37,30 +38,16 @@ module TestScrollBar =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 15) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -89,30 +76,16 @@ module TestScrollBar =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 15) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -141,30 +114,16 @@ module TestScrollBar =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 15) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -193,30 +152,16 @@ module TestScrollBar =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 5) (fun () -> 12)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -255,30 +200,16 @@ module TestScrollBar =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 5) (fun () -> 12)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -317,30 +248,16 @@ module TestScrollBar =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 5) (fun () -> 12)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -379,30 +296,16 @@ module TestScrollBar =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 15) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -430,30 +333,16 @@ module TestScrollBar =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 15) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -483,30 +372,16 @@ module TestScrollBar =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 15) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -535,30 +410,16 @@ module TestScrollBar =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 15) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -588,30 +449,16 @@ module TestScrollBar =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 15) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -641,30 +488,16 @@ module TestScrollBar =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 15) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -698,30 +531,16 @@ module TestScrollBar =
             // Console is only 8 wide, scroll bar should adapt
             let console, terminal = ConsoleHarness.make' (fun () -> 8) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -754,30 +573,16 @@ module TestScrollBar =
             // Console is only 8 wide, scroll bar should adapt
             let console, terminal = ConsoleHarness.make' (fun () -> 8) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -810,30 +615,16 @@ module TestScrollBar =
             // Console is only 8 wide, scroll bar should adapt
             let console, terminal = ConsoleHarness.make' (fun () -> 8) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -852,7 +643,8 @@ module TestScrollBar =
         let width = max 1 scrollParams.TrackLength
         let height = 1
         let console, terminal = ConsoleHarness.make' (fun () -> width) (fun () -> height)
-        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+
+        let renderState = MockTime.makeRenderStateStatic<unit> console None
 
         Render.oneStep renderState () (fun () -> ScrollBar.make ScrollBarOrientation.Horizontal scrollParams)
 
@@ -869,7 +661,8 @@ module TestScrollBar =
         // Use max 1 to match ScrollBar clamping behaviour for non-positive track lengths
         let height = max 1 scrollParams.TrackLength
         let console, terminal = ConsoleHarness.make' (fun () -> width) (fun () -> height)
-        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+
+        let renderState = MockTime.makeRenderStateStatic<unit> console None
 
         Render.oneStep renderState () (fun () -> ScrollBar.make ScrollBarOrientation.Vertical scrollParams)
 
@@ -884,7 +677,8 @@ module TestScrollBar =
     /// that the ScrollBar itself handles non-positive track lengths correctly.
     let private renderHorizontalScrollBarWithFixedWidth (consoleWidth : int) (scrollParams : ScrollBarParams) : string =
         let console, terminal = ConsoleHarness.make' (fun () -> consoleWidth) (fun () -> 1)
-        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+
+        let renderState = MockTime.makeRenderStateStatic<unit> console None
 
         Render.oneStep renderState () (fun () -> ScrollBar.make ScrollBarOrientation.Horizontal scrollParams)
 
@@ -901,7 +695,8 @@ module TestScrollBar =
         : string[]
         =
         let console, terminal = ConsoleHarness.make' (fun () -> 1) (fun () -> consoleHeight)
-        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+
+        let renderState = MockTime.makeRenderStateStatic<unit> console None
 
         Render.oneStep renderState () (fun () -> ScrollBar.make ScrollBarOrientation.Vertical scrollParams)
 
@@ -1148,30 +943,16 @@ module TestScrollBar =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 15) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -1201,30 +982,16 @@ module TestScrollBar =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 15) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -1254,30 +1021,16 @@ module TestScrollBar =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 15) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -1307,30 +1060,16 @@ module TestScrollBar =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 15) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -1359,30 +1098,16 @@ module TestScrollBar =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 5) (fun () -> 7)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -1416,30 +1141,16 @@ module TestScrollBar =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 5) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot

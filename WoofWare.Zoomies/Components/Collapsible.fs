@@ -1,5 +1,6 @@
 namespace WoofWare.Zoomies.Components
 
+open WoofWare.Incremental
 open WoofWare.Zoomies
 
 /// High-level collapsible component module providing ergonomic expandable/collapsible content.
@@ -47,25 +48,29 @@ module Collapsible =
         (state : State)
         (label : string)
         (child : Vdom<DesiredBounds>)
-        : Vdom<DesiredBounds>
+        : Vdom<DesiredBounds> Node
         =
-        let toggle =
-            Toggle.make (ctx, key, '▶', '▼', state.IsExpanded)
-            |> fun v -> Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 1, v, Vdom.empty)
+        ctx.Builder {
+            let! toggle = Toggle.make (ctx, key, '▶', '▼', state.IsExpanded)
 
-        let spacer = Vdom.textContent " "
-        let labelVdom = Vdom.textContent label
+            let toggle =
+                Vdom.panelSplitAbsolute (SplitDirection.Horizontal, 1, toggle, Vdom.empty)
 
-        let headerContent =
-            Vdom.panelSplitAbsolute (
-                SplitDirection.Vertical,
-                3,
-                toggle,
-                Vdom.panelSplitAbsolute (SplitDirection.Vertical, 1, spacer, labelVdom)
-            )
+            let spacer = Vdom.textContent " "
+            let labelVdom = Vdom.textContent label
 
-        if state.IsExpanded then
-            Vdom.panelSplitAuto (SplitDirection.Horizontal, headerContent, child)
-        else
-            Vdom.panelSplitAuto (SplitDirection.Horizontal, headerContent, Vdom.empty)
-        |> Vdom.withTag "collapsible"
+            let headerContent =
+                Vdom.panelSplitAbsolute (
+                    SplitDirection.Vertical,
+                    3,
+                    toggle,
+                    Vdom.panelSplitAbsolute (SplitDirection.Vertical, 1, spacer, labelVdom)
+                )
+
+            return
+                if state.IsExpanded then
+                    Vdom.panelSplitAuto (SplitDirection.Horizontal, headerContent, child)
+                else
+                    Vdom.panelSplitAuto (SplitDirection.Horizontal, headerContent, Vdom.empty)
+                |> Vdom.withTag "collapsible"
+        }

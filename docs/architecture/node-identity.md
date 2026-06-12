@@ -7,7 +7,7 @@ index: 2
 
 # Query-Based Node Identity
 
-*(Mostly drafted by Claude as the result of a long design discussion. As of commit 2908a0732989cb775224ab950eb9e542c748ed19, this was the intended future design.)*
+*This is a historical design document, mostly drafted by Claude as the result of a long design discussion. As of commit 2908a0732989cb775224ab950eb9e542c748ed19, this was the intended future design. The design has since been implemented, but with a key divergence: the phantom-typed `Vdom<'bounds, 'keyed>` approach shown below was replaced by a discriminated union (`Vdom.Keyed of KeyedVdom` / `Vdom.Unkeyed of UnkeyedVdom`), which provides the same compile-time guarantees more explicitly. The `RenderState` query API (`focusedKey`, `layoutOf`) exists as described. Code examples below reflect the original design notation, not the current API surface.*
 
 ## Problem Statement
 
@@ -90,7 +90,7 @@ let render (state: State) (renderState: RenderState) =
 
     let checkbox1 =
         Vdom.checkbox
-            // `state.Focus` got updated in the WorldProcessor loop:
+            // `state.Focus` got updated in the event handling loop:
             // the user identified a Tab key coming in, and used it
             // to update the value of their user-controlled Focus field.
             (state.Focus = '1')

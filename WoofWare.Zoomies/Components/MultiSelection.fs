@@ -1,5 +1,6 @@
 namespace WoofWare.Zoomies.Components
 
+open WoofWare.Incremental
 open WoofWare.Zoomies
 
 /// An item in a multi-selection list.
@@ -39,27 +40,31 @@ type MultiSelection =
     /// Cursor highlight only shows when the list has focus.
     ///
     /// The component posts onViewportRendered during render with the viewport height.
-    /// Handle this event in ProcessWorld to call state.EnsureVisible(viewportHeight)
+    /// Handle this event in HandlePostLayout to call state.EnsureVisible(viewportHeight)
     /// and keep the cursor visible.
-    static member make<'postLayoutEvent>
+    static member make<'id, 'postLayoutEvent>
         (
             ctx : IVdomContext<'postLayoutEvent>,
             listKey : NodeKey,
-            items : MultiSelectionItem<NodeKey>[],
+            items : MultiSelectionItem<'id>[],
             state : SelectionListState,
             onViewportRendered : SelectionListViewportInfo -> 'postLayoutEvent,
             ?isFirstToFocus : bool
         )
-        : SelectionListResult
+        : SelectionListResult Node
         =
         if Array.isEmpty items then
-            {
-                Vdom = Vdom.empty
-                State = state
-            }
+            ctx.Incr.Return
+                {
+                    Vdom = Vdom.empty
+                    State = state
+                }
         else
+
+        ctx.FocusedKey
+        |> ctx.Incr.Map (fun focusedKey ->
             let totalItems = items.Length
-            let listHasFocus = ctx.FocusedKey = Some listKey
+            let listHasFocus = focusedKey = Some listKey
             // Clamp cursor to valid range
             let cursorIndex = max 0 (min state.CursorIndex (totalItems - 1))
 
@@ -129,3 +134,4 @@ type MultiSelection =
                 Vdom = Vdom.withFocusTracking (focusable, ?isFirstToFocus = isFirstToFocus)
                 State = stateWithClampedCursor
             }
+        )

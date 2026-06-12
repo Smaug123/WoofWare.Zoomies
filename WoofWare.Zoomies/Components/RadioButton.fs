@@ -1,5 +1,6 @@
 namespace WoofWare.Zoomies.Components
 
+open WoofWare.Incremental
 open WoofWare.Zoomies
 
 [<RequireQualifiedAccess>]
@@ -30,7 +31,7 @@ type RadioButton =
     /// </remarks>
     static member make
         (ctx : IVdomContext, key : NodeKey, isSelected : bool, ?isFirstToFocus : bool, ?isInitiallyFocused : bool)
-        : Vdom<DesiredBounds>
+        : Vdom<DesiredBounds> Node
         =
         Toggle.make (
             ctx,
@@ -42,4 +43,4 @@ type RadioButton =
             ?isInitiallyFocused = isInitiallyFocused
         )
         // `make` doesn't call through to `make'`, so need to tag separately
-        |> Vdom.withTag "radio-button"
+        |> ctx.Incr.Map (Vdom.withTag "radio-button")

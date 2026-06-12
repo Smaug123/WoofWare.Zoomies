@@ -13,18 +13,14 @@ WoofWare.Zoomies can handle this for you.
 
 ## Opting in
 
-When instantiating the UI, an argument allows you to select whether to handle focus.
+When building your `AppConfig`, set the `FocusHandling` field:
 
 ```fsharp
-App.run
-    initialState
-    (fun userState ->
-        // here!
-        true
-    )
-    processWorld
-    computeVdom
+let config =
+    AppConfig.make initialState transition view
+    // FrameworkManaged is the default, so this line is optional:
+    |> AppConfig.withFocusHandling FocusHandling.FrameworkManaged
 ```
 
-Your `'userState -> bool` function gets invoked on every pass round the render loop, in response to every batch of external changes.
-So, if you really want to, you can choose to turn automatic focus tracking on or off dynamically.
+`FocusHandling.FrameworkManaged` (the default) tells the framework to intercept Tab/Shift+Tab keystrokes and cycle focus among `withFocusTracking` nodes.
+`FocusHandling.UserManaged` stops the framework from intercepting Tab/Shift+Tab for focus cycling; they are passed through as regular keystrokes to your `ActivationResolver` and `HandleInput`. Focus tracking still operates in this mode: focusable nodes are registered, `isInitiallyFocused` assigns focus on the first render, and the `ActivationResolver` still fires for the currently-focused element.

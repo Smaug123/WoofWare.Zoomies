@@ -6,102 +6,68 @@ open System.Threading.Tasks
 open FsCheck
 open FsUnitTyped
 open NUnit.Framework
+open WoofWare.Incremental
 open WoofWare.Zoomies
 
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestBatchProcessing =
 
-    /// Test helper that simulates processing events with varying batch sizes
-    let processWithBatchStrategy
-        (haveFrameworkHandleFocus : bool)
-        (keystrokes : ConsoleKeyInfo list)
-        (batchSizes : int list)
-        : char list Task
-        =
+    /// Event type for tracking processed keystrokes
+    type KeystrokeEvent = | KeystrokeEvent of char
+
+    /// Test helper that processes keystrokes and collects the characters.
+    /// The new API processes all events in one go, so batch sizes are no longer configurable.
+    let processKeystrokes (haveFrameworkHandleFocus : bool) (keystrokes : ConsoleKeyInfo list) : char list Task =
         task {
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
-            let world = MockWorld.make ()
 
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             // Send all keystrokes
             for key in keystrokes do
                 world.SendKey key
 
             // State is a list of all processed characters in order
-            let initialState = ImmutableArray.Empty
+            let initialState = ImmutableArray<char>.Empty
 
-            // Cycle through batch sizes
-            let mutable batchSizeIndex = 0
-            let mutable totalProcessed = 0
+            let transition (state : ImmutableArray<char>) (KeystrokeEvent c) = state.Add c
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, ImmutableArray<char>> with
-                    member _.ProcessWorld (inputs, _renderState, state) =
-                        let batchSize =
-                            if List.isEmpty batchSizes then
-                                1
-                            else
-                                List.item (batchSizeIndex % batchSizes.Length) batchSizes
-
-                        batchSizeIndex <- batchSizeIndex + 1
-
-                        // Process up to batchSize events
-                        let toProcess = min batchSize inputs.Length
-                        let mutable newState = state
-
-                        for i = 0 to toProcess - 1 do
-                            match inputs.[i] with
-                            | WorldStateChange.Keystroke c -> newState <- newState.Add c.KeyChar
-                            | WorldStateChange.MouseEvent _ -> ()
-                            | WorldStateChange.ApplicationEvent _ -> ()
-                            | WorldStateChange.Paste _ -> ()
-                            | WorldStateChange.ApplicationEventException _ -> ()
-
-                        totalProcessed <- totalProcessed + toProcess
-
-                        if toProcess >= inputs.Length then
-                            // Processed everything in this batch
-                            ProcessWorldResult.make newState
-                        else
-                            // Request a new batch after processing 'toProcess' items
-                            ProcessWorldResult.make newState
-                            |> ProcessWorldResult.withRerender (toProcess - 1)
-
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let handleInput (change : WorldStateChange<KeystrokeEvent>) : KeystrokeEvent option =
+                match change with
+                | WorldStateChange.Keystroke c -> Some (KeystrokeEvent c.KeyChar)
+                | _ -> None
 
             let vdom (_vdomContext : IVdomContext<_>) (_state : ImmutableArray<char>) = Vdom.textContent ""
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
-            let mutable currentState = initialState
+            let focusHandling =
+                if haveFrameworkHandleFocus then
+                    FocusHandling.FrameworkManaged
+                else
+                    FocusHandling.UserManaged
 
-            // Keep pumping until all events are processed
-            let mutable iterations = 0
-            let maxIterations = keystrokes.Length * 10 // Safety limit
+            let config : AppConfig<ImmutableArray<char>, KeystrokeEvent, unit> =
+                {
+                    Initial = initialState
+                    Transition = transition
+                    View = App.pureView vdom
+                    HandleInput = handleInput
+                    HandlePostLayout = fun _ s -> s
+                    FocusHandling = focusHandling
+                    ActivationResolver = ActivationResolver.none
+                    OnSetup = fun _ -> ()
+                }
 
-            while totalProcessed < keystrokes.Length && iterations < maxIterations do
-                currentState <-
-                    App.pumpOnce
-                        worldFreezer
-                        currentState
-                        (fun _ -> haveFrameworkHandleFocus)
-                        renderState
-                        processWorld
-                        vdom
-                        ActivationResolver.none
-                        (fun () -> false)
+            use ctx = IncrTestContext.make console config None
 
-                iterations <- iterations + 1
+            // Pump once to process all events
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Return the final processed characters
-            return currentState |> Seq.toList
+            return IncrTestContext.currentState ctx |> Seq.toList
         }
 
     [<Test>]
@@ -109,10 +75,8 @@ module TestBatchProcessing =
         // This test runs with frameworkHandleFocus=false (manual mode).
         // Processing tabs with frameworkHandleFocus=true requires focusable elements in the vdom;
         // see ``batch processing with framework focus intercepts tabs`` for that case.
-        let property (batchSize1 : int) (batchSizes : int list) (keyChars : char list) =
+        let property (keyChars : char list) =
             task {
-                let batchSizes = (batchSize1 :: batchSizes) |> List.map (fun i -> abs i + 1)
-
                 if List.isEmpty keyChars then
                     return ()
                 else
@@ -125,7 +89,7 @@ module TestBatchProcessing =
                                 ConsoleKeyInfo (c, ConsoleKey.NoName, false, false, false)
                         )
 
-                    let! result = processWithBatchStrategy false keystrokes batchSizes
+                    let! result = processKeystrokes false keystrokes
 
                     // In manual mode, all characters including tabs pass through
                     return result |> shouldEqual keyChars
@@ -135,8 +99,9 @@ module TestBatchProcessing =
 
     [<Test>]
     let ``single event processing eventually processes everything`` () =
-        // Edge case: always process exactly one event per batch
-        // Note: We filter out tabs because processWithBatchStrategy uses a vdom without
+        // The new API processes all events at once, so this test just verifies
+        // that all events are processed correctly.
+        // Note: We filter out tabs because processKeystrokes uses a vdom without
         // focusable elements. Tab interception with focus is tested separately.
         let property (keyChars : char list) =
             task {
@@ -149,7 +114,7 @@ module TestBatchProcessing =
                         keyChars
                         |> List.map (fun c -> ConsoleKeyInfo (c, ConsoleKey.NoName, false, false, false))
 
-                    let! result = processWithBatchStrategy false keystrokes [ 1 ]
+                    let! result = processKeystrokes false keystrokes
 
                     return result |> shouldEqual keyChars
             }
@@ -158,8 +123,8 @@ module TestBatchProcessing =
 
     [<Test>]
     let ``large batch processing eventually processes everything`` () =
-        // Edge case: try to process all events in one go (but framework may split)
-        // Note: We filter out tabs because processWithBatchStrategy uses a vdom without
+        // The new API processes all events at once.
+        // Note: We filter out tabs because processKeystrokes uses a vdom without
         // focusable elements. Tab interception with focus is tested separately.
         let property (keyChars : char list) =
             task {
@@ -172,129 +137,82 @@ module TestBatchProcessing =
                         keyChars
                         |> List.map (fun c -> ConsoleKeyInfo (c, ConsoleKey.NoName, false, false, false))
 
-                    let! result = processWithBatchStrategy false keystrokes [ 1000 ]
+                    let! result = processKeystrokes false keystrokes
 
                     return result |> shouldEqual keyChars
             }
 
         Check.One (propConfig, property)
 
-    /// Test helper that simulates processing events with framework focus handling enabled,
+    /// Test helper that processes events with framework focus handling enabled,
     /// using a vdom with focusable elements so tabs are properly intercepted.
-    let processWithBatchStrategyAndFocus (keystrokes : ConsoleKeyInfo list) (batchSizes : int list) : char list Task =
+    let processKeystrokesWithFocus (keystrokes : ConsoleKeyInfo list) : char list Task =
         task {
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
-            let world = MockWorld.make ()
 
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             // Send all keystrokes
             for key in keystrokes do
                 world.SendKey key
 
             // State is a list of all processed characters in order
-            let initialState = ImmutableArray.Empty
+            let initialState = ImmutableArray<char>.Empty
 
-            // Cycle through batch sizes
-            let mutable batchSizeIndex = 0
-            let mutable totalProcessed = 0
-            // Track how many tabs we expect to be intercepted
-            let tabCount =
-                keystrokes |> List.filter (fun k -> k.Key = ConsoleKey.Tab) |> List.length
+            let transition (state : ImmutableArray<char>) (KeystrokeEvent c) = state.Add c
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, ImmutableArray<char>> with
-                    member _.ProcessWorld (inputs, _renderState, state) =
-                        let batchSize =
-                            if List.isEmpty batchSizes then
-                                1
-                            else
-                                List.item (batchSizeIndex % batchSizes.Length) batchSizes
-
-                        batchSizeIndex <- batchSizeIndex + 1
-
-                        // Process up to batchSize events
-                        let toProcess = min batchSize inputs.Length
-                        let mutable newState = state
-
-                        for i = 0 to toProcess - 1 do
-                            match inputs.[i] with
-                            | WorldStateChange.Keystroke c -> newState <- newState.Add c.KeyChar
-                            | WorldStateChange.MouseEvent _ -> ()
-                            | WorldStateChange.ApplicationEvent _ -> ()
-                            | WorldStateChange.Paste _ -> ()
-                            | WorldStateChange.ApplicationEventException _ -> ()
-
-                        totalProcessed <- totalProcessed + toProcess
-
-                        if toProcess >= inputs.Length then
-                            // Processed everything in this batch
-                            ProcessWorldResult.make newState
-                        else
-                            // Request a new batch after processing 'toProcess' items
-                            ProcessWorldResult.make newState
-                            |> ProcessWorldResult.withRerender (toProcess - 1)
-
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
+            let handleInput (change : WorldStateChange<KeystrokeEvent>) : KeystrokeEvent option =
+                match change with
+                | WorldStateChange.Keystroke c -> Some (KeystrokeEvent c.KeyChar)
+                | _ -> None
 
             // Use a vdom with focusable elements so the framework can intercept tabs
-            let vdom (vdomContext : IVdomContext<_>) (_state : ImmutableArray<char>) =
+            let vdom (vdomContext : IVdomContext<_>) (_state : ImmutableArray<char>) : Vdom<DesiredBounds> Node =
                 let checkbox0 =
                     Components.Checkbox.make (vdomContext, NodeKey.make "checkbox0", false)
 
                 let checkbox1 =
                     Components.Checkbox.make (vdomContext, NodeKey.make "checkbox1", false)
 
-                Vdom.panelSplitAbsolute (SplitDirection.Vertical, -3, checkbox0, checkbox1)
+                vdomContext.Incr.Map2
+                    (fun (c0 : Vdom<DesiredBounds>) (c1 : Vdom<DesiredBounds>) ->
+                        Vdom.panelSplitAbsolute (SplitDirection.Vertical, -3, c0, c1)
+                    )
+                    checkbox0
+                    checkbox1
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
-            let mutable currentState = initialState
+            let config : AppConfig<ImmutableArray<char>, KeystrokeEvent, unit> =
+                {
+                    Initial = initialState
+                    Transition = transition
+                    View = App.pureViewIncr vdom
+                    HandleInput = handleInput
+                    HandlePostLayout = fun _ s -> s
+                    FocusHandling = FocusHandling.FrameworkManaged
+                    ActivationResolver = ActivationResolver.none
+                    OnSetup = fun _ -> ()
+                }
 
-            // Keep pumping until all events are processed
-            // (tabs are intercepted by framework, so we expect keystrokes.Length - tabCount to be processed)
-            let expectedProcessed = keystrokes.Length - tabCount
-            let mutable iterations = 0
-            let maxIterations = keystrokes.Length * 10 + 10 // Safety limit
+            use ctx = IncrTestContext.make console config None
 
-            while totalProcessed < expectedProcessed && iterations < maxIterations do
-                currentState <-
-                    App.pumpOnce
-                        worldFreezer
-                        currentState
-                        (fun _ -> true) // Framework handles focus
-                        renderState
-                        processWorld
-                        vdom
-                        ActivationResolver.none
-                        (fun () -> false)
-
-                iterations <- iterations + 1
+            // Pump once to process all events
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Return the final processed characters
-            return currentState |> Seq.toList
+            return IncrTestContext.currentState ctx |> Seq.toList
         }
 
     [<Test>]
     let ``batch processing with framework focus intercepts tabs`` () =
-        // This test exercises the focus-aware batching path by including tabs and
+        // This test exercises the focus-aware path by including tabs and
         // verifying they are intercepted by the framework (not passed through to the processor).
         // We inject tabs into the input to guarantee coverage of the tab-interception path.
-        let property
-            (batchSize1 : int)
-            (batchSizes : int list)
-            (nonTabChar : char)
-            (nonTabChars : char list)
-            (tabPositions : int list)
-            =
+        // Note: The new API processes all events at once, so batch size parameters are no longer used.
+        let property (nonTabChar : char) (nonTabChars : char list) (tabPositions : int list) =
             task {
-                let batchSizes = (batchSize1 :: batchSizes) |> List.map (fun i -> abs i + 1)
-
                 // Construct a non-empty list of non-tab characters
                 let baseChars =
                     (nonTabChar :: nonTabChars) |> List.map (fun c -> if c = '\t' then 'X' else c)
@@ -316,7 +234,7 @@ module TestBatchProcessing =
                             ConsoleKeyInfo (c, ConsoleKey.NoName, false, false, false)
                     )
 
-                let! result = processWithBatchStrategyAndFocus keystrokes batchSizes
+                let! result = processKeystrokesWithFocus keystrokes
 
                 // In framework focus mode, tabs are intercepted for focus cycling
                 // and don't appear in the processed output
@@ -327,353 +245,187 @@ module TestBatchProcessing =
 
         Check.One (propConfig, property)
 
-    [<NoComparison>]
-    type ModeSwitchingState =
-        {
-            ProcessedChars : char list
-            UseFrameworkFocus : bool
-            LastFocusedKey : NodeKey option
-        }
-
+    /// Test that user-managed focus passes tabs through as regular keystrokes.
     [<Test>]
-    let ``switching between manual and framework tab handling works correctly`` () =
+    let ``user managed focus passes tabs through`` () =
         task {
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
-            let world = MockWorld.make ()
 
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let initialState =
-                {
-                    ProcessedChars = []
-                    UseFrameworkFocus = false
-                    LastFocusedKey = None
-                }
+            let world = MockWorld.attach worldFreezer
 
-            let mutable switchModeAfterNextEvent = false
+            let initialState = ImmutableArray<char>.Empty
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, ModeSwitchingState> with
-                    member _.ProcessWorld (inputs, vdomContext, state) =
-                        let mutable newState =
-                            { state with
-                                LastFocusedKey = vdomContext.FocusedKey
-                            }
+            let transition (state : ImmutableArray<char>) (KeystrokeEvent c) = state.Add c
 
-                        let mutable shouldRerender = false
+            let handleInput (change : WorldStateChange<KeystrokeEvent>) : KeystrokeEvent option =
+                match change with
+                | WorldStateChange.Keystroke c -> Some (KeystrokeEvent c.KeyChar)
+                | _ -> None
 
-                        for i = 0 to inputs.Length - 1 do
-                            match inputs.[i] with
-                            | WorldStateChange.Keystroke c ->
-                                // Record all non-tab characters, and tabs when in manual mode
-                                if c.Key <> ConsoleKey.Tab || not state.UseFrameworkFocus then
-                                    newState <-
-                                        { newState with
-                                            ProcessedChars = newState.ProcessedChars @ [ c.KeyChar ]
-                                        }
-
-                                // Check if we should switch modes
-                                if switchModeAfterNextEvent then
-                                    switchModeAfterNextEvent <- false
-
-                                    newState <-
-                                        { newState with
-                                            UseFrameworkFocus = not newState.UseFrameworkFocus
-                                        }
-
-                                    shouldRerender <- true
-                            | WorldStateChange.MouseEvent _ -> ()
-                            | WorldStateChange.ApplicationEvent _ -> ()
-                            | WorldStateChange.Paste _ -> ()
-                            | WorldStateChange.ApplicationEventException _ -> ()
-
-                        if shouldRerender then
-                            ProcessWorldResult.make newState
-                            |> ProcessWorldResult.withRerender (inputs.Length - 1)
-                        else
-                            ProcessWorldResult.make newState
-
-                    member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                }
-
-            let mutable vdomRenderCount = 0
-
-            let vdom (vdomContext : IVdomContext<_>) (_state : ModeSwitchingState) =
-                vdomRenderCount <- vdomRenderCount + 1
-
+            // Use a vdom with focusable elements
+            let vdom (vdomContext : IVdomContext<_>) (_state : ImmutableArray<char>) : Vdom<DesiredBounds> Node =
                 let checkbox0 =
                     Components.Checkbox.make (vdomContext, NodeKey.make "checkbox0", false)
 
                 let checkbox1 =
                     Components.Checkbox.make (vdomContext, NodeKey.make "checkbox1", false)
 
-                Vdom.panelSplitAbsolute (SplitDirection.Vertical, -3, checkbox0, checkbox1)
+                vdomContext.Incr.Map2
+                    (fun (c0 : Vdom<DesiredBounds>) (c1 : Vdom<DesiredBounds>) ->
+                        Vdom.panelSplitAbsolute (SplitDirection.Vertical, -3, c0, c1)
+                    )
+                    checkbox0
+                    checkbox1
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
-            let mutable currentState = initialState
+            let config : AppConfig<ImmutableArray<char>, KeystrokeEvent, unit> =
+                {
+                    Initial = initialState
+                    Transition = transition
+                    View = App.pureViewIncr vdom
+                    HandleInput = handleInput
+                    HandlePostLayout = fun _ s -> s
+                    FocusHandling = FocusHandling.UserManaged
+                    ActivationResolver = ActivationResolver.none
+                    OnSetup = fun _ -> ()
+                }
 
-            // Initial render
-            currentState <-
-                App.pumpOnce
-                    worldFreezer
-                    currentState
-                    (fun s -> s.UseFrameworkFocus)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            use ctx = IncrTestContext.make console config None
 
-            vdomRenderCount |> shouldEqual 1
+            // Initial pump
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
-            // Phase 1: Manual mode - tabs should pass through
+            // Send some keys including tabs
             world.SendKey (ConsoleKeyInfo ('a', ConsoleKey.NoName, false, false, false))
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
             world.SendKey (ConsoleKeyInfo ('b', ConsoleKey.NoName, false, false, false))
 
-            currentState <-
-                App.pumpOnce
-                    worldFreezer
-                    currentState
-                    (fun s -> s.UseFrameworkFocus)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
-            vdomRenderCount |> shouldEqual 2
-
-            currentState.ProcessedChars |> shouldEqual [ 'a' ; '\t' ; 'b' ]
-            currentState.UseFrameworkFocus |> shouldEqual false
-            currentState.LastFocusedKey |> shouldEqual None
-
-            // Switch to framework mode
-            switchModeAfterNextEvent <- true
-            world.SendKey (ConsoleKeyInfo ('X', ConsoleKey.NoName, false, false, false))
-
-            currentState <-
-                App.pumpOnce
-                    worldFreezer
-                    currentState
-                    (fun s -> s.UseFrameworkFocus)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
-
-            vdomRenderCount |> shouldEqual 3
-
-            currentState.ProcessedChars |> shouldEqual [ 'a' ; '\t' ; 'b' ; 'X' ]
-            currentState.UseFrameworkFocus |> shouldEqual true
-
-            // Phase 2: Framework mode - first tab should advance focus to checkbox0
-            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            world.SendKey (ConsoleKeyInfo ('Z', ConsoleKey.NoName, false, false, false))
-
-            currentState <-
-                App.pumpOnce
-                    worldFreezer
-                    currentState
-                    (fun s -> s.UseFrameworkFocus)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
-
-            vdomRenderCount |> shouldEqual 4
-
-            // Tab was intercepted by framework, so shouldn't appear in processed chars
-            currentState.ProcessedChars |> shouldEqual [ 'a' ; '\t' ; 'b' ; 'X' ; 'Z' ]
-            // Focus should now be on checkbox0 (captured when processing 'Z')
-            currentState.LastFocusedKey |> shouldEqual (Some (NodeKey.make "checkbox0"))
-
-            // Phase 3: Framework mode - second tab should advance focus to checkbox1
-            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            world.SendKey (ConsoleKeyInfo ('c', ConsoleKey.NoName, false, false, false))
-
-            currentState <-
-                App.pumpOnce
-                    worldFreezer
-                    currentState
-                    (fun s -> s.UseFrameworkFocus)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
-
-            vdomRenderCount |> shouldEqual 5
-
-            currentState.ProcessedChars
-            |> shouldEqual [ 'a' ; '\t' ; 'b' ; 'X' ; 'Z' ; 'c' ]
-
-            currentState.LastFocusedKey |> shouldEqual (Some (NodeKey.make "checkbox1"))
-
-            // Switch back to manual mode
-            switchModeAfterNextEvent <- true
-            world.SendKey (ConsoleKeyInfo ('Y', ConsoleKey.NoName, false, false, false))
-
-            currentState <-
-                App.pumpOnce
-                    worldFreezer
-                    currentState
-                    (fun s -> s.UseFrameworkFocus)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
-
-            vdomRenderCount |> shouldEqual 6
-
-            currentState.ProcessedChars
-            |> shouldEqual [ 'a' ; '\t' ; 'b' ; 'X' ; 'Z' ; 'c' ; 'Y' ]
-
-            currentState.UseFrameworkFocus |> shouldEqual false
-
-            // Phase 4: Back in manual mode - tabs should pass through again
-            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
-            world.SendKey (ConsoleKeyInfo ('d', ConsoleKey.NoName, false, false, false))
-
-            currentState <-
-                App.pumpOnce
-                    worldFreezer
-                    currentState
-                    (fun s -> s.UseFrameworkFocus)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
-
-            vdomRenderCount |> shouldEqual 7
-
-            currentState.ProcessedChars
-            |> shouldEqual [ 'a' ; '\t' ; 'b' ; 'X' ; 'Z' ; 'c' ; 'Y' ; '\t' ; 'd' ]
-            // Focus should stay at checkbox1 (framework no longer managing it)
-            currentState.LastFocusedKey |> shouldEqual (Some (NodeKey.make "checkbox1"))
+            // In user managed mode, tabs pass through
+            let result = IncrTestContext.currentState ctx |> Seq.toList
+            result |> shouldEqual [ 'a' ; '\t' ; 'b' ]
         }
 
+    /// Test that framework-managed focus intercepts tabs for focus cycling.
     [<Test>]
-    let ``Rerender forces vdom evaluation and reprocesses remaining batch`` () =
-        let property (batchSize1 : int) (batchSizes : int list) =
-            task {
-                // Generate batch sizes - how many events we process before requesting rerender
-                let batchSizes =
-                    (batchSize1 :: batchSizes)
-                    |> List.map (fun i -> (abs i % 5) + 1) // Between 1 and 5 events per batch
-                    |> List.truncate 10
+    let ``framework managed focus intercepts tabs`` () =
+        task {
+            let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
 
-                let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
-                let world = MockWorld.make ()
+            use worldFreezer =
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-                use worldFreezer =
-                    WorldFreezer.listen'
-                        UnrecognisedEscapeCodeBehaviour.Throw
-                        StopwatchMock.Empty
-                        world.KeyAvailable
-                        world.ReadKey
+            let world = MockWorld.attach worldFreezer
 
-                let mutable vdomRenderCount = 0
-                let mutable batchIndex = 0
+            let initialState = ImmutableArray<char>.Empty
 
-                let processWorld =
-                    { new WorldProcessor<unit, unit, char list> with
-                        member _.ProcessWorld (inputs, _vdomContext, state) =
-                            // Process only batchSize events from this batch, then request Rerender
-                            let batchSize =
-                                if batchIndex < batchSizes.Length then
-                                    batchSizes.[batchIndex]
-                                else
-                                    inputs.Length // Process everything
+            let transition (state : ImmutableArray<char>) (KeystrokeEvent c) = state.Add c
 
-                            batchIndex <- batchIndex + 1
+            let handleInput (change : WorldStateChange<KeystrokeEvent>) : KeystrokeEvent option =
+                match change with
+                | WorldStateChange.Keystroke c -> Some (KeystrokeEvent c.KeyChar)
+                | _ -> None
 
-                            let toProcess = min batchSize inputs.Length
-                            let mutable newState = state
+            // Use a vdom with focusable elements
+            let vdom (vdomContext : IVdomContext<_>) (_state : ImmutableArray<char>) : Vdom<DesiredBounds> Node =
+                let checkbox0 =
+                    Components.Checkbox.make (vdomContext, NodeKey.make "checkbox0", false)
 
-                            // Process the events
-                            for i = 0 to toProcess - 1 do
-                                match inputs.[i] with
-                                | WorldStateChange.Keystroke c -> newState <- newState @ [ c.KeyChar ]
-                                | _ -> ()
+                let checkbox1 =
+                    Components.Checkbox.make (vdomContext, NodeKey.make "checkbox1", false)
 
-                            if toProcess < inputs.Length then
-                                // We didn't process everything, request Rerender to split the batch
-                                ProcessWorldResult.make newState
-                                |> ProcessWorldResult.withRerender (toProcess - 1)
-                            else
-                                ProcessWorldResult.make newState
+                vdomContext.Incr.Map2
+                    (fun (c0 : Vdom<DesiredBounds>) (c1 : Vdom<DesiredBounds>) ->
+                        Vdom.panelSplitAbsolute (SplitDirection.Vertical, -3, c0, c1)
+                    )
+                    checkbox0
+                    checkbox1
 
-                        member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-                    }
+            let config : AppConfig<ImmutableArray<char>, KeystrokeEvent, unit> =
+                {
+                    Initial = initialState
+                    Transition = transition
+                    View = App.pureViewIncr vdom
+                    HandleInput = handleInput
+                    HandlePostLayout = fun _ s -> s
+                    FocusHandling = FocusHandling.FrameworkManaged
+                    ActivationResolver = ActivationResolver.none
+                    OnSetup = fun _ -> ()
+                }
 
-                let vdom (_vdomContext : IVdomContext<_>) (_state : char list) =
-                    vdomRenderCount <- vdomRenderCount + 1
-                    Vdom.textContent ""
+            use ctx = IncrTestContext.make console config None
 
-                let renderState = RenderState.make console MockTime.getStaticUtcNow None
-                let mutable currentState = []
+            // Initial pump
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
-                // Initial render
-                currentState <-
-                    App.pumpOnce
-                        worldFreezer
-                        currentState
-                        (fun _ -> false)
-                        renderState
-                        processWorld
-                        vdom
-                        ActivationResolver.none
-                        (fun () -> false)
+            // Send some keys including tabs
+            world.SendKey (ConsoleKeyInfo ('a', ConsoleKey.NoName, false, false, false))
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+            world.SendKey (ConsoleKeyInfo ('b', ConsoleKey.NoName, false, false, false))
 
-                let initialRenderCount = vdomRenderCount
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
-                // Send a batch of keystrokes
-                let totalKeystrokes = 10
+            // In framework managed mode, tabs are intercepted for focus cycling
+            let result = IncrTestContext.currentState ctx |> Seq.toList
+            result |> shouldEqual [ 'a' ; 'b' ]
 
-                for i in 0 .. totalKeystrokes - 1 do
-                    world.SendKey (ConsoleKeyInfo (char (int 'a' + i), ConsoleKey.NoName, false, false, false))
+            // Tab should have moved focus to checkbox0
+            RenderState.focusedKey ctx.RenderState
+            |> shouldEqual (Some (NodeKey.make "checkbox0"))
+        }
 
-                currentState <-
-                    App.pumpOnce
-                        worldFreezer
-                        currentState
-                        (fun _ -> false)
-                        renderState
-                        processWorld
-                        vdom
-                        ActivationResolver.none
-                        (fun () -> false)
+    /// Test that all events in a batch are processed in order.
+    [<Test>]
+    let ``all events processed in order`` () =
+        task {
+            let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
 
-                // Verify all events were processed in order
-                let expectedChars = [ 'a' .. char (int 'a' + totalKeystrokes - 1) ]
-                currentState |> shouldEqual expectedChars
+            use worldFreezer =
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-                // Verify that vdom was rendered for each Rerender request
-                // Count how many times we split the batch (didn't process everything)
-                let mutable expectedSplits = 0
-                let mutable remaining = totalKeystrokes
+            let world = MockWorld.attach worldFreezer
 
-                for size in batchSizes do
-                    if remaining > size then
-                        expectedSplits <- expectedSplits + 1
-                        remaining <- remaining - size
-                    else
-                        remaining <- 0
+            let initialState : char list = []
 
-                // Expected renders = initial + state changes (1 for the pump) + rerender requests (splits)
-                let expectedRenderCount = initialRenderCount + 1 + expectedSplits
+            let transition (state : char list) (c : char) = state @ [ c ]
 
-                return vdomRenderCount |> shouldEqual expectedRenderCount
-            }
+            let handleInput (change : WorldStateChange<char>) : char option =
+                match change with
+                | WorldStateChange.Keystroke c -> Some c.KeyChar
+                | _ -> None
 
-        Check.One (propConfig, property)
+            let vdom (_vdomContext : IVdomContext<_>) (_state : char list) = Vdom.textContent ""
+
+            let config : AppConfig<char list, char, unit> =
+                {
+                    Initial = initialState
+                    Transition = transition
+                    View = App.pureView vdom
+                    HandleInput = handleInput
+                    HandlePostLayout = fun _ s -> s
+                    FocusHandling = FocusHandling.UserManaged
+                    ActivationResolver = ActivationResolver.none
+                    OnSetup = fun _ -> ()
+                }
+
+            use ctx = IncrTestContext.make console config None
+
+            // Initial pump
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
+
+            // Send a batch of keystrokes
+            let totalKeystrokes = 10
+
+            for i in 0 .. totalKeystrokes - 1 do
+                world.SendKey (ConsoleKeyInfo (char (int 'a' + i), ConsoleKey.NoName, false, false, false))
+
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
+
+            // Verify all events were processed in order
+            let expectedChars = [ 'a' .. char (int 'a' + totalKeystrokes - 1) ]
+            let result = IncrTestContext.currentState ctx
+            result |> shouldEqual expectedChars
+        }

@@ -5,12 +5,15 @@ open System.Collections.Immutable
 open NUnit.Framework
 open FsUnitTyped
 open WoofWare.Expect
+open WoofWare.Incremental
 open WoofWare.Zoomies
 open WoofWare.Zoomies.Components
 
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestTextBox =
+    let getUtcNow () = MockTime.defaultStartTime
+
     [<OneTimeSetUp>]
     let setUp () =
         // GlobalBuilderConfig.enterBulkUpdateMode ()
@@ -30,30 +33,18 @@ module TestTextBox =
             Cursor : int
         }
 
-    /// Common WorldProcessor for tests that use a TextBox with State.
+    /// Common transition function for tests that use a TextBox with State.
     /// Handles TextEdit events by applying TextBoxHelpers.applyAction.
-    let textBoxProcessor : WorldProcessor<AppEvent, unit, State> =
-        { new WorldProcessor<AppEvent, unit, State> with
-            member _.ProcessWorld (inputs, _renderState, state) =
-                let mutable newState = state
+    let textBoxTransition (state : State) (event : AppEvent) : State =
+        match event with
+        | TextEdit action ->
+            let content, cursor = TextBoxHelpers.applyAction state.Content state.Cursor action
 
-                for input in inputs do
-                    match input with
-                    | WorldStateChange.ApplicationEvent (TextEdit action) ->
-                        let content, cursor =
-                            TextBoxHelpers.applyAction newState.Content newState.Cursor action
-
-                        newState <-
-                            {
-                                Content = content
-                                Cursor = cursor
-                            }
-                    | _ -> ()
-
-                ProcessWorldResult.make newState
-
-            member _.ProcessPostLayoutEvents (_, _, state) = state
-        }
+            {
+                Content = content
+                Cursor = cursor
+            }
+        | ButtonClicked -> state
 
     [<Test>]
     let ``tab moves focus from textbox to button when framework focus enabled`` () =
@@ -61,8 +52,8 @@ module TestTextBox =
             let textBoxKey = NodeKey.make "textbox"
             let buttonKey = NodeKey.make "button"
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
-                let textbox =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
+                let textboxNode =
                     TextBox.make (
                         ctx,
                         textBoxKey,
@@ -72,22 +63,21 @@ module TestTextBox =
                         isInitiallyFocused = true
                     )
 
-                let button = Button.make (ctx, buttonKey, "Submit")
+                let buttonNode = Button.make (ctx, buttonKey, "Submit")
 
-                Vdom.panelSplitAuto (SplitDirection.Horizontal, textbox, button)
+                ctx.Incr.Map2
+                    (fun (textbox : Vdom<DesiredBounds>) (button : Vdom<DesiredBounds>) ->
+                        Vdom.panelSplitAuto (SplitDirection.Horizontal, textbox, button)
+                    )
+                    textboxNode
+                    buttonNode
 
             let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = true
+            let world = MockWorld.attach worldFreezer
 
             let resolver =
                 ActivationResolver.combine
@@ -96,27 +86,20 @@ module TestTextBox =
                         ActivationResolver.button buttonKey ButtonClicked
                     ]
 
-            let clock = MockTime.make ()
+            let config =
+                AppConfig.simple
+                    {
+                        Content = ""
+                        Cursor = 0
+                    }
+                    textBoxTransition
+                    (App.pureViewIncr vdom)
+                |> AppConfig.withActivationResolver resolver
 
-            let renderState = RenderState.make console clock.GetUtcNow None
-
-            let mutable state =
-                {
-                    Content = ""
-                    Cursor = 0
-                }
+            use ctx = IncrTestContext.make console config None
 
             // Initial render - textbox focused
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -132,16 +115,9 @@ module TestTextBox =
             // Press Tab to move focus to button
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
+
+            let state = IncrTestContext.currentState ctx
 
             // Verify textbox state is unchanged (Tab was not inserted as text)
             state.Content |> shouldEqual ""
@@ -159,105 +135,62 @@ module TestTextBox =
             }
         }
 
+    type KeystrokeState = ImmutableArray<ConsoleKeyInfo>
+
     [<Test>]
     let ``all keystrokes including tab pass to ProcessWorld when framework focus disabled`` () =
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : IVdomContext<_>) (_ : ImmutableArray<ConsoleKeyInfo>) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (_ : KeystrokeState) : Vdom<DesiredBounds> Node =
                 TextBox.make (ctx, textBoxKey, "", 0, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let resolver = ActivationResolver.none
-
-            let processWorld =
-                { new WorldProcessor<AppEvent, unit, ImmutableArray<_>> with
-                    member _.ProcessWorld (inputs, renderState, state) =
-                        let mutable newState = state.ToBuilder ()
-
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.Keystroke k -> newState.Add k
-                            | _ -> ()
-
-                        ProcessWorldResult.make (newState.ToImmutable ())
-
-                    member _.ProcessPostLayoutEvents (_, _, state) = state
+            // This test uses user-managed focus and captures all keystrokes
+            let config : AppConfig<KeystrokeState, ConsoleKeyInfo, unit> =
+                {
+                    Initial = ImmutableArray.Empty
+                    Transition = fun state k -> state.Add k
+                    View = App.pureViewIncr vdom
+                    HandleInput =
+                        function
+                        | WorldStateChange.Keystroke k -> Some k
+                        | _ -> None
+                    HandlePostLayout = fun _ state -> state
+                    FocusHandling = FocusHandling.UserManaged
+                    ActivationResolver = ActivationResolver.none
+                    OnSetup = fun _ -> ()
                 }
 
-            let clock = MockTime.make ()
-
-            let renderState = RenderState.make console clock.GetUtcNow None
-
-            let mutable state = ImmutableArray.Empty
+            use ctx = IncrTestContext.make console config None
 
             // Initial render
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Press Tab
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Press 'a'
             world.SendKey (ConsoleKeyInfo ('a', ConsoleKey.A, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Press Backspace
             world.SendKey (ConsoleKeyInfo ('\b', ConsoleKey.Backspace, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
-            // Verify all three keystrokes reached ProcessWorld
+            let state = IncrTestContext.currentState ctx
+
+            // Verify all three keystrokes reached the state
             state
             |> Seq.map _.Key
             |> Seq.toList
@@ -269,145 +202,84 @@ module TestTextBox =
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = true
+            let world = MockWorld.attach worldFreezer
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
-            let clock = MockTime.make ()
+            let config =
+                AppConfig.simple
+                    {
+                        Content = ""
+                        Cursor = 0
+                    }
+                    textBoxTransition
+                    (App.pureViewIncr vdom)
+                |> AppConfig.withActivationResolver resolver
 
-            let renderState = RenderState.make console clock.GetUtcNow None
-
-            let mutable state =
-                {
-                    Content = ""
-                    Cursor = 0
-                }
+            use ctx = IncrTestContext.make console config None
 
             // Initial render
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Type 'H' (Shift+h)
             world.SendKey (ConsoleKeyInfo ('H', ConsoleKey.H, true, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             state.Content |> shouldEqual "H"
             state.Cursor |> shouldEqual 1
 
             // Type 'e'
             world.SendKey (ConsoleKeyInfo ('e', ConsoleKey.E, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             state.Content |> shouldEqual "He"
             state.Cursor |> shouldEqual 2
 
             // Type 'l'
             world.SendKey (ConsoleKeyInfo ('l', ConsoleKey.L, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             state.Content |> shouldEqual "Hel"
             state.Cursor |> shouldEqual 3
 
             // Type 'l'
             world.SendKey (ConsoleKeyInfo ('l', ConsoleKey.L, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             state.Content |> shouldEqual "Hell"
             state.Cursor |> shouldEqual 4
 
             // Type 'o'
             world.SendKey (ConsoleKeyInfo ('o', ConsoleKey.O, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             state.Content |> shouldEqual "Hello"
             state.Cursor |> shouldEqual 5
 
             // Type '!' (Shift+1)
             world.SendKey (ConsoleKeyInfo ('!', ConsoleKey.D1, true, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             state.Content |> shouldEqual "Hello!"
             state.Cursor |> shouldEqual 6
 
@@ -428,140 +300,78 @@ Hello!|                                 |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = true
+            let world = MockWorld.attach worldFreezer
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
-            let clock = MockTime.make ()
+            let config =
+                AppConfig.simple
+                    {
+                        Content = "Hello"
+                        Cursor = 5
+                    }
+                    textBoxTransition
+                    (App.pureViewIncr vdom)
+                |> AppConfig.withActivationResolver resolver
 
-            let renderState = RenderState.make console clock.GetUtcNow None
-
-            let mutable state =
-                {
-                    Content = "Hello"
-                    Cursor = 5
-                }
+            use ctx = IncrTestContext.make console config None
 
             // Initial render
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Press Backspace
             world.SendKey (ConsoleKeyInfo ('\b', ConsoleKey.Backspace, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             state.Content |> shouldEqual "Hell"
             state.Cursor |> shouldEqual 4
 
             // Move cursor to 1 (between 'H' and 'e')
             world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.Home, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.RightArrow, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             state.Cursor |> shouldEqual 1
 
             // Press Delete (should delete 'e')
             world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.Delete, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             state.Content |> shouldEqual "Hll"
             state.Cursor |> shouldEqual 1
 
             // Press Backspace (should delete 'H')
             world.SendKey (ConsoleKeyInfo ('\b', ConsoleKey.Backspace, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             state.Content |> shouldEqual "ll"
             state.Cursor |> shouldEqual 0
 
             // Press Backspace again (should do nothing, at start)
             world.SendKey (ConsoleKeyInfo ('\b', ConsoleKey.Backspace, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             state.Content |> shouldEqual "ll"
             state.Cursor |> shouldEqual 0
         }
@@ -571,145 +381,84 @@ Hello!|                                 |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = true
+            let world = MockWorld.attach worldFreezer
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
-            let clock = MockTime.make ()
+            let config =
+                AppConfig.simple
+                    {
+                        Content = "Hello"
+                        Cursor = 5
+                    }
+                    textBoxTransition
+                    (App.pureViewIncr vdom)
+                |> AppConfig.withActivationResolver resolver
 
-            let renderState = RenderState.make console clock.GetUtcNow None
-
-            let mutable state =
-                {
-                    Content = "Hello"
-                    Cursor = 5
-                }
+            use ctx = IncrTestContext.make console config None
 
             // Initial render
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Press Left
             world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.LeftArrow, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             state.Content |> shouldEqual "Hello"
             state.Cursor |> shouldEqual 4
 
             // Press Left
             world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.LeftArrow, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             state.Content |> shouldEqual "Hello"
             state.Cursor |> shouldEqual 3
 
             // Press Home
             world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.Home, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             state.Content |> shouldEqual "Hello"
             state.Cursor |> shouldEqual 0
 
             // Press Right
             world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.RightArrow, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             state.Content |> shouldEqual "Hello"
             state.Cursor |> shouldEqual 1
 
             // Press End
             world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.End, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             state.Content |> shouldEqual "Hello"
             state.Cursor |> shouldEqual 5
 
             // Press Right (should do nothing, at end)
             world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.RightArrow, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             state.Content |> shouldEqual "Hello"
             state.Cursor |> shouldEqual 5
         }
@@ -749,26 +498,25 @@ Hello!|                                 |
             let textBox1Key = NodeKey.make "textbox1"
             let textBox2Key = NodeKey.make "textbox2"
 
-            let vdom (ctx : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> =
-                let textbox1 =
+            let vdom (ctx : IVdomContext<_>) (_ : State) : Vdom<DesiredBounds> Node =
+                let textbox1Node =
                     TextBox.make (ctx, textBox1Key, "Focused", 3, isInitiallyFocused = true, isFirstToFocus = true)
 
-                let textbox2 = TextBox.make (ctx, textBox2Key, "Unfocused", 0)
+                let textbox2Node = TextBox.make (ctx, textBox2Key, "Unfocused", 0)
 
-                Vdom.panelSplitAuto (SplitDirection.Horizontal, textbox1, textbox2)
+                ctx.Incr.Map2
+                    (fun (textbox1 : Vdom<DesiredBounds>) (textbox2 : Vdom<DesiredBounds>) ->
+                        Vdom.panelSplitAuto (SplitDirection.Horizontal, textbox1, textbox2)
+                    )
+                    textbox1Node
+                    textbox2Node
 
             let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = true
+            let world = MockWorld.attach worldFreezer
 
             let resolver =
                 ActivationResolver.combine
@@ -777,33 +525,20 @@ Hello!|                                 |
                         ActivationResolver.textBox textBox2Key TextEdit
                     ]
 
-            let processWorld =
-                { new WorldProcessor<AppEvent, unit, State> with
-                    member _.ProcessWorld (_, _, state) = ProcessWorldResult.make state
-                    member _.ProcessPostLayoutEvents (_, _, state) = state
-                }
+            let config =
+                AppConfig.simple
+                    {
+                        Content = ""
+                        Cursor = 0
+                    }
+                    (fun state _ -> state) // No-op transition for this test
+                    (App.pureViewIncr vdom)
+                |> AppConfig.withActivationResolver resolver
 
-            let clock = MockTime.make ()
-
-            let renderState = RenderState.make console clock.GetUtcNow None
-
-            let mutable state =
-                {
-                    Content = ""
-                    Cursor = 0
-                }
+            use ctx = IncrTestContext.make console config None
 
             // Initial render - textbox1 focused
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Note: This test verifies cursor position only. Style verification (CellStyle.inverted)
             // is not tested because ConsoleHarness doesn't capture styling information.
@@ -858,60 +593,39 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = true
+            let world = MockWorld.attach worldFreezer
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
-            let clock = MockTime.make ()
+            let config =
+                AppConfig.simple
+                    {
+                        Content = "Hello"
+                        Cursor = 5 // At end
+                    }
+                    textBoxTransition
+                    (App.pureViewIncr vdom)
+                |> AppConfig.withActivationResolver resolver
 
-            let renderState = RenderState.make console clock.GetUtcNow None
-
-            let mutable state =
-                {
-                    Content = "Hello"
-                    Cursor = 5 // At end
-                }
+            use ctx = IncrTestContext.make console config None
 
             // Initial render
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Press Delete (should do nothing, cursor is at end)
             world.SendKey (ConsoleKeyInfo ('\000', ConsoleKey.Delete, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             state.Content |> shouldEqual "Hello"
             state.Cursor |> shouldEqual 5
         }
@@ -925,45 +639,32 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = true
+            let world = MockWorld.attach worldFreezer
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
-            let clock = MockTime.make ()
+            let config =
+                AppConfig.simple
+                    {
+                        Content = ""
+                        Cursor = 0
+                    }
+                    textBoxTransition
+                    (App.pureViewIncr vdom)
+                |> AppConfig.withActivationResolver resolver
 
-            let renderState = RenderState.make console clock.GetUtcNow None
-
-            let mutable state =
-                {
-                    Content = ""
-                    Cursor = 0
-                }
+            use ctx = IncrTestContext.make console config None
 
             // Initial render
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Send multiple keystrokes before next pump
             world.SendKey (ConsoleKeyInfo ('H', ConsoleKey.H, true, false, false))
@@ -971,16 +672,9 @@ Unfocused                               |
             world.SendKey (ConsoleKeyInfo ('!', ConsoleKey.D1, true, false, false))
 
             // Process all keystrokes in one pump cycle
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
+
+            let state = IncrTestContext.currentState ctx
 
             // All three characters should be inserted
             state.Content |> shouldEqual "Hi!"
@@ -992,77 +686,48 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = true
+            let world = MockWorld.attach worldFreezer
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
-            let clock = MockTime.make ()
+            let config =
+                AppConfig.simple
+                    {
+                        Content = "Hello World"
+                        Cursor = 5 // Middle of text
+                    }
+                    textBoxTransition
+                    (App.pureViewIncr vdom)
+                |> AppConfig.withActivationResolver resolver
 
-            let renderState = RenderState.make console clock.GetUtcNow None
-
-            let mutable state =
-                {
-                    Content = "Hello World"
-                    Cursor = 5 // Middle of text
-                }
+            use ctx = IncrTestContext.make console config None
 
             // Initial render
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Press Ctrl+A (beginning of line)
             world.SendKey (ConsoleKeyInfo ('\001', ConsoleKey.A, false, false, true))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             state.Content |> shouldEqual "Hello World"
             state.Cursor |> shouldEqual 0
 
             // Press Ctrl+E (end of line)
             world.SendKey (ConsoleKeyInfo ('\005', ConsoleKey.E, false, false, true))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             state.Content |> shouldEqual "Hello World"
             state.Cursor |> shouldEqual 11
         }
@@ -1072,77 +737,48 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = true
+            let world = MockWorld.attach worldFreezer
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
-            let clock = MockTime.make ()
+            let config =
+                AppConfig.simple
+                    {
+                        Content = "Hello"
+                        Cursor = 3
+                    }
+                    textBoxTransition
+                    (App.pureViewIncr vdom)
+                |> AppConfig.withActivationResolver resolver
 
-            let renderState = RenderState.make console clock.GetUtcNow None
-
-            let mutable state =
-                {
-                    Content = "Hello"
-                    Cursor = 3
-                }
+            use ctx = IncrTestContext.make console config None
 
             // Initial render
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Press Ctrl+B (backward)
             world.SendKey (ConsoleKeyInfo ('\002', ConsoleKey.B, false, false, true))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             state.Cursor |> shouldEqual 2
             state.Content |> shouldEqual "Hello"
 
             // Press Ctrl+F (forward)
             world.SendKey (ConsoleKeyInfo ('\006', ConsoleKey.F, false, false, true))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             state.Cursor |> shouldEqual 3
             state.Content |> shouldEqual "Hello"
         }
@@ -1152,77 +788,48 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = true
+            let world = MockWorld.attach worldFreezer
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
-            let clock = MockTime.make ()
+            let config =
+                AppConfig.simple
+                    {
+                        Content = "Hello"
+                        Cursor = 2
+                    }
+                    textBoxTransition
+                    (App.pureViewIncr vdom)
+                |> AppConfig.withActivationResolver resolver
 
-            let renderState = RenderState.make console clock.GetUtcNow None
-
-            let mutable state =
-                {
-                    Content = "Hello"
-                    Cursor = 2
-                }
+            use ctx = IncrTestContext.make console config None
 
             // Initial render
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Press Ctrl+D (delete char at cursor, should delete 'l')
             world.SendKey (ConsoleKeyInfo ('\004', ConsoleKey.D, false, false, true))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             state.Content |> shouldEqual "Helo"
             state.Cursor |> shouldEqual 2
 
             // Press Ctrl+H (backspace, should delete 'e')
             world.SendKey (ConsoleKeyInfo ('\008', ConsoleKey.H, false, false, true))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             state.Content |> shouldEqual "Hlo"
             state.Cursor |> shouldEqual 1
         }
@@ -1232,60 +839,39 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = true
+            let world = MockWorld.attach worldFreezer
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
-            let clock = MockTime.make ()
+            let config =
+                AppConfig.simple
+                    {
+                        Content = "Hello World"
+                        Cursor = 5
+                    }
+                    textBoxTransition
+                    (App.pureViewIncr vdom)
+                |> AppConfig.withActivationResolver resolver
 
-            let renderState = RenderState.make console clock.GetUtcNow None
-
-            let mutable state =
-                {
-                    Content = "Hello World"
-                    Cursor = 5
-                }
+            use ctx = IncrTestContext.make console config None
 
             // Initial render
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Press Ctrl+K (kill to end)
             world.SendKey (ConsoleKeyInfo ('\011', ConsoleKey.K, false, false, true))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             state.Content |> shouldEqual "Hello"
             state.Cursor |> shouldEqual 5
         }
@@ -1295,60 +881,39 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = true
+            let world = MockWorld.attach worldFreezer
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
-            let clock = MockTime.make ()
+            let config =
+                AppConfig.simple
+                    {
+                        Content = "Hello World"
+                        Cursor = 6
+                    }
+                    textBoxTransition
+                    (App.pureViewIncr vdom)
+                |> AppConfig.withActivationResolver resolver
 
-            let renderState = RenderState.make console clock.GetUtcNow None
-
-            let mutable state =
-                {
-                    Content = "Hello World"
-                    Cursor = 6
-                }
+            use ctx = IncrTestContext.make console config None
 
             // Initial render
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Press Ctrl+U (kill to beginning)
             world.SendKey (ConsoleKeyInfo ('\021', ConsoleKey.U, false, false, true))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             state.Content |> shouldEqual "World"
             state.Cursor |> shouldEqual 0
         }
@@ -1358,77 +923,48 @@ Unfocused                               |
         task {
             let textBoxKey = NodeKey.make "textbox"
 
-            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
+            let vdom (ctx : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
                 TextBox.make (ctx, textBoxKey, state.Content, state.Cursor, isInitiallyFocused = true)
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = true
+            let world = MockWorld.attach worldFreezer
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
-            let clock = MockTime.make ()
+            let config =
+                AppConfig.simple
+                    {
+                        Content = "Hello World Test"
+                        Cursor = 11 // After "World"
+                    }
+                    textBoxTransition
+                    (App.pureViewIncr vdom)
+                |> AppConfig.withActivationResolver resolver
 
-            let renderState = RenderState.make console clock.GetUtcNow None
-
-            let mutable state =
-                {
-                    Content = "Hello World Test"
-                    Cursor = 11 // After "World"
-                }
+            use ctx = IncrTestContext.make console config None
 
             // Initial render
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Press Ctrl+W (delete word backward, should delete "World")
             world.SendKey (ConsoleKeyInfo ('\023', ConsoleKey.W, false, false, true))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             state.Content |> shouldEqual "Hello  Test"
             state.Cursor |> shouldEqual 6
 
             // Press Ctrl+W again (should delete "Hello")
             world.SendKey (ConsoleKeyInfo ('\023', ConsoleKey.W, false, false, true))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    haveFrameworkHandleFocus
-                    renderState
-                    textBoxProcessor
-                    vdom
-                    resolver
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
+            let state = IncrTestContext.currentState ctx
             state.Content |> shouldEqual " Test"
             state.Cursor |> shouldEqual 0
         }

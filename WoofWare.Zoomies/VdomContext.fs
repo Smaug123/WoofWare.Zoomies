@@ -1,122 +1,138 @@
 namespace WoofWare.Zoomies
 
 open System
-open System.Collections.Generic
+open WoofWare.Incremental
+open WoofWare.TimingWheel
 
-/// Context provided to vdom construction, containing information about the layout of the previous render cycle.
-/// This is mutable (although you aren't given the tools to mutate it), so don't persist it.
+/// VdomContext implementation backed by Incremental nodes.
 type VdomContext<'postLayoutEvent> =
     internal
         {
-            mutable _FocusedKey : NodeKey option
-            mutable _TerminalBounds : Rectangle
-            mutable _IsDirty : bool
-            _LastActivationTimes : Dictionary<NodeKey, DateTime>
-            _GetUtcNow : unit -> DateTime
-            /// Events posted by components during rendering, to be processed after layout is complete.
+            _TerminalBoundsVar : Rectangle Var
+            _FocusedKeyVar : NodeKey option Var
+            _Clock : Clock
+            _Incr : Incremental
+            _IncrView : IncrView
+            /// Cached clock DateTime node.
+            _ClockDateTimeNode : DateTime Node
             _PostLayoutEvents : ResizeArray<'postLayoutEvent>
+            /// Last activation time per key, newest first. An association list rather than a Map
+            /// because NodeKey has no comparison; it stays tiny because recordActivation prunes
+            /// entries that have already expired.
+            _ActivationsVar : (NodeKey * TimeNs) list Var
         }
 
     interface IVdomContext<'postLayoutEvent> with
-        member this.TerminalBounds = this._TerminalBounds
-        member this.FocusedKey = this._FocusedKey
-        member this.GetUtcNow () = this._GetUtcNow ()
+        member this.TerminalBounds = this._Incr.Var.Value this._TerminalBoundsVar
+
+        member this.TerminalBoundsNode = this._Incr.Var.Watch this._TerminalBoundsVar
+
+        member this.FocusedKey = this._Incr.Var.Watch this._FocusedKeyVar
+
+        member this.Incr = this._IncrView
+
+        member this.UnsafeIncr = this._Incr
+
+        member this.Builder = IncrementalBuilder.create this._Incr
 
         member this.WasRecentlyActivated key =
-            match this._LastActivationTimes.TryGetValue key with
-            | true, time ->
-                (this._GetUtcNow () - time).TotalMilliseconds < VdomContextConstants.RECENT_ACTIVATION_TIMEOUT_MS
-            | false, _ -> false
+            let activatedAtNode =
+                this._Incr.Var.Watch this._ActivationsVar
+                |> this._Incr.Map (fun entries ->
+                    entries |> List.tryPick (fun (k, t) -> if k = key then Some t else None)
+                )
 
-        member this.PostLayoutEvent event =
-            this._PostLayoutEvents.Add event
-            this._IsDirty <- true
+            // Bind so that each activation gets its own clock alarm: the node flips to false
+            // exactly when the activation window closes, and the alarm is what tells the event
+            // loop to wake up and repaint.
+            activatedAtNode
+            |> this._Incr.Bind (fun activatedAt ->
+                match activatedAt with
+                | None -> this._Incr.Return false
+                | Some activatedAt ->
+                    this._Incr.Clock.At
+                        this._Clock
+                        (TimeNs.add activatedAt VdomContextConstants.recentActivationTimeout)
+                    |> this._Incr.Map (fun ba -> ba = BeforeOrAfter.Before)
+            )
+
+        member this.PostLayoutEvent event = this._PostLayoutEvents.Add event
 
 [<RequireQualifiedAccess>]
 module VdomContext =
-    let internal empty<'postLayoutEvent>
-        (getUtcNow : unit -> DateTime)
-        (terminalBounds : Rectangle)
-        : VdomContext<'postLayoutEvent>
-        =
+
+    /// Create a new VdomContext from an IncrementalState.
+    let make<'postLayoutEvent> (incrState : IncrementalState) : VdomContext<'postLayoutEvent> =
         {
-            _TerminalBounds = terminalBounds
-            _FocusedKey = None
-            _IsDirty = true
-            _LastActivationTimes = Dictionary<NodeKey, DateTime> ()
-            _GetUtcNow = getUtcNow
+            _TerminalBoundsVar = incrState.TerminalBoundsVar
+            _FocusedKeyVar = incrState.FocusedKeyVar
+            _Clock = incrState.Clock
+            _Incr = incrState.Incr
+            _IncrView = IncrView incrState.Incr
+            _ClockDateTimeNode = incrState.ClockDateTimeNode
             _PostLayoutEvents = ResizeArray ()
+            _ActivationsVar = incrState.Incr.Var.Create []
         }
 
-    let internal setFocusedKey<'postLayoutEvent> (key : NodeKey option) (v : VdomContext<'postLayoutEvent>) =
-        if v._FocusedKey <> key then
-            v._IsDirty <- true
-            v._FocusedKey <- key
+    /// Get the terminal bounds.
+    let terminalBounds<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : Rectangle =
+        ctx._Incr.Var.Value ctx._TerminalBoundsVar
 
-    let internal setTerminalBounds<'postLayoutEvent> (tb : Rectangle) (v : VdomContext<'postLayoutEvent>) =
-        if v._TerminalBounds <> tb then
-            v._IsDirty <- true
-            v._TerminalBounds <- tb
+    /// Get the focused key.
+    let focusedKey<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : NodeKey option =
+        ctx._Incr.Var.Value ctx._FocusedKeyVar
 
-    let internal markClean<'postLayoutEvent> (v : VdomContext<'postLayoutEvent>) = v._IsDirty <- false
+    /// Set the terminal bounds.
+    let internal setTerminalBounds<'postLayoutEvent> (bounds : Rectangle) (ctx : VdomContext<'postLayoutEvent>) : unit =
+        let current = ctx._Incr.Var.Value ctx._TerminalBoundsVar
 
-    let internal markDirty<'postLayoutEvent> (v : VdomContext<'postLayoutEvent>) = v._IsDirty <- true
+        if current <> bounds then
+            ctx._Incr.Var.Set ctx._TerminalBoundsVar bounds
 
-    let internal isDirty<'postLayoutEvent> (v : VdomContext<'postLayoutEvent>) = v._IsDirty
+    /// Set the focused key.
+    let internal setFocusedKey<'postLayoutEvent> (key : NodeKey option) (ctx : VdomContext<'postLayoutEvent>) : unit =
+        let current = ctx._Incr.Var.Value ctx._FocusedKeyVar
 
-    /// Get the dimensions of the terminal (on the previous render).
-    let terminalBounds<'postLayoutEvent> (v : VdomContext<'postLayoutEvent>) : Rectangle = v._TerminalBounds
-
-    /// Get the NodeKey of the Vdom element, if any, which was focused in the last render.
-    /// If you're not using the automatic focus handling mechanism, this is always None.
-    let focusedKey<'postLayoutEvent> (v : VdomContext<'postLayoutEvent>) : NodeKey option = v._FocusedKey
-
-    /// Note that this time does *not* participate in dirtiness tracking. Hopefully we get Bonsai eventually so we can
-    /// do that.
-    let getUtcNow<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) = ctx._GetUtcNow ()
-
-    /// Returns true if the node with the given key was activated within the
-    /// visual feedback window (approximately 500ms).
-    let wasRecentlyActivated<'postLayoutEvent> (key : NodeKey) (ctx : VdomContext<'postLayoutEvent>) : bool =
-        match ctx._LastActivationTimes.TryGetValue key with
-        | true, time -> (getUtcNow ctx - time).TotalMilliseconds < VdomContextConstants.RECENT_ACTIVATION_TIMEOUT_MS
-        | false, _ -> false
+        if current <> key then
+            ctx._Incr.Var.Set ctx._FocusedKeyVar key
 
     /// Record that a node was just activated.
-    let internal recordActivation<'postLayoutEvent> (key : NodeKey) (ctx : VdomContext<'postLayoutEvent>) : unit =
-        ctx._LastActivationTimes.[key] <- getUtcNow ctx
-        ctx._IsDirty <- true
+    let internal recordActivation<'postLayoutEvent>
+        (now : DateTime)
+        (key : NodeKey)
+        (ctx : VdomContext<'postLayoutEvent>)
+        : unit
+        =
+        let nowNs = TimeConversion.dateTimeToNs now
+
+        let live =
+            ctx._Incr.Var.Value ctx._ActivationsVar
+            // Drop the key being re-recorded, and prune entries whose window has already
+            // closed: their alarms have fired, so nothing depends on them any more.
+            |> List.filter (fun (k, t) -> k <> key && TimeNs.add t VdomContextConstants.recentActivationTimeout > nowNs)
+
+        ctx._Incr.Var.Set ctx._ActivationsVar ((key, nowNs) :: live)
 
     /// Clear activation state for a key.
     let internal clearActivation<'postLayoutEvent> (key : NodeKey) (ctx : VdomContext<'postLayoutEvent>) : unit =
-        if ctx._LastActivationTimes.Remove key then
-            ctx._IsDirty <- true
+        let current = ctx._Incr.Var.Value ctx._ActivationsVar
+        let remaining = current |> List.filter (fun (k, _) -> k <> key)
 
-    /// Remove any activation records that have expired, marking the context dirty if anything changes.
-    let internal pruneExpiredActivations<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : unit =
-        let now = getUtcNow ctx
+        if remaining.Length <> current.Length then
+            ctx._Incr.Var.Set ctx._ActivationsVar remaining
 
-        // The docs are very explicit.
-        // https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2.getenumerator?view=net-6.0)
-        // > .NET Core 3.0+ only: The only mutating methods which do not invalidate enumerators are Remove and Clear.
-        // https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2.remove?view=net-6.0
-        // > .NET Core 3.0+ only: this mutating method may be safely called without invalidating active enumerators on the Dictionary<TKey,TValue> instance. This does not imply thread safety.
-        // We also explicitly test this safety property in TestVdomContext.fs.
-        let mutable removed = false
+    /// Returns a Node that is true if the given key was activated within the visual feedback window.
+    /// The node owns a clock alarm for the end of the window, so expiry both flips the node and
+    /// wakes the event loop.
+    let wasRecentlyActivated<'postLayoutEvent> (key : NodeKey) (ctx : VdomContext<'postLayoutEvent>) : bool Node =
+        (ctx :> IVdomContext).WasRecentlyActivated key
 
-        for KeyValue (key, time) in ctx._LastActivationTimes do
-            if
-                (now - time).TotalMilliseconds
-                >= VdomContextConstants.RECENT_ACTIVATION_TIMEOUT_MS
-            then
-                ctx._LastActivationTimes.Remove key |> ignore<bool>
-                removed <- true
-
-        if removed then
-            ctx._IsDirty <- true
+    /// True if post-layout events have been posted and not yet drained. The render loop
+    /// must keep rendering (not sleep) while any are pending.
+    let internal hasPendingPostLayoutEvents<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : bool =
+        ctx._PostLayoutEvents.Count > 0
 
     /// Drain all post-layout events, returning them and clearing the internal list.
-    /// Returns an empty array if no events were posted.
     let internal drainPostLayoutEvents<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : 'postLayoutEvent[] =
         if ctx._PostLayoutEvents.Count = 0 then
             Array.empty
@@ -125,8 +141,40 @@ module VdomContext =
             ctx._PostLayoutEvents.Clear ()
             events
 
-    /// Get a typed IVdomContext<'postLayoutEvent> view of this VdomContext.
+    /// Get a typed IVdomContext<'postLayoutEvent> view of this context.
     let internal asTyped<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : IVdomContext<'postLayoutEvent> = ctx
 
-    /// Get a base IVdomContext view of this VdomContext.
+    /// Get a base IVdomContext view of this context.
     let internal asBase<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : IVdomContext = ctx
+
+    /// Get the safe Incremental view for building nodes.
+    let incr<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : IncrView = ctx._IncrView
+
+    /// A computation expression for building incremental nodes using `VdomContext.incr`.
+    let incrBuilder<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : IncrementalBuilder =
+        IncrementalBuilder.create ctx._Incr
+
+    /// Get the underlying Incremental instance. This is unsafe inside view functions.
+    let unsafeIncr<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : Incremental = ctx._Incr
+
+    /// Get the clock for time-based reactivity.
+    let clock<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : Clock = ctx._Clock
+
+    /// Get the terminal bounds as a Node for incremental computations.
+    let boundsNode<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : Rectangle Node =
+        ctx._Incr.Var.Watch ctx._TerminalBoundsVar
+
+    /// Get the focused key as a Node for incremental computations.
+    let focusedKeyNode<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : NodeKey option Node =
+        ctx._Incr.Var.Watch ctx._FocusedKeyVar
+
+    /// Get the clock time as an incremental Node (nanoseconds since epoch).
+    let clockTimeNode<'postLayoutEvent>
+        (ctx : VdomContext<'postLayoutEvent>)
+        : int64<WoofWare.TimingWheel.timeNs> Node
+        =
+        ctx._Incr.Clock.WatchNow ctx._Clock
+
+    /// Get the clock time as a DateTime Node.
+    let clockDateTimeNode<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : DateTime Node =
+        ctx._ClockDateTimeNode

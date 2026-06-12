@@ -19,9 +19,9 @@ And even if a component *has* changed since the last render - even if the entire
 ## What it means for "user state to change"
 
 We use the `.Equals` method on your user state type to determine whether user state has changed since the last render.
-(Recall that user state is expected to be immutable. You "change user state" by returning a new user state from `WorldProcessor.ProcessWorld` or other methods on `WorldProcessor`, whereupon that new state takes the place of the old one within the WoofWare.Zoomies internals.)
+(Recall that user state is expected to be immutable. You "change user state" by returning a new state from `AppConfig.Transition` or `AppConfig.HandlePostLayout`, whereupon that new state takes the place of the old one within the WoofWare.Zoomies internals.)
 
-One upshot of this is that, for example, if you simply discard all the keystrokes in an incoming batch during `WorldProcessor.ProcessWorld` (perhaps because you only recognise the "space" key but the user mashed the keyboard without hitting "space"), and therefore you don't change your user state, you will not be asked to recompute the Vdom this time round the render loop.
+One upshot of this is that, for example, if none of your `HandleInput` or `ActivationResolver` functions match the incoming keystrokes (perhaps because you only recognise the "space" key but the user mashed the keyboard without hitting "space"), and therefore you don't change your user state, you will not be asked to recompute the Vdom this time round the render loop.
 
 ## What it means for "automatic state tracking to have changed"
 
@@ -46,10 +46,10 @@ It's a bug in WoofWare.Zoomies if you find you are having to depend on mutable s
 ### Example: reacting to external events
 
 Say you're writing a polling filesystem watcher, that scans for files in the current working directory on a 1s timer so as to display them in a list.
-In this case, you should set up the timer just before you return a `WorldProcessor`, and register that timer using `IWorldBridge.SubscribeEvent`.
-The subscription pipes `ApplicationEvent`s into the WoofWare.Zoomies world, giving you the chance to adjust your user state in response when the WoofWare.Zoomies framework calls your `WorldProcessor.ProcessWorld`.
+In this case, you should set up the timer in `AppConfig.OnSetup` and register it using `IWorldBridge.SubscribeEvent`.
+The subscription pipes `ApplicationEvent`s into the WoofWare.Zoomies world, giving you the chance to adjust your user state in response via `AppConfig.Transition`.
 
 ### Example: reacting to your own layout
 
-You can implement a virtualised list (which has to know what is displayed and what is not) by posting events to yourself *during render* (after you know exactly what you're displaying), which you handle in `WorldProcessor.ProcessPostLayoutEvents`.
+You can implement a virtualised list (which has to know what is displayed and what is not) by posting events to yourself *during render* (after you know exactly what you're displaying), which you handle in `AppConfig.HandlePostLayout`.
 See the [post-layout events tutorial](../tutorial/post-layout-events.md) to understand the mechanics of this.

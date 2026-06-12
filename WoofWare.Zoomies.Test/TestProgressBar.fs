@@ -8,6 +8,7 @@ open WoofWare.Zoomies.Components
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestProgressBar =
+
     [<OneTimeSetUp>]
     let setUp () =
         // GlobalBuilderConfig.enterBulkUpdateMode ()
@@ -26,30 +27,16 @@ module TestProgressBar =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -69,30 +56,16 @@ module TestProgressBar =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -112,30 +85,16 @@ module TestProgressBar =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -159,30 +118,16 @@ module TestProgressBar =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -204,30 +149,16 @@ Loading:[███░░░░░░░] 30%      |
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -253,30 +184,16 @@ Loading:[███░░░░░░░] 30%      |
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -300,30 +217,16 @@ Progress:[██████░░░░]         |
 
             let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -343,31 +246,16 @@ Progress:[██████░░░░]         |
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -391,30 +279,16 @@ Progress:[██████░░░░]         |
 
             let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -434,30 +308,16 @@ Progress:[██████░░░░]         |
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                ()
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot

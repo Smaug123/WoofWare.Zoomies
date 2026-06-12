@@ -9,6 +9,7 @@ open WoofWare.Zoomies
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestPanelSplit =
+
     [<OneTimeSetUp>]
     let setUp () =
         // GlobalBuilderConfig.enterBulkUpdateMode ()
@@ -31,7 +32,7 @@ module TestPanelSplit =
                 WindowHeight = fun _ -> 3
             }
 
-        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+        let renderState = MockTime.makeRenderStateStatic<unit> console None
 
         // Create vdom with a PanelSplit where a bordered child changes
         // Bordered doesn't repaint its entire area, so we can detect if PanelSplit is adding extra repaints
@@ -77,23 +78,21 @@ module TestPanelSplit =
         // there's a TODO for that in the code.
         writtenCells.Count |> shouldEqual (panelWidth - 2)
 
+    type private ToggleEvent = Toggle
+
     [<Test>]
     let ``Keyed PanelSplit clears background on initial render`` () =
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let splitKey = NodeKey.make "split"
 
-            let vdom (vdomContext : IVdomContext<_>) (showSplit : bool) =
+            let vdom (_ : IVdomContext<_>) (showSplit : bool) =
                 if showSplit then
                     // A keyed PanelSplit with small children
                     // The background should be cleared
@@ -109,29 +108,21 @@ module TestPanelSplit =
                     // Fill the screen with characters to create "artifacts"
                     Vdom.textContent "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" |> Vdom.bordered
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, bool> with
-                    member _.ProcessWorld (worldChanges, _, state) =
-                        // Toggle state on any keystroke
-                        let newState = if worldChanges.Length > 0 then not state else state
-                        ProcessWorldResult.make newState
+            let transition state _ = not state
 
-                    member _.ProcessPostLayoutEvents (_, _, state) = state
-                }
+            let config =
+                AppConfig.simple false transition (App.pureView vdom)
+                |> AppConfig.withHandleInput (fun change ->
+                    match change with
+                    | WorldStateChange.Keystroke _ -> Some Toggle
+                    | _ -> None
+                )
+                |> AppConfig.withFocusHandling FocusHandling.FrameworkManaged
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
             // First render: fill with X's
-            let mutable state =
-                App.pumpOnce
-                    worldFreezer
-                    false
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -151,16 +142,7 @@ module TestPanelSplit =
 
             // Second render: show keyed PanelSplit
             // The X's should be cleared (replaced with spaces), not left as artifacts
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -182,8 +164,6 @@ module TestPanelSplit =
             // Demonstrates that proportion splits with small terminals can allocate zero width/height
             let console, _ = ConsoleHarness.make' (fun () -> 1) (fun () -> 1)
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
-
             let leftKey = NodeKey.make "left"
             let rightKey = NodeKey.make "right"
 
@@ -191,41 +171,30 @@ module TestPanelSplit =
             // Terminal width is 1, split at 0.1 proportion
             // This means left gets: int (float 1 * 0.1) = int 0.1 = 0
             // And right gets: 1 - 0 = 1
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 let leftText = Vdom.textContent "left" |> Vdom.withKey leftKey
                 let rightText = Vdom.textContent "right" |> Vdom.withKey rightKey
                 Vdom.panelSplitProportion (SplitDirection.Vertical, 0.1, leftText, rightText)
 
-            let processWorld = WorldProcessor.passthrough
-
-            let world = MockWorld.make ()
+            let config = TestConfig.passthrough<unit> vdom
 
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
+
+            use ctx = IncrTestContext.make console config None
 
             // Render
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Check that the left child has zero width
-            match RenderState.layoutOf leftKey renderState with
+            match RenderState.layoutOf leftKey ctx.RenderState with
             | None -> failwith "should have found leftKey node"
             | Some leftLayout -> leftLayout.Width |> shouldEqual 0
 
             // Check that the right child has the remaining width
-            match RenderState.layoutOf rightKey renderState with
+            match RenderState.layoutOf rightKey ctx.RenderState with
             | None -> failwith "should have found rightKey node"
             | Some rightLayout -> rightLayout.Width |> shouldEqual 1
         }
@@ -236,8 +205,6 @@ module TestPanelSplit =
             // Same as above but for horizontal splits
             let console, _ = ConsoleHarness.make' (fun () -> 10) (fun () -> 2)
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
-
             let topKey = NodeKey.make "top"
             let bottomKey = NodeKey.make "bottom"
 
@@ -245,41 +212,30 @@ module TestPanelSplit =
             // Terminal height is 2, split at 0.1 proportion
             // This means top gets: int (float 2 * 0.1) = int 0.2 = 0
             // And bottom gets: 2 - 0 = 2
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 let topText = Vdom.textContent "top" |> Vdom.withKey topKey
                 let bottomText = Vdom.textContent "bottom" |> Vdom.withKey bottomKey
                 Vdom.panelSplitProportion (SplitDirection.Horizontal, 0.1, topText, bottomText)
 
-            let processWorld = WorldProcessor.passthrough
-
-            let world = MockWorld.make ()
+            let config = TestConfig.passthrough<unit> vdom
 
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
+
+            use ctx = IncrTestContext.make console config None
 
             // Render
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Check that the top child has zero height
-            match RenderState.layoutOf topKey renderState with
+            match RenderState.layoutOf topKey ctx.RenderState with
             | None -> failwith "should have found topKey node"
             | Some topLayout -> topLayout.Height |> shouldEqual 0
 
             // Check that the bottom child has the remaining height
-            match RenderState.layoutOf bottomKey renderState with
+            match RenderState.layoutOf bottomKey ctx.RenderState with
             | None -> failwith "should have found bottomKey node"
             | Some bottomLayout -> bottomLayout.Height |> shouldEqual 2
         }
@@ -290,16 +246,12 @@ module TestPanelSplit =
             // Test the normal case where there's enough space for all preferred sizes
             let console, terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 10)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Create two text components with different preferred widths
                 // "Hello world" has preferred width ~11, "Hi" has preferred width ~2
                 let left = Vdom.textContent "Hello world"
@@ -307,20 +259,11 @@ module TestPanelSplit =
 
                 Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -348,16 +291,12 @@ Hello world                                                        Hi           
             // Terminal is 20 wide, but text wants more
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Long text content that will wrap when space is limited.
                 // The longer one (`left`) has its longest word of length 6, vs the shorter one having longest word
                 // of length 4, so satisfying their minimum requests allocates more space to `left`;
@@ -367,20 +306,11 @@ Hello world                                                        Hi           
 
                 Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -403,36 +333,23 @@ onger piece text her|
             // This forces proportional scaling of minimums
             let console, terminal = ConsoleHarness.make' (fun () -> 8) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Words with minimum widths that exceed available space
                 let left = Vdom.textContent "Hello" // min width ~5
                 let right = Vdom.textContent "World" // min width ~5
 
                 Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -454,16 +371,12 @@ o   d   |
             // Test horizontal auto splits with enough space
             let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 10)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Short text (prefers 1 line) and longer text (prefers multiple lines)
                 let top = Vdom.textContent "Short"
 
@@ -472,20 +385,11 @@ o   d   |
 
                 Vdom.panelSplitAuto (SplitDirection.Horizontal, top, bottom)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -512,36 +416,23 @@ e multiple lines when rendered          |
             // Test horizontal auto splits when not enough vertical space
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 4)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Both components want more height than available
                 let top = Vdom.textContent "Top section with some content that wraps around"
                 let bottom = Vdom.textContent "Bottom section also with content"
 
                 Vdom.panelSplitAuto (SplitDirection.Horizontal, top, bottom)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -562,16 +453,12 @@ nt                            |
             // Test auto splits with bordered components to make the allocation visible
             let console, terminal = ConsoleHarness.make' (fun () -> 50) (fun () -> 8)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Bordered panels to clearly show space allocation
                 let left = Vdom.textContent "Small" |> Vdom.bordered
 
@@ -579,20 +466,11 @@ nt                            |
 
                 Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -617,35 +495,22 @@ nt                            |
             // Test extreme stress where one component gets zero space
             let console, terminal = ConsoleHarness.make' (fun () -> 1) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 let left = Vdom.textContent "A"
                 let right = Vdom.textContent "B"
 
                 Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -666,14 +531,10 @@ B|
             // exposed areas should be cleared
             let console, terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (useLargeSplit : bool) =
                 if useLargeSplit then
@@ -689,28 +550,21 @@ B|
                     let right = Vdom.textContent "right"
                     Vdom.panelSplitProportion (SplitDirection.Vertical, 0.25, left, right)
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, bool> with
-                    member _.ProcessWorld (worldChanges, _, state) =
-                        let newState = if worldChanges.Length > 0 then not state else state
-                        ProcessWorldResult.make newState
+            let transition state _ = not state
 
-                    member _.ProcessPostLayoutEvents (_, _, state) = state
-                }
+            let config =
+                AppConfig.simple true transition (App.pureView vdom)
+                |> AppConfig.withHandleInput (fun change ->
+                    match change with
+                    | WorldStateChange.Keystroke _ -> Some Toggle
+                    | _ -> None
+                )
+                |> AppConfig.withFocusHandling FocusHandling.FrameworkManaged
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
             // First render: 50/50 split with X's filling the left side
-            let mutable state =
-                App.pumpOnce
-                    worldFreezer
-                    true
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -729,16 +583,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX                                        
             world.SendKey (ConsoleKeyInfo ('x', ConsoleKey.NoName, false, false, false))
 
             // Second render: 25/75 split with only "AAA" on left
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // For reference, although the actual test assertion comes afterwards:
             let secondRender = ConsoleHarness.toString terminal
@@ -767,14 +612,10 @@ AAA                 right                                                       
             // Same as above but with a keyed PanelSplit
             let console, terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let splitKey = NodeKey.make "split"
 
@@ -794,43 +635,27 @@ AAA                 right                                                       
                 // Wrap in bordered to make it Unkeyed at the top level
                 split |> Vdom.withKey splitKey |> Vdom.bordered
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, bool> with
-                    member _.ProcessWorld (worldChanges, _, state) =
-                        let newState = if worldChanges.Length > 0 then not state else state
-                        ProcessWorldResult.make newState
+            let transition state _ = not state
 
-                    member _.ProcessPostLayoutEvents (_, _, state) = state
-                }
+            let config =
+                AppConfig.simple true transition (App.pureView vdom)
+                |> AppConfig.withHandleInput (fun change ->
+                    match change with
+                    | WorldStateChange.Keystroke _ -> Some Toggle
+                    | _ -> None
+                )
+                |> AppConfig.withFocusHandling FocusHandling.FrameworkManaged
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
             // First render: 50/50 split
-            let mutable state =
-                App.pumpOnce
-                    worldFreezer
-                    true
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Send keystroke to trigger rebalance
             world.SendKey (ConsoleKeyInfo ('x', ConsoleKey.NoName, false, false, false))
 
             // Second render: 25/75 split
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             let secondRender = ConsoleHarness.toString terminal
 
@@ -848,14 +673,10 @@ AAA                 right                                                       
             // the PanelSplit's background might not be fully covered by the new child positions.
             let console, terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 10)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (useWideLeft : bool) =
                 if useWideLeft then
@@ -871,28 +692,21 @@ AAA                 right                                                       
                     let right = Vdom.textContent "R" |> Vdom.bordered
                     Vdom.panelSplitProportion (SplitDirection.Vertical, 0.3, left, right)
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, bool> with
-                    member _.ProcessWorld (worldChanges, _, state) =
-                        let newState = if worldChanges.Length > 0 then not state else state
-                        ProcessWorldResult.make newState
+            let transition state _ = not state
 
-                    member _.ProcessPostLayoutEvents (_, _, state) = state
-                }
+            let config =
+                AppConfig.simple true transition (App.pureView vdom)
+                |> AppConfig.withHandleInput (fun change ->
+                    match change with
+                    | WorldStateChange.Keystroke _ -> Some Toggle
+                    | _ -> None
+                )
+                |> AppConfig.withFocusHandling FocusHandling.FrameworkManaged
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
             // First render: 70/30 split with X's on the left
-            let mutable state =
-                App.pumpOnce
-                    worldFreezer
-                    true
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             ConsoleHarness.toString terminal |> shouldContainText "XXXX"
 
@@ -900,16 +714,7 @@ AAA                 right                                                       
             world.SendKey (ConsoleKeyInfo ('x', ConsoleKey.NoName, false, false, false))
 
             // Second render: 30/70 split
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             let secondRender = ConsoleHarness.toString terminal
 
@@ -937,16 +742,12 @@ AAA                 right                                                       
 
             let console, terminal = ConsoleHarness.make' (fun () -> 50) (fun () -> 10)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Outer Auto split allocates space to its children based on their reported MinWidth
                 let left =
                     // This is the problematic absolute split
@@ -963,7 +764,7 @@ AAA                 right                                                       
                     // When this is measured with MaxWidth=50:
                     // - child1 measured with MaxWidth=min(20,50)=20, reports MinWidth=5
                     // - child2 measured with MaxWidth=50, reports MinWidth=~37
-                    // - Container reports MinWidth = 20 + 37 = 57 > 50 ❌ VIOLATES INVARIANT
+                    // - Container reports MinWidth = 20 + 37 = 57 > 50 (VIOLATES INVARIANT)
                     Vdom.panelSplitAbsolute (SplitDirection.Vertical, 20, child1, child2)
 
                 let right = Vdom.textContent "Right side content"
@@ -974,25 +775,16 @@ AAA                 right                                                       
                 // This is the wrong decision - the absolute split could actually fit in less space
                 Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Expected behavior after fix:
             // - Absolute split now constrains child2 to remainder: MaxWidth=50-20=30
             // - child2 (bordered text) reports MinWidth=min(longest_word+2, 30) = 30
-            // - Container reports MinWidth = 20 + 30 = 50 (respects constraint ✓)
+            // - Container reports MinWidth = 20 + 30 = 50 (respects constraint)
             // - Auto split sees left.MinWidth=50, right.MinWidth=18, total=68 > 50
             // - Auto split still needs to scale, but makes better decisions
             // - Result: bordered panel is narrower, but "Right side content" is no longer cut off
@@ -1025,16 +817,12 @@ small               ┌──────────────────┐
             // while the second stays at its content size
             let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // "Left" has preferred width ~4, "Right" has preferred width ~5
                 // Total preferred = 9, available = 40, so excess = 31
                 // With panelSplitAutoExpand, Left should get all 31 excess (width=35), Right stays at 5
@@ -1043,20 +831,11 @@ small               ┌──────────────────┐
 
                 Vdom.panelSplitAutoExpand (SplitDirection.Vertical, left, right)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Left should expand to fill most of the space, Right should be exactly 5 chars wide
             expect {
@@ -1081,56 +860,37 @@ Left                               Right|
 
             // First, test panelSplitAuto
             let consoleAuto, terminalAuto = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
-            let world = MockWorld.make ()
 
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdomAuto (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdomAuto (_ : IVdomContext<_>) (_ : unit) =
                 let left = Vdom.textContent "Left"
                 let right = Vdom.textContent "Right"
                 Vdom.panelSplitAuto (SplitDirection.Vertical, left, right)
 
-            let processWorld = WorldProcessor.passthrough
+            let configAuto = TestConfig.passthrough<unit> vdomAuto
 
-            let renderStateAuto = RenderState.make consoleAuto MockTime.getStaticUtcNow None
+            use ctxAuto = IncrTestContext.make consoleAuto configAuto None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderStateAuto
-                processWorld
-                vdomAuto
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer configAuto ctxAuto |> ignore
 
             // Now test panelSplitAutoExpand
             let consoleExpand, terminalExpand =
                 ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let vdomExpand (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let vdomExpand (_ : IVdomContext<_>) (_ : unit) =
                 let left = Vdom.textContent "Left"
                 let right = Vdom.textContent "Right"
                 Vdom.panelSplitAutoExpand (SplitDirection.Vertical, left, right)
 
-            let renderStateExpand = RenderState.make consoleExpand MockTime.getStaticUtcNow None
+            let configExpand = TestConfig.passthrough<unit> vdomExpand
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderStateExpand
-                processWorld
-                vdomExpand
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            use ctxExpand = IncrTestContext.make consoleExpand configExpand None
+
+            IncrTestContext.pumpOnce worldFreezer configExpand ctxExpand |> ignore
 
             // With panelSplitAuto, excess is distributed proportionally by preferred width
             // Left (4) : Right (5) ratio, so Left gets 4 + int(31*4/9) = 17, Right gets 23
@@ -1165,16 +925,12 @@ Left                               Right|
             // they are clamped and excess space is unused
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 10)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Both components have preferred height of 1 and max height of 1 (text content)
                 // Total preferred = 2, available = 10, so excess = 8
                 // With panelSplitAutoExpand, Top would get all excess, but max height clamps it to 1
@@ -1185,20 +941,11 @@ Left                               Right|
 
                 Vdom.panelSplitAutoExpand (SplitDirection.Horizontal, top, bottom)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Both Top and Bottom have max height of 1, so each gets exactly 1 row.
             // The remaining 8 rows are unused container space (not assigned to either child).
@@ -1228,16 +975,12 @@ Bottom              |
             // Each should get exactly their preferred size, with remaining space unused
             let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 let left = Vdom.textContent "Left"
                 let right = Vdom.textContent "Right"
 
@@ -1250,20 +993,11 @@ Bottom              |
                 )
                 |> Vdom.Unkeyed
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Each should get exactly their preferred width: Left=4, Right=5
             // Total = 9, leaving 31 as unassigned container space to the right of both children
@@ -1287,16 +1021,12 @@ LeftRight                               |
             // the second child should get 1 row (clamped), not 9 rows (unclamped)
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 10)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // First child has max height 1 (text content) and weight 0
                 // Second child has max height 1 (text content) and weight 1 (gets excess)
                 // Even though second child wants excess, it should be clamped to max height 1
@@ -1312,20 +1042,11 @@ LeftRight                               |
                 )
                 |> Vdom.Unkeyed
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Second child should be clamped to 1 row despite wanting all excess
             // Top on row 0, Bottom on row 1, rows 2-9 are unused (cleared)
@@ -1356,14 +1077,10 @@ Bottom              |
             // the remaining space should be cleared (not show stale content)
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             // State: true = show full content, false = show minimal content
             let vdom (_ : IVdomContext<_>) (showContent : bool) =
@@ -1384,30 +1101,21 @@ Bottom              |
                     let top = Vdom.textContent "OnlyThis"
                     Vdom.panelSplitAuto (SplitDirection.Horizontal, top, Vdom.empty)
 
-            let processWorld =
-                { new WorldProcessor<unit, unit, bool> with
-                    member _.ProcessWorld (worldChanges, _, state) =
-                        // Toggle state when any key is pressed
-                        let newState = if worldChanges.Length > 0 then not state else state
-                        ProcessWorldResult.make newState
+            let transition state _ = not state
 
-                    member _.ProcessPostLayoutEvents (_, _, state) = state
-                }
+            let config =
+                AppConfig.simple true transition (App.pureView vdom)
+                |> AppConfig.withHandleInput (fun change ->
+                    match change with
+                    | WorldStateChange.Keystroke _ -> Some Toggle
+                    | _ -> None
+                )
+                |> AppConfig.withFocusHandling FocusHandling.FrameworkManaged
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
-            let mutable state = true
+            use ctx = IncrTestContext.make console config None
 
             // First render with content
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -1425,16 +1133,7 @@ Line3               |
             // Press any key to toggle state and trigger re-render with less content
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // "Line2" and "Line3" should be cleared, only "OnlyThis" remains
             expect {
@@ -1478,16 +1177,12 @@ OnlyThis            |
             // With the fix, w1 should be clamped to min(18, 12) = 12.
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Create first child with maxWidth=12 using FlexibleContent
                 // The proportional calculation will give it 14 columns, which exceeds maxWidth
                 let leftMeasure (_ : MeasureConstraints) =
@@ -1531,20 +1226,11 @@ OnlyThis            |
                 )
                 |> Vdom.Unkeyed
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // First child should be clamped to 12 columns (its maxWidth)
             // So we should see LLLLLLLLLLLL (12 L's) followed by RRRRRRRR (8 R's)
@@ -1578,16 +1264,12 @@ LLLLLLLLLLLLRRRRRRRR|
             // With the fix, h1 should be clamped to 2.
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 10)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Create first child with maxHeight=2 using FlexibleContent
                 // It has prefHeight=10 but maxHeight=2, so it should be clamped
                 let topMeasure (_ : MeasureConstraints) =
@@ -1633,20 +1315,11 @@ LLLLLLLLLLLLRRRRRRRR|
                 )
                 |> Vdom.Unkeyed
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // First child should be clamped to 2 rows (its maxHeight)
             // So we should see T on rows 0-1, B on rows 2-9

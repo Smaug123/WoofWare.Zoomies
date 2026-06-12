@@ -17,30 +17,30 @@ module TestIdleTracker =
 
     [<Test>]
     let ``RecordInput sets LastInputTime`` () =
-        let now = DateTime (2024, 1, 15, 10, 30, 0, DateTimeKind.Utc)
+        let now = MockTime.defaultStartTime
         let state = IdleTracker.State.Initial.RecordInput now
         state.LastInputTime |> shouldEqual (ValueSome now)
 
     [<Test>]
     let ``IdleDuration returns Zero when no input recorded`` () =
-        let now = DateTime (2024, 1, 15, 10, 30, 0, DateTimeKind.Utc)
+        let now = MockTime.defaultStartTime
         let state = IdleTracker.State.Initial
         state.IdleDuration now |> shouldEqual TimeSpan.Zero
 
     [<Test>]
     let ``IdleDuration returns correct duration after input`` () =
-        let inputTime = DateTime (2024, 1, 15, 10, 30, 0, DateTimeKind.Utc)
-        let checkTime = DateTime (2024, 1, 15, 10, 30, 5, DateTimeKind.Utc)
+        let inputTime = MockTime.defaultStartTime
+        let checkTime = MockTime.defaultStartTime.AddSeconds 5.0
         let state = IdleTracker.State.Initial.RecordInput inputTime
         state.IdleDuration checkTime |> shouldEqual (TimeSpan.FromSeconds 5.0)
 
     [<Test>]
     let ``RecordInput overwrites previous input time`` () =
-        let time1 = DateTime (2024, 1, 15, 10, 30, 0, DateTimeKind.Utc)
-        let time2 = DateTime (2024, 1, 15, 10, 31, 0, DateTimeKind.Utc)
-        let checkTime = DateTime (2024, 1, 15, 10, 31, 10, DateTimeKind.Utc)
+        let time1 = MockTime.defaultStartTime
+        let time2 = MockTime.defaultStartTime.AddMinutes 1.0
+        let checkTime = time2.AddSeconds 10.0
 
-        let state = IdleTracker.State.Initial.RecordInput(time1).RecordInput (time2)
+        let state = IdleTracker.State.Initial.RecordInput(time1).RecordInput time2
 
         state.LastInputTime |> shouldEqual (ValueSome time2)
         state.IdleDuration checkTime |> shouldEqual (TimeSpan.FromSeconds 10.0)

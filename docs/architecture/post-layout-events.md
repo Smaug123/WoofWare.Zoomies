@@ -30,9 +30,7 @@ You can now store this information in your user state so that you can react to t
 
 ## Concrete mechanism
 
-If there are any events in the post-layout queue after the render phase has finished, the framework calls your `WorldProcessor.ProcessPostLayoutEvents` method so that you get a chance to update user state.
-Then, if user state has changed, we rerender; we repeat this process, handling post-layout events and rerendering, until the rerender stops producing post-layout events (or we run out of petrol and we simply throw away any pending post-layout events).
+If there are any events in the post-layout queue after the render phase has finished, the framework calls your `AppConfig.HandlePostLayout` function for each event so that you get a chance to update user state.
+Then, if user state has changed, we rerender; we repeat this process, handling post-layout events and rerendering, until the rerender stops producing post-layout events (or we hit the iteration limit).
 
-Notably, while the user gets to choose to *partially* handle a sequence of world events and request a rerender, they must handle the *entire* sequence of post-layout events at once.
-This is enforced by the types: `ProcessPostLayoutEvents` simply returns a state, with no way of signalling only partial handling of the input events.
-This was chosen to keep it simple, at the cost of a more complex API surface with an extra type parameter and an extra method on the `WorldProcessor`: I thought it sounded deeply confusing to partially handle post-layout events and then perform a rerender which posts *more* post-layout events into the queue (so the queue now contains post-layout events from multiple renders at once).
+Post-layout events are processed one at a time via the `HandlePostLayout : 'postLayoutEvent -> 'state -> 'state` function. The entire batch of events from a single render is drained before checking whether the state changed, to avoid per-event re-stabilization.

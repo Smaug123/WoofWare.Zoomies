@@ -4,11 +4,11 @@ open System
 open NUnit.Framework
 open WoofWare.Expect
 open WoofWare.Zoomies
-open FsUnitTyped
 
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestStyledSpans =
+
     [<OneTimeSetUp>]
     let setUp () =
         // GlobalBuilderConfig.enterBulkUpdateMode ()
@@ -23,7 +23,7 @@ module TestStyledSpans =
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 1)
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 Vdom.styledSpans (
                     [
                         {
@@ -37,28 +37,16 @@ module TestStyledSpans =
                     ]
                 )
 
-            let processWorld = WorldProcessor.passthrough
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let world = MockWorld.attach worldFreezer
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            let config = TestConfig.passthrough<unit> vdom
+
+            use ctx = IncrTestContext.make console config None
+
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -75,7 +63,7 @@ Hello     |
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 1)
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 Vdom.styledSpans (
                     [
                         {
@@ -99,28 +87,16 @@ Hello     |
                     ]
                 )
 
-            let processWorld = WorldProcessor.passthrough
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let world = MockWorld.attach worldFreezer
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            let config = TestConfig.passthrough<unit> vdom
+
+            use ctx = IncrTestContext.make console config None
+
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // The terminal harness captures just characters; color is applied via escape codes
             // which the harness strips. So we just verify the text renders correctly.
@@ -139,7 +115,7 @@ RGB       |
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 5) (fun () -> 3)
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 Vdom.styledSpans (
                     [
                         {
@@ -154,28 +130,16 @@ RGB       |
                     wrap = true
                 )
 
-            let processWorld = WorldProcessor.passthrough
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let world = MockWorld.attach worldFreezer
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            let config = TestConfig.passthrough<unit> vdom
+
+            use ctx = IncrTestContext.make console config None
+
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -194,30 +158,18 @@ World|
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 5) (fun () -> 1)
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) = Vdom.styledSpans []
-
-            let processWorld = WorldProcessor.passthrough
-            let world = MockWorld.make ()
+            let vdom (_ : IVdomContext<_>) (_ : unit) = Vdom.styledSpans []
 
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let world = MockWorld.attach worldFreezer
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            let config = TestConfig.passthrough<unit> vdom
+
+            use ctx = IncrTestContext.make console config None
+
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -234,7 +186,7 @@ World|
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 5) (fun () -> 2)
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 Vdom.styledSpans (
                     [
                         {
@@ -245,28 +197,16 @@ World|
                     wrap = false
                 )
 
-            let processWorld = WorldProcessor.passthrough
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let world = MockWorld.attach worldFreezer
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            let config = TestConfig.passthrough<unit> vdom
+
+            use ctx = IncrTestContext.make console config None
+
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -286,7 +226,7 @@ Hello|
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 3)
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 Vdom.styledSpans (
                     [
                         {
@@ -300,28 +240,16 @@ Hello|
                     ]
                 )
 
-            let processWorld = WorldProcessor.passthrough
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let world = MockWorld.attach worldFreezer
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            let config = TestConfig.passthrough<unit> vdom
+
+            use ctx = IncrTestContext.make console config None
+
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Should render as two lines (Hello\nWorld), not three (Hello\n\nWorld)
             expect {
@@ -341,7 +269,7 @@ World     |
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 3)
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 Vdom.styledSpans (
                     [
                         {
@@ -352,28 +280,16 @@ World     |
                     alignment = ContentAlignment.Centered
                 )
 
-            let processWorld = WorldProcessor.passthrough
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let world = MockWorld.attach worldFreezer
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            let config = TestConfig.passthrough<unit> vdom
+
+            use ctx = IncrTestContext.make console config None
+
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot

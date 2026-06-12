@@ -23,7 +23,7 @@ module IdleTracker =
             }
 
         /// Record that user input occurred at the given time.
-        /// Call this from ProcessWorld when handling Keystroke, MouseEvent, or Paste events.
+        /// Call this from Transition when handling Keystroke, MouseEvent, or Paste events.
         member this.RecordInput (now : DateTime) : State =
             {
                 LastInputTime = ValueSome now

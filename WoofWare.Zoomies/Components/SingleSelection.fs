@@ -1,5 +1,6 @@
 namespace WoofWare.Zoomies.Components
 
+open WoofWare.Incremental
 open WoofWare.Zoomies
 
 /// An item in a single-selection list.
@@ -33,33 +34,37 @@ type SingleSelection =
     /// Cursor highlight only shows when the list has focus.
     ///
     /// The component posts onViewportRendered during render with the viewport height.
-    /// Handle this event in ProcessWorld to call state.EnsureVisible(viewportHeight)
+    /// Handle this event in HandlePostLayout to call state.EnsureVisible(viewportHeight)
     /// and keep the cursor visible.
     ///
     /// Note: This component uses the same ActivationResolver as MultiSelection
     /// (ActivationResolver.selectionList). The difference is semantic: in MultiSelection,
-    /// Space toggles the item; in SingleSelection, Space selects the item (your ProcessWorld
+    /// Space toggles the item; in SingleSelection, Space selects the item (your Transition
     /// handler should set the selection to the cursor index rather than toggling).
-    static member make<'postLayoutEvent>
+    static member make<'id, 'postLayoutEvent>
         (
             ctx : IVdomContext<'postLayoutEvent>,
             listKey : NodeKey,
-            items : SingleSelectionItem<NodeKey>[],
+            items : SingleSelectionItem<'id>[],
             selectedIndex : int option,
             state : SelectionListState,
             onViewportRendered : SelectionListViewportInfo -> 'postLayoutEvent,
             ?isFirstToFocus : bool
         )
-        : SelectionListResult
+        : SelectionListResult Node
         =
         if Array.isEmpty items then
-            {
-                Vdom = Vdom.empty
-                State = state
-            }
+            ctx.Incr.Return
+                {
+                    Vdom = Vdom.empty
+                    State = state
+                }
         else
+
+        ctx.FocusedKey
+        |> ctx.Incr.Map (fun focusedKey ->
             let totalItems = items.Length
-            let listHasFocus = ctx.FocusedKey = Some listKey
+            let listHasFocus = focusedKey = Some listKey
             // Clamp cursor to valid range
             let cursorIndex = max 0 (min state.CursorIndex (totalItems - 1))
             // Clamp selectedIndex to valid range
@@ -132,3 +137,4 @@ type SingleSelection =
                 Vdom = Vdom.withFocusTracking (focusable, ?isFirstToFocus = isFirstToFocus)
                 State = stateWithClampedCursor
             }
+        )

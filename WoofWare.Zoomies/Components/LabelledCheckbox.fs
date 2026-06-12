@@ -16,17 +16,18 @@ type LabelledCheckbox =
             ?isInitiallyFocused : bool
         )
         =
-        // TODO: centre this text horizontally so it's next to the checkbox
-        Vdom.panelSplitAbsolute (
-            SplitDirection.Vertical,
-            3,
-            Checkbox.make (
-                ctx,
-                key,
-                isChecked,
-                ?isFirstToFocus = isFirstToFocus,
-                ?isInitiallyFocused = isInitiallyFocused
-            ),
-            Vdom.textContent label
-        )
-        |> Vdom.withTag "labelled-checkbox"
+        ctx.Builder {
+            let! checkbox =
+                Checkbox.make (
+                    ctx,
+                    key,
+                    isChecked,
+                    ?isFirstToFocus = isFirstToFocus,
+                    ?isInitiallyFocused = isInitiallyFocused
+                )
+
+            // TODO: centre this text horizontally so it's next to the checkbox
+            return
+                Vdom.panelSplitAbsolute (SplitDirection.Vertical, 3, checkbox, Vdom.textContent label)
+                |> Vdom.withTag "labelled-checkbox"
+        }

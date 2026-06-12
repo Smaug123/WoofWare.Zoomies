@@ -30,10 +30,10 @@ The framework:
 
 - Renders the world afresh each cycle (immediate-mode)
 - Stores state internally for efficiency, but the programmer simply provides a virtual DOM on request
-- Never throws exceptions on bad user input; invalid inputs are handled gracefully
+- By default, handles invalid input gracefully using sensible defaults or fallback content (opt-in modes like `UnrecognisedEscapeCodeBehaviour.Throw` can change this)
 - Aims to avoid doing work unless necessary
 
-Ultimately, the framework will incorporate something like Jane Street's Bonsai for efficient incremental updates.
+The framework uses an incremental computation engine (inspired by Jane Street's Incremental) to efficiently propagate state changes, with aggressive early cutoff to avoid unnecessary work.
 
 ## Licence
 

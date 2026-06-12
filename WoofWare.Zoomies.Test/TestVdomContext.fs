@@ -1,8 +1,12 @@
 namespace WoofWare.Zoomies.Test
 
 open System
+open FsCheck
+open FsCheck.FSharp
 open NUnit.Framework
 open FsUnitTyped
+open WoofWare.Incremental
+open WoofWare.TimingWheel
 open WoofWare.Zoomies
 
 [<TestFixture>]
@@ -17,32 +21,42 @@ module TestVdomContext =
             Height = 24
         }
 
-    [<Test>]
-    let ``pruneExpiredActivations removes only expired entries`` () =
-        let clock = MockTime.make ()
-        let ctx = VdomContext.empty<unit> clock.GetUtcNow bounds
+    /// Create a VdomContext from a MockTimer, returning both the context and an advance function.
+    /// The advance function updates both the MockTimer's clock and the VdomContext's stabilization time.
+    let empty (clock : MockTimer) : VdomContext<unit> * (TimeSpan -> DateTime) = MockTime.makeVdomContextFromTimer clock
 
-        // Record activations at different times
+    /// Helper to observe a bool Node from wasRecentlyActivated, releasing the observer afterwards.
+    let observeWasRecentlyActivated (key : NodeKey) (ctx : VdomContext<unit>) : bool =
+        let incr = VdomContext.unsafeIncr ctx
+        let node = VdomContext.wasRecentlyActivated key ctx
+        let observer = incr.Observe node
+        incr.Stabilize ()
+        let value = Observer.value observer
+        Observer.disallowFutureUse observer
+        incr.Stabilize ()
+        value
+
+    [<Test>]
+    let ``activations expire as the clock advances, with no explicit pruning`` () =
+        let clock = MockTime.make ()
+        let ctx, advance = empty clock
+
         let key1 = NodeKey.make "key1"
         let key2 = NodeKey.make "key2"
         let key3 = NodeKey.make "key3"
         let key4 = NodeKey.make "key4"
 
-        // Record first activation
-        VdomContext.recordActivation key1 ctx
-        let time1 = clock.GetUtcNow ()
+        let now1 = clock.CurrentTime ()
+        VdomContext.recordActivation now1 key1 ctx
 
-        // Advance time by 100ms and record second activation
-        clock.Advance (TimeSpan.FromMilliseconds 100.0) |> ignore<DateTime>
-        VdomContext.recordActivation key2 ctx
+        let now2 = advance (TimeSpan.FromMilliseconds 100.0)
+        VdomContext.recordActivation now2 key2 ctx
 
-        // Advance time by 200ms and record third activation
-        clock.Advance (TimeSpan.FromMilliseconds 200.0) |> ignore<DateTime>
-        VdomContext.recordActivation key3 ctx
+        let now3 = advance (TimeSpan.FromMilliseconds 200.0)
+        VdomContext.recordActivation now3 key3 ctx
 
-        // Advance time by 150ms and record fourth activation
-        clock.Advance (TimeSpan.FromMilliseconds 150.0) |> ignore<DateTime>
-        VdomContext.recordActivation key4 ctx
+        let now4 = advance (TimeSpan.FromMilliseconds 150.0)
+        VdomContext.recordActivation now4 key4 ctx
 
         // At this point:
         // - key1 was activated 450ms ago
@@ -50,116 +64,192 @@ module TestVdomContext =
         // - key3 was activated 150ms ago
         // - key4 was activated 0ms ago (just now)
 
-        // All should still be considered recently activated
-        VdomContext.wasRecentlyActivated key1 ctx |> shouldEqual true
-        VdomContext.wasRecentlyActivated key2 ctx |> shouldEqual true
-        VdomContext.wasRecentlyActivated key3 ctx |> shouldEqual true
-        VdomContext.wasRecentlyActivated key4 ctx |> shouldEqual true
+        observeWasRecentlyActivated key1 ctx |> shouldEqual true
+        observeWasRecentlyActivated key2 ctx |> shouldEqual true
+        observeWasRecentlyActivated key3 ctx |> shouldEqual true
+        observeWasRecentlyActivated key4 ctx |> shouldEqual true
 
-        // Advance time by 100ms more
-        // Now:
-        // - key1 was activated 550ms ago (expired)
-        // - key2 was activated 450ms ago (not expired)
-        // - key3 was activated 250ms ago (not expired)
-        // - key4 was activated 100ms ago (not expired)
-        clock.Advance (TimeSpan.FromMilliseconds 100.0) |> ignore<DateTime>
+        // Advance time by 100ms more: key1 is now 550ms old (expired), the rest are not.
+        advance (TimeSpan.FromMilliseconds 100.0) |> ignore<DateTime>
 
-        // Mark clean before pruning so we can verify pruning actually removed something
-        VdomContext.markClean ctx
+        observeWasRecentlyActivated key1 ctx |> shouldEqual false
+        observeWasRecentlyActivated key2 ctx |> shouldEqual true
+        observeWasRecentlyActivated key3 ctx |> shouldEqual true
+        observeWasRecentlyActivated key4 ctx |> shouldEqual true
 
-        // Prune expired activations - this should remove key1 only
-        VdomContext.pruneExpiredActivations ctx
+        // Another 100ms: key2 expires too.
+        advance (TimeSpan.FromMilliseconds 100.0) |> ignore<DateTime>
 
-        // Verify pruning actually removed an entry (not just that time elapsed)
-        VdomContext.isDirty ctx |> shouldEqual true
-
-        // Verify key1 is gone and others remain
-        VdomContext.wasRecentlyActivated key1 ctx |> shouldEqual false
-        VdomContext.wasRecentlyActivated key2 ctx |> shouldEqual true
-        VdomContext.wasRecentlyActivated key3 ctx |> shouldEqual true
-        VdomContext.wasRecentlyActivated key4 ctx |> shouldEqual true
-
-        // Advance time by another 100ms
-        // Now:
-        // - key2 was activated 550ms ago (expired)
-        // - key3 was activated 350ms ago (not expired)
-        // - key4 was activated 200ms ago (not expired)
-        clock.Advance (TimeSpan.FromMilliseconds 100.0) |> ignore<DateTime>
-
-        // Mark clean before pruning so we can verify pruning actually removed something
-        VdomContext.markClean ctx
-
-        VdomContext.pruneExpiredActivations ctx
-
-        // Verify pruning actually removed an entry (not just that time elapsed)
-        VdomContext.isDirty ctx |> shouldEqual true
-
-        // Verify key2 is now gone too
-        VdomContext.wasRecentlyActivated key1 ctx |> shouldEqual false
-        VdomContext.wasRecentlyActivated key2 ctx |> shouldEqual false
-        VdomContext.wasRecentlyActivated key3 ctx |> shouldEqual true
-        VdomContext.wasRecentlyActivated key4 ctx |> shouldEqual true
+        observeWasRecentlyActivated key1 ctx |> shouldEqual false
+        observeWasRecentlyActivated key2 ctx |> shouldEqual false
+        observeWasRecentlyActivated key3 ctx |> shouldEqual true
+        observeWasRecentlyActivated key4 ctx |> shouldEqual true
 
     [<Test>]
-    let ``pruneExpiredActivations handles removing multiple entries in one pass`` () =
+    let ``re-activating a key restarts its window`` () =
         let clock = MockTime.make ()
-        let ctx = VdomContext.empty<unit> clock.GetUtcNow bounds
+        let ctx, advance = empty clock
 
-        // Create many activations at the same time
-        let keys = [ for i in 1..10 -> NodeKey.make $"key{i}" ]
+        let key = NodeKey.make "key"
 
-        for key in keys do
-            VdomContext.recordActivation key ctx
+        VdomContext.recordActivation (clock.CurrentTime ()) key ctx
 
-        // All should be recently activated
-        for key in keys do
-            VdomContext.wasRecentlyActivated key ctx |> shouldEqual true
+        let now2 = advance (TimeSpan.FromMilliseconds 400.0)
+        observeWasRecentlyActivated key ctx |> shouldEqual true
 
-        // Advance time past expiration threshold
-        clock.Advance (TimeSpan.FromMilliseconds 600.0) |> ignore<DateTime>
+        // Re-activate at 400ms; the window restarts.
+        VdomContext.recordActivation now2 key ctx
 
-        // Mark clean before pruning so we can verify pruning actually removed entries
-        VdomContext.markClean ctx
+        // 400ms later the original window would have closed, but the new one is open.
+        advance (TimeSpan.FromMilliseconds 400.0) |> ignore<DateTime>
+        observeWasRecentlyActivated key ctx |> shouldEqual true
 
-        // This should remove all entries without throwing
-        // (demonstrating that Dictionary.Remove during enumeration is safe in .NET Core 3.0+)
-        VdomContext.pruneExpiredActivations ctx
-
-        // Verify pruning actually removed entries (not just that time elapsed)
-        VdomContext.isDirty ctx |> shouldEqual true
-
-        // All should now be expired
-        for key in keys do
-            VdomContext.wasRecentlyActivated key ctx |> shouldEqual false
+        // 200ms more closes the restarted window.
+        advance (TimeSpan.FromMilliseconds 200.0) |> ignore<DateTime>
+        observeWasRecentlyActivated key ctx |> shouldEqual false
 
     [<Test>]
-    let ``pruneExpiredActivations marks context dirty only when removals occur`` () =
+    let ``clearActivation removes the activation immediately`` () =
         let clock = MockTime.make ()
-        let ctx = VdomContext.empty<unit> clock.GetUtcNow bounds
+        let ctx, _advance = empty clock
 
-        let key1 = NodeKey.make "key1"
+        let key = NodeKey.make "key"
 
-        // Record an activation
-        VdomContext.recordActivation key1 ctx
+        VdomContext.recordActivation (clock.CurrentTime ()) key ctx
+        observeWasRecentlyActivated key ctx |> shouldEqual true
 
-        // Mark clean
-        VdomContext.markClean ctx
-        VdomContext.isDirty ctx |> shouldEqual false
+        VdomContext.clearActivation key ctx
+        observeWasRecentlyActivated key ctx |> shouldEqual false
 
-        // Prune when nothing has expired - should not mark dirty
-        VdomContext.pruneExpiredActivations ctx
-        VdomContext.isDirty ctx |> shouldEqual false
+    [<Test>]
+    let ``recordActivation schedules a wake-up alarm for the expiry`` () =
+        let clock = MockTime.make ()
+        let ctx, _advance = empty clock
+        let incr = VdomContext.unsafeIncr ctx
+        let zoomiesClock = VdomContext.clock ctx
 
-        // Advance time past expiration
-        clock.Advance (TimeSpan.FromMilliseconds 600.0) |> ignore<DateTime>
+        let key = NodeKey.make "key"
+        let now = clock.CurrentTime ()
 
-        // Prune when something has expired - should mark dirty
-        VdomContext.pruneExpiredActivations ctx
-        VdomContext.isDirty ctx |> shouldEqual true
+        VdomContext.recordActivation now key ctx
 
-        // Mark clean again
-        VdomContext.markClean ctx
+        // The alarm only exists while the node is observed (a necessary node).
+        let node = VdomContext.wasRecentlyActivated key ctx
+        let observer = incr.Observe node
+        incr.Stabilize ()
+        Observer.value observer |> shouldEqual true
 
-        // Prune when nothing remains - should not mark dirty
-        VdomContext.pruneExpiredActivations ctx
-        VdomContext.isDirty ctx |> shouldEqual false
+        let expiryNs =
+            TimeNs.add (TimeConversion.dateTimeToNs now) VdomContextConstants.recentActivationTimeout
+
+        match incr.Clock.NextAlarmFiresAt zoomiesClock with
+        | ValueNone -> failwith "expected an alarm to be scheduled for the activation expiry"
+        | ValueSome alarmAt ->
+            // The alarm must not be later than the expiry plus one alarm-precision tick.
+            let precision = TimeNs.Span.toInt64Ns (incr.Clock.AlarmPrecision zoomiesClock)
+
+            (TimeNs.toInt64NsSinceEpoch alarmAt
+             <= TimeNs.toInt64NsSinceEpoch expiryNs + precision)
+            |> shouldEqual true
+
+        Observer.disallowFutureUse observer
+        incr.Stabilize ()
+
+    [<Test>]
+    let ``expired activations leave no alarms behind`` () =
+        let clock = MockTime.make ()
+        let ctx, advance = empty clock
+        let incr = VdomContext.unsafeIncr ctx
+        let zoomiesClock = VdomContext.clock ctx
+
+        let key = NodeKey.make "key"
+
+        VdomContext.recordActivation (clock.CurrentTime ()) key ctx
+
+        let node = VdomContext.wasRecentlyActivated key ctx
+        let observer = incr.Observe node
+        incr.Stabilize ()
+
+        // Expire the activation, then query once more (which re-records nothing): the
+        // clock should be quiet again.
+        advance (TimeSpan.FromMilliseconds 600.0) |> ignore<DateTime>
+        Observer.value observer |> shouldEqual false
+
+        Observer.disallowFutureUse observer
+        incr.Stabilize ()
+
+        incr.Clock.NextAlarmFiresAt zoomiesClock |> shouldEqual ValueNone
+
+    // ============================================================
+    // Model-based property: the activation mechanism agrees with the
+    // reference predicate "last activation was strictly less than
+    // 500ms ago".
+    // ============================================================
+
+    /// Operations for the model-based test.
+    type private ActivationOp =
+        /// Advance the mock clock by this many milliseconds.
+        | Advance of ms : int
+        /// Record an activation for the key with this index.
+        | Activate of keyIndex : int
+        /// Clear the activation for the key with this index.
+        | Clear of keyIndex : int
+
+    [<Test>]
+    let ``wasRecentlyActivated agrees with the reference model under arbitrary interleavings`` () =
+        let keyCount = 3
+
+        let opGen =
+            Gen.frequency
+                [
+                    // Advances skew small so that several ops land inside one window, but
+                    // include jumps well past the 500ms timeout.
+                    3, Gen.choose (0, 250) |> Gen.map Advance
+                    1, Gen.choose (251, 1200) |> Gen.map Advance
+                    3, Gen.choose (0, keyCount - 1) |> Gen.map Activate
+                    1, Gen.choose (0, keyCount - 1) |> Gen.map Clear
+                ]
+
+        let arb = Arb.fromGen (Gen.listOf opGen)
+
+        let prop (ops : ActivationOp list) =
+            let clock = MockTime.make ()
+            let ctx, advance = empty clock
+            let incr = VdomContext.unsafeIncr ctx
+
+            let keys = Array.init keyCount (fun i -> NodeKey.make $"key{i}")
+
+            // Persistent observers, as a real app would hold them via its vdom.
+            let observers =
+                keys
+                |> Array.map (fun key -> incr.Observe (VdomContext.wasRecentlyActivated key ctx))
+
+            incr.Stabilize ()
+
+            // Reference model: last activation time per key.
+            let model : DateTime option[] = Array.create keyCount None
+
+            for op in ops do
+                match op with
+                | Advance ms -> advance (TimeSpan.FromMilliseconds (float ms)) |> ignore<DateTime>
+                | Activate i ->
+                    let now = clock.CurrentTime ()
+                    VdomContext.recordActivation now keys.[i] ctx
+                    model.[i] <- Some now
+                    incr.Stabilize ()
+                | Clear i ->
+                    VdomContext.clearActivation keys.[i] ctx
+                    model.[i] <- None
+                    incr.Stabilize ()
+
+                let now = clock.CurrentTime ()
+
+                for i in 0 .. keyCount - 1 do
+                    let expected =
+                        match model.[i] with
+                        | None -> false
+                        | Some t -> (now - t).TotalMilliseconds < VdomContextConstants.RECENT_ACTIVATION_TIMEOUT_MS
+
+                    Observer.value observers.[i] |> shouldEqual expected
+
+        Check.One (propConfig, Prop.forAll arb prop)

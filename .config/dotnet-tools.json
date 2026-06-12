@@ -3,7 +3,7 @@
   "isRoot": true,
   "tools": {
     "fantomas": {
-      "version": "7.0.0",
+      "version": "7.0.5",
       "commands": [
         "fantomas"
       ]
@@ -21,7 +21,7 @@
       ]
     },
     "woofware.nunittestrunner": {
-      "version": "0.3.4",
+      "version": "0.3.12",
       "commands": [
         "woofware.nunittestrunner"
       ]

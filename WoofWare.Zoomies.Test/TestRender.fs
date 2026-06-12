@@ -4,6 +4,7 @@ open System
 open FsUnitTyped
 open NUnit.Framework
 open WoofWare.Expect
+open WoofWare.Incremental
 open WoofWare.Zoomies
 
 type State =
@@ -18,9 +19,14 @@ type State =
             IsToggle2Checked = false
         }
 
+type RenderTestEvent =
+    | ToggleOne
+    | ToggleTwo
+
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestRender =
+
     [<OneTimeSetUp>]
     let setUp () =
         // GlobalBuilderConfig.enterBulkUpdateMode ()
@@ -30,7 +36,9 @@ module TestRender =
     let tearDown () =
         GlobalBuilderConfig.updateAllSnapshots ()
 
-    let vdom (vdomContext : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> =
+    let vdom (vdomContext : IVdomContext<_>) (state : State) : Vdom<DesiredBounds> Node =
+        let incr = vdomContext.Incr
+
         let left =
             Vdom.textContent
                 "not praising the praiseworthy keeps people uncompetitive; not prizing rare treasures keeps people from stealing; not looking at the desirable keeps the mind quiet"
@@ -44,31 +52,68 @@ module TestRender =
 
         let toggle1Key = NodeKey.make "toggle1"
 
-        let bottomHalf =
+        let bottomHalfNode =
             Components.LabelledCheckbox.make (vdomContext, "Press Space to toggle", toggle1Key, state.IsToggle1Checked)
-
-        let vdom =
-            Vdom.panelSplitAbsolute (SplitDirection.Horizontal, -3, topHalf, bottomHalf)
 
         if state.IsToggle1Checked then
             let toggle2Key = NodeKey.make "toggle2"
 
-            let inner =
-                Vdom.panelSplitProportion (
-                    SplitDirection.Vertical,
-                    0.5,
-                    Vdom.textContent "only displayed when checked",
-                    Components.LabelledCheckbox.make (
-                        vdomContext,
-                        "this one is focusable!",
-                        toggle2Key,
-                        state.IsToggle2Checked
-                    )
+            let innerCheckboxNode =
+                Components.LabelledCheckbox.make (
+                    vdomContext,
+                    "this one is focusable!",
+                    toggle2Key,
+                    state.IsToggle2Checked
                 )
 
-            Vdom.panelSplitProportion (SplitDirection.Horizontal, 0.7, vdom, inner)
+            incr.Map2
+                (fun (bottomHalf : Vdom<DesiredBounds>) (innerCheckbox : Vdom<DesiredBounds>) ->
+                    let vdom =
+                        Vdom.panelSplitAbsolute (SplitDirection.Horizontal, -3, topHalf, bottomHalf)
+
+                    let inner =
+                        Vdom.panelSplitProportion (
+                            SplitDirection.Vertical,
+                            0.5,
+                            Vdom.textContent "only displayed when checked",
+                            innerCheckbox
+                        )
+
+                    Vdom.panelSplitProportion (SplitDirection.Horizontal, 0.7, vdom, inner)
+                )
+                bottomHalfNode
+                innerCheckboxNode
         else
-            vdom
+            incr.Map
+                (fun (bottomHalf : Vdom<DesiredBounds>) ->
+                    Vdom.panelSplitAbsolute (SplitDirection.Horizontal, -3, topHalf, bottomHalf)
+                )
+                bottomHalfNode
+
+    let transition (state : State) (event : RenderTestEvent) : State =
+        match event with
+        | ToggleOne ->
+            { state with
+                IsToggle1Checked = not state.IsToggle1Checked
+            }
+        | ToggleTwo ->
+            { state with
+                IsToggle2Checked = not state.IsToggle2Checked
+            }
+
+    let activationResolver : ActivationResolver<RenderTestEvent, State> =
+        ActivationResolver (fun key keyInfo _state ->
+            if keyInfo.KeyChar = ' ' then
+                if key = NodeKey.make "toggle1" then Some ToggleOne
+                elif key = NodeKey.make "toggle2" then Some ToggleTwo
+                else None
+            else
+                None
+        )
+
+    let makeConfig () : AppConfig<State, RenderTestEvent, unit> =
+        AppConfig.simple (State.Empty ()) transition (App.pureViewIncr vdom)
+        |> AppConfig.withActivationResolver activationResolver
 
     [<Test>]
     let ``there is no rerender if nothing changes`` () =
@@ -79,78 +124,36 @@ module TestRender =
                 Execute = fun x -> terminalOps.Add x
             }
 
-        let state = State.Empty ()
+        // Use a simple inline vdom for this render-layer test
+        let simpleVdom (_ : unit) =
+            Vdom.textContent "Static content that doesn't change" |> Vdom.bordered
 
-        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+        let renderState = MockTime.makeRenderStateStatic<unit> console None
 
-        Render.oneStep renderState state (vdom (VdomContext.asTyped<unit> (RenderState.vdomContext renderState)))
+        Render.oneStep renderState () simpleVdom
 
         terminalOps.Clear ()
 
-        Render.oneStep renderState state (vdom (VdomContext.asTyped<unit> (RenderState.vdomContext renderState)))
+        Render.oneStep renderState () simpleVdom
 
         terminalOps |> shouldBeEmpty
 
     [<Test>]
     let ``example 1`` () =
-        let processWorld =
-            { new WorldProcessor<unit, unit, State> with
-                member _.ProcessWorld (worldChanges, renderState, state) =
-                    let focusedKey = renderState.FocusedKey
-                    let mutable newState = state
-
-                    for change in worldChanges do
-                        match change with
-                        | Keystroke c when c.KeyChar = ' ' ->
-                            match focusedKey with
-                            | Some key when key = NodeKey.make "toggle1" ->
-                                newState <-
-                                    { newState with
-                                        IsToggle1Checked = not newState.IsToggle1Checked
-                                    }
-                            | Some key when key = NodeKey.make "toggle2" ->
-                                newState <-
-                                    { newState with
-                                        IsToggle2Checked = not newState.IsToggle2Checked
-                                    }
-                            | _ -> ()
-                        | Keystroke _ -> ()
-                        | MouseEvent _ -> failwith "no mouse events"
-                        | Paste _ -> failwith "no paste events"
-                        | ApplicationEvent () -> failwith "no app events"
-                        | ApplicationEventException _ -> failwith "no exceptions possible"
-
-                    ProcessWorldResult.make newState
-
-                member _.ProcessPostLayoutEvents (_events, _ctx, state) = state
-            }
-
         task {
             let console, terminal = ConsoleHarness.make ()
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let mutable state = State.Empty ()
+            let world = MockWorld.attach worldFreezer
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let config = makeConfig ()
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            use ctx = IncrTestContext.make console config None
+
+            // Initial pump
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -173,16 +176,7 @@ module TestRender =
             // Switching focus moves focus to the first focusable element
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -205,16 +199,7 @@ module TestRender =
             // Switching focus again does nothing because there are no more focusable elements
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -237,16 +222,7 @@ module TestRender =
             // Turn on the toggle, revealing a new interface element!
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -269,16 +245,7 @@ only displayed when checked                this one is focusable!               
             // Switch to the other checkbox
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -301,16 +268,7 @@ only displayed when checked                this one is focusable!               
             // Toggle the other one on
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -333,16 +291,7 @@ only displayed when checked                this one is focusable!               
             // Switch back to the first one
             world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -365,16 +314,7 @@ only displayed when checked                this one is focusable!               
             // Disable it again
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -397,16 +337,7 @@ only displayed when checked                this one is focusable!               
             // Re-enable; it remembered its state
             world.SendKey (ConsoleKeyInfo (' ', ConsoleKey.Spacebar, false, false, false))
 
-            state <-
-                App.pumpOnce
-                    worldFreezer
-                    state
-                    (fun _ -> true)
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -438,7 +369,7 @@ only displayed when checked                this one is focusable!               
                 WindowHeight = fun _ -> 5
             }
 
-        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+        let renderState = MockTime.makeRenderStateStatic<unit> console None
 
         // Create vdom with some content that will result in multiple cells being written
         let vdom =
@@ -482,7 +413,7 @@ only displayed when checked                this one is focusable!               
                 Execute = fun x -> terminalOps.Add x
             }
 
-        let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+        let renderState = MockTime.makeRenderStateStatic<unit> console None
 
         let key = NodeKey.make "test-key"
 
@@ -553,7 +484,7 @@ only displayed when checked                this one is focusable!               
                     (Vdom.textContent "Right" |> Vdom.withKey (NodeKey.make "content"))
                 )
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            let renderState = MockTime.makeRenderStateStatic<unit> console None
 
             Render.oneStep renderState () (vdom (VdomContext.asTyped<unit> (RenderState.vdomContext renderState)))
 

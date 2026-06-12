@@ -497,6 +497,8 @@ type Vdom =
     static member withKey (key : NodeKey) (vdom : Vdom<'bounds>) : KeyedVdom<'bounds> =
         match vdom with
         | Vdom.Keyed (KeyedVdom (_prevKey, vdom)) -> KeyedVdom (key, vdom)
+        | Vdom.Unkeyed (UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, KeyedVdom (_prevKey, inner))) ->
+            KeyedVdom (key, UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, KeyedVdom (key, inner)))
         | Vdom.Unkeyed vdom -> KeyedVdom (key, vdom)
 
     /// Mark a keyed node as focusable, for the purposes of the automatic focus tracking system.
@@ -512,7 +514,8 @@ type Vdom =
     /// rather than starting with no elements focused. At most one node should have `isInitiallyFocused = true`
     /// in a given VDOM tree.
     ///
-    /// This annotation does nothing if WoofWare.Zoomies is running with automatic focus tracking turned off.
+    /// In UserManaged focus mode, isFirstToFocus has no effect (Tab cycling is disabled), but
+    /// isInitiallyFocused still assigns focus on the first render.
     static member withFocusTracking
         (vdom : KeyedVdom<'bounds>, ?isFirstToFocus : bool, ?isInitiallyFocused : bool)
         : Vdom<'bounds>

@@ -1,6 +1,8 @@
 namespace WoofWare.Zoomies.Test
 
 open System
+open FsCheck
+open FsUnitTyped
 open NUnit.Framework
 open WoofWare.Expect
 open WoofWare.Zoomies
@@ -8,6 +10,7 @@ open WoofWare.Zoomies
 [<TestFixture>]
 [<Parallelizable(ParallelScope.All)>]
 module TestTextRendering =
+
     [<OneTimeSetUp>]
     let setUp () =
         // GlobalBuilderConfig.enterBulkUpdateMode ()
@@ -27,36 +30,23 @@ module TestTextRendering =
 
             // Create a vdom where text content has Width=0
             // With a terminal width of 1 and a 50/50 split, left gets 0 width, right gets 1 width
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 let leftText = Vdom.textContent "some text content"
                 let rightText = Vdom.textContent "other text"
                 // Split with 0.5 proportion, terminal has width 1, so left gets 0 width
                 Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, leftText, rightText)
 
-            let processWorld = WorldProcessor.passthrough
-
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let world = MockWorld.attach worldFreezer
+
+            let config = TestConfig.passthrough<unit> vdom
+
+            use ctx = IncrTestContext.make console config None
 
             // This should not throw an IndexOutOfRangeException
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Assert: only right side content is visible (proving left has 0 width)
             // If layout ever enforced a minimum width, this snapshot would change
@@ -87,7 +77,7 @@ r|
 
             // Create a vdom where keyed text content has Width=0
             // With a terminal width of 1 and a 50/50 split, left gets 0 width, right gets 1 width
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 let leftText = Vdom.textContent "some text content"
                 let rightText = Vdom.textContent "other text"
 
@@ -97,30 +87,17 @@ r|
                 else
                     Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, leftText, Vdom.withKey textKey rightText)
 
-            let processWorld = WorldProcessor.passthrough
-
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let world = MockWorld.attach worldFreezer
+
+            let config = TestConfig.passthrough<unit> vdom
+
+            use ctx = IncrTestContext.make console config None
 
             // This should not throw an IndexOutOfRangeException
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Assert: only right side content is visible (proving left has 0 width)
             // If layout ever enforced a minimum width, this snapshot would change
@@ -147,16 +124,12 @@ r|
             // But rendering wraps character-by-character, so it actually takes multiple lines
             let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 10)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // A 25-character word in a 10-character wide terminal
                 // Should wrap to 3 lines: "AAAAAAAAAA" + "AAAAAAAAAA" + "AAAAA"
                 let longWord = String.replicate 25 "A"
@@ -166,20 +139,11 @@ r|
                 let bottom = Vdom.textContent "bottom"
                 Vdom.panelSplitAuto (SplitDirection.Horizontal, text, bottom)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -205,33 +169,20 @@ bottom    |
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Text with CRLF line endings - the \r should not be rendered as a visible character
                 Vdom.textContent "Line1\r\nLine2\r\nLine3"
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -252,33 +203,20 @@ Line3               |
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Text with old Mac-style CR line endings - should be treated as newlines
                 Vdom.textContent "Line1\rLine2\rLine3"
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -299,33 +237,20 @@ Line3               |
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Text with CRLF line endings and Centered alignment
                 Vdom.textContent ("AAA\r\nBBB\r\nCCC", alignment = ContentAlignment.Centered)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -346,33 +271,20 @@ Line3               |
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Text with old Mac-style CR line endings and Centered alignment
                 Vdom.textContent ("AAA\rBBB\rCCC", alignment = ContentAlignment.Centered)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -399,16 +311,12 @@ Line3               |
             // leading to truncation in auto-split layouts.
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 10)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Multi-line text that should be measured as needing 5 lines
                 let multiLineText =
                     String.concat newline [ "Line 1" ; "Line 2" ; "Line 3" ; "Line 4" ; "Line 5" ]
@@ -420,20 +328,11 @@ Line3               |
                 let footer = Vdom.textContent "Footer"
                 Vdom.panelSplitAuto (SplitDirection.Horizontal, text, footer)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // All 5 lines of text should be visible, plus the footer
             expect {
@@ -461,16 +360,12 @@ Footer              |
             // Test that blank lines (from \n\n) are counted correctly
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 8)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Text with blank lines - should be measured as 5 lines total
                 // (Para1, blank, Para2, blank, Para3)
                 let textWithBlanks = "Para1\n\nPara2\n\nPara3"
@@ -479,20 +374,11 @@ Footer              |
                 let footer = Vdom.textContent "Footer"
                 Vdom.panelSplitAuto (SplitDirection.Horizontal, text, footer)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -516,33 +402,20 @@ Footer              |
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Text that exceeds width - with wrap=true (default), it wraps
                 Vdom.textContent ("Hello World, this is a long text", wrap = true)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -563,33 +436,20 @@ xt        |
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Text that exceeds width - with wrap=false, it truncates
                 Vdom.textContent ("Hello World, this is a long text", wrap = false)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -610,33 +470,20 @@ Hello Worl|
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Multi-line text with wrap=false - each line truncates independently
                 Vdom.textContent ("First line is long\nSecond is too\nShort", wrap = false)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             expect {
                 snapshot
@@ -660,16 +507,12 @@ Short     |
             // to multiple lines now only requests 1 line of height.
             let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 6)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Long text with wrap=false - should only take 1 line in auto layout
                 let text =
                     Vdom.textContent ("This is a very long text that would wrap", wrap = false)
@@ -677,20 +520,11 @@ Short     |
                 let footer = Vdom.textContent "Footer"
                 Vdom.panelSplitAuto (SplitDirection.Horizontal, text, footer)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // The truncated text takes only 1 line, footer takes 1 line
             expect {
@@ -714,36 +548,23 @@ Footer    |
             // Compare wrap=true vs wrap=false side by side to show the difference
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 6)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Left side: wrap=true, Right side: wrap=false
                 let longText = "Long text here"
                 let leftText = Vdom.textContent (longText, wrap = true)
                 let rightText = Vdom.textContent (longText, wrap = false)
                 Vdom.panelSplitProportion (SplitDirection.Vertical, 0.5, leftText, rightText)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Left side wraps (10 chars wide), right side truncates (10 chars wide)
             expect {
@@ -766,36 +587,23 @@ here                |
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 6)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Long text that exceeds width - with wrap=true and Centered alignment
                 // "ABCDEFGHIJKLMNOPQRSTUVWXYZ" is 26 chars, width is 20
                 // Should wrap to: "ABCDEFGHIJKLMNOPQRST" (20 chars, centered = offset 0)
                 //                 "UVWXYZ" (6 chars, centered = offset 7)
                 Vdom.textContent ("ABCDEFGHIJKLMNOPQRSTUVWXYZ", alignment = ContentAlignment.Centered, wrap = true)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // First line fills width (no centering offset), second line is centered
             expect {
@@ -818,33 +626,20 @@ ABCDEFGHIJKLMNOPQRST|
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Long text with wrap=false and Centered alignment - should truncate
                 Vdom.textContent ("ABCDEFGHIJKLMNOPQRSTUVWXYZ", alignment = ContentAlignment.Centered, wrap = false)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // Text is truncated at width boundary (left portion shown)
             expect {
@@ -866,36 +661,23 @@ ABCDEFGHIJKLMNOPQRST|
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 12) (fun () -> 7)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
                 // Multi-line text where some lines need wrapping
                 // Line 1: "Short" (5 chars) - fits, centered
                 // Line 2: "This is too long" (16 chars) - wraps to "This is too " (12) + "long" (4)
                 // Line 3: "End" (3 chars) - fits, centered
                 Vdom.textContent ("Short\nThis is too long\nEnd", alignment = ContentAlignment.Centered, wrap = true)
 
-            let processWorld = WorldProcessor.passthrough
+            let config = TestConfig.passthrough<unit> vdom
 
-            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+            use ctx = IncrTestContext.make console config None
 
-            App.pumpOnce
-                worldFreezer
-                (FakeUnit.fake ())
-                (fun _ -> true)
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<FakeUnit>
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
 
             // 4 lines of content (Short, "This is too ", "long", End), centered in 7 lines
             // startY = (7 - 4 + 1) / 2 = 2
@@ -914,3 +696,113 @@ This is too |
                 return ConsoleHarness.toString terminal
             }
         }
+
+    /// Reference implementation: count how many lines the renderer would produce
+    /// for a single line of text (no newlines) at a given width, using character-chunk wrapping.
+    let private charWrapLineCount (lineLength : int) (width : int) : int =
+        if lineLength = 0 then
+            1
+        else
+            (lineLength + width - 1) / width
+
+    /// Reference implementation: count total rendered lines for text with newlines.
+    let private expectedRenderedLineCount (text : string) (width : int) : int =
+        let text = text.Replace("\r\n", "\n").Replace ("\r", "\n")
+        let lines = text.Split '\n'
+
+        if lines.Length = 0 then
+            1
+        else
+            let mutable total = 0
+
+            for line in lines do
+                total <- total + charWrapLineCount line.Length width
+
+            max 1 total
+
+    [<Test>]
+    let ``wrap measurement matches rendering: auto-split allocates correct height`` () =
+        // Property: for any printable text and width >= 1, the auto-split layout
+        // allocates exactly the right number of rows (matching what the renderer produces).
+        // We verify by checking that the footer appears immediately after the text region.
+        let prop (text : NonNull<string>) (PositiveInt widthRaw) =
+            // Restrict to printable ASCII to avoid terminal weirdness.
+            let text = text.Get |> String.filter (fun c -> c >= ' ' && c <= '~')
+
+            let width = max 1 (widthRaw % 80 + 1)
+            let expectedLines = expectedRenderedLineCount text width
+            let height = expectedLines + 2
+
+            let console, terminal = ConsoleHarness.make' (fun () -> width) (fun () -> height)
+
+            let worldFreezer =
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
+                let content = Vdom.textContent (text, wrap = true)
+                let footer = Vdom.textContent "F"
+                Vdom.panelSplitAuto (SplitDirection.Horizontal, content, footer)
+
+            let config = TestConfig.passthrough<unit> vdom
+
+            use ctx = IncrTestContext.make console config None
+
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
+
+            let output = ConsoleHarness.toString terminal
+            // ConsoleHarness.toString starts with a leading newline, so skip it.
+            let outputLines = output.TrimStart('\n').TrimEnd('\n').Split '\n'
+
+            // The footer "F" should appear at exactly row `expectedLines`
+            // (0-indexed), meaning the text got exactly `expectedLines` rows.
+            if expectedLines < height then
+                let footerRow = outputLines.[expectedLines]
+                let footerChar = footerRow.TrimEnd('|').TrimEnd ()
+
+                footerChar |> shouldEqual "F"
+
+        Check.One (propConfig, prop)
+
+    [<Test>]
+    let ``wrap measurement matches rendering for text containing newlines`` () =
+        // Same property but with text containing embedded newlines.
+        let prop (segments : NonNull<string> list) (PositiveInt widthRaw) =
+            let segments =
+                segments
+                |> List.map (fun s -> s.Get |> String.filter (fun c -> c >= ' ' && c <= '~'))
+
+            let text = String.concat "\n" segments
+            let width = max 1 (widthRaw % 80 + 1)
+            let expectedLines = expectedRenderedLineCount text width
+            let height = expectedLines + 2
+
+            let console, terminal = ConsoleHarness.make' (fun () -> width) (fun () -> height)
+
+            let worldFreezer =
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
+
+            let vdom (_ : IVdomContext<_>) (_ : unit) =
+                let content = Vdom.textContent (text, wrap = true)
+                let footer = Vdom.textContent "F"
+                Vdom.panelSplitAuto (SplitDirection.Horizontal, content, footer)
+
+            let config = TestConfig.passthrough<unit> vdom
+
+            use ctx = IncrTestContext.make console config None
+
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
+
+            let output = ConsoleHarness.toString terminal
+            let outputLines = output.TrimStart('\n').TrimEnd('\n').Split '\n'
+
+            if expectedLines < height then
+                let footerRow = outputLines.[expectedLines]
+                let footerChar = footerRow.TrimEnd('|').TrimEnd ()
+
+                footerChar |> shouldEqual "F"
+
+        Check.One (propConfig, prop)

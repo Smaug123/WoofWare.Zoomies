@@ -24,6 +24,8 @@ type PostLayoutState =
 [<Parallelizable(ParallelScope.All)>]
 module TestPostLayoutEvents =
 
+    let getUtcNow () = MockTime.defaultStartTime
+
     [<Test>]
     let ``component can post layout event during render`` () =
         task {
@@ -48,51 +50,34 @@ module TestPostLayoutEvents =
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld =
-                { new WorldProcessor<unit, PostLayoutEvent, PostLayoutState> with
-                    member _.ProcessWorld (_inputs, _renderState, state) = ProcessWorldResult.make state
-
-                    member _.ProcessPostLayoutEvents (events, _ctx, state) =
-                        let mutable newState = state
-
-                        for event in events do
-                            match event with
-                            | ViewportHeightReported h ->
-                                newState <-
-                                    { newState with
-                                        ReportedViewportHeight = Some h
-                                    }
-
-                        newState
-                }
+            let handlePostLayout (ev : PostLayoutEvent) (state : PostLayoutState) : PostLayoutState =
+                match ev with
+                | ViewportHeightReported h ->
+                    { state with
+                        ReportedViewportHeight = Some h
+                    }
 
             let vdom (ctx : IVdomContext<PostLayoutEvent>) (_state : PostLayoutState) : Vdom<DesiredBounds> =
                 viewportReporter ctx
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let config =
+                AppConfig.withInputHandler
+                    PostLayoutState.Initial
+                    (fun s (_ : unit) -> s)
+                    (App.pureView vdom)
+                    (fun _ -> None)
+                    handlePostLayout
+                    ActivationResolver.none
+
+            use ctx = IncrTestContext.make console config None
 
             // Run one pump cycle
-            let finalState =
-                App.pumpOnce
-                    worldFreezer
-                    PostLayoutState.Initial
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            let finalState = IncrTestContext.pumpOnce worldFreezer config ctx
 
             // The viewport height should have been reported via the post-layout event
             finalState.ReportedViewportHeight |> shouldEqual (Some 24)
@@ -123,46 +108,34 @@ module TestPostLayoutEvents =
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 10)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
             let receivedHeights = ResizeArray<int> ()
 
-            let processWorld =
-                { new WorldProcessor<unit, PostLayoutEvent, PostLayoutState> with
-                    member _.ProcessWorld (_inputs, _renderState, state) = ProcessWorldResult.make state
-
-                    member _.ProcessPostLayoutEvents (events, _ctx, state) =
-                        for event in events do
-                            match event with
-                            | ViewportHeightReported h -> receivedHeights.Add h
-
-                        state
-                }
+            let handlePostLayout (ev : PostLayoutEvent) (state : PostLayoutState) : PostLayoutState =
+                match ev with
+                | ViewportHeightReported h ->
+                    receivedHeights.Add h
+                    state
 
             let vdom (ctx : IVdomContext<PostLayoutEvent>) (_state : PostLayoutState) : Vdom<DesiredBounds> =
                 multiEventComponent ctx
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let config =
+                AppConfig.withInputHandler
+                    PostLayoutState.Initial
+                    (fun s (_ : unit) -> s)
+                    (App.pureView vdom)
+                    (fun _ -> None)
+                    handlePostLayout
+                    ActivationResolver.none
 
-            App.pumpOnce
-                worldFreezer
-                PostLayoutState.Initial
-                haveFrameworkHandleFocus
-                renderState
-                processWorld
-                vdom
-                ActivationResolver.none
-                (fun () -> false)
-            |> ignore<PostLayoutState>
+            use ctx = IncrTestContext.make console config None
+
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore<PostLayoutState>
 
             // Both events should have been received
             receivedHeights.Count |> shouldEqual 2
@@ -193,32 +166,34 @@ module TestPostLayoutEvents =
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 15)
 
-            let processWorld =
-                { new WorldProcessor<unit, PostLayoutEvent, PostLayoutState> with
-                    member _.ProcessWorld (_inputs, _renderState, state) = ProcessWorldResult.make state
+            use worldFreezer =
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-                    member _.ProcessPostLayoutEvents (events, _ctx, state) =
-                        let mutable newState = state
+            let world = MockWorld.attach worldFreezer
 
-                        for event in events do
-                            match event with
-                            | ViewportHeightReported h ->
-                                newState <-
-                                    { newState with
-                                        ReportedViewportHeight = Some h
-                                    }
-
-                        newState
-                }
+            let handlePostLayout (ev : PostLayoutEvent) (state : PostLayoutState) : PostLayoutState =
+                match ev with
+                | ViewportHeightReported h ->
+                    { state with
+                        ReportedViewportHeight = Some h
+                    }
 
             let vdom (ctx : IVdomContext<PostLayoutEvent>) (_state : PostLayoutState) : Vdom<DesiredBounds> =
                 viewportReporter ctx
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let config =
+                AppConfig.withInputHandler
+                    PostLayoutState.Initial
+                    (fun s (_ : unit) -> s)
+                    (App.pureView vdom)
+                    (fun _ -> None)
+                    handlePostLayout
+                    ActivationResolver.none
 
-            // Use processNoChanges directly (simulating no incoming events)
-            let finalState =
-                App.processNoChanges PostLayoutState.Initial renderState processWorld vdom
+            use ctx = IncrTestContext.make console config None
+
+            // Use pumpOnce directly (simulating no incoming events - the initial pump processes post-layout events)
+            let finalState = IncrTestContext.pumpOnce worldFreezer config ctx
 
             // The viewport height should have been reported
             finalState.ReportedViewportHeight |> shouldEqual (Some 15)
@@ -273,57 +248,39 @@ module TestPostLayoutEvents =
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld =
-                { new WorldProcessor<unit, ChainedEvent, ChainedStabilizationState> with
-                    member _.ProcessWorld (_inputs, _renderState, state) = ProcessWorldResult.make state
-
-                    member _.ProcessPostLayoutEvents (events, _ctx, state) =
-                        let mutable newState = state
-
-                        for event in events do
-                            match event with
-                            | Increment ->
-                                newState <-
-                                    { newState with
-                                        Counter = newState.Counter + 1
-                                    }
-                            | MarkComplete ->
-                                newState <-
-                                    { newState with
-                                        StabilizationComplete = true
-                                    }
-
-                        newState
-                }
+            let handlePostLayout (ev : ChainedEvent) (state : ChainedStabilizationState) : ChainedStabilizationState =
+                match ev with
+                | Increment ->
+                    { state with
+                        Counter = state.Counter + 1
+                    }
+                | MarkComplete ->
+                    { state with
+                        StabilizationComplete = true
+                    }
 
             let targetCount = 5
 
             let vdom (ctx : IVdomContext<ChainedEvent>) (state : ChainedStabilizationState) : Vdom<DesiredBounds> =
                 chainedComponent targetCount ctx state
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
-
-            let finalState =
-                App.pumpOnce
-                    worldFreezer
+            let config =
+                AppConfig.withInputHandler
                     ChainedStabilizationState.Initial
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
+                    (fun s (_ : unit) -> s)
+                    (App.pureView vdom)
+                    (fun _ -> None)
+                    handlePostLayout
                     ActivationResolver.none
-                    (fun () -> false)
+
+            use ctx = IncrTestContext.make console config None
+
+            let finalState = IncrTestContext.pumpOnce worldFreezer config ctx
 
             // The counter should have reached the target through chained stabilization
             finalState.Counter |> shouldEqual targetCount
@@ -367,50 +324,33 @@ module TestPostLayoutEvents =
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld =
-                { new WorldProcessor<unit, InfiniteLoopEvent, InfiniteLoopState> with
-                    member _.ProcessWorld (_inputs, _renderState, state) = ProcessWorldResult.make state
-
-                    member _.ProcessPostLayoutEvents (events, _ctx, state) =
-                        let mutable newState = state
-
-                        for event in events do
-                            match event with
-                            | KeepGoing ->
-                                newState <-
-                                    { newState with
-                                        IterationCount = newState.IterationCount + 1
-                                    }
-
-                        newState
-                }
+            let handlePostLayout (ev : InfiniteLoopEvent) (state : InfiniteLoopState) : InfiniteLoopState =
+                match ev with
+                | KeepGoing ->
+                    { state with
+                        IterationCount = state.IterationCount + 1
+                    }
 
             let vdom (ctx : IVdomContext<InfiniteLoopEvent>) (_state : InfiniteLoopState) : Vdom<DesiredBounds> =
                 infiniteComponent ctx
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
-
-            let finalState =
-                App.pumpOnce
-                    worldFreezer
+            let config =
+                AppConfig.withInputHandler
                     InfiniteLoopState.Initial
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
+                    (fun s (_ : unit) -> s)
+                    (App.pureView vdom)
+                    (fun _ -> None)
+                    handlePostLayout
                     ActivationResolver.none
-                    (fun () -> false)
+
+            use ctx = IncrTestContext.make console config None
+
+            let finalState = IncrTestContext.pumpOnce worldFreezer config ctx
 
             // The iteration count should be capped at MAX_POST_LAYOUT_ITERATIONS (100)
             finalState.IterationCount |> shouldEqual 100
@@ -419,6 +359,8 @@ module TestPostLayoutEvents =
     // ===================================================================================
     // Tests for event ordering guarantees
     // ===================================================================================
+
+    type OrderingAppEvent = | KeyPressed
 
     type OrderingEvent =
         | PostLayoutEvent of id : int
@@ -484,69 +426,49 @@ module TestPostLayoutEvents =
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld =
-                { new WorldProcessor<unit, OrderingEvent, OrderingState> with
-                    member _.ProcessWorld (inputs, _renderState, state) =
-                        let mutable newState = state
+            let handleInput (change : WorldStateChange<OrderingAppEvent>) : OrderingAppEvent option =
+                match change with
+                | WorldStateChange.Keystroke k when k.Key = ConsoleKey.A -> Some KeyPressed
+                | _ -> None
 
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.Keystroke k when k.Key = ConsoleKey.A ->
-                                newState <-
-                                    { newState with
-                                        EventLog = newState.EventLog @ [ UserTriggeredEvent newState.EventLog.Length ]
-                                    }
-                            | _ -> ()
+            let transition (state : OrderingState) (_ev : OrderingAppEvent) : OrderingState =
+                { state with
+                    EventLog = state.EventLog @ [ UserTriggeredEvent state.EventLog.Length ]
+                }
 
-                        ProcessWorldResult.make newState
-
-                    member _.ProcessPostLayoutEvents (events, _ctx, state) =
-                        let mutable newState = state
-
-                        for evt in events do
-                            newState <-
-                                { newState with
-                                    EventLog = newState.EventLog @ [ evt ]
-                                }
-
-                        newState
+            let handlePostLayout (ev : OrderingEvent) (state : OrderingState) : OrderingState =
+                { state with
+                    EventLog = state.EventLog @ [ ev ]
                 }
 
             let vdom (ctx : IVdomContext<OrderingEvent>) (state : OrderingState) : Vdom<DesiredBounds> =
                 orderingComponent ctx state
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let config =
+                AppConfig.withInputHandler
+                    OrderingState.Initial
+                    transition
+                    (App.pureView vdom)
+                    handleInput
+                    handlePostLayout
+                    ActivationResolver.none
+
+            use ctx = IncrTestContext.make console config None
 
             // Do initial render to establish baseline
-            let stateAfterInit =
-                App.processNoChanges OrderingState.Initial renderState processWorld vdom
+            let stateAfterInit = IncrTestContext.pumpOnce worldFreezer config ctx
 
             stateAfterInit.EventLog |> shouldEqual []
 
             // Queue a single keystroke
             world.SendKey (ConsoleKeyInfo ('a', ConsoleKey.A, false, false, false))
 
-            let finalState =
-                App.pumpOnce
-                    worldFreezer
-                    stateAfterInit
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            let finalState = IncrTestContext.pumpOnce worldFreezer config ctx
 
             // After processing:
             // 1. User event is processed (batch of 1 keystroke)
@@ -600,24 +522,31 @@ module TestPostLayoutEvents =
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
 
+            use worldFreezer =
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
+
             let receivedEvents = ResizeArray<int> ()
 
-            let processWorld =
-                { new WorldProcessor<unit, int, NoState> with
-                    member _.ProcessWorld (_inputs, _renderState, state) = ProcessWorldResult.make state
-
-                    member _.ProcessPostLayoutEvents (events, _ctx, state) =
-                        for n in events do
-                            receivedEvents.Add n
-
-                        state
-                }
+            let handlePostLayout (ev : int) (state : NoState) : NoState =
+                receivedEvents.Add ev
+                state
 
             let vdom (ctx : IVdomContext<int>) (_state : NoState) : Vdom<DesiredBounds> = orderedComponent ctx
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let config =
+                AppConfig.withInputHandler
+                    NoState
+                    (fun s (_ : unit) -> s)
+                    (App.pureView vdom)
+                    (fun _ -> None)
+                    handlePostLayout
+                    ActivationResolver.none
 
-            App.processNoChanges NoState renderState processWorld vdom |> ignore<NoState>
+            use ctx = IncrTestContext.make console config None
+
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore<NoState>
 
             // Events should be received in the order they were posted
             receivedEvents |> Seq.toList |> shouldEqual [ 1 ; 2 ; 3 ; 4 ; 5 ]
@@ -655,24 +584,31 @@ module TestPostLayoutEvents =
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
 
-            let processWorld =
-                { new WorldProcessor<unit, StateUnchangedEvent, int> with
-                    member _.ProcessWorld (_inputs, _renderState, state) = ProcessWorldResult.make state
+            use worldFreezer =
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-                    member _.ProcessPostLayoutEvents (events, _ctx, state) =
-                        for event in events do
-                            match event with
-                            | NoOpEvent -> eventProcessCount <- eventProcessCount + 1
+            let world = MockWorld.attach worldFreezer
 
-                        // Return the same state - no change
-                        state
-                }
+            let handlePostLayout (ev : StateUnchangedEvent) (state : int) : int =
+                match ev with
+                | NoOpEvent -> eventProcessCount <- eventProcessCount + 1
+                // Return the same state - no change
+                state
 
             let vdom (ctx : IVdomContext<StateUnchangedEvent>) (_state : int) : Vdom<DesiredBounds> = noOpComponent ctx
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let config =
+                AppConfig.withInputHandler
+                    42
+                    (fun s (_ : unit) -> s)
+                    (App.pureView vdom)
+                    (fun _ -> None)
+                    handlePostLayout
+                    ActivationResolver.none
 
-            let _finalState = App.processNoChanges 42 renderState processWorld vdom
+            use ctx = IncrTestContext.make console config None
+
+            let _finalState = IncrTestContext.pumpOnce worldFreezer config ctx
 
             // Should have rendered once (initial) and processed the event once
             // But since state didn't change, should NOT re-render
@@ -733,49 +669,28 @@ module TestPostLayoutEvents =
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = true
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld =
-                { new WorldProcessor<ActivationEvent, ActivationEvent, ActivationState> with
-                    member _.ProcessWorld (inputs, _renderState, state) =
-                        let mutable newState = state
+            let transition (state : ActivationState) (ev : ActivationEvent) : ActivationState =
+                match ev with
+                | ButtonActivated ->
+                    { state with
+                        ActivationCount = state.ActivationCount + 1
+                        EventSequence = state.EventSequence @ [ "activated" ]
+                    }
+                | PostLayoutFromActivation _ -> state
 
-                        for input in inputs do
-                            match input with
-                            | WorldStateChange.ApplicationEvent ButtonActivated ->
-                                newState <-
-                                    { newState with
-                                        ActivationCount = newState.ActivationCount + 1
-                                        EventSequence = newState.EventSequence @ [ "activated" ]
-                                    }
-                            | _ -> ()
-
-                        ProcessWorldResult.make newState
-
-                    member _.ProcessPostLayoutEvents (events, _ctx, state) =
-                        let mutable newState = state
-
-                        for event in events do
-                            match event with
-                            | PostLayoutFromActivation n ->
-                                newState <-
-                                    { newState with
-                                        PostLayoutCount = newState.PostLayoutCount + 1
-                                        EventSequence = newState.EventSequence @ [ $"postlayout-%d{n}" ]
-                                    }
-                            | _ -> ()
-
-                        newState
-                }
+            let handlePostLayout (ev : ActivationEvent) (state : ActivationState) : ActivationState =
+                match ev with
+                | PostLayoutFromActivation n ->
+                    { state with
+                        PostLayoutCount = state.PostLayoutCount + 1
+                        EventSequence = state.EventSequence @ [ $"postlayout-%d{n}" ]
+                    }
+                | _ -> state
 
             let vdom (ctx : IVdomContext<ActivationEvent>) (state : ActivationState) : Vdom<DesiredBounds> =
                 activationComponent ctx state
@@ -790,25 +705,26 @@ module TestPostLayoutEvents =
                         None
                 )
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let config =
+                AppConfig.withInputHandler
+                    ActivationState.Initial
+                    transition
+                    (App.pureView vdom)
+                    (function
+                    | WorldStateChange.ApplicationEvent ev -> Some ev
+                    | _ -> None)
+                    handlePostLayout
+                    resolveActivation
+
+            use ctx = IncrTestContext.make console config None
 
             // Do initial render to set up focus
-            let stateAfterInit =
-                App.processNoChanges ActivationState.Initial renderState processWorld vdom
+            let stateAfterInit = IncrTestContext.pumpOnce worldFreezer config ctx
 
             // Now send Enter to activate
             world.SendKey (ConsoleKeyInfo ('\r', ConsoleKey.Enter, false, false, false))
 
-            let finalState =
-                App.pumpOnce
-                    worldFreezer
-                    stateAfterInit
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    resolveActivation
-                    (fun () -> false)
+            let finalState = IncrTestContext.pumpOnce worldFreezer config ctx
 
             // Should have activated once
             finalState.ActivationCount |> shouldEqual 1
@@ -876,40 +792,38 @@ module TestPostLayoutEvents =
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
 
-            let processWorld =
-                { new WorldProcessor<unit, RerenderRequestEvent, RerenderRequestState> with
-                    member _.ProcessWorld (_inputs, _renderState, state) = ProcessWorldResult.make state
+            use worldFreezer =
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-                    member _.ProcessPostLayoutEvents (events, _ctx, state) =
-                        let mutable newState = state
+            let world = MockWorld.attach worldFreezer
 
-                        for event in events do
-                            match event with
-                            | EventWithRerender ->
-                                newState <-
-                                    { newState with
-                                        EventsProcessed = newState.EventsProcessed + 1
-                                        RequestedRerenderDuringPostLayout = true
-                                    }
-                            | EventWithoutRerender ->
-                                newState <-
-                                    { newState with
-                                        EventsProcessed = newState.EventsProcessed + 1
-                                    }
-
-                        // Note: ProcessPostLayoutEvents returns only 'userState, not ProcessWorldResult.
-                        // There is no mechanism to request a rerender; re-renders happen automatically
-                        // when the returned state differs from the previous state.
-                        newState
-                }
+            let handlePostLayout (ev : RerenderRequestEvent) (state : RerenderRequestState) : RerenderRequestState =
+                match ev with
+                | EventWithRerender ->
+                    { state with
+                        EventsProcessed = state.EventsProcessed + 1
+                        RequestedRerenderDuringPostLayout = true
+                    }
+                | EventWithoutRerender ->
+                    { state with
+                        EventsProcessed = state.EventsProcessed + 1
+                    }
 
             let vdom (ctx : IVdomContext<RerenderRequestEvent>) (state : RerenderRequestState) : Vdom<DesiredBounds> =
                 rerenderComponent ctx state
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let config =
+                AppConfig.withInputHandler
+                    RerenderRequestState.Initial
+                    (fun s (_ : unit) -> s)
+                    (App.pureView vdom)
+                    (fun _ -> None)
+                    handlePostLayout
+                    ActivationResolver.none
 
-            let finalState =
-                App.processNoChanges RerenderRequestState.Initial renderState processWorld vdom
+            use ctx = IncrTestContext.make console config None
+
+            let finalState = IncrTestContext.pumpOnce worldFreezer config ctx
 
             // The event was processed
             finalState.EventsProcessed |> shouldEqual 1
@@ -1009,34 +923,21 @@ module TestPostLayoutEvents =
 
                 Vdom.flexibleContent measure render
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
-            let haveFrameworkHandleFocus _ = false
+            let world = MockWorld.attach worldFreezer
 
-            let processWorld =
-                { new WorldProcessor<unit, IntermediateFrameEvent, IntermediateFrameState> with
-                    member _.ProcessWorld (_inputs, _renderState, state) = ProcessWorldResult.make state
-
-                    member _.ProcessPostLayoutEvents (events, _ctx, state) =
-                        let mutable newState = state
-
-                        for event in events do
-                            match event with
-                            | SwitchToFinalState ->
-                                newState <-
-                                    {
-                                        ShowFinal = true
-                                    }
-
-                        newState
-                }
+            let handlePostLayout
+                (ev : IntermediateFrameEvent)
+                (state : IntermediateFrameState)
+                : IntermediateFrameState
+                =
+                match ev with
+                | SwitchToFinalState ->
+                    {
+                        ShowFinal = true
+                    }
 
             let vdom
                 (ctx : IVdomContext<IntermediateFrameEvent>)
@@ -1045,22 +946,22 @@ module TestPostLayoutEvents =
                 =
                 component' ctx state
 
-            let renderState = RenderState.make console MockTime.getStaticUtcNow None
+            let config =
+                AppConfig.withInputHandler
+                    IntermediateFrameState.Initial
+                    (fun s (_ : unit) -> s)
+                    (App.pureView vdom)
+                    (fun _ -> None)
+                    handlePostLayout
+                    ActivationResolver.none
+
+            use ctx = IncrTestContext.make console config None
 
             // Run one pump cycle - this will:
             // 1. Initial render: component writes "X" to pending buffer, posts SwitchToFinalState event
             // 2. Stabilization: state changes to ShowFinal=true, re-render writes "Y" to pending buffer
             // 3. Only after stabilization completes does Flush copy pending buffer to display
-            let _finalState =
-                App.pumpOnce
-                    worldFreezer
-                    IntermediateFrameState.Initial
-                    haveFrameworkHandleFocus
-                    renderState
-                    processWorld
-                    vdom
-                    ActivationResolver.none
-                    (fun () -> false)
+            let _finalState = IncrTestContext.pumpOnce worldFreezer config ctx
 
             // There should be exactly one flush (after stabilization completes)
             if flushSnapshots.Count <> 1 then
