@@ -6,6 +6,7 @@ open System.Runtime.InteropServices
 open System.Threading
 open System.Threading.Tasks
 open WoofWare.Incremental
+open WoofWare.TimingWheel
 
 /// Handle to a running application, providing tasks for lifecycle events.
 type AppHandle =
@@ -259,8 +260,11 @@ module App =
 
         incrState.Incr.Var.Value stateVar
 
-    /// Run an application using AppConfig.
-    let run<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
+    /// Run an application using AppConfig, with an injectable wait primitive (for tests).
+    /// `waitForWork wake deadline ct` must block until `wake` completes, `deadline` (a
+    /// duration from now) elapses, or `ct` fires.
+    let internal runWith<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
+        (waitForWork : Task -> TimeSpan voption -> CancellationToken -> unit)
         (terminate : CancellationToken)
         (console : IConsole)
         (getUtcNow : unit -> DateTime)
@@ -268,7 +272,6 @@ module App =
         (worldFreezer : unit -> WorldFreezer<'appEvent>)
         (config : AppConfig<'state, 'appEvent, 'postLayoutEvent>)
         (debugWriter : StreamWriter option)
-        (frameDelayMs : int)
         : AppHandle
         =
         let ready = TaskCompletionSource TaskCreationOptions.RunContinuationsAsynchronously
@@ -307,10 +310,16 @@ module App =
 
                     let mutable cancels = 0
 
+                    // The loop sleeps in waitForWork; Ctrl-C must wake it, so the handler
+                    // cancels this token (linked to the caller's `terminate`).
+                    use loopCts = CancellationTokenSource.CreateLinkedTokenSource terminate
+
                     let ctrlCHandler =
                         ConsoleCancelEventHandler (fun _ args ->
                             if Interlocked.Increment &cancels = 1 then
                                 args.Cancel <- true
+
+                            loopCts.Cancel ()
                         )
 
                     ctrlC.Register ctrlCHandler
@@ -350,9 +359,49 @@ module App =
                             let isCancelled () =
                                 cancels > 0 || terminate.IsCancellationRequested
 
+                            // How long may the loop sleep? The earlier of the clock's next
+                            // alarm (animations, activation expiry) and the freezer's next
+                            // internal timeout (Esc disambiguation, paste timeout).
+                            // Must be computed after the iteration's final stabilization,
+                            // so that every alarm created during it is visible.
+                            let nextDeadline () : TimeSpan voption =
+                                let clockDelay =
+                                    match incrState.Incr.Clock.NextAlarmFiresAt incrState.Clock with
+                                    | ValueNone -> ValueNone
+                                    | ValueSome alarmAt ->
+                                        let nowNs = TimeConversion.dateTimeToNs (getUtcNow ())
+
+                                        let deltaNs =
+                                            TimeNs.toInt64NsSinceEpoch alarmAt - TimeNs.toInt64NsSinceEpoch nowNs
+
+                                        // Round up to the next tick so a sub-tick-future alarm
+                                        // cannot produce a zero-length (busy) wait.
+                                        ValueSome (TimeSpan.FromTicks (max 0L ((deltaNs + 99L) / 100L)))
+
+                                let inputDelay =
+                                    match listener'.NextDeadline () with
+                                    | ValueNone -> ValueNone
+                                    | ValueSome deadlineTicks ->
+                                        let sw = listener'.Stopwatch
+
+                                        let deltaSeconds =
+                                            float (deadlineTicks - sw.GetTimestamp ()) / float sw.Frequency
+
+                                        ValueSome (TimeSpan.FromSeconds (max 0.0 deltaSeconds))
+
+                                match clockDelay, inputDelay with
+                                | ValueNone, d
+                                | d, ValueNone -> d
+                                | ValueSome clock, ValueSome input -> ValueSome (min clock input)
+
                             ready.SetResult ()
 
                             while not (isCancelled ()) do
+                                // Arm the wake signal before pumping: anything that enters the
+                                // world after this point either is seen by the pump's drain or
+                                // completes the signal, so it cannot be slept through.
+                                let wake = listener'.WaitForChange ()
+
                                 pumpOnce
                                     getUtcNow
                                     listener'
@@ -365,8 +414,8 @@ module App =
                                     isCancelled
                                 |> ignore
 
-                                if frameDelayMs > 0 then
-                                    Thread.Sleep frameDelayMs
+                                if not (isCancelled ()) then
+                                    waitForWork wake (nextDeadline ()) loopCts.Token
 
                             None
                         with e ->
@@ -401,3 +450,19 @@ module App =
             Ready = ready.Task
             Finished = complete.Task
         }
+
+    /// Run an application using AppConfig. The render loop is event-driven: it sleeps until
+    /// input arrives, an application event is posted, the terminal is resized, or the next
+    /// scheduled clock alarm (animation frame, activation expiry) is due. An idle app does
+    /// no work.
+    let run<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
+        (terminate : CancellationToken)
+        (console : IConsole)
+        (getUtcNow : unit -> DateTime)
+        (ctrlC : CtrlCHandler)
+        (worldFreezer : unit -> WorldFreezer<'appEvent>)
+        (config : AppConfig<'state, 'appEvent, 'postLayoutEvent>)
+        (debugWriter : StreamWriter option)
+        : AppHandle
+        =
+        runWith EventLoop.waitForWork terminate console getUtcNow ctrlC worldFreezer config debugWriter

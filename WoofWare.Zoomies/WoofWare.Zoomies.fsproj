@@ -62,6 +62,7 @@
     <Compile Include="TreeReconciliation.fs" />
     <Compile Include="Render.fs" />
     <Compile Include="AppConfig.fs" />
+    <Compile Include="EventLoop.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Components\Button.fs" />
     <Compile Include="Components\Toggle.fs" />

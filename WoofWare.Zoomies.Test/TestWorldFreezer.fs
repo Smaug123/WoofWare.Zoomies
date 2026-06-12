@@ -831,11 +831,23 @@ module TestWorldFreezer =
                     StopwatchMock.Empty
                     (fun _ -> failwith "console went away")
 
+            // The consumer protocol: arm, drain, await only if the drain came up empty,
+            // drain again. (The exception may arrive before or after the arm.)
             let wait = freezer.WaitForChange ()
-            do! wait.WaitAsync waitTimeout
 
-            match freezer.Changes () with
-            | ValueSome [| WorldStateChange.ApplicationEventException e |] ->
-                e.Message |> shouldEqual "console went away"
+            let! changes =
+                task {
+                    match freezer.Changes () with
+                    | ValueSome changes -> return changes
+                    | ValueNone ->
+                        do! wait.WaitAsync waitTimeout
+
+                        match freezer.Changes () with
+                        | ValueSome changes -> return changes
+                        | ValueNone -> return failwith "signal fired but no changes arrived"
+                }
+
+            match changes with
+            | [| WorldStateChange.ApplicationEventException e |] -> e.Message |> shouldEqual "console went away"
             | other -> failwith $"unexpected changes: %A{other}"
         }

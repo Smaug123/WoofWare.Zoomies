@@ -3,6 +3,7 @@ namespace WoofWare.Zoomies.Test
 open System
 open System.Collections.Concurrent
 open System.Threading
+open System.Threading.Tasks
 open FsUnitTyped
 open NUnit.Framework
 open WoofWare.Incremental
@@ -54,7 +55,7 @@ module TestAppRun =
             use cts = new CancellationTokenSource ()
 
             let appHandle =
-                App.run cts.Token console (fun () -> TimeConversion.unixEpoch) ctrlCHandler worldFreezer config None 0
+                App.run cts.Token console (fun () -> TimeConversion.unixEpoch) ctrlCHandler worldFreezer config None
 
             do! appHandle.Ready
             cts.Cancel ()
@@ -412,3 +413,270 @@ module TestAppRun =
         IncrTestContext.pumpOnce listener config ctx |> ignore
 
         flushCount.Value > initialFlushCount |> shouldEqual true
+
+    // ============================================================
+    // Event-driven loop tests: the loop sleeps until there is work.
+    // ============================================================
+
+    let private quietConsole (ops : ConcurrentQueue<ConsoleOp>) : IConsole =
+        {
+            WindowWidth = fun () -> 80
+            WindowHeight = fun () -> 10
+            ColorMode = ColorMode.Color
+            Execute = fun op -> ops.Enqueue (TerminalOp op)
+            Flush = fun () -> ops.Enqueue Flush
+        }
+
+    let private flushCount (ops : ConcurrentQueue<ConsoleOp>) =
+        ops |> Seq.filter (fun op -> op = Flush) |> Seq.length
+
+    /// Await `condition` becoming true, polling, failing the test after a generous timeout.
+    let private awaitCondition (description : string) (condition : unit -> bool) : Task =
+        task {
+            let sw = System.Diagnostics.Stopwatch.StartNew ()
+
+            while not (condition ()) && sw.Elapsed < TimeSpan.FromSeconds 10.0 do
+                do! Task.Delay 10
+
+            if not (condition ()) then
+                failwith $"timed out waiting for: %s{description}"
+        }
+
+    [<Test>]
+    let ``an idle app does no work`` () =
+        task {
+            let ops = ConcurrentQueue<ConsoleOp> ()
+            let console = quietConsole ops
+            let ctrlCHandler, _, _ = FakeCtrlCHandler.make ()
+
+            let pumpCount = ref 0
+
+            let getUtcNow () =
+                Interlocked.Increment pumpCount |> ignore<int>
+                TimeConversion.unixEpoch
+
+            let worldFreezer () =
+                WorldFreezer.listen'<unit> UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let config = TestConfig.passthrough<unit> (fun _ _ -> Vdom.textContent "static")
+
+            use cts = new CancellationTokenSource ()
+
+            let handle =
+                App.run cts.Token console getUtcNow ctrlCHandler worldFreezer config None
+
+            do! handle.Ready
+
+            // Let any in-flight first iteration finish, then measure a quiet window.
+            do! Task.Delay 100
+            let pumpsBefore = pumpCount.Value
+            let flushesBefore = flushCount ops
+
+            do! Task.Delay 250
+
+            pumpCount.Value |> shouldEqual pumpsBefore
+            flushCount ops |> shouldEqual flushesBefore
+
+            cts.Cancel ()
+            do! handle.Finished
+        }
+
+    [<Test>]
+    let ``a keystroke wakes the sleeping loop and is rendered`` () =
+        task {
+            let ops = ConcurrentQueue<ConsoleOp> ()
+            let console = quietConsole ops
+            let ctrlCHandler, _, _ = FakeCtrlCHandler.make ()
+
+            let freezerRef = ref None
+
+            let worldFreezer () =
+                let f =
+                    WorldFreezer.listen'<char> UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+                freezerRef.Value <- Some f
+                f
+
+            let seen = ConcurrentQueue<char> ()
+
+            let config =
+                TestConfig.withState<int, char, unit>
+                    0
+                    (fun s (c : char) ->
+                        seen.Enqueue c
+                        s + 1
+                    )
+                    (fun change ->
+                        match change with
+                        | WorldStateChange.Keystroke k -> Some k.KeyChar
+                        | _ -> None
+                    )
+                    (fun _ count -> Vdom.textContent $"count: %i{count}")
+
+            use cts = new CancellationTokenSource ()
+
+            let handle =
+                App.run cts.Token console (fun () -> TimeConversion.unixEpoch) ctrlCHandler worldFreezer config None
+
+            do! handle.Ready
+
+            let freezer = freezerRef.Value |> Option.get
+            let flushesBefore = flushCount ops
+
+            freezer.DeliverKeystroke (ConsoleKeyInfo ('x', ConsoleKey.X, false, false, false))
+
+            do!
+                awaitCondition
+                    "keystroke processed and rendered"
+                    (fun () -> seen |> Seq.contains 'x' && flushCount ops > flushesBefore)
+
+            cts.Cancel ()
+            do! handle.Finished
+        }
+
+    [<Test>]
+    let ``clock alarms wake the loop: a spinner animates with no input at all`` () =
+        task {
+            let ops = ConcurrentQueue<ConsoleOp> ()
+            let console = quietConsole ops
+            let ctrlCHandler, _, _ = FakeCtrlCHandler.make ()
+
+            let worldFreezer () =
+                WorldFreezer.listen'<unit> UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            // A spinner at 50fps: the timing wheel holds an alarm every 20ms.
+            let incrVdom (ctx : VdomContext<unit>) (_state : unit Node) : Vdom<DesiredBounds> Node =
+                let incr = VdomContext.unsafeIncr ctx
+                let clock = VdomContext.clock ctx
+                let frameNode = IncrTime.spinnerFrameNode incr clock LoadingSpinner.FrameCount 50.0
+                incr.Map LoadingSpinner.make frameNode
+
+            let config : AppConfig<unit, unit, unit> =
+                {
+                    Initial = ()
+                    Transition = fun s _ -> s
+                    View = incrVdom
+                    HandleInput = fun _ -> None
+                    HandlePostLayout = fun _ s -> s
+                    FocusHandling = FocusHandling.FrameworkManaged
+                    ActivationResolver = ActivationResolver.none
+                    OnSetup = fun _ -> ()
+                }
+
+            use cts = new CancellationTokenSource ()
+
+            let handle =
+                App.run cts.Token console (fun () -> DateTime.UtcNow) ctrlCHandler worldFreezer config None
+
+            do! handle.Ready
+
+            let flushesBefore = flushCount ops
+
+            // No input is ever delivered; only clock alarms can wake the loop.
+            do! awaitCondition "spinner rendered several new frames" (fun () -> flushCount ops >= flushesBefore + 3)
+
+            cts.Cancel ()
+            do! handle.Finished
+        }
+
+    [<Test>]
+    let ``a lone Esc is delivered after the disambiguation deadline, with no other wake source`` () =
+        task {
+            let ops = ConcurrentQueue<ConsoleOp> ()
+            let console = quietConsole ops
+            let ctrlCHandler, _, _ = FakeCtrlCHandler.make ()
+
+            let freezerRef = ref None
+
+            let worldFreezer () =
+                // A real stopwatch: the 10ms Esc deadline must elapse in real time.
+                let f =
+                    WorldFreezer.listen'<char> UnrecognisedEscapeCodeBehaviour.Throw Stopwatch.system
+
+                freezerRef.Value <- Some f
+                f
+
+            let seen = ConcurrentQueue<char> ()
+
+            let config =
+                TestConfig.withState<int, char, unit>
+                    0
+                    (fun s (c : char) ->
+                        seen.Enqueue c
+                        s + 1
+                    )
+                    (fun change ->
+                        match change with
+                        | WorldStateChange.Keystroke k -> Some k.KeyChar
+                        | _ -> None
+                    )
+                    (fun _ count -> Vdom.textContent $"count: %i{count}")
+
+            use cts = new CancellationTokenSource ()
+
+            let handle =
+                App.run cts.Token console (fun () -> TimeConversion.unixEpoch) ctrlCHandler worldFreezer config None
+
+            do! handle.Ready
+
+            let freezer = freezerRef.Value |> Option.get
+
+            // A lone Esc: swallowed pending disambiguation. Only the freezer's internal
+            // deadline can cause it to be delivered.
+            freezer.DeliverKeystroke (ConsoleKeyInfo ('\u001B', ConsoleKey.Escape, false, false, false))
+
+            do! awaitCondition "lone Esc delivered after the deadline" (fun () -> seen |> Seq.contains '\u001B')
+
+            cts.Cancel ()
+            do! handle.Finished
+        }
+
+    // ============================================================
+    // EventLoop.waitForWork unit tests.
+    // ============================================================
+
+    [<Test>]
+    let ``waitForWork returns immediately when the wake task is already complete`` () =
+        EventLoop.waitForWork Task.CompletedTask ValueNone CancellationToken.None
+
+    [<Test>]
+    let ``waitForWork returns immediately on a zero or negative deadline`` () =
+        let never = TaskCompletionSource ()
+        EventLoop.waitForWork never.Task (ValueSome TimeSpan.Zero) CancellationToken.None
+        EventLoop.waitForWork never.Task (ValueSome (TimeSpan.FromSeconds -1.0)) CancellationToken.None
+
+    [<Test>]
+    let ``waitForWork returns when the deadline elapses`` () =
+        let never = TaskCompletionSource ()
+        let sw = System.Diagnostics.Stopwatch.StartNew ()
+        EventLoop.waitForWork never.Task (ValueSome (TimeSpan.FromMilliseconds 30.0)) CancellationToken.None
+        (sw.Elapsed < TimeSpan.FromSeconds 5.0) |> shouldEqual true
+
+    [<Test>]
+    let ``waitForWork returns when the wake task completes mid-wait`` () =
+        task {
+            let wake = TaskCompletionSource ()
+
+            let waiter =
+                Task.Run (fun () -> EventLoop.waitForWork wake.Task ValueNone CancellationToken.None)
+
+            do! Task.Delay 30
+            waiter.IsCompleted |> shouldEqual false
+            wake.SetResult ()
+            do! waiter.WaitAsync (TimeSpan.FromSeconds 5.0)
+        }
+
+    [<Test>]
+    let ``waitForWork returns on cancellation`` () =
+        task {
+            let wake = TaskCompletionSource ()
+            use cts = new CancellationTokenSource ()
+
+            let waiter =
+                Task.Run (fun () -> EventLoop.waitForWork wake.Task ValueNone cts.Token)
+
+            do! Task.Delay 30
+            waiter.IsCompleted |> shouldEqual false
+            cts.Cancel ()
+            do! waiter.WaitAsync (TimeSpan.FromSeconds 5.0)
+        }

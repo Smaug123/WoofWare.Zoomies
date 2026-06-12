@@ -260,7 +260,6 @@ module FileBrowser =
             WorldFreezer.listen
             config
             debugWriter
-            16
 
 module Program =
     let getEnv (varName : string) : string option =

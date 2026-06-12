@@ -224,6 +224,10 @@ type WorldFreezer<'appEvent> =
             mutable _PasteModeEnteredAt : int64
         }
 
+    /// The stopwatch this freezer measures its internal deadlines against.
+    /// Use it to convert `NextDeadline` into a wait duration.
+    member internal this.Stopwatch : IStopwatch = this._Stopwatch
+
     /// Complete the current wake signal. Producers must enqueue first and signal second:
     /// the consumer re-arms the signal (WaitForChange) before draining, so this ordering
     /// guarantees that an enqueue is either seen by the drain or completes the armed signal.
@@ -258,27 +262,32 @@ type WorldFreezer<'appEvent> =
     /// An event loop that sleeps must wake no later than this and call `Changes` so the
     /// timed-out input is delivered. Must be called from the same thread as `Changes`.
     member this.NextDeadline () : int64 voption =
-        // +1 tick: the timeout comparisons are strict, so waking at exactly
-        // ts + timeout would not yet re-emit.
-        let timeoutTicks =
-            int64 (WorldFreezerTimeouts.REEMIT_TIMEOUT_SECONDS * float this._Stopwatch.Frequency)
-            + 1L
+        if this._DequeueState.Esc.IsNone && not this._InPasteMode then
+            // Nothing pending: don't touch the stopwatch at all (mocks with no timing
+            // behaviour must be usable in tests that never exercise the timeouts).
+            ValueNone
+        else
+            // +1 tick: the timeout comparisons are strict, so waking at exactly
+            // ts + timeout would not yet re-emit.
+            let timeoutTicks =
+                int64 (WorldFreezerTimeouts.REEMIT_TIMEOUT_SECONDS * float this._Stopwatch.Frequency)
+                + 1L
 
-        let escDeadline =
-            match this._DequeueState.Esc with
-            | ValueNone -> ValueNone
-            | ValueSome (ts, _) -> ValueSome (ts + timeoutTicks)
+            let escDeadline =
+                match this._DequeueState.Esc with
+                | ValueNone -> ValueNone
+                | ValueSome (ts, _) -> ValueSome (ts + timeoutTicks)
 
-        let pasteDeadline =
-            if this._InPasteMode then
-                ValueSome (this._PasteModeEnteredAt + timeoutTicks)
-            else
-                ValueNone
+            let pasteDeadline =
+                if this._InPasteMode then
+                    ValueSome (this._PasteModeEnteredAt + timeoutTicks)
+                else
+                    ValueNone
 
-        match escDeadline, pasteDeadline with
-        | ValueNone, d -> d
-        | d, ValueNone -> d
-        | ValueSome esc, ValueSome paste -> ValueSome (min esc paste)
+            match escDeadline, pasteDeadline with
+            | ValueNone, d -> d
+            | d, ValueNone -> d
+            | ValueSome esc, ValueSome paste -> ValueSome (min esc paste)
 
     /// Increment the terminal resize generation. This is intended to be called by signal handlers (e.g., SIGWINCH).
     /// The render loop will detect the change and refresh terminal bounds.
