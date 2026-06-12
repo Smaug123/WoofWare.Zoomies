@@ -210,7 +210,7 @@ module TestAppRun =
             let incr = incrState.Incr
             let ctx = VdomContext.make<unit> incrState
 
-            let stateMachine = StateMachine.create incr.State "initial" (fun _state ev -> ev)
+            let stateVar = incr.Var.Create "initial"
 
             let mutable callCount = 0
 
@@ -218,7 +218,7 @@ module TestAppRun =
                 callCount <- callCount + 1
                 Vdom.textContent state
 
-            let vdomNode = App.pureView pureVdom ctx stateMachine.StateNode
+            let vdomNode = App.pureView pureVdom ctx (incr.Var.Watch stateVar)
 
             let observer = incr.Observe vdomNode
             incr.Stabilize ()
@@ -226,7 +226,7 @@ module TestAppRun =
             let _ = Observer.value observer
             callCount |> shouldEqual 1
 
-            stateMachine.Inject "changed"
+            incr.Var.Set stateVar "changed"
             incr.Stabilize ()
 
             let _ = Observer.value observer
@@ -248,7 +248,7 @@ module TestAppRun =
             let incr = incrState.Incr
             let ctx = VdomContext.make<unit> incrState
 
-            let stateMachine = StateMachine.create incr.State () (fun s (_ : unit) -> s)
+            let stateVar = incr.Var.Create ()
 
             let mutable callCount = 0
 
@@ -256,7 +256,7 @@ module TestAppRun =
                 callCount <- callCount + 1
                 Vdom.textContent $"Width: {ctx.TerminalBounds.Width}"
 
-            let vdomNode = App.pureView pureVdom ctx stateMachine.StateNode
+            let vdomNode = App.pureView pureVdom ctx (incr.Var.Watch stateVar)
 
             let observer = incr.Observe vdomNode
             incr.Stabilize ()
@@ -295,7 +295,7 @@ module TestAppRun =
             let incr = incrState.Incr
             let ctx = VdomContext.make<unit> incrState
 
-            let stateMachine = StateMachine.create incr.State () (fun s (_ : unit) -> s)
+            let stateVar = incr.Var.Create ()
 
             let mutable callCount = 0
 
@@ -310,7 +310,7 @@ module TestAppRun =
                     )
                     ctx.FocusedKey
 
-            let vdomNode = App.pureViewIncr pureVdom ctx stateMachine.StateNode
+            let vdomNode = App.pureViewIncr pureVdom ctx (incr.Var.Watch stateVar)
 
             let observer = incr.Observe vdomNode
             incr.Stabilize ()
@@ -341,7 +341,7 @@ module TestAppRun =
             let incr = incrState.Incr
             let ctx = VdomContext.make<unit> incrState
 
-            let stateMachine = StateMachine.create incr.State "state" (fun _s ev -> ev)
+            let stateVar = incr.Var.Create "state"
 
             let mutable callCount = 0
 
@@ -349,7 +349,7 @@ module TestAppRun =
                 callCount <- callCount + 1
                 Vdom.textContent state
 
-            let vdomNode = App.pureView pureVdom ctx stateMachine.StateNode
+            let vdomNode = App.pureView pureVdom ctx (incr.Var.Watch stateVar)
 
             let observer = incr.Observe vdomNode
             incr.Stabilize ()

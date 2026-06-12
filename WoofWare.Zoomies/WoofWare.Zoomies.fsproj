@@ -54,7 +54,6 @@
     <Compile Include="WorldFreezer.fs" />
     <Compile Include="IVdomContext.fs" />
     <Compile Include="IncrementalState.fs" />
-    <Compile Include="StateMachine.fs" />
     <Compile Include="VdomContext.fs" />
     <Compile Include="IncrTime.fs" />
     <Compile Include="Layout.fs" />

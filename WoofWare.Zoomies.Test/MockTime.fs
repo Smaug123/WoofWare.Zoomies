@@ -140,8 +140,8 @@ type IncrTestContext<'state, 'appEvent, 'postLayoutEvent> =
     {
         /// The incremental state holder (clock, bounds, focus).
         IncrState : IncrementalState
-        /// The state machine for event-driven state updates.
-        StateMachine : StateMachine<'state, 'appEvent>
+        /// The variable holding the user state.
+        StateVar : 'state Var
         /// The render state for terminal output.
         RenderState : RenderState<'postLayoutEvent>
         /// Observer for the Vdom node.
@@ -176,10 +176,9 @@ module IncrTestContext =
         let incrState = IncrementalState.make initialBounds None
         let vdomContext = VdomContext.make incrState
 
-        let stateMachine =
-            StateMachine.create incrState.Incr.State config.Initial config.Transition
+        let stateVar = incrState.Incr.Var.Create config.Initial
 
-        let vdomNode = config.View vdomContext stateMachine.StateNode
+        let vdomNode = config.View vdomContext (incrState.Incr.Var.Watch stateVar)
         let vdomObserver = incrState.Incr.Observe vdomNode
         let startTime = MockTime.defaultStartTime
 
@@ -187,16 +186,16 @@ module IncrTestContext =
 
         {
             IncrState = incrState
-            StateMachine = stateMachine
+            StateVar = stateVar
             RenderState = renderState
             VdomObserver = vdomObserver
             PreviousVdom = ref Vdom.empty
             CurrentTime = startTime
         }
 
-    /// Get the current state from the state machine.
+    /// Get the current state from the state variable.
     let currentState (ctx : IncrTestContext<'state, 'appEvent, 'postLayoutEvent>) : 'state =
-        ctx.StateMachine.CurrentState ()
+        ctx.IncrState.Incr.Var.Value ctx.StateVar
 
     /// Advance time by the given amount and return a getUtcNow function.
     let advanceTime (ts : TimeSpan) (ctx : IncrTestContext<'state, 'appEvent, 'postLayoutEvent>) : unit =
@@ -218,7 +217,7 @@ module IncrTestContext =
             (getUtcNow ctx)
             listener
             ctx.IncrState
-            ctx.StateMachine
+            ctx.StateVar
             ctx.RenderState
             ctx.VdomObserver
             config

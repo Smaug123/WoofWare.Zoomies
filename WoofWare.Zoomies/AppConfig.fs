@@ -17,7 +17,8 @@ type FocusHandling =
     /// The ActivationResolver still fires for the currently-focused element.
     | UserManaged
 
-/// Configuration for running an app with StateMachine-based event handling.
+/// Configuration for running an app: state lives in an Incremental Var, and events
+/// are folded into it with the pure Transition function.
 type AppConfig<'state, 'appEvent, 'postLayoutEvent> =
     {
         /// Initial application state.

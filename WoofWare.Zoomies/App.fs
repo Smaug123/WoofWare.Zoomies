@@ -76,7 +76,7 @@ module App =
 
     /// Process post-layout events. Returns true if the iteration limit was hit.
     let private stabilizePostLayoutEventsWithConfig<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
-        (stateMachine : StateMachine<'state, 'appEvent>)
+        (stateVar : 'state Var)
         (renderState : RenderState<'postLayoutEvent>)
         (config : AppConfig<'state, 'appEvent, 'postLayoutEvent>)
         (vdomObserver : Vdom<DesiredBounds> Observer)
@@ -93,18 +93,18 @@ module App =
             if layoutEvents.Length = 0 then
                 continueLoop <- false
             else
-                let stateBeforeBatch = stateMachine.CurrentState ()
+                let stateBeforeBatch = incrState.Incr.Var.Value stateVar
 
                 for ev in layoutEvents do
-                    let currentState = stateMachine.CurrentState ()
+                    let currentState = incrState.Incr.Var.Value stateVar
                     let newState = config.HandlePostLayout ev currentState
 
                     if currentState <> newState then
-                        stateMachine.SetState newState
+                        incrState.Incr.Var.Set stateVar newState
 
                 incrState.Incr.Stabilize ()
 
-                let stateAfterBatch = stateMachine.CurrentState ()
+                let stateAfterBatch = incrState.Incr.Var.Value stateVar
 
                 if stateBeforeBatch <> stateAfterBatch then
                     renderWithFocusStabilization renderState vdomObserver incrState
@@ -118,7 +118,7 @@ module App =
     let private processChangesWithConfig<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
         (now : DateTime)
         (changes : WorldStateChange<'appEvent>[])
-        (stateMachine : StateMachine<'state, 'appEvent>)
+        (stateVar : 'state Var)
         (renderState : RenderState<'postLayoutEvent>)
         (config : AppConfig<'state, 'appEvent, 'postLayoutEvent>)
         (vdomObserver : Vdom<DesiredBounds> Observer)
@@ -135,8 +135,8 @@ module App =
 
         let previousVdom = Observer.value vdomObserver
 
-        // Fold events locally, then SetState once at the end (avoids per-event stabilization).
-        let initialState = stateMachine.CurrentState ()
+        // Fold events locally, then set the var once at the end (avoids per-event stabilization).
+        let initialState = incrState.Incr.Var.Value stateVar
         let mutable localState = initialState
 
         for change in changes do
@@ -178,7 +178,7 @@ module App =
                     | None -> ()
 
         if initialState <> localState then
-            stateMachine.SetState localState
+            incrState.Incr.Var.Set stateVar localState
 
         incrState.Incr.Stabilize ()
 
@@ -189,7 +189,7 @@ module App =
             renderWithFocusStabilization renderState vdomObserver incrState
 
             let hitLimit =
-                stabilizePostLayoutEventsWithConfig stateMachine renderState config vdomObserver incrState
+                stabilizePostLayoutEventsWithConfig stateVar renderState config vdomObserver incrState
 
             // Only mark clean if we fully stabilized; if the iteration limit was hit,
             // leave the context dirty so the next pump picks up the remaining work.
@@ -201,7 +201,7 @@ module App =
     /// Process when no changes occurred: render if the vdom changed.
     let private processNoChangesWithConfig<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
         (previousVdom : Vdom<DesiredBounds>)
-        (stateMachine : StateMachine<'state, 'appEvent>)
+        (stateVar : 'state Var)
         (renderState : RenderState<'postLayoutEvent>)
         (config : AppConfig<'state, 'appEvent, 'postLayoutEvent>)
         (vdomObserver : Vdom<DesiredBounds> Observer)
@@ -215,7 +215,7 @@ module App =
             renderWithFocusStabilization renderState vdomObserver incrState
 
             let hitLimit =
-                stabilizePostLayoutEventsWithConfig stateMachine renderState config vdomObserver incrState
+                stabilizePostLayoutEventsWithConfig stateVar renderState config vdomObserver incrState
 
             if not hitLimit then
                 VdomContext.markClean ctx
@@ -227,7 +227,7 @@ module App =
         (getUtcNow : unit -> DateTime)
         (listener : WorldFreezer<'appEvent>)
         (incrState : IncrementalState)
-        (stateMachine : StateMachine<'state, 'appEvent>)
+        (stateVar : 'state Var)
         (renderState : RenderState<'postLayoutEvent>)
         (vdomObserver : Vdom<DesiredBounds> Observer)
         (config : AppConfig<'state, 'appEvent, 'postLayoutEvent>)
@@ -247,18 +247,9 @@ module App =
         listener.RefreshExternal ()
 
         match listener.Changes () with
-        | ValueNone ->
-            processNoChangesWithConfig previousVdom.Value stateMachine renderState config vdomObserver incrState
+        | ValueNone -> processNoChangesWithConfig previousVdom.Value stateVar renderState config vdomObserver incrState
         | ValueSome changes ->
-            processChangesWithConfig
-                loopUtcNow
-                changes
-                stateMachine
-                renderState
-                config
-                vdomObserver
-                incrState
-                isCancelled
+            processChangesWithConfig loopUtcNow changes stateVar renderState config vdomObserver incrState isCancelled
 
         if listener.TerminalResizeGeneration <> resizeGeneration then
             // Our knowledge of the current terminal's contents could be arbitrarily corrupted:
@@ -269,7 +260,7 @@ module App =
 
         previousVdom.Value <- Observer.value vdomObserver
 
-        stateMachine.CurrentState ()
+        incrState.Incr.Var.Value stateVar
 
     /// Run an application using AppConfig.
     let run<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
@@ -302,10 +293,9 @@ module App =
                     let incrState = IncrementalState.make initialBounds None
                     let vdomContext = VdomContext.make incrState
 
-                    let stateMachine =
-                        StateMachine.create incrState.Incr.State config.Initial config.Transition
+                    let stateVar = incrState.Incr.Var.Create config.Initial
 
-                    let vdomNode = config.View vdomContext stateMachine.StateNode
+                    let vdomNode = config.View vdomContext (incrState.Incr.Var.Watch stateVar)
                     let vdomObserver = incrState.Incr.Observe vdomNode
 
                     let initialUtcNow = getUtcNow ()
@@ -349,12 +339,7 @@ module App =
                             renderWithFocusStabilization renderState vdomObserver incrState
 
                             let hitLimit =
-                                stabilizePostLayoutEventsWithConfig
-                                    stateMachine
-                                    renderState
-                                    config
-                                    vdomObserver
-                                    incrState
+                                stabilizePostLayoutEventsWithConfig stateVar renderState config vdomObserver incrState
 
                             // If the limit wasn't hit, we're fully stabilized; mark clean.
                             // Otherwise leave dirty so the first pump picks up remaining work.
@@ -375,7 +360,7 @@ module App =
                                     getUtcNow
                                     listener'
                                     incrState
-                                    stateMachine
+                                    stateVar
                                     renderState
                                     vdomObserver
                                     config

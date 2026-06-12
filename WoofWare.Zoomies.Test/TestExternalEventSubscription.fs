@@ -275,3 +275,62 @@ module TestExternalEventSubscription =
                 (IncrTestContext.currentState ctx).Counter |> shouldEqual 2
             | None -> failwith "expected a timer to be running"
         }
+
+    [<Test>]
+    let ``events posted from a background task are folded into state in posting order`` () =
+        task {
+            // Regression test for the StateMachine deletion: the supported route for
+            // cross-thread events is IWorldBridge.PostEvent, and posting order must be
+            // preserved through the fold into the state var.
+            let eventCount = 20
+
+            let transition (state : int list) (event : int) : int list = event :: state
+
+            let vdom (_ : IVdomContext<_>) (state : int list) =
+                Vdom.textContent $"%i{List.length state}"
+
+            let console, _terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 1)
+
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let config : AppConfig<int list, int, unit> =
+                {
+                    Initial = []
+                    Transition = transition
+                    View = App.pureView vdom
+                    HandleInput =
+                        function
+                        | WorldStateChange.ApplicationEvent ev -> Some ev
+                        | _ -> None
+                    HandlePostLayout = fun _ s -> s
+                    FocusHandling = FocusHandling.FrameworkManaged
+                    ActivationResolver = ActivationResolver.none
+                    OnSetup = fun _ -> ()
+                }
+
+            use ctx = IncrTestContext.make console config None
+
+            IncrTestContext.pumpOnce worldFreezer config ctx |> ignore
+
+            let bridge = worldFreezer :> IWorldBridge<int>
+
+            // Post from a background task; PostEvent guarantees enqueueing before it returns.
+            do! Task.Run (fun () -> [ 1..eventCount ] |> List.iter bridge.PostEvent)
+
+            // The framework may split batches, so pump until everything has arrived.
+            let mutable state = IncrTestContext.pumpOnce worldFreezer config ctx
+            let mutable pumps = 1
+
+            while List.length state < eventCount && pumps < 100 do
+                state <- IncrTestContext.pumpOnce worldFreezer config ctx
+                pumps <- pumps + 1
+
+            List.rev state |> shouldEqual [ 1..eventCount ]
+        }

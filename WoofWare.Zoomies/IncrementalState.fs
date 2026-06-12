@@ -29,7 +29,7 @@ module internal TimeConversion =
 /// State encapsulating the Incremental computation graph for reactive UI updates.
 /// This holds the core Incremental instance, the clock for time-based reactivity,
 /// and the primary input variables (terminal bounds, focus).
-/// User state is managed separately by StateMachine.
+/// User state is managed separately, in a Var owned by the app loop.
 type IncrementalState =
     {
         /// The Incremental instance managing the dependency graph.

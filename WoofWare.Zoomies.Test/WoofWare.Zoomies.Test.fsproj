@@ -34,7 +34,6 @@
     <Compile Include="TestCollapsible.fs" />
     <Compile Include="TestIdleTracker.fs" />
     <Compile Include="TestIncrementalState.fs" />
-    <Compile Include="TestStateMachine.fs" />
     <Compile Include="TestIncrTime.fs" />
     <Compile Include="TestProgressBar.fs" />
     <Compile Include="TestLoadingSpinner.fs" />
