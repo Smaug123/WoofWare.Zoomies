@@ -324,3 +324,9 @@ module TestIncrementalState =
 
         IncrementalState.advanceClockAndStabilize MockTime.defaultStartTime incrState
         Observer.value clockObserver |> shouldEqual 1468089540000000000L<timeNs>
+
+    [<Test>]
+    let ``NextAlarmFiresAt is visible and returns ValueNone on a fresh clock`` () =
+        let incrState = IncrementalState.make emptyRect None
+
+        incrState.Incr.Clock.NextAlarmFiresAt incrState.Clock |> shouldEqual ValueNone
