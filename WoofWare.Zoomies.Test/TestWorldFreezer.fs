@@ -573,3 +573,147 @@ module TestWorldFreezer =
 
         let prop = Prop.forAll (Arb.fromGen chunkingInputGen) chunkingInvariantProperty
         Check.One (propConfig, prop)
+
+    // ============================================================
+    // NextDeadline tests: the event loop must wake no later than
+    // NextDeadline to deliver timed-out partial input.
+    // ============================================================
+
+    /// Frequency 1e9 means stopwatch ticks are nanoseconds; the 10ms re-emit
+    /// timeout is then 10_000_000 ticks (+1 for the strict comparison).
+    let private deadlineTicks =
+        int64 (WorldFreezerTimeouts.REEMIT_TIMEOUT_SECONDS * 1e9) + 1L
+
+    let private makeTickingFreezer () : WorldFreezer<unit> * int64 ref * (char -> unit) =
+        let ts = ref 0L
+
+        let stopwatch =
+            { new IStopwatch with
+                member _.GetTimestamp () = ts.Value
+                member _.Frequency = 1_000_000_000L
+            }
+
+        let pending = System.Collections.Generic.Queue<ConsoleKeyInfo> ()
+
+        let send (c : char) =
+            let key =
+                if c = '\u001B' then
+                    ConsoleKeyInfo (c, ConsoleKey.Escape, false, false, false)
+                else
+                    ConsoleKeyInfo (c, ConsoleKey.A, false, false, false)
+
+            pending.Enqueue key
+
+        let freezer =
+            WorldFreezer.listen'
+                UnrecognisedEscapeCodeBehaviour.Throw
+                stopwatch
+                (fun () -> pending.Count > 0)
+                pending.Dequeue
+
+        freezer, ts, send
+
+    [<Test>]
+    let ``NextDeadline is ValueNone when nothing is pending`` () =
+        task {
+            let freezer, _, send = makeTickingFreezer ()
+            use _ = freezer
+            freezer.NextDeadline () |> shouldEqual ValueNone
+
+            // A complete ordinary keystroke leaves nothing pending either.
+            send 'x'
+            freezer.RefreshExternal ()
+            freezer.Changes () |> ValueOption.isSome |> shouldEqual true
+            freezer.NextDeadline () |> shouldEqual ValueNone
+        }
+
+    [<Test>]
+    let ``a pending lone Esc sets a deadline, and waking at it delivers the Esc`` () =
+        task {
+            let freezer, ts, send = makeTickingFreezer ()
+            use _ = freezer
+
+            ts.Value <- 42L
+            send '\u001B'
+            freezer.RefreshExternal ()
+
+            // The Esc is swallowed pending disambiguation; nothing is emitted yet.
+            freezer.Changes () |> shouldEqual ValueNone
+            freezer.NextDeadline () |> shouldEqual (ValueSome (42L + deadlineTicks))
+
+            // Waking at exactly the deadline suffices to flush it.
+            ts.Value <- 42L + deadlineTicks
+
+            match freezer.Changes () with
+            | ValueNone -> failwith "expected the lone Esc to be re-emitted at the deadline"
+            | ValueSome changes ->
+                changes
+                |> Array.map (fun c ->
+                    match c with
+                    | WorldStateChange.Keystroke k -> k.KeyChar
+                    | other -> failwith $"unexpected change: %O{other}"
+                )
+                |> shouldEqual [| '\u001B' |]
+
+            freezer.NextDeadline () |> shouldEqual ValueNone
+        }
+
+    [<Test>]
+    let ``entering bracketed paste sets a deadline, and waking at it re-emits the entry keys`` () =
+        task {
+            let freezer, ts, send = makeTickingFreezer ()
+            use _ = freezer
+
+            ts.Value <- 100L
+
+            for c in "\u001B[200~" do
+                send c
+
+            freezer.RefreshExternal ()
+
+            // Paste-begin is recognised and swallowed; we are now waiting for content/end marker.
+            freezer.Changes () |> shouldEqual ValueNone
+            freezer.NextDeadline () |> shouldEqual (ValueSome (100L + deadlineTicks))
+
+            // No end marker arrives; waking at the deadline re-emits the entry sequence raw.
+            ts.Value <- 100L + deadlineTicks
+
+            match freezer.Changes () with
+            | ValueNone -> failwith "expected the paste-entry keys to be re-emitted at the deadline"
+            | ValueSome changes ->
+                changes
+                |> Array.map (fun c ->
+                    match c with
+                    | WorldStateChange.Keystroke k -> k.KeyChar
+                    | other -> failwith $"unexpected change: %O{other}"
+                )
+                |> shouldEqual [| '\u001B' ; '[' ; '2' ; '0' ; '0' ; '~' |]
+
+            freezer.NextDeadline () |> shouldEqual ValueNone
+        }
+
+    [<Test>]
+    let ``with both a paste timeout and a pending Esc, NextDeadline is the earlier`` () =
+        task {
+            let freezer, ts, send = makeTickingFreezer ()
+            use _ = freezer
+
+            // Enter paste mode at t=0.
+            for c in "\u001B[200~" do
+                send c
+
+            freezer.RefreshExternal ()
+            freezer.Changes () |> shouldEqual ValueNone
+            freezer.NextDeadline () |> shouldEqual (ValueSome deadlineTicks)
+
+            // A lone Esc arrives 2ms later (possibly the start of the end marker).
+            ts.Value <- 2_000_000L
+            send '\u001B'
+            freezer.RefreshExternal ()
+            freezer.Changes () |> ignore<WorldStateChange<unit>[] voption>
+
+            // Whatever the Esc contributes, the paste deadline is earlier and must win.
+            match freezer.NextDeadline () with
+            | ValueNone -> failwith "expected a deadline while the paste timeout is pending"
+            | ValueSome deadline -> deadline |> shouldEqual deadlineTicks
+        }

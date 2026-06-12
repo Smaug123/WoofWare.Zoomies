@@ -111,6 +111,13 @@ type private CsiDecodeState =
 
 type private AnsiDecodeState = | Csi of bracket : ConsoleKeyInfo * CsiDecodeState
 
+[<RequireQualifiedAccess>]
+module internal WorldFreezerTimeouts =
+    /// How long we wait for the continuation of an ANSI escape sequence (after a lone Esc,
+    /// or inside bracketed paste) before giving up and re-emitting what we have as keystrokes.
+    [<Literal>]
+    let REEMIT_TIMEOUT_SECONDS = 0.01
+
 type private DequeueState =
     {
         /// All the characters after the initial `ESC`.
@@ -137,7 +144,9 @@ type private DequeueState =
         match this.Esc with
         | ValueNone -> None
         | ValueSome (ts, esc) ->
-            if (sw.GetTimestamp () - ts |> float) / float sw.Frequency > 0.01 then
+            if
+                (sw.GetTimestamp () - ts |> float) / float sw.Frequency > WorldFreezerTimeouts.REEMIT_TIMEOUT_SECONDS
+            then
                 let result = Array.zeroCreate (this.Processed.Count + 1)
                 Array.set result 0 esc
                 CollectionsMarshal.AsSpan(this.Processed).CopyTo (result.AsSpan 1)
@@ -213,6 +222,35 @@ type WorldFreezer<'appEvent> =
 
     /// Load pending changes from the external world, like keystrokes, into the change list.
     member this.RefreshExternal () = this._RefreshExternal ()
+
+    /// The earliest stopwatch timestamp at which an internal timeout will fire (a pending
+    /// lone-Esc re-emission, or the bracketed-paste timeout), or ValueNone when no timeout
+    /// is pending. Units are stopwatch ticks (`IStopwatch.Frequency` per second).
+    ///
+    /// An event loop that sleeps must wake no later than this and call `Changes` so the
+    /// timed-out input is delivered. Must be called from the same thread as `Changes`.
+    member this.NextDeadline () : int64 voption =
+        // +1 tick: the timeout comparisons are strict, so waking at exactly
+        // ts + timeout would not yet re-emit.
+        let timeoutTicks =
+            int64 (WorldFreezerTimeouts.REEMIT_TIMEOUT_SECONDS * float this._Stopwatch.Frequency)
+            + 1L
+
+        let escDeadline =
+            match this._DequeueState.Esc with
+            | ValueNone -> ValueNone
+            | ValueSome (ts, _) -> ValueSome (ts + timeoutTicks)
+
+        let pasteDeadline =
+            if this._InPasteMode then
+                ValueSome (this._PasteModeEnteredAt + timeoutTicks)
+            else
+                ValueNone
+
+        match escDeadline, pasteDeadline with
+        | ValueNone, d -> d
+        | d, ValueNone -> d
+        | ValueSome esc, ValueSome paste -> ValueSome (min esc paste)
 
     /// Increment the terminal resize generation. This is intended to be called by signal handlers (e.g., SIGWINCH).
     /// The render loop will detect the change and refresh terminal bounds.
@@ -481,7 +519,7 @@ type WorldFreezer<'appEvent> =
                     float (this._Stopwatch.GetTimestamp () - this._PasteModeEnteredAt)
                     / float this._Stopwatch.Frequency
 
-                if elapsed > 0.01 then
+                if elapsed > WorldFreezerTimeouts.REEMIT_TIMEOUT_SECONDS then
                     // Re-emit the paste mode entry keys (ESC [ 2 0 0 ~)
                     for key in this._PasteModeEntryKeys do
                         result.Add (WorldStateChange.Keystroke key)
