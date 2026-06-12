@@ -49,9 +49,9 @@ jobs:
       - name: Enable Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@b8276522d77f21bf19d3574e5bc99186a6c7aa6c
       - name: Build
-        run: nix build
+        run: nix build -L
       - name: Reproducibility check
-        run: nix build --rebuild
+        run: nix build -L --rebuild
 
   check-dotnet-format:
     runs-on: ubuntu-latest
