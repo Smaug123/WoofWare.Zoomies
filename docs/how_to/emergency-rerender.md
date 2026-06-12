@@ -59,8 +59,8 @@ let config =
     |> AppConfig.withHandlePostLayout handlePostLayout
 ```
 
-An important point about performance: it's fine to process an `Emergency` event in `ProcessPostLayoutEvents` on every tick.
-Zoomies's [early cutoff mechanism](../explanation/cutoff.md) means the repeated setting of `Emergency = false` (resp. `true`) in the happy path (resp. sad path) *won't* cause rerenders: since user state remains equal after the `ProcessPostLayoutEvents` call, Zoomies doesn't rerender.
+An important point about performance: it's fine to process an `Emergency` event in `HandlePostLayout` on every tick.
+Zoomies's [early cutoff mechanism](../explanation/cutoff.md) means the repeated setting of `Emergency = false` (resp. `true`) in the happy path (resp. sad path) *won't* cause rerenders: since user state remains equal after the `HandlePostLayout` call, Zoomies doesn't rerender.
 It's only when the value of `Emergency` *changes* that the UI rerenders.
 
 ## Emitting the event that updates the state

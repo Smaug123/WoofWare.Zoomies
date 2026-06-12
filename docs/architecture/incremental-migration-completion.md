@@ -1,7 +1,11 @@
 # Completing the Incremental Migration
 
-This document is the design for finishing the migration started on the `incremental` branch.
-It supersedes `event-loop-design.md`, which was written against an earlier revision of `App.fs` and predates several upstream facts established below.
+**Status: implemented.** This document was the design for finishing the migration started on
+the `incremental` branch, and is retained as the as-built rationale; every section below has
+landed (see the commit history of this branch for the stage-by-stage implementation, which
+followed `IMPLEMENTATION_PLAN.md`). Sections are written in the design's original tense, so
+"current state" descriptions refer to the pre-migration code. It superseded
+`event-loop-design.md`, which was written against an earlier revision of `App.fs`.
 
 ## Where we are
 

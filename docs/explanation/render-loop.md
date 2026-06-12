@@ -7,8 +7,13 @@ index: 2
 
 # The render loop
 
-The event loop in WoofWare.Zoomies happens in distinct steps.
+The event loop in WoofWare.Zoomies is event-driven: between renders, the framework sleeps until something happens.
+The wake sources are: a keystroke arrives, an application event is posted through the `IWorldBridge`, the terminal is resized, the Incremental clock's next alarm comes due (animation frames, activation-highlight expiry), or the input decoder's internal timeout elapses (distinguishing a bare Escape press from an ANSI escape sequence).
+An idle application does no work at all.
+
+Once awake, rendering happens in distinct steps.
 We start at the point where something has caused the framework to decide to rerender: perhaps user state has changed in response to an input from the world, or perhaps the terminal has resized, for example.
+The decision itself is made by the Incremental graph: the framework renders when the observed vdom value changes (or when the renderer knows its picture of the terminal is invalid, after a resize).
 
 1. Zoomies invokes the application author's `View` function (from the `AppConfig`), asking it for a Vdom. The `View` function receives a `VdomContext<_>` and the current state as an incremental `Node`, so the author can observe the terminal size, the focused key from the previous render, and the current application state.
 1. The author's code returns a Vdom.

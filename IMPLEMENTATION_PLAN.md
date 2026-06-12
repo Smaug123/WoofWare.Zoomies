@@ -1,6 +1,8 @@
 # Implementation plan: completing the Incremental migration
 
-Implement this plan with each stage on its own branch, stacked as necessary on previous branches, so that a reviewer can review each branch in isolation.
+**Status: completed.** All stages below have landed, one commit per stage on the
+`incremental` branch (stages were committed sequentially rather than as stacked branches,
+at the maintainer's request).
 
 The design document is `docs/architecture/incremental-migration-completion.md` (referenced below as DESIGN). Each stage states its dependencies, the design sections it implements, and its correctness oracle. Stages 2-6 and 9-10 are mutually independent once Stage 1 lands; Stage 7 is the convergence point.
 

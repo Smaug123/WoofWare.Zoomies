@@ -63,9 +63,9 @@ The framework uses a virtual DOM approach with these key types:
 - Focus management system for interactive elements
 
 ### World State Management
-- `WorldFreezer<'appEvent>` - Manages application state changes and event processing
-- `WorldProcessor<'appEvent, 'userState>` - Processes world state changes and updates VDOM
-- Event-driven architecture with keystroke handling and focus cycling. The render loop summons a readout of all the external changes at the start of each render; the framework consumes input only on demand
+- `WorldFreezer<'appEvent>` - Funnels the outside world (keystrokes, posted application events, terminal resizes) into a linear stream of `WorldStateChange`s, and owns the wake signal the render loop sleeps on
+- `AppConfig<'state, 'appEvent, 'postLayoutEvent>` - The application: initial state, a pure `Transition : 'state -> 'appEvent -> 'state`, an incremental `View`, input handling, and an activation resolver. User state lives in an Incremental `Var` owned by the app loop
+- The render loop is event-driven: it sleeps until input arrives, an application event is posted, the terminal resizes, the clock's next alarm is due (animations, activation expiry), or the input decoder's internal timeout (Esc disambiguation, paste timeout) elapses. An idle app does no work
 
 ### Rendering System
 - `RenderState` - Tracks rendering state including previous VDOM for diffing
