@@ -34,10 +34,11 @@ module TestIncrementalState =
         // Use a safe range: 1970 to 2200
         let minDate = TimeConversion.unixEpoch
         let maxDate = DateTime (2200, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-        let tickRange = maxDate.Ticks - minDate.Ticks
+        // Seconds in range is ~7.3e9, which overflows int, so choose over int64.
+        let secondsRange = (maxDate.Ticks - minDate.Ticks) / 10_000_000L
 
         Arb.fromGen (
-            Gen.choose (0, int (tickRange / 10_000_000L)) // seconds in range
+            Gen.choose64 (0L, secondsRange)
             |> Gen.map (fun seconds -> minDate.AddSeconds (float seconds))
         )
 
@@ -330,3 +331,74 @@ module TestIncrementalState =
         let incrState = IncrementalState.make emptyRect None
 
         incrState.Incr.Clock.NextAlarmFiresAt incrState.Clock |> shouldEqual ValueNone
+
+    // ============================================================
+    // advanceClockAndStabilize honesty: graph time equals the last
+    // observed wall-clock time; no fabricated advances.
+    // ============================================================
+
+    [<Test>]
+    let ``advanceClockAndStabilize never fabricates time`` () =
+        // Monotone-with-repeats sequences: a start time plus non-negative
+        // second-granularity deltas (constructed, not filtered; zeros included).
+        let arb =
+            Arb.fromGen (
+                gen {
+                    let! start = validDateTimeArb.Generator
+                    let! deltas = Gen.listOf (Gen.choose (0, 100))
+                    return start, deltas
+                }
+            )
+
+        let prop (start : DateTime, deltas : int list) =
+            let incrState = IncrementalState.make emptyRect None
+            let observer = incrState.Incr.Observe (IncrementalState.clockTimeNode incrState)
+
+            IncrementalState.advanceClockAndStabilize start incrState
+            Observer.value observer |> shouldEqual (TimeConversion.dateTimeToNs start)
+
+            let mutable current = start
+
+            for delta in deltas do
+                current <- current.AddSeconds (float delta)
+                IncrementalState.advanceClockAndStabilize current incrState
+                // The observed clock is exactly the requested time: zero deltas must not creep.
+                Observer.value observer |> shouldEqual (TimeConversion.dateTimeToNs current)
+
+        Check.One (propConfig, Prop.forAll arb prop)
+
+    [<Test>]
+    let ``advanceClockAndStabilize to an earlier time leaves the clock unchanged`` () =
+        let arb =
+            Arb.fromGen (
+                gen {
+                    let! start = validDateTimeArb.Generator
+                    let! backwards = Gen.choose (1, 1000)
+                    return start, backwards
+                }
+            )
+
+        let prop (start : DateTime, backwardsSeconds : int) =
+            let incrState = IncrementalState.make emptyRect None
+            let observer = incrState.Incr.Observe (IncrementalState.clockTimeNode incrState)
+
+            IncrementalState.advanceClockAndStabilize start incrState
+
+            IncrementalState.advanceClockAndStabilize (start.AddSeconds (float -backwardsSeconds)) incrState
+            Observer.value observer |> shouldEqual (TimeConversion.dateTimeToNs start)
+
+        Check.One (propConfig, Prop.forAll arb prop)
+
+    [<Test>]
+    let ``advanceClockAndStabilize with unchanged time still stabilizes pending var sets`` () =
+        let incrState = IncrementalState.make emptyRect None
+        let var = incrState.Incr.Var.Create 0
+        let observer = incrState.Incr.Observe (incrState.Incr.Var.Watch var)
+
+        IncrementalState.advanceClockAndStabilize MockTime.defaultStartTime incrState
+        Observer.value observer |> shouldEqual 0
+
+        incrState.Incr.Var.Set var 1
+        // Time has not moved, but stabilization must still propagate the var set.
+        IncrementalState.advanceClockAndStabilize MockTime.defaultStartTime incrState
+        Observer.value observer |> shouldEqual 1
