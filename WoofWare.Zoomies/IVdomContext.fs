@@ -27,8 +27,17 @@ module VdomContextConstants =
 /// Base interface for VdomContext - used by components that don't need to post layout events.
 /// This provides read-only access to context information like terminal bounds and focus state.
 type IVdomContext =
-    /// Get the dimensions of the terminal.
+    /// Get the dimensions of the terminal, as a plain value.
+    ///
+    /// This is only meaningful inside views lifted by `App.pureView`/`App.pureViewIncr`,
+    /// which re-run the whole view whenever the bounds change. Inside a hand-built
+    /// incremental node's closure this value is silently stale: depend on
+    /// `TerminalBoundsNode` instead.
     abstract TerminalBounds : Rectangle
+
+    /// Get the dimensions of the terminal as an incremental node. Computations built on
+    /// this recompute when the terminal is resized.
+    abstract TerminalBoundsNode : Rectangle Node
 
     /// Get the currently focused key.
     abstract FocusedKey : NodeKey option Node

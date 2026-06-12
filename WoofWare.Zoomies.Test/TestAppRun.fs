@@ -805,3 +805,55 @@ module TestAppRun =
         IncrTestContext.pumpOnce listener config ctx |> ignore
         flushCount ops |> shouldEqual flushesAfterResize
         clearScreens () |> shouldEqual (clearsAfterFirstRender + 1)
+
+    [<Test>]
+    let ``a hand-built incremental view tracks resizes via TerminalBoundsNode`` () =
+        let rendered = ResizeArray<string> ()
+        let mutable consoleWidth = 80
+        let mutable consoleHeight = 10
+
+        let console : IConsole =
+            {
+                WindowWidth = fun () -> consoleWidth
+                WindowHeight = fun () -> consoleHeight
+                ColorMode = ColorMode.Color
+                Execute = fun _ -> ()
+                Flush = fun () -> ()
+            }
+
+        let listener =
+            WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+        // No pureView involved: the view depends on bounds only through the node.
+        let incrVdom (ctx : VdomContext<unit>) (_stateNode : unit Node) : Vdom<DesiredBounds> Node =
+            (ctx :> IVdomContext).TerminalBoundsNode
+            |> (VdomContext.incr ctx)
+                .Map (fun (bounds : Rectangle) ->
+                    let text = $"%i{bounds.Width}x%i{bounds.Height}"
+                    rendered.Add text
+                    Vdom.textContent text
+                )
+
+        let config : AppConfig<unit, unit, unit> =
+            {
+                Initial = ()
+                Transition = fun s _ -> s
+                View = incrVdom
+                HandleInput = fun _ -> None
+                HandlePostLayout = fun _ s -> s
+                FocusHandling = FocusHandling.FrameworkManaged
+                ActivationResolver = ActivationResolver.none
+                OnSetup = fun _ -> ()
+            }
+
+        use ctx = IncrTestContext.make console config None
+
+        IncrTestContext.pumpOnce listener config ctx |> ignore
+        rendered |> Seq.last |> shouldEqual "80x10"
+
+        consoleWidth <- 120
+        consoleHeight <- 40
+        listener.NotifyTerminalResize ()
+        IncrTestContext.pumpOnce listener config ctx |> ignore
+
+        rendered |> Seq.last |> shouldEqual "120x40"

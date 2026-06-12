@@ -25,6 +25,8 @@ type VdomContext<'postLayoutEvent> =
     interface IVdomContext<'postLayoutEvent> with
         member this.TerminalBounds = this._Incr.Var.Value this._TerminalBoundsVar
 
+        member this.TerminalBoundsNode = this._Incr.Var.Watch this._TerminalBoundsVar
+
         member this.FocusedKey = this._Incr.Var.Watch this._FocusedKeyVar
 
         member this.Incr = this._IncrView
