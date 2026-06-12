@@ -242,7 +242,6 @@ module App =
 
         let resizeGeneration = listener.TerminalResizeGeneration
         RenderState.refreshTerminalSize renderState
-        VdomContext.pruneExpiredActivations loopUtcNow vdomContext
 
         listener.RefreshExternal ()
 

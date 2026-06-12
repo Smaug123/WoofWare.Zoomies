@@ -1,6 +1,7 @@
 namespace WoofWare.Zoomies
 
 open WoofWare.Incremental
+open WoofWare.TimingWheel
 
 /// Restricted Incremental API for use in view functions.
 /// This exposes only safe combinators that build nodes without forcing stabilization.
@@ -18,6 +19,10 @@ module VdomContextConstants =
     /// framework considers `VdomContext.wasRecentlyActivated` to expire.
     [<Literal>]
     let RECENT_ACTIVATION_TIMEOUT_MS = 500.0
+
+    /// The activation timeout as a clock span.
+    let internal recentActivationTimeout : TimeNs.Span =
+        TimeNs.Span.ofInt64Ns (int64 (RECENT_ACTIVATION_TIMEOUT_MS * 1_000_000.0))
 
 /// Base interface for VdomContext - used by components that don't need to post layout events.
 /// This provides read-only access to context information like terminal bounds and focus state.

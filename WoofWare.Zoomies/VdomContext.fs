@@ -1,8 +1,8 @@
 namespace WoofWare.Zoomies
 
 open System
-open System.Collections.Generic
 open WoofWare.Incremental
+open WoofWare.TimingWheel
 
 /// VdomContext implementation backed by Incremental nodes.
 type VdomContext<'postLayoutEvent> =
@@ -16,10 +16,11 @@ type VdomContext<'postLayoutEvent> =
             /// Cached clock DateTime node.
             _ClockDateTimeNode : DateTime Node
             mutable _IsDirty : bool
-            _LastActivationTimes : Dictionary<NodeKey, DateTime>
             _PostLayoutEvents : ResizeArray<'postLayoutEvent>
-            /// Incremented whenever activation state changes, so incremental nodes can depend on it.
-            _ActivationGenerationVar : int Var
+            /// Last activation time per key, newest first. An association list rather than a Map
+            /// because NodeKey has no comparison; it stays tiny because recordActivation prunes
+            /// entries that have already expired.
+            _ActivationsVar : (NodeKey * TimeNs) list Var
         }
 
     interface IVdomContext<'postLayoutEvent> with
@@ -34,18 +35,25 @@ type VdomContext<'postLayoutEvent> =
         member this.Builder = IncrementalBuilder.create this._Incr
 
         member this.WasRecentlyActivated key =
-            let activationGenNode = this._Incr.Var.Watch this._ActivationGenerationVar
-
-            this._Incr.Map2
-                (fun _gen (now : DateTime) ->
-                    match this._LastActivationTimes.TryGetValue key with
-                    | true, time ->
-                        let elapsed = (now - time).TotalMilliseconds
-                        elapsed < VdomContextConstants.RECENT_ACTIVATION_TIMEOUT_MS
-                    | false, _ -> false
+            let activatedAtNode =
+                this._Incr.Var.Watch this._ActivationsVar
+                |> this._Incr.Map (fun entries ->
+                    entries |> List.tryPick (fun (k, t) -> if k = key then Some t else None)
                 )
-                activationGenNode
-                this._ClockDateTimeNode
+
+            // Bind so that each activation gets its own clock alarm: the node flips to false
+            // exactly when the activation window closes, and the alarm is what tells the event
+            // loop to wake up and repaint.
+            activatedAtNode
+            |> this._Incr.Bind (fun activatedAt ->
+                match activatedAt with
+                | None -> this._Incr.Return false
+                | Some activatedAt ->
+                    this._Incr.Clock.At
+                        this._Clock
+                        (TimeNs.add activatedAt VdomContextConstants.recentActivationTimeout)
+                    |> this._Incr.Map (fun ba -> ba = BeforeOrAfter.Before)
+            )
 
         member this.PostLayoutEvent event =
             this._PostLayoutEvents.Add event
@@ -64,9 +72,8 @@ module VdomContext =
             _IncrView = IncrView incrState.Incr
             _ClockDateTimeNode = incrState.ClockDateTimeNode
             _IsDirty = true
-            _LastActivationTimes = Dictionary<NodeKey, DateTime> ()
             _PostLayoutEvents = ResizeArray ()
-            _ActivationGenerationVar = incrState.Incr.Var.Create 0
+            _ActivationsVar = incrState.Incr.Var.Create []
         }
 
     /// Get the terminal bounds.
@@ -100,54 +107,29 @@ module VdomContext =
         (ctx : VdomContext<'postLayoutEvent>)
         : unit
         =
-        ctx._LastActivationTimes.[key] <- now
-        let gen = ctx._Incr.Var.Value ctx._ActivationGenerationVar
-        ctx._Incr.Var.Set ctx._ActivationGenerationVar (gen + 1)
-        ctx._IsDirty <- true
+        let nowNs = TimeConversion.dateTimeToNs now
+
+        let live =
+            ctx._Incr.Var.Value ctx._ActivationsVar
+            // Drop the key being re-recorded, and prune entries whose window has already
+            // closed: their alarms have fired, so nothing depends on them any more.
+            |> List.filter (fun (k, t) -> k <> key && TimeNs.add t VdomContextConstants.recentActivationTimeout > nowNs)
+
+        ctx._Incr.Var.Set ctx._ActivationsVar ((key, nowNs) :: live)
 
     /// Clear activation state for a key.
     let internal clearActivation<'postLayoutEvent> (key : NodeKey) (ctx : VdomContext<'postLayoutEvent>) : unit =
-        if ctx._LastActivationTimes.Remove key then
-            let gen = ctx._Incr.Var.Value ctx._ActivationGenerationVar
-            ctx._Incr.Var.Set ctx._ActivationGenerationVar (gen + 1)
-            ctx._IsDirty <- true
+        let current = ctx._Incr.Var.Value ctx._ActivationsVar
+        let remaining = current |> List.filter (fun (k, _) -> k <> key)
 
-    /// Remove expired activation records.
-    let internal pruneExpiredActivations<'postLayoutEvent>
-        (now : DateTime)
-        (ctx : VdomContext<'postLayoutEvent>)
-        : unit
-        =
-        // .NET Core 3.0+: Remove does not invalidate enumerators. Tested in TestVdomContext.fs.
-        let mutable removed = false
-
-        for KeyValue (key, time) in ctx._LastActivationTimes do
-            if
-                (now - time).TotalMilliseconds
-                >= VdomContextConstants.RECENT_ACTIVATION_TIMEOUT_MS
-            then
-                ctx._LastActivationTimes.Remove key |> ignore<bool>
-                removed <- true
-
-        if removed then
-            let gen = ctx._Incr.Var.Value ctx._ActivationGenerationVar
-            ctx._Incr.Var.Set ctx._ActivationGenerationVar (gen + 1)
-            ctx._IsDirty <- true
+        if remaining.Length <> current.Length then
+            ctx._Incr.Var.Set ctx._ActivationsVar remaining
 
     /// Returns a Node that is true if the given key was activated within the visual feedback window.
+    /// The node owns a clock alarm for the end of the window, so expiry both flips the node and
+    /// wakes the event loop.
     let wasRecentlyActivated<'postLayoutEvent> (key : NodeKey) (ctx : VdomContext<'postLayoutEvent>) : bool Node =
-        let activationGenNode = ctx._Incr.Var.Watch ctx._ActivationGenerationVar
-
-        ctx._Incr.Map2
-            (fun _gen (now : DateTime) ->
-                match ctx._LastActivationTimes.TryGetValue key with
-                | true, time ->
-                    let elapsed = (now - time).TotalMilliseconds
-                    elapsed < VdomContextConstants.RECENT_ACTIVATION_TIMEOUT_MS
-                | false, _ -> false
-            )
-            activationGenNode
-            ctx._ClockDateTimeNode
+        (ctx :> IVdomContext).WasRecentlyActivated key
 
     /// Mark the context as dirty.
     let internal markDirty<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : unit = ctx._IsDirty <- true
