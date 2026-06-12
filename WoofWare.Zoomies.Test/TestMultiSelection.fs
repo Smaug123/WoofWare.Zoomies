@@ -42,14 +42,10 @@ module TestMultiSelection =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -100,14 +96,10 @@ module TestMultiSelection =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -158,14 +150,10 @@ module TestMultiSelection =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -216,14 +204,10 @@ module TestMultiSelection =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -274,14 +258,10 @@ module TestMultiSelection =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -352,14 +332,10 @@ module TestMultiSelection =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config : AppConfig<State, unit, unit> =
                 AppConfig.simple
@@ -489,14 +465,10 @@ module TestMultiSelection =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let transition (s : ToggleListState) (ev : ToggleListEvent) : ToggleListState =
                 match ev with
@@ -607,14 +579,10 @@ module TestMultiSelection =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 25) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -681,14 +649,10 @@ module TestMultiSelection =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -749,14 +713,10 @@ module TestMultiSelection =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -838,14 +798,10 @@ module TestMultiSelection =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let transition (s : ArrowTestState) (ev : ArrowTestEvent) : ArrowTestState =
                 match ev with
@@ -1004,14 +960,10 @@ module TestMultiSelection =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 4)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let transition (s : FocusLeaveState) (ev : FocusLeaveEvent) : FocusLeaveState =
                 match ev with
@@ -1155,14 +1107,10 @@ module TestMultiSelection =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let transition (s : NoDanceState) (ev : NoDanceEvent) : NoDanceState =
                 match ev with
@@ -1366,14 +1314,10 @@ module TestMultiSelection =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let transition (s : ViewportAwareState) (ev : ViewportAwareEvent) : ViewportAwareState =
                 match ev with

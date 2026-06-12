@@ -42,14 +42,10 @@ module TestCheckbox =
 
             let config = TestConfig.passthroughIncr<unit> vdom
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             use ctx = IncrTestContext.make console config None
 

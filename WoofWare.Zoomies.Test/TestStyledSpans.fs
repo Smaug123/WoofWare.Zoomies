@@ -37,14 +37,10 @@ module TestStyledSpans =
                     ]
                 )
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -91,14 +87,10 @@ Hello     |
                     ]
                 )
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -138,14 +130,10 @@ RGB       |
                     wrap = true
                 )
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -172,14 +160,10 @@ World|
 
             let vdom (_ : IVdomContext<_>) (_ : unit) = Vdom.styledSpans []
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -213,14 +197,10 @@ World|
                     wrap = false
                 )
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -260,14 +240,10 @@ Hello|
                     ]
                 )
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -304,14 +280,10 @@ World     |
                     alignment = ContentAlignment.Centered
                 )
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 

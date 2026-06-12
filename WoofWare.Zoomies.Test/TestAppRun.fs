@@ -34,14 +34,8 @@ module TestAppRun =
 
             let ctrlCHandler, _, _ = FakeCtrlCHandler.make ()
 
-            let world = MockWorld.make ()
-
             let worldFreezer () =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
             let vdom (_ctx : IVdomContext<_>) (_state : unit) : Vdom<DesiredBounds> = Vdom.empty
 
@@ -141,14 +135,10 @@ module TestAppRun =
                 Flush = fun () -> ()
             }
 
-        let world = MockWorld.make ()
-
         let listener =
-            WorldFreezer.listen'
-                UnrecognisedEscapeCodeBehaviour.Throw
-                StopwatchMock.Empty
-                world.KeyAvailable
-                world.ReadKey
+            WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+        let world = MockWorld.attach listener
 
         let incrVdom (ctx : VdomContext<unit>) (_stateNode : unit Node) : Vdom<DesiredBounds> Node =
             let incr = VdomContext.incr ctx
@@ -382,14 +372,10 @@ module TestAppRun =
                 Flush = fun () -> flushCount.Value <- flushCount.Value + 1
             }
 
-        let world = MockWorld.make ()
-
         let listener =
-            WorldFreezer.listen'
-                UnrecognisedEscapeCodeBehaviour.Throw
-                StopwatchMock.Empty
-                world.KeyAvailable
-                world.ReadKey
+            WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+        let world = MockWorld.attach listener
 
         // Static vdom: same reference on every stabilization
         let staticVdom = Vdom.textContent "Hello"

@@ -1,6 +1,5 @@
 namespace WoofWare.Zoomies.Test
 
-open System.Collections.Concurrent
 open WoofWare.Incremental
 open WoofWare.Zoomies
 
@@ -41,28 +40,16 @@ module TestConfig =
 
 type MockWorld =
     {
-        KeyAvailable : unit -> bool
-        ReadKey : unit -> System.ConsoleKeyInfo
+        /// Deliver a key into the attached WorldFreezer, as the platform input thread would.
+        /// Synchronous: when this returns, the key is visible to the freezer's Changes.
         SendKey : System.ConsoleKeyInfo -> unit
     }
 
 [<RequireQualifiedAccess>]
 module MockWorld =
 
-    let make () : MockWorld =
-        let queue = ConcurrentQueue ()
-
-        let isReady () = queue.Count > 0
-
-        let rec getLatest () =
-            match queue.TryDequeue () with
-            | false, _ -> getLatest ()
-            | true, v -> v
-
-        let send k = queue.Enqueue k
-
+    /// Create a MockWorld that delivers keystrokes synchronously into the given freezer.
+    let attach (freezer : WorldFreezer<'appEvent>) : MockWorld =
         {
-            KeyAvailable = isReady
-            ReadKey = getLatest
-            SendKey = send
+            SendKey = freezer.DeliverKeystroke
         }

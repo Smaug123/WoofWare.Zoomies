@@ -50,14 +50,10 @@ module TestPostLayoutEvents =
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let handlePostLayout (ev : PostLayoutEvent) (state : PostLayoutState) : PostLayoutState =
                 match ev with
@@ -112,14 +108,10 @@ module TestPostLayoutEvents =
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 10)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let receivedHeights = ResizeArray<int> ()
 
@@ -174,14 +166,10 @@ module TestPostLayoutEvents =
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 15)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let handlePostLayout (ev : PostLayoutEvent) (state : PostLayoutState) : PostLayoutState =
                 match ev with
@@ -260,14 +248,10 @@ module TestPostLayoutEvents =
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let handlePostLayout (ev : ChainedEvent) (state : ChainedStabilizationState) : ChainedStabilizationState =
                 match ev with
@@ -340,14 +324,10 @@ module TestPostLayoutEvents =
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let handlePostLayout (ev : InfiniteLoopEvent) (state : InfiniteLoopState) : InfiniteLoopState =
                 match ev with
@@ -446,14 +426,10 @@ module TestPostLayoutEvents =
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let handleInput (change : WorldStateChange<OrderingAppEvent>) : OrderingAppEvent option =
                 match change with
@@ -546,14 +522,10 @@ module TestPostLayoutEvents =
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let receivedEvents = ResizeArray<int> ()
 
@@ -612,14 +584,10 @@ module TestPostLayoutEvents =
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let handlePostLayout (ev : StateUnchangedEvent) (state : int) : int =
                 match ev with
@@ -701,14 +669,10 @@ module TestPostLayoutEvents =
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let transition (state : ActivationState) (ev : ActivationEvent) : ActivationState =
                 match ev with
@@ -828,14 +792,10 @@ module TestPostLayoutEvents =
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let handlePostLayout (ev : RerenderRequestEvent) (state : RerenderRequestState) : RerenderRequestState =
                 match ev with
@@ -963,14 +923,10 @@ module TestPostLayoutEvents =
 
                 Vdom.flexibleContent measure render
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let handlePostLayout
                 (ev : IntermediateFrameEvent)

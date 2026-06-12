@@ -21,14 +21,11 @@ module TestBatchProcessing =
     let processKeystrokes (haveFrameworkHandleFocus : bool) (keystrokes : ConsoleKeyInfo list) : char list Task =
         task {
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
-            let world = MockWorld.make ()
 
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             // Send all keystrokes
             for key in keystrokes do
@@ -152,14 +149,11 @@ module TestBatchProcessing =
     let processKeystrokesWithFocus (keystrokes : ConsoleKeyInfo list) : char list Task =
         task {
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
-            let world = MockWorld.make ()
 
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             // Send all keystrokes
             for key in keystrokes do
@@ -256,14 +250,11 @@ module TestBatchProcessing =
     let ``user managed focus passes tabs through`` () =
         task {
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
-            let world = MockWorld.make ()
 
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let initialState = ImmutableArray<char>.Empty
 
@@ -323,14 +314,11 @@ module TestBatchProcessing =
     let ``framework managed focus intercepts tabs`` () =
         task {
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
-            let world = MockWorld.make ()
 
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let initialState = ImmutableArray<char>.Empty
 
@@ -394,14 +382,11 @@ module TestBatchProcessing =
     let ``all events processed in order`` () =
         task {
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
-            let world = MockWorld.make ()
 
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let initialState : char list = []
 

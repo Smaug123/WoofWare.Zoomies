@@ -74,14 +74,10 @@ module TestTextBox =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let resolver =
                 ActivationResolver.combine
@@ -151,14 +147,10 @@ module TestTextBox =
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             // This test uses user-managed focus and captures all keystrokes
             let config : AppConfig<KeystrokeState, ConsoleKeyInfo, unit> =
@@ -215,14 +207,10 @@ module TestTextBox =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
@@ -317,14 +305,10 @@ Hello!|                                 |
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
@@ -402,14 +386,10 @@ Hello!|                                 |
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
@@ -533,14 +513,10 @@ Hello!|                                 |
 
             let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let resolver =
                 ActivationResolver.combine
@@ -622,14 +598,10 @@ Unfocused                               |
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
@@ -672,14 +644,10 @@ Unfocused                               |
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
@@ -723,14 +691,10 @@ Unfocused                               |
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
@@ -778,14 +742,10 @@ Unfocused                               |
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
@@ -833,14 +793,10 @@ Unfocused                               |
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
@@ -888,14 +844,10 @@ Unfocused                               |
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
@@ -934,14 +886,10 @@ Unfocused                               |
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 
@@ -980,14 +928,10 @@ Unfocused                               |
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let resolver = ActivationResolver.textBox textBoxKey TextEdit
 

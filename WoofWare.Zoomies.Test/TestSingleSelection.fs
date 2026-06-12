@@ -37,14 +37,10 @@ module TestSingleSelection =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -95,14 +91,10 @@ module TestSingleSelection =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -153,14 +145,10 @@ module TestSingleSelection =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -211,14 +199,10 @@ module TestSingleSelection =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -269,14 +253,10 @@ module TestSingleSelection =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -340,14 +320,10 @@ module TestSingleSelection =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let initialState : FocusCycleState =
                 {
@@ -455,14 +431,10 @@ module TestSingleSelection =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let resolver =
                 ActivationResolver.selectionList
@@ -586,14 +558,10 @@ module TestSingleSelection =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let resolver =
                 ActivationResolver.selectionList
@@ -708,14 +676,10 @@ module TestSingleSelection =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 25) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -781,14 +745,10 @@ module TestSingleSelection =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -849,14 +809,10 @@ module TestSingleSelection =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -935,14 +891,10 @@ module TestSingleSelection =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let resolver =
                 ActivationResolver.selectionList
@@ -1098,14 +1050,10 @@ module TestSingleSelection =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let resolver =
                 ActivationResolver.selectionList
@@ -1263,14 +1211,10 @@ module TestSingleSelection =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let resolver =
                 ActivationResolver.selectionList
@@ -1474,14 +1418,10 @@ module TestSingleSelection =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let resolver =
                 ActivationResolver.selectionList

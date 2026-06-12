@@ -29,14 +29,10 @@ module TestLoadingSpinner =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 5) (fun () -> 1)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -61,14 +57,10 @@ module TestLoadingSpinner =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 5) (fun () -> 1)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -95,14 +87,10 @@ module TestLoadingSpinner =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 5) (fun () -> 1)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -128,14 +116,10 @@ module TestLoadingSpinner =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 5) (fun () -> 1)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -184,14 +168,10 @@ module TestLoadingSpinner =
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 5) (fun () -> 1)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             // Capture the vdoms we pass to rendering for diagnostic purposes
             let capturedVdoms = ResizeArray<Vdom<DesiredBounds>> ()

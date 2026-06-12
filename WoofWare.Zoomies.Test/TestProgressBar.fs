@@ -27,14 +27,10 @@ module TestProgressBar =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -60,14 +56,10 @@ module TestProgressBar =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -93,14 +85,10 @@ module TestProgressBar =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -130,14 +118,10 @@ module TestProgressBar =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -165,14 +149,10 @@ Loading:[███░░░░░░░] 30%      |
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -204,14 +184,10 @@ Loading:[███░░░░░░░] 30%      |
 
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -241,14 +217,10 @@ Progress:[██████░░░░]         |
 
             let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -274,14 +246,10 @@ Progress:[██████░░░░]         |
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -311,14 +279,10 @@ Progress:[██████░░░░]         |
 
             let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 
@@ -344,14 +308,10 @@ Progress:[██████░░░░]         |
 
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config = TestConfig.passthrough<unit> vdom
 

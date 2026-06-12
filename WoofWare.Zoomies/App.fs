@@ -243,8 +243,6 @@ module App =
         let resizeGeneration = listener.TerminalResizeGeneration
         RenderState.refreshTerminalSize renderState
 
-        listener.RefreshExternal ()
-
         match listener.Changes () with
         | ValueNone -> processNoChangesWithConfig previousVdom.Value stateVar renderState config vdomObserver incrState
         | ValueSome changes ->

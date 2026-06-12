@@ -74,14 +74,10 @@ module TestActivationWithPartialBatch =
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             // ActivationResolver converts space/enter on button to ButtonClickEvent
             let activationResolver =
@@ -152,14 +148,10 @@ module TestActivationWithPartialBatch =
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let activationResolver =
                 ActivationResolver (fun key keystroke _state ->
@@ -232,14 +224,10 @@ module TestActivationWithPartialBatch =
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let activationResolver =
                 ActivationResolver (fun key keystroke _state ->
@@ -304,14 +292,10 @@ module TestActivationWithPartialBatch =
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let activationResolver =
                 ActivationResolver (fun key keystroke _state ->
@@ -381,14 +365,10 @@ module TestActivationWithPartialBatch =
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let activationResolver =
                 ActivationResolver (fun key keystroke _state ->

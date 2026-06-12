@@ -141,14 +141,10 @@ module TestExternalEventSubscription =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 1)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config : AppConfig<TimerState, TimerAppEvent, unit> =
                 {
@@ -291,14 +287,10 @@ module TestExternalEventSubscription =
 
             let console, _terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 1)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let config : AppConfig<int list, int, unit> =
                 {
