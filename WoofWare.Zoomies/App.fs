@@ -58,6 +58,13 @@ module App =
                 (incr.Both (incr.Both stateNode boundsNode) focusNode)
 
     /// Render, re-stabilizing if focus changed during render.
+    ///
+    /// Rendering can change focus (initial-focus assignment, clearing focus that points at a
+    /// node which no longer exists), in which case we re-stabilize and render once more. The
+    /// second render must not change focus again: it renders a vdom that already reflects the
+    /// updated focus, and focus assignment is deterministic in the rendered tree. We enforce
+    /// that invariant loudly rather than silently rendering a frame inconsistent with the
+    /// graph: a violation is a framework bug.
     let private renderWithFocusStabilization<'postLayoutEvent>
         (renderState : RenderState<'postLayoutEvent>)
         (vdomObserver : Vdom<DesiredBounds> Observer)
@@ -74,6 +81,17 @@ module App =
         if focusedBefore <> focusedAfter then
             incrState.Incr.Stabilize ()
             Render.oneStepNoFlush renderState () (fun () -> Observer.value vdomObserver)
+
+            let focusedFinal = VdomContext.focusedKey ctx
+
+            if focusedAfter <> focusedFinal then
+                let show (key : NodeKey option) =
+                    match key with
+                    | None -> "None"
+                    | Some key -> NodeKey.toHumanReadableString key
+
+                failwith
+                    $"Framework bug: rendering failed to reach a focus fixpoint. Focus was %s{show focusedBefore} before rendering, %s{show focusedAfter} after the first render, and %s{show focusedFinal} after the second."
 
     /// Process post-layout events. Returns true if the iteration limit was hit.
     let private stabilizePostLayoutEventsWithConfig<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
