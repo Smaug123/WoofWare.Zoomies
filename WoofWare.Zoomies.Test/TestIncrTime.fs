@@ -386,3 +386,124 @@ module TestIncrTime =
             checkAndCount ()
             changeCount |> shouldEqual 2 // Changed to tick 1
         }
+
+    // ============================================================
+    // Alarm-scheduling tests: the clock-based variants keep an alarm
+    // in the timing wheel so the event loop knows when to wake up.
+    // ============================================================
+
+    [<Test>]
+    let ``spinnerFrameNode keeps a wake-up alarm scheduled while alive`` () =
+        let incr = Incremental.make ()
+        let clock = incr.Clock.Create (TimeNs.ofInt64NsSinceEpoch 0L)
+
+        let fps = 10.0
+        let intervalNs = int64 (1_000_000_000.0 / fps)
+
+        let frameNode = IncrTime.spinnerFrameNode incr clock 10 fps
+        let observer = incr.Observe frameNode
+        incr.Stabilize ()
+
+        let check () =
+            match incr.Clock.NextAlarmFiresAt clock with
+            | ValueNone -> failwith "expected a frame alarm to be scheduled"
+            | ValueSome alarmAt ->
+                let precision = TimeNs.Span.toInt64Ns (incr.Clock.AlarmPrecision clock)
+
+                // The next alarm is never more than one frame (plus wheel precision) away.
+                (TimeNs.toInt64NsSinceEpoch alarmAt <= intervalNs * 2L + precision)
+                |> shouldEqual true
+
+        check ()
+
+        // After advancing past several frames, an alarm is still scheduled for the next one.
+        incr.Clock.AdvanceClock clock (TimeNs.ofInt64NsSinceEpoch (intervalNs * 5L))
+        incr.Stabilize ()
+
+        match incr.Clock.NextAlarmFiresAt clock with
+        | ValueNone -> failwith "expected a frame alarm to remain scheduled after advancing"
+        | ValueSome alarmAt ->
+            let precision = TimeNs.Span.toInt64Ns (incr.Clock.AlarmPrecision clock)
+
+            (TimeNs.toInt64NsSinceEpoch alarmAt <= intervalNs * 6L + precision)
+            |> shouldEqual true
+
+        Observer.disallowFutureUse observer
+        incr.Stabilize ()
+
+    [<Test>]
+    let ``spinnerFrameNode alarm is removed when its Bind scope is invalidated`` () =
+        let incr = Incremental.make ()
+        let clock = incr.Clock.Create (TimeNs.ofInt64NsSinceEpoch 0L)
+
+        let showVar = incr.Var.Create true
+
+        // Components live inside Bind scopes (the vdom builder's let!); when the bind
+        // switches away, the spinner and its alarm must die with it.
+        let node =
+            incr.Bind
+                (fun show ->
+                    if show then
+                        IncrTime.spinnerFrameNode incr clock 10 10.0
+                    else
+                        incr.Return -1
+                )
+                (incr.Var.Watch showVar)
+
+        let observer = incr.Observe node
+        incr.Stabilize ()
+
+        incr.Clock.NextAlarmFiresAt clock |> shouldNotEqual ValueNone
+
+        incr.Var.Set showVar false
+        incr.Stabilize ()
+        Observer.value observer |> shouldEqual -1
+
+        incr.Clock.NextAlarmFiresAt clock |> shouldEqual ValueNone
+
+        Observer.disallowFutureUse observer
+        incr.Stabilize ()
+
+    [<Test>]
+    let ``degenerate spinner and tick parameters schedule no alarms`` () =
+        let incr = Incremental.make ()
+        let clock = incr.Clock.Create (TimeNs.ofInt64NsSinceEpoch 0L)
+
+        let frameNode = IncrTime.spinnerFrameNode incr clock 10 0.0
+        let frameNode2 = IncrTime.spinnerFrameNode incr clock 10 -3.0
+        let tickNode = IncrTime.periodicTickNode incr clock (TimeSpan.FromSeconds -1.0)
+        let tickNode2 = IncrTime.periodicTickNode incr clock TimeSpan.Zero
+
+        let observers =
+            [
+                incr.Observe frameNode |> ignore
+                incr.Observe frameNode2 |> ignore
+                incr.Observe tickNode |> ignore
+                incr.Observe tickNode2 |> ignore
+            ]
+
+        ignore observers
+        incr.Stabilize ()
+
+        incr.Clock.NextAlarmFiresAt clock |> shouldEqual ValueNone
+
+    [<Test>]
+    let ``spinnerFrameNode clamps sub-precision fps rather than throwing`` () =
+        let incr = Incremental.make ()
+        let clock = incr.Clock.Create (TimeNs.ofInt64NsSinceEpoch 0L)
+
+        // 10000 fps implies a 100us frame, below the wheel's ~1ms precision; the wheel
+        // would throw if asked for that alarm interval, so the framework must clamp.
+        let frameNode = IncrTime.spinnerFrameNode incr clock 10 10000.0
+        let observer = incr.Observe frameNode
+        incr.Stabilize ()
+
+        // Values still follow the true (unclamped) interval.
+        incr.Clock.AdvanceClock clock (TimeNs.ofInt64NsSinceEpoch 250_000L)
+        incr.Stabilize ()
+        Observer.value observer |> shouldEqual 2
+
+        incr.Clock.NextAlarmFiresAt clock |> shouldNotEqual ValueNone
+
+        Observer.disallowFutureUse observer
+        incr.Stabilize ()
