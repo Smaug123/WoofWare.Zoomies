@@ -15,7 +15,6 @@ type VdomContext<'postLayoutEvent> =
             _IncrView : IncrView
             /// Cached clock DateTime node.
             _ClockDateTimeNode : DateTime Node
-            mutable _IsDirty : bool
             _PostLayoutEvents : ResizeArray<'postLayoutEvent>
             /// Last activation time per key, newest first. An association list rather than a Map
             /// because NodeKey has no comparison; it stays tiny because recordActivation prunes
@@ -55,9 +54,7 @@ type VdomContext<'postLayoutEvent> =
                     |> this._Incr.Map (fun ba -> ba = BeforeOrAfter.Before)
             )
 
-        member this.PostLayoutEvent event =
-            this._PostLayoutEvents.Add event
-            this._IsDirty <- true
+        member this.PostLayoutEvent event = this._PostLayoutEvents.Add event
 
 [<RequireQualifiedAccess>]
 module VdomContext =
@@ -71,7 +68,6 @@ module VdomContext =
             _Incr = incrState.Incr
             _IncrView = IncrView incrState.Incr
             _ClockDateTimeNode = incrState.ClockDateTimeNode
-            _IsDirty = true
             _PostLayoutEvents = ResizeArray ()
             _ActivationsVar = incrState.Incr.Var.Create []
         }
@@ -90,7 +86,6 @@ module VdomContext =
 
         if current <> bounds then
             ctx._Incr.Var.Set ctx._TerminalBoundsVar bounds
-            ctx._IsDirty <- true
 
     /// Set the focused key.
     let internal setFocusedKey<'postLayoutEvent> (key : NodeKey option) (ctx : VdomContext<'postLayoutEvent>) : unit =
@@ -98,7 +93,6 @@ module VdomContext =
 
         if current <> key then
             ctx._Incr.Var.Set ctx._FocusedKeyVar key
-            ctx._IsDirty <- true
 
     /// Record that a node was just activated.
     let internal recordActivation<'postLayoutEvent>
@@ -131,14 +125,10 @@ module VdomContext =
     let wasRecentlyActivated<'postLayoutEvent> (key : NodeKey) (ctx : VdomContext<'postLayoutEvent>) : bool Node =
         (ctx :> IVdomContext).WasRecentlyActivated key
 
-    /// Mark the context as dirty.
-    let internal markDirty<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : unit = ctx._IsDirty <- true
-
-    /// Mark the context as clean.
-    let internal markClean<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : unit = ctx._IsDirty <- false
-
-    /// Check if the context is dirty.
-    let internal isDirty<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : bool = ctx._IsDirty
+    /// True if post-layout events have been posted and not yet drained. The render loop
+    /// must keep rendering (not sleep) while any are pending.
+    let internal hasPendingPostLayoutEvents<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : bool =
+        ctx._PostLayoutEvents.Count > 0
 
     /// Drain all post-layout events, returning them and clearing the internal list.
     let internal drainPostLayoutEvents<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : 'postLayoutEvent[] =

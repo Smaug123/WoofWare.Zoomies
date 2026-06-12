@@ -186,17 +186,19 @@ module App =
         let currentVdom = Observer.value vdomObserver
         let ctx = RenderState.vdomContext renderState
 
-        if not (Object.referenceEquals previousVdom currentVdom) || VdomContext.isDirty ctx then
+        if
+            not (Object.referenceEquals previousVdom currentVdom)
+            || renderState.NeedsFullRedraw
+            || VdomContext.hasPendingPostLayoutEvents ctx
+        then
             renderWithFocusStabilization renderState vdomObserver incrState
 
-            let hitLimit =
-                stabilizePostLayoutEventsWithConfig stateVar renderState config vdomObserver incrState
+            // If the iteration limit was hit, undrained events remain pending and the
+            // render loop will keep rendering rather than sleep.
+            stabilizePostLayoutEventsWithConfig stateVar renderState config vdomObserver incrState
+            |> ignore<bool>
 
-            // Only mark clean if we fully stabilized; if the iteration limit was hit,
-            // leave the context dirty so the next pump picks up the remaining work.
-            if not hitLimit then
-                VdomContext.markClean ctx
-
+            renderState.NeedsFullRedraw <- false
             Render.flush renderState
 
     /// Process when no changes occurred: render if the vdom changed.
@@ -212,15 +214,17 @@ module App =
         let currentVdom = Observer.value vdomObserver
         let ctx = RenderState.vdomContext renderState
 
-        if not (Object.referenceEquals previousVdom currentVdom) || VdomContext.isDirty ctx then
+        if
+            not (Object.referenceEquals previousVdom currentVdom)
+            || renderState.NeedsFullRedraw
+            || VdomContext.hasPendingPostLayoutEvents ctx
+        then
             renderWithFocusStabilization renderState vdomObserver incrState
 
-            let hitLimit =
-                stabilizePostLayoutEventsWithConfig stateVar renderState config vdomObserver incrState
+            stabilizePostLayoutEventsWithConfig stateVar renderState config vdomObserver incrState
+            |> ignore<bool>
 
-            if not hitLimit then
-                VdomContext.markClean ctx
-
+            renderState.NeedsFullRedraw <- false
             Render.flush renderState
 
     /// Run one iteration of the incremental event loop.
@@ -239,10 +243,14 @@ module App =
         let vdomContext = RenderState.vdomContext renderState
 
         let loopUtcNow = getUtcNow ()
-        IncrementalState.advanceClockAndStabilize loopUtcNow incrState
 
+        // Refresh the bounds before stabilizing, so a resize propagates through the graph
+        // in this very pump (rather than rendering a stale vdom now and the resized one on
+        // the next pump).
         let resizeGeneration = listener.TerminalResizeGeneration
         RenderState.refreshTerminalSize renderState
+
+        IncrementalState.advanceClockAndStabilize loopUtcNow incrState
 
         match listener.Changes () with
         | ValueNone -> processNoChangesWithConfig previousVdom.Value stateVar renderState config vdomObserver incrState
@@ -251,10 +259,12 @@ module App =
 
         if listener.TerminalResizeGeneration <> resizeGeneration then
             // Our knowledge of the current terminal's contents could be arbitrarily corrupted:
-            // we were drawing to the screen when it had an arbitrary size. Need a *complete* refresh.
+            // we were drawing to the screen when it had an arbitrary size. Need a *complete*
+            // refresh. The resize notification that bumped the generation also completed the
+            // armed wake signal, so the next loop iteration runs immediately and repaints.
             RenderState.clearScreen renderState
             renderState.PreviousVdom <- None
-            VdomContext.markDirty vdomContext
+            renderState.NeedsFullRedraw <- true
 
         previousVdom.Value <- Observer.value vdomObserver
 
@@ -344,13 +354,10 @@ module App =
                             config.OnSetup listener'
                             renderWithFocusStabilization renderState vdomObserver incrState
 
-                            let hitLimit =
-                                stabilizePostLayoutEventsWithConfig stateVar renderState config vdomObserver incrState
-
-                            // If the limit wasn't hit, we're fully stabilized; mark clean.
-                            // Otherwise leave dirty so the first pump picks up remaining work.
-                            if not hitLimit then
-                                VdomContext.markClean vdomContext
+                            // If the iteration limit was hit, undrained events remain pending
+                            // and the loop will keep rendering rather than sleep.
+                            stabilizePostLayoutEventsWithConfig stateVar renderState config vdomObserver incrState
+                            |> ignore<bool>
 
                             Render.flush renderState
 
@@ -414,7 +421,9 @@ module App =
                                     isCancelled
                                 |> ignore
 
-                                if not (isCancelled ()) then
+                                // Undrained post-layout events (the iteration limit tripped)
+                                // mean there is definitely more work: don't sleep.
+                                if not (isCancelled ()) && not (VdomContext.hasPendingPostLayoutEvents vdomContext) then
                                     waitForWork wake (nextDeadline ()) loopCts.Token
 
                             None

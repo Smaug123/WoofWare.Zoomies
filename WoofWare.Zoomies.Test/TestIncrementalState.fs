@@ -173,38 +173,7 @@ module TestIncrementalState =
     // ============================================================
 
     [<Test>]
-    let ``VdomContext.setTerminalBounds marks dirty when bounds change`` () =
-        let bounds1 =
-            {
-                TopLeftX = 0
-                TopLeftY = 0
-                Width = 80
-                Height = 24
-            }
-
-        let incrState = IncrementalState.make bounds1 None
-        let ctx = VdomContext.make<unit> incrState
-
-        // Start clean
-        VdomContext.markClean ctx
-        VdomContext.isDirty ctx |> shouldEqual false
-
-        // Change bounds
-        let bounds2 =
-            {
-                TopLeftX = 0
-                TopLeftY = 0
-                Width = 120
-                Height = 40
-            }
-
-        VdomContext.setTerminalBounds bounds2 ctx
-
-        // Should be dirty
-        VdomContext.isDirty ctx |> shouldEqual true
-
-    [<Test>]
-    let ``VdomContext.setTerminalBounds does not mark dirty when bounds unchanged`` () =
+    let ``setting unchanged bounds or focus does not dirty the graph`` () =
         let bounds =
             {
                 TopLeftX = 0
@@ -213,83 +182,58 @@ module TestIncrementalState =
                 Height = 24
             }
 
-        let incrState = IncrementalState.make bounds None
+        let key = NodeKey.make "key1"
+        let incrState = IncrementalState.make bounds (Some key)
         let ctx = VdomContext.make<unit> incrState
+        let incr = incrState.Incr
 
-        // Start clean
-        VdomContext.markClean ctx
-        VdomContext.isDirty ctx |> shouldEqual false
+        let mutable boundsRecomputes = 0
+        let mutable focusRecomputes = 0
 
-        // Set same bounds
+        let boundsProbe =
+            VdomContext.boundsNode ctx
+            |> incr.Map (fun b ->
+                boundsRecomputes <- boundsRecomputes + 1
+                b
+            )
+
+        let focusProbe =
+            VdomContext.focusedKeyNode ctx
+            |> incr.Map (fun f ->
+                focusRecomputes <- focusRecomputes + 1
+                f
+            )
+
+        let _boundsObserver = incr.Observe boundsProbe
+        let _focusObserver = incr.Observe focusProbe
+        incr.Stabilize ()
+
+        boundsRecomputes |> shouldEqual 1
+        focusRecomputes |> shouldEqual 1
+
+        // Setting identical values must not propagate.
         VdomContext.setTerminalBounds bounds ctx
-
-        // Should still be clean
-        VdomContext.isDirty ctx |> shouldEqual false
-
-    [<Test>]
-    let ``VdomContext.setFocusedKey marks dirty when focus changes`` () =
-        let key1 = NodeKey.make "key1"
-        let incrState = IncrementalState.make emptyRect (Some key1)
-        let ctx = VdomContext.make<unit> incrState
-
-        // Start clean
-        VdomContext.markClean ctx
-        VdomContext.isDirty ctx |> shouldEqual false
-
-        // Change focus
-        let key2 = NodeKey.make "key2"
-        VdomContext.setFocusedKey (Some key2) ctx
-
-        // Should be dirty
-        VdomContext.isDirty ctx |> shouldEqual true
-
-    [<Test>]
-    let ``VdomContext.setFocusedKey does not mark dirty when focus unchanged`` () =
-        let key = NodeKey.make "key1"
-        let incrState = IncrementalState.make emptyRect (Some key)
-        let ctx = VdomContext.make<unit> incrState
-
-        // Start clean
-        VdomContext.markClean ctx
-        VdomContext.isDirty ctx |> shouldEqual false
-
-        // Set same focus
         VdomContext.setFocusedKey (Some key) ctx
+        incr.Stabilize ()
 
-        // Should still be clean
-        VdomContext.isDirty ctx |> shouldEqual false
+        boundsRecomputes |> shouldEqual 1
+        focusRecomputes |> shouldEqual 1
 
-    [<Test>]
-    let ``VdomContext.setFocusedKey handles None to Some transition`` () =
-        let incrState = IncrementalState.make emptyRect None
-        let ctx = VdomContext.make<unit> incrState
+        // Setting different values must propagate.
+        VdomContext.setTerminalBounds
+            {
+                TopLeftX = 0
+                TopLeftY = 0
+                Width = 120
+                Height = 40
+            }
+            ctx
 
-        // Start clean
-        VdomContext.markClean ctx
-        VdomContext.isDirty ctx |> shouldEqual false
-
-        // Set focus from None to Some
-        let key = NodeKey.make "key1"
-        VdomContext.setFocusedKey (Some key) ctx
-
-        // Should be dirty
-        VdomContext.isDirty ctx |> shouldEqual true
-
-    [<Test>]
-    let ``VdomContext.setFocusedKey handles Some to None transition`` () =
-        let key = NodeKey.make "key1"
-        let incrState = IncrementalState.make emptyRect (Some key)
-        let ctx = VdomContext.make<unit> incrState
-
-        // Start clean
-        VdomContext.markClean ctx
-        VdomContext.isDirty ctx |> shouldEqual false
-
-        // Set focus from Some to None
         VdomContext.setFocusedKey None ctx
+        incr.Stabilize ()
 
-        // Should be dirty
-        VdomContext.isDirty ctx |> shouldEqual true
+        boundsRecomputes |> shouldEqual 2
+        focusRecomputes |> shouldEqual 2
 
     [<Test>]
     let ``VdomContext node accessors return working nodes`` () =

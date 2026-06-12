@@ -30,7 +30,6 @@ module internal EventLoop =
                 | ValueNone -> Task.Delay (Timeout.InfiniteTimeSpan, delayCts.Token)
                 | ValueSome d -> Task.Delay (d, delayCts.Token)
 
-            // ANALYZER: synchronous blocking call allowed: we're on the dedicated render-loop
-            // thread, which exists precisely to block here; nothing can deadlock against it.
+            // ANALYZER: synchronous blocking call allowed: dedicated render-loop thread, which exists precisely to block here.
             Task.WaitAny [| wake ; delayTask |] |> ignore<int>
             delayCts.Cancel ()

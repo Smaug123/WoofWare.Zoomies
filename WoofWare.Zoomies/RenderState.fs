@@ -19,6 +19,10 @@ type RenderState<'postLayoutEvent> =
         {
             Console : IConsole
             mutable PreviousVdom : RenderedNode option
+            /// The renderer's knowledge of the terminal contents is invalid (e.g. the terminal
+            /// was resized mid-draw): repaint everything at the next render, which the render
+            /// loop guarantees is scheduled.
+            mutable NeedsFullRedraw : bool
             mutable Buffer : TerminalCell voption[,]
             mutable CursorVisible : bool
             Output : TerminalOp -> unit
@@ -96,7 +100,16 @@ module RenderState =
         }
 
     let refreshTerminalSize<'postLayoutEvent> (rs : RenderState<'postLayoutEvent>) : unit =
-        VdomContext.setTerminalBounds (getBounds rs.Console) rs.VdomContext
+        let bounds = getBounds rs.Console
+
+        if bounds <> VdomContext.terminalBounds rs.VdomContext then
+            VdomContext.setTerminalBounds bounds rs.VdomContext
+            // The terminal may have reflowed our previous output arbitrarily, and even a
+            // bounds-independent vdom must be repainted onto the resized screen: discard
+            // everything we believe about the terminal's contents and redraw from scratch.
+            clearScreen rs
+            rs.PreviousVdom <- None
+            rs.NeedsFullRedraw <- true
 
     /// Advance focus to the next focusable node (Tab key)
     let advanceFocus<'postLayoutEvent> (s : RenderState<'postLayoutEvent>) : unit =
@@ -172,6 +185,7 @@ module RenderState =
             Console = c
             Buffer = changeBuffer
             PreviousVdom = None
+            NeedsFullRedraw = false
             Output = c.Execute
             CursorVisible = true
             KeyToNode = Dictionary<NodeKey, RenderedNode> ()

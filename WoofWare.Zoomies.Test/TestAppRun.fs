@@ -680,3 +680,128 @@ module TestAppRun =
             cts.Cancel ()
             do! waiter.WaitAsync (TimeSpan.FromSeconds 5.0)
         }
+
+    // ============================================================
+    // Render-gate tests: the graph (plus NeedsFullRedraw) is the only
+    // arbiter of whether a render happens.
+    // ============================================================
+
+    [<Test>]
+    let ``focus changes do not re-render a view that ignores focus`` () =
+        let flushCount = ref 0
+
+        let console : IConsole =
+            {
+                WindowWidth = fun () -> 80
+                WindowHeight = fun () -> 10
+                ColorMode = ColorMode.Color
+                Execute = fun _ -> ()
+                Flush = fun () -> flushCount.Value <- flushCount.Value + 1
+            }
+
+        let listener =
+            WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+        // A view with no focus dependency: focus changes cannot alter the pixels.
+        let staticVdom = Vdom.textContent "static"
+
+        let incrVdom (ctx : VdomContext<unit>) (_stateNode : unit Node) : Vdom<DesiredBounds> Node =
+            (VdomContext.incr ctx).Return staticVdom
+
+        let config : AppConfig<unit, unit, unit> =
+            {
+                Initial = ()
+                Transition = fun s _ -> s
+                View = incrVdom
+                HandleInput = fun _ -> None
+                HandlePostLayout = fun _ s -> s
+                FocusHandling = FocusHandling.FrameworkManaged
+                ActivationResolver = ActivationResolver.none
+                OnSetup = fun _ -> ()
+            }
+
+        use ctx = IncrTestContext.make console config None
+
+        IncrTestContext.pumpOnce listener config ctx |> ignore
+        let flushesAfterFirstRender = flushCount.Value
+
+        // Change focus behind the framework's back and pump: no render may happen.
+        VdomContext.setFocusedKey (Some (NodeKey.make "somewhere")) (RenderState.vdomContext ctx.RenderState)
+        IncrTestContext.pumpOnce listener config ctx |> ignore
+
+        flushCount.Value |> shouldEqual flushesAfterFirstRender
+
+    [<Test>]
+    let ``focus changes do re-render a pureView, which depends on focus`` () =
+        let flushCount = ref 0
+
+        let console : IConsole =
+            {
+                WindowWidth = fun () -> 80
+                WindowHeight = fun () -> 10
+                ColorMode = ColorMode.Color
+                Execute = fun _ -> ()
+                Flush = fun () -> flushCount.Value <- flushCount.Value + 1
+            }
+
+        let listener =
+            WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+        let config = TestConfig.passthrough<unit> (fun _ _ -> Vdom.textContent "static")
+
+        use ctx = IncrTestContext.make console config None
+
+        IncrTestContext.pumpOnce listener config ctx |> ignore
+        let flushesAfterFirstRender = flushCount.Value
+
+        VdomContext.setFocusedKey (Some (NodeKey.make "somewhere")) (RenderState.vdomContext ctx.RenderState)
+        IncrTestContext.pumpOnce listener config ctx |> ignore
+
+        flushCount.Value > flushesAfterFirstRender |> shouldEqual true
+
+    [<Test>]
+    let ``resize causes exactly one full redraw, then normal diffing resumes`` () =
+        let ops = ConcurrentQueue<ConsoleOp> ()
+        let mutable consoleWidth = 80
+        let mutable consoleHeight = 10
+
+        let console : IConsole =
+            {
+                WindowWidth = fun () -> consoleWidth
+                WindowHeight = fun () -> consoleHeight
+                ColorMode = ColorMode.Color
+                Execute = fun op -> ops.Enqueue (TerminalOp op)
+                Flush = fun () -> ops.Enqueue Flush
+            }
+
+        let listener =
+            WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+        let config = TestConfig.passthrough<unit> (fun _ _ -> Vdom.textContent "static")
+
+        use ctx = IncrTestContext.make console config None
+
+        IncrTestContext.pumpOnce listener config ctx |> ignore
+
+        let clearScreens () =
+            ops
+            |> Seq.filter (fun op -> op = TerminalOp TerminalOp.ClearScreen)
+            |> Seq.length
+
+        let clearsAfterFirstRender = clearScreens ()
+        let flushesAfterFirstRender = flushCount ops
+
+        // Resize: the next pump clears the screen and repaints in full.
+        consoleWidth <- 120
+        consoleHeight <- 40
+        listener.NotifyTerminalResize ()
+        IncrTestContext.pumpOnce listener config ctx |> ignore
+
+        clearScreens () |> shouldEqual (clearsAfterFirstRender + 1)
+        flushCount ops > flushesAfterFirstRender |> shouldEqual true
+
+        // A further pump with nothing changed renders nothing.
+        let flushesAfterResize = flushCount ops
+        IncrTestContext.pumpOnce listener config ctx |> ignore
+        flushCount ops |> shouldEqual flushesAfterResize
+        clearScreens () |> shouldEqual (clearsAfterFirstRender + 1)
