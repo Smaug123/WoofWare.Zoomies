@@ -75,6 +75,7 @@
             pkgs.claude-code
             pkgs.codex
             pkgs.gnused
+            pkgs.vhs # TUI demo recording
           ]
           ++ (
             if pkgs.stdenv.isDarwin
