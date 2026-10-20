@@ -35,14 +35,10 @@ module TestTextRendering =
 
             let processWorld = WorldProcessor.passthrough
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
@@ -99,14 +95,10 @@ r|
 
             let processWorld = WorldProcessor.passthrough
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
@@ -147,14 +139,10 @@ r|
             // But rendering wraps character-by-character, so it actually takes multiple lines
             let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 10)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // A 25-character word in a 10-character wide terminal
@@ -205,14 +193,10 @@ bottom    |
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Text with CRLF line endings - the \r should not be rendered as a visible character
@@ -252,14 +236,10 @@ Line3               |
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Text with old Mac-style CR line endings - should be treated as newlines
@@ -299,14 +279,10 @@ Line3               |
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Text with CRLF line endings and Centered alignment
@@ -346,14 +322,10 @@ Line3               |
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Text with old Mac-style CR line endings and Centered alignment
@@ -399,14 +371,10 @@ Line3               |
             // leading to truncation in auto-split layouts.
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 10)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Multi-line text that should be measured as needing 5 lines
@@ -461,14 +429,10 @@ Footer              |
             // Test that blank lines (from \n\n) are counted correctly
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 8)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Text with blank lines - should be measured as 5 lines total
@@ -516,14 +480,10 @@ Footer              |
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Text that exceeds width - with wrap=true (default), it wraps
@@ -563,14 +523,10 @@ xt        |
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Text that exceeds width - with wrap=false, it truncates
@@ -610,14 +566,10 @@ Hello Worl|
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Multi-line text with wrap=false - each line truncates independently
@@ -660,14 +612,10 @@ Short     |
             // to multiple lines now only requests 1 line of height.
             let console, terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 6)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Long text with wrap=false - should only take 1 line in auto layout
@@ -714,14 +662,10 @@ Footer    |
             // Compare wrap=true vs wrap=false side by side to show the difference
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 6)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Left side: wrap=true, Right side: wrap=false
@@ -766,14 +710,10 @@ here                |
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 6)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Long text that exceeds width - with wrap=true and Centered alignment
@@ -818,14 +758,10 @@ ABCDEFGHIJKLMNOPQRST|
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Long text with wrap=false and Centered alignment - should truncate
@@ -866,14 +802,10 @@ ABCDEFGHIJKLMNOPQRST|
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 12) (fun () -> 7)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Multi-line text where some lines need wrapping

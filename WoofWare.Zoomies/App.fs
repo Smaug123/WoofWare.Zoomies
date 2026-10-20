@@ -353,8 +353,6 @@ module App =
             RenderState.refreshTerminalSize renderState
             VdomContext.pruneExpiredActivations ctx
 
-            listener.RefreshExternal ()
-
             let changes = listener.Changes ()
 
             let state =

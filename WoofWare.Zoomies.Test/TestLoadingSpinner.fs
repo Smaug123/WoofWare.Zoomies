@@ -26,14 +26,10 @@ module TestLoadingSpinner =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 5) (fun () -> 1)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let haveFrameworkHandleFocus _ = false
 
@@ -68,14 +64,10 @@ module TestLoadingSpinner =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 5) (fun () -> 1)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let haveFrameworkHandleFocus _ = false
 
@@ -112,14 +104,10 @@ module TestLoadingSpinner =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 5) (fun () -> 1)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let haveFrameworkHandleFocus _ = false
 
@@ -155,14 +143,10 @@ module TestLoadingSpinner =
 
             let console, terminal = ConsoleHarness.make' (fun () -> 5) (fun () -> 1)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let haveFrameworkHandleFocus _ = false
 

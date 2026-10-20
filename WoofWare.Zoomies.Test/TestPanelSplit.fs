@@ -82,14 +82,10 @@ module TestPanelSplit =
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let splitKey = NodeKey.make "split"
 
@@ -198,14 +194,10 @@ module TestPanelSplit =
 
             let processWorld = WorldProcessor.passthrough
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             // Render
             App.pumpOnce
@@ -252,14 +244,10 @@ module TestPanelSplit =
 
             let processWorld = WorldProcessor.passthrough
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             // Render
             App.pumpOnce
@@ -290,14 +278,10 @@ module TestPanelSplit =
             // Test the normal case where there's enough space for all preferred sizes
             let console, terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 10)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Create two text components with different preferred widths
@@ -348,14 +332,10 @@ Hello world                                                        Hi           
             // Terminal is 20 wide, but text wants more
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Long text content that will wrap when space is limited.
@@ -403,14 +383,10 @@ onger piece text her|
             // This forces proportional scaling of minimums
             let console, terminal = ConsoleHarness.make' (fun () -> 8) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Words with minimum widths that exceed available space
@@ -454,14 +430,10 @@ o   d   |
             // Test horizontal auto splits with enough space
             let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 10)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Short text (prefers 1 line) and longer text (prefers multiple lines)
@@ -512,14 +484,10 @@ e multiple lines when rendered          |
             // Test horizontal auto splits when not enough vertical space
             let console, terminal = ConsoleHarness.make' (fun () -> 30) (fun () -> 4)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Both components want more height than available
@@ -562,14 +530,10 @@ nt                            |
             // Test auto splits with bordered components to make the allocation visible
             let console, terminal = ConsoleHarness.make' (fun () -> 50) (fun () -> 8)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Bordered panels to clearly show space allocation
@@ -617,14 +581,10 @@ nt                            |
             // Test extreme stress where one component gets zero space
             let console, terminal = ConsoleHarness.make' (fun () -> 1) (fun () -> 2)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 let left = Vdom.textContent "A"
@@ -666,14 +626,10 @@ B|
             // exposed areas should be cleared
             let console, terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (useLargeSplit : bool) =
                 if useLargeSplit then
@@ -767,14 +723,10 @@ AAA                 right                                                       
             // Same as above but with a keyed PanelSplit
             let console, terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let splitKey = NodeKey.make "split"
 
@@ -848,14 +800,10 @@ AAA                 right                                                       
             // the PanelSplit's background might not be fully covered by the new child positions.
             let console, terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 10)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (useWideLeft : bool) =
                 if useWideLeft then
@@ -937,14 +885,10 @@ AAA                 right                                                       
 
             let console, terminal = ConsoleHarness.make' (fun () -> 50) (fun () -> 10)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Outer Auto split allocates space to its children based on their reported MinWidth
@@ -1025,14 +969,10 @@ small               ┌──────────────────┐
             // while the second stays at its content size
             let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // "Left" has preferred width ~4, "Right" has preferred width ~5
@@ -1081,14 +1021,11 @@ Left                               Right|
 
             // First, test panelSplitAuto
             let consoleAuto, terminalAuto = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
-            let world = MockWorld.make ()
 
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdomAuto (_ : IVdomContext<_>) (_ : FakeUnit) =
                 let left = Vdom.textContent "Left"
@@ -1165,14 +1102,10 @@ Left                               Right|
             // they are clamped and excess space is unused
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 10)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Both components have preferred height of 1 and max height of 1 (text content)
@@ -1228,14 +1161,10 @@ Bottom              |
             // Each should get exactly their preferred size, with remaining space unused
             let console, terminal = ConsoleHarness.make' (fun () -> 40) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 let left = Vdom.textContent "Left"
@@ -1287,14 +1216,10 @@ LeftRight                               |
             // the second child should get 1 row (clamped), not 9 rows (unclamped)
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 10)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // First child has max height 1 (text content) and weight 0
@@ -1356,14 +1281,10 @@ Bottom              |
             // the remaining space should be cleared (not show stale content)
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             // State: true = show full content, false = show minimal content
             let vdom (_ : IVdomContext<_>) (showContent : bool) =
@@ -1478,14 +1399,10 @@ OnlyThis            |
             // With the fix, w1 should be clamped to min(18, 12) = 12.
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 5)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Create first child with maxWidth=12 using FlexibleContent
@@ -1578,14 +1495,10 @@ LLLLLLLLLLLLRRRRRRRR|
             // With the fix, h1 should be clamped to 2.
             let console, terminal = ConsoleHarness.make' (fun () -> 20) (fun () -> 10)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) =
                 // Create first child with maxHeight=2 using FlexibleContent

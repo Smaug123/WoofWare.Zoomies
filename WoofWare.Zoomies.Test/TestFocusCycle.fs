@@ -53,14 +53,10 @@ module TestFocusCycle =
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 16) (fun () -> 1)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let state =
                 {
@@ -359,14 +355,10 @@ module TestFocusCycle =
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 16) (fun () -> 1)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let state =
                 {
@@ -579,14 +571,10 @@ module TestFocusCycle =
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 16) (fun () -> 1)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             // State tracks which element to render at a given key
             let haveFrameworkHandleFocus _ = true
@@ -706,8 +694,6 @@ module TestFocusCycle =
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 16) (fun () -> 1)
 
-            let world = MockWorld.make ()
-
             let vdom (vdomContext : IVdomContext<_>) (tick : int) =
                 let currentFocus = vdomContext.FocusedKey
                 let sharedKey = NodeKey.make "shared-key"
@@ -732,11 +718,9 @@ module TestFocusCycle =
                 | _ -> failwith "unexpected"
 
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let haveFrameworkHandleFocus _ = true
 
@@ -858,14 +842,10 @@ more      [☐]   |
         task {
             let console, terminal = ConsoleHarness.make ()
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let textKey = NodeKey.make "focusable-text"
             let checkboxKey = NodeKey.make "checkbox"
@@ -1040,14 +1020,10 @@ This is focusable text                                                          
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (vdomContext : IVdomContext<_>) (_ : FakeUnit) =
                 let checkbox1Key = NodeKey.make "checkbox1"
@@ -1214,14 +1190,10 @@ This is focusable text                                                          
         task {
             let console, terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 3)
 
-            let world = MockWorld.make ()
-
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let vdom (vdomContext : IVdomContext<_>) (_ : FakeUnit) =
                 let checkbox1Key = NodeKey.make "checkbox1"
