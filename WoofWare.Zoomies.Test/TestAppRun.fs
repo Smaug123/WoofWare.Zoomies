@@ -57,7 +57,6 @@ module TestAppRun =
                     vdom
                     resolver
                     None
-                    0
 
             // Wait for the app to be ready (initial setup and first render complete)
             do! appHandle.Ready

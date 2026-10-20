@@ -392,6 +392,12 @@ module App =
     /// for as long as this task is running.
     /// Cancel the CancellationToken to cause the render loop to quit and to unhook all these state listeners.
     ///
+    /// The render loop is event-driven: it sleeps until input arrives, an application event is posted (directly
+    /// or through a subscription), the terminal is resized, a component's "recently activated" highlight expires,
+    /// or the input decoder's internal timeout (Esc disambiguation, bracketed-paste timeout) elapses. An idle app
+    /// does no work. In particular, merely letting time pass does not cause a rerender: if your view depends on
+    /// the time, drive it with application events (e.g. a timer subscribed via `IWorldBridge.SubscribeEvent`).
+    ///
     /// Returns an AppHandle with:
     /// - Ready: completes when initial setup is done and first render is complete
     /// - Finished: completes when the app exits (faults if user logic raises an exception)
@@ -407,7 +413,6 @@ module App =
         (vdom : IVdomContext<'postLayoutEvent> -> 'state -> Vdom<DesiredBounds>)
         (resolveActivation : ActivationResolver<'appEvent, 'state>)
         (debugWriter : StreamWriter option)
-        (frameDelayMs : int)
         : AppHandle
         =
         // RunContinuationsAsynchronously so that we don't force continuation on the UI thread.
@@ -431,11 +436,17 @@ module App =
 
                     let mutable cancels = 0
 
+                    // The loop sleeps in waitForWork; Ctrl-C must wake it, so the handler
+                    // cancels this token (linked to the caller's `terminate`).
+                    use loopCts = CancellationTokenSource.CreateLinkedTokenSource terminate
+
                     let ctrlCHandler =
                         ConsoleCancelEventHandler (fun _ args ->
                             // Double-ctrlc to exit immediately
                             if Interlocked.Increment &cancels = 1 then
                                 args.Cancel <- true
+
+                            loopCts.Cancel ()
                         )
 
                     ctrlC.Register ctrlCHandler
@@ -467,10 +478,41 @@ module App =
                             let isCancelled () =
                                 cancels > 0 || terminate.IsCancellationRequested
 
+                            let ctx = RenderState.vdomContext renderState
+
+                            // How long may the loop sleep? Until the earliest of: a recorded activation
+                            // expiring (so the "pressed" highlight is redrawn), and the freezer's next
+                            // internal timeout (Esc disambiguation, paste timeout). Must be computed after
+                            // the iteration's pump, so that activations recorded during it are seen.
+                            let nextDeadline () : TimeSpan voption =
+                                let activationDelay =
+                                    VdomContext.nextActivationExpiry ctx
+                                    |> ValueOption.map (fun expiry -> expiry - getUtcNow ())
+
+                                let inputDelay =
+                                    listener'.NextDeadline ()
+                                    |> ValueOption.map (fun deadlineTicks ->
+                                        let sw = listener'.Stopwatch
+
+                                        TimeSpan.FromSeconds (
+                                            float (deadlineTicks - sw.GetTimestamp ()) / float sw.Frequency
+                                        )
+                                    )
+
+                                match activationDelay, inputDelay with
+                                | ValueNone, d
+                                | d, ValueNone -> d
+                                | ValueSome a, ValueSome i -> ValueSome (min a i)
+
                             // Signal that we're ready: initial setup complete, first render done
                             ready.SetResult ()
 
                             while not (isCancelled ()) do
+                                // Arm the wake signal before pumping: anything that enters the world after
+                                // this point is either seen by the pump's drain or completes the signal, so
+                                // it cannot be slept through.
+                                let wake = listener'.WaitForChange ()
+
                                 currentState <-
                                     pumpOnce
                                         listener'
@@ -482,10 +524,9 @@ module App =
                                         resolveActivation
                                         isCancelled
 
-                                // Throttle to reduce CPU usage
-                                if frameDelayMs > 0 then
-                                    Thread.Sleep frameDelayMs
-
+                                // A dirty context means the screen is stale: don't sleep on it.
+                                if not (isCancelled ()) && not (VdomContext.isDirty ctx) then
+                                    EventLoop.waitForWork wake (nextDeadline ()) loopCts.Token
 
                             None
                         with e ->
@@ -577,4 +618,3 @@ module App =
             vdom
             resolveActivation
             debugWriter
-            16
