@@ -1273,10 +1273,7 @@ module internal Layout =
                 MaxHeight = terminalBounds.Height
             }
 
-        let measured =
-            match vdom with
-            | Vdom.Unkeyed unkeyedVdom -> measureUnkeyed constraints unkeyedVdom
-            | Vdom.Keyed _ -> failwith "Top-level vdom must be unkeyed"
+        let measured = measureEither constraints vdom
 
         // Phase 2: Arrange with terminal bounds
         arrange measured terminalBounds
