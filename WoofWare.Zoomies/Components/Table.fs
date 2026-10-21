@@ -181,17 +181,19 @@ module Table =
         assert (result.Length = expectedCount)
         result
 
-    /// Sanitize proportion values to ensure they are positive and real; clamp noncompliant values to epsilon
+    /// Sanitize column specs to ensure they have valid values; clamp noncompliant values.
     let private sanitizeColumn (spec : Column) : Column =
         match spec with
         | Column.Proportion p when p <= 0.0 || System.Double.IsNaN p || System.Double.IsInfinity p ->
             Column.Proportion 0.01
+        | Column.Fixed w when w < 0 -> Column.Fixed 0
         | other -> other
 
-    /// Sanitize proportion values to ensure they are positive and real; clamp noncompliant values to epsilon
+    /// Sanitize row specs to ensure they have valid values; clamp noncompliant values.
     let private sanitizeRow (spec : Row) : Row =
         match spec with
         | Row.Proportion p when p <= 0.0 || System.Double.IsNaN p || System.Double.IsInfinity p -> Row.Proportion 0.01
+        | Row.Fixed h when h < 0 -> Row.Fixed 0
         | other -> other
 
     /// Allocate column widths from available width, respecting per-column minima.
@@ -560,8 +562,8 @@ module Table =
             heights
 
     /// Creates a table with specified cells and sizing.
-    /// Gracefully handles ragged rows (pads with Vdom.empty) and spec mismatches (defaults to Auto for missing or
-    /// invalid specs).
+    /// Gracefully handles ragged rows (pads with Vdom.empty) and spec mismatches (defaults to Content for missing
+    /// specs, and clamps invalid values to sensible minimums).
     /// Accepts both keyed and unkeyed cells and preserves them as-is.
     /// If you want stable focus tracking across table re-renders, provide keyed cells with meaningful keys.
     ///
