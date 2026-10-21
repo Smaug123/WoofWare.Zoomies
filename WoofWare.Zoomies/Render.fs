@@ -245,18 +245,27 @@ module Render =
                     let mutable index = 0
                     let mutable currX = 0
                     let mutable currY = 0
+                    // True when the previous character filled the row and we wrapped onto a fresh row. A newline
+                    // straight after that ends the (already-ended) row, so it must not move down again; otherwise
+                    // a line exactly as wide as the bounds would be followed by a spurious blank row.
+                    let mutable justWrapped = false
 
                     while index < content.Length do
                         let ch = content.Chars index
 
                         if ch = '\n' then
-                            // Newline: move to start of next line without rendering
-                            currX <- 0
-                            currY <- currY + 1
+                            if justWrapped then
+                                justWrapped <- false
+                            else
+                                // Newline: move to start of next line without rendering
+                                currX <- 0
+                                currY <- currY + 1
 
-                            if currY >= bounds.Height then
-                                index <- content.Length
+                                if currY >= bounds.Height then
+                                    index <- content.Length
                         else
+                            justWrapped <- false
+
                             let cell =
                                 {
                                     Char = ch
@@ -274,6 +283,7 @@ module Render =
                                     // Wrap to next line
                                     currX <- 0
                                     currY <- currY + 1
+                                    justWrapped <- true
 
                                     if currY >= bounds.Height then
                                         index <- content.Length
@@ -408,18 +418,27 @@ module Render =
                     let mutable index = 0
                     let mutable currX = 0
                     let mutable currY = 0
+                    // True when the previous character filled the row and we wrapped onto a fresh row. A newline
+                    // straight after that ends the (already-ended) row, so it must not move down again; otherwise
+                    // a line exactly as wide as the bounds would be followed by a spurious blank row.
+                    let mutable justWrapped = false
 
                     while index < content.Length do
                         let ch = content.Chars index
 
                         if ch = '\n' then
-                            // Newline: move to start of next line without rendering
-                            currX <- 0
-                            currY <- currY + 1
+                            if justWrapped then
+                                justWrapped <- false
+                            else
+                                // Newline: move to start of next line without rendering
+                                currX <- 0
+                                currY <- currY + 1
 
-                            if currY >= bounds.Height then
-                                index <- content.Length
+                                if currY >= bounds.Height then
+                                    index <- content.Length
                         else
+                            justWrapped <- false
+
                             let style =
                                 if index < styleAtIndex.Count then
                                     styleAtIndex.[index]
@@ -443,6 +462,7 @@ module Render =
                                     // Wrap to next line
                                     currX <- 0
                                     currY <- currY + 1
+                                    justWrapped <- true
 
                                     if currY >= bounds.Height then
                                         index <- content.Length
