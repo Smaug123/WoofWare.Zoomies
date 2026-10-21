@@ -111,6 +111,13 @@ type private CsiDecodeState =
 
 type private AnsiDecodeState = | Csi of CsiDecodeState
 
+[<RequireQualifiedAccess>]
+module internal WorldFreezerTimeouts =
+    /// How long we wait for the continuation of an ANSI escape sequence (after a lone Esc,
+    /// or inside bracketed paste) before giving up and re-emitting what we have as keystrokes.
+    [<Literal>]
+    let REEMIT_TIMEOUT_SECONDS = 0.01
+
 type private DequeueState =
     {
         /// All the characters after the initial `ESC`.
@@ -137,7 +144,9 @@ type private DequeueState =
         match this.Esc with
         | ValueNone -> None
         | ValueSome (ts, esc) ->
-            if (sw.GetTimestamp () - ts |> float) / float sw.Frequency > 0.01 then
+            if
+                (sw.GetTimestamp () - ts |> float) / float sw.Frequency > WorldFreezerTimeouts.REEMIT_TIMEOUT_SECONDS
+            then
                 let result = Array.zeroCreate (this.Processed.Count + 1)
                 Array.set result 0 esc
                 CollectionsMarshal.AsSpan(this.Processed).CopyTo (result.AsSpan 1)
@@ -191,7 +200,11 @@ type WorldFreezer<'appEvent> =
             /// Invariant: this is only mutated within `this.Changes()`.
             mutable _DequeueState : DequeueState
             _Stopwatch : IStopwatch
-            _RefreshExternal : unit -> unit
+            /// Completed when a change enters the world; re-armed by WaitForChange.
+            /// Producers must read this ref *after* enqueueing (see SignalChange).
+            _WakeSignal : TaskCompletionSource ref
+            /// Cancelled on disposal, to stop any attached blocking input source.
+            _InputCts : CancellationTokenSource
             _Behaviour : UnrecognisedEscapeCodeBehaviour
             _Subscriptions : ConcurrentBag<IDisposable>
             _IsDisposing : int ref
@@ -211,13 +224,76 @@ type WorldFreezer<'appEvent> =
             mutable _PasteModeEnteredAt : int64
         }
 
-    /// Load pending changes from the external world, like keystrokes, into the change list.
-    member this.RefreshExternal () = this._RefreshExternal ()
+    /// The stopwatch this freezer measures its internal deadlines against.
+    /// Use it to convert `NextDeadline` into a wait duration.
+    member internal this.Stopwatch : IStopwatch = this._Stopwatch
+
+    /// Complete the current wake signal. Producers must enqueue first and signal second:
+    /// the consumer re-arms the signal (WaitForChange) before draining, so this ordering
+    /// guarantees that an enqueue is either seen by the drain or completes the armed signal.
+    member private this.SignalChange () =
+        (Volatile.Read &this._WakeSignal.contents).TrySetResult () |> ignore<bool>
+
+    /// Deliver a keystroke into the world, as a platform input thread would. Thread-safe.
+    member this.DeliverKeystroke (key : ConsoleKeyInfo) : unit =
+        this._Changes.Enqueue (RawWorldStateChange.Keystroke key)
+        this.SignalChange ()
+
+    /// Returns a task that completes when a change enters the world.
+    ///
+    /// Consume-and-re-arm semantics for a single consumer (the render loop): calling this
+    /// method re-arms the signal if it had fired, so call it *before* draining `Changes`,
+    /// and await the returned task only if the drain found nothing to do. Changes that
+    /// arrive between the call and the await complete the task immediately.
+    member this.WaitForChange () : Task =
+        let current = Volatile.Read &this._WakeSignal.contents
+
+        if current.Task.IsCompleted then
+            let fresh = TaskCompletionSource TaskCreationOptions.RunContinuationsAsynchronously
+            Volatile.Write (&this._WakeSignal.contents, fresh)
+            fresh.Task
+        else
+            current.Task
+
+    /// The earliest stopwatch timestamp at which an internal timeout will fire (a pending
+    /// lone-Esc re-emission, or the bracketed-paste timeout), or ValueNone when no timeout
+    /// is pending. Units are stopwatch ticks (`IStopwatch.Frequency` per second).
+    ///
+    /// An event loop that sleeps must wake no later than this and call `Changes` so the
+    /// timed-out input is delivered. Must be called from the same thread as `Changes`.
+    member this.NextDeadline () : int64 voption =
+        if this._DequeueState.Esc.IsNone && not this._InPasteMode then
+            // Nothing pending: don't touch the stopwatch at all (mocks with no timing
+            // behaviour must be usable in tests that never exercise the timeouts).
+            ValueNone
+        else
+            // +1 tick: the timeout comparisons are strict, so waking at exactly
+            // ts + timeout would not yet re-emit.
+            let timeoutTicks =
+                int64 (WorldFreezerTimeouts.REEMIT_TIMEOUT_SECONDS * float this._Stopwatch.Frequency)
+                + 1L
+
+            let escDeadline =
+                match this._DequeueState.Esc with
+                | ValueNone -> ValueNone
+                | ValueSome (ts, _) -> ValueSome (ts + timeoutTicks)
+
+            let pasteDeadline =
+                if this._InPasteMode then
+                    ValueSome (this._PasteModeEnteredAt + timeoutTicks)
+                else
+                    ValueNone
+
+            match escDeadline, pasteDeadline with
+            | ValueNone, d -> d
+            | d, ValueNone -> d
+            | ValueSome esc, ValueSome paste -> ValueSome (min esc paste)
 
     /// Increment the terminal resize generation. This is intended to be called by signal handlers (e.g., SIGWINCH).
     /// The render loop will detect the change and refresh terminal bounds.
     member internal this.NotifyTerminalResize () =
         Interlocked.Increment this._TerminalResizeGeneration |> ignore<int>
+        this.SignalChange ()
 
     /// Get the current terminal resize generation. Used by the render loop to detect resizes.
     member internal this.TerminalResizeGeneration =
@@ -479,7 +555,7 @@ type WorldFreezer<'appEvent> =
                     float (this._Stopwatch.GetTimestamp () - this._PasteModeEnteredAt)
                     / float this._Stopwatch.Frequency
 
-                if elapsed > 0.01 then
+                if elapsed > WorldFreezerTimeouts.REEMIT_TIMEOUT_SECONDS then
                     // Re-emit the paste mode entry keys (ESC [ 2 0 0 ~)
                     for key in this._PasteModeEntryKeys do
                         result.Add (WorldStateChange.Keystroke key)
@@ -508,14 +584,15 @@ type WorldFreezer<'appEvent> =
     interface IWorldBridge<'appEvent> with
         member this.PostEvent evt =
             this._Changes.Enqueue (RawWorldStateChange.ApplicationEvent evt)
+            this.SignalChange ()
 
         member this.SubscribeEvent evt toAppEvent =
-            // Increment first, then check _IsDisposing, to close the race with DisposeAsync.
+            // Increment first, then check _IsDisposing, to close the TOCTOU race with DisposeAsync.
             // DisposeAsync waits for _ActiveSubscriptionRequests to hit 0 before disposing subscriptions,
             // so incrementing first ensures DisposeAsync will see our in-flight subscription.
             Interlocked.Increment this._ActiveSubscriptionRequests |> ignore<int>
 
-            if Volatile.Read &this._IsDisposing.contents > 0 then
+            if this._IsDisposing.Value > 0 then
                 Interlocked.Decrement this._ActiveSubscriptionRequests |> ignore<int>
                 raise (ObjectDisposedException "WorldFreezer")
             else
@@ -531,6 +608,8 @@ type WorldFreezer<'appEvent> =
                         match appEvent with
                         | Ok appEvent -> this._Changes.Enqueue (RawWorldStateChange.ApplicationEvent appEvent)
                         | Error exc -> this._Changes.Enqueue (RawWorldStateChange.ApplicationEventException exc)
+
+                        this.SignalChange ()
                     )
 
                 evt.AddHandler handler
@@ -552,6 +631,10 @@ type WorldFreezer<'appEvent> =
     interface IAsyncDisposable with
         member this.DisposeAsync () =
             if Interlocked.Increment this._IsDisposing = 1 then
+                // Stop any attached blocking input source. (The real console's ReadKey cannot
+                // be interrupted; that thread is a background thread and dies with the process.)
+                this._InputCts.Cancel ()
+
                 task {
                     // Wait for ActiveSubscriptionRequests to hit 0; then we know no more subscriptions are incoming
                     while this._ActiveSubscriptionRequests.Value > 0 do
@@ -573,25 +656,18 @@ type WorldFreezer<'appEvent> =
 
 [<RequireQualifiedAccess>]
 module WorldFreezer =
-    /// Pass `fun () -> Console.KeyAvailable` for `keyAvailable`, `Stopwatch.system` for `stopwatch`,
-    /// and `fun () -> Console.ReadKey true` for `readKey`.
+    /// Create a WorldFreezer with no attached input source. Keystrokes enter the world only
+    /// via `DeliverKeystroke` (and application events via the `IWorldBridge` surface).
+    /// Use `listenBlocking` to attach a blocking input read, or `listen` for the real console.
     let listen'<'appEvent>
         (behaviour : UnrecognisedEscapeCodeBehaviour)
         (stopwatch : IStopwatch)
-        (keyAvailable : unit -> bool)
-        (readKey : unit -> ConsoleKeyInfo)
         : WorldFreezer<'appEvent>
         =
-        let worldChanges = ConcurrentQueue<RawWorldStateChange<_>> ()
-
-        let refreshExternal () =
-            while keyAvailable () do
-                let key = readKey ()
-                RawWorldStateChange.Keystroke key |> worldChanges.Enqueue
-
         {
-            _Changes = worldChanges
-            _RefreshExternal = refreshExternal
+            _Changes = ConcurrentQueue<RawWorldStateChange<_>> ()
+            _WakeSignal = ref (TaskCompletionSource TaskCreationOptions.RunContinuationsAsynchronously)
+            _InputCts = new CancellationTokenSource ()
             _Stopwatch = stopwatch
             _DequeueState = DequeueState.Empty ()
             _Behaviour = behaviour
@@ -606,9 +682,57 @@ module WorldFreezer =
             _PasteModeEnteredAt = 0L
         }
 
+    /// Create a WorldFreezer fed by a blocking read running on a dedicated background thread.
+    ///
+    /// `readKey` should block until a key is available, and return ValueNone when the input
+    /// source is exhausted or the supplied token fires (the token is cancelled when the
+    /// freezer is disposed); it may instead throw OperationCanceledException once that token has
+    /// fired. Any other exception (including an OperationCanceledException thrown while the
+    /// freezer's token has not fired) is delivered into the world as an `ApplicationEventException`,
+    /// and the input thread stops.
+    ///
+    /// The real console's ReadKey cannot be interrupted, so on disposal the thread may stay
+    /// blocked in `readKey` until process exit; it is a background thread, so it cannot keep
+    /// the process alive.
+    let listenBlocking<'appEvent>
+        (behaviour : UnrecognisedEscapeCodeBehaviour)
+        (stopwatch : IStopwatch)
+        (readKey : CancellationToken -> ConsoleKeyInfo voption)
+        : WorldFreezer<'appEvent>
+        =
+        let freezer = listen'<'appEvent> behaviour stopwatch
+
+        let thread =
+            Thread (fun () ->
+                let mutable go = true
+
+                while go do
+                    let key =
+                        try
+                            readKey freezer._InputCts.Token
+                        with
+                        // Only our own cancellation (disposal) is a normal shutdown; a cancellation raised by
+                        // the input source for its own reasons is a read failure like any other.
+                        | :? OperationCanceledException when freezer._InputCts.IsCancellationRequested -> ValueNone
+                        | exc ->
+                            freezer._Changes.Enqueue (RawWorldStateChange.ApplicationEventException exc)
+
+                            (Volatile.Read &freezer._WakeSignal.contents).TrySetResult () |> ignore<bool>
+
+                            ValueNone
+
+                    match key with
+                    | ValueSome k -> freezer.DeliverKeystroke k
+                    | ValueNone -> go <- false
+            )
+
+        thread.IsBackground <- true
+        thread.Name <- "WoofWare.Zoomies input"
+        thread.Start ()
+        freezer
+
     let listen<'appEvent> () : WorldFreezer<'appEvent> =
-        listen'
+        listenBlocking
             UnrecognisedEscapeCodeBehaviour.PassThrough
             Stopwatch.system
-            (fun () -> Console.KeyAvailable)
-            (fun () -> Console.ReadKey true)
+            (fun _ -> ValueSome (Console.ReadKey true))

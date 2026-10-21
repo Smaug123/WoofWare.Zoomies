@@ -30,11 +30,7 @@ module TestWorldFreezerDisposal =
             // Before the fix, this reproduced within a few hundred iterations.
             for i in 1..2_000 do
                 let freezer =
-                    WorldFreezer.listen'<unit>
-                        UnrecognisedEscapeCodeBehaviour.Throw
-                        StopwatchMock.Empty
-                        (fun () -> false)
-                        (fun () -> failwith "no keys")
+                    WorldFreezer.listen'<unit> UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
                 let evt = CountingEvent ()
                 let go = ref 0

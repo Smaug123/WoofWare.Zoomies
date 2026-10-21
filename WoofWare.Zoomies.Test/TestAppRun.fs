@@ -33,14 +33,8 @@ module TestAppRun =
             let clock = MockTime.make ()
             let ctrlCHandler, _, _ = FakeCtrlCHandler.make ()
 
-            let world = MockWorld.make ()
-
             let worldFreezer () =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
 
             let vdom (_ctx : IVdomContext<_>) (_state : unit) : Vdom<DesiredBounds> = Vdom.empty
 

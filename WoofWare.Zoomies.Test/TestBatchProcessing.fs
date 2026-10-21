@@ -21,14 +21,11 @@ module TestBatchProcessing =
         =
         task {
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
-            let world = MockWorld.make ()
 
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             // Send all keystrokes
             for key in keystrokes do
@@ -184,14 +181,11 @@ module TestBatchProcessing =
     let processWithBatchStrategyAndFocus (keystrokes : ConsoleKeyInfo list) (batchSizes : int list) : char list Task =
         task {
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
-            let world = MockWorld.make ()
 
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             // Send all keystrokes
             for key in keystrokes do
@@ -339,14 +333,11 @@ module TestBatchProcessing =
     let ``switching between manual and framework tab handling works correctly`` () =
         task {
             let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
-            let world = MockWorld.make ()
 
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let initialState =
                 {
@@ -573,14 +564,11 @@ module TestBatchProcessing =
                     |> List.truncate 10
 
                 let console, _terminal = ConsoleHarness.make' (fun () -> 80) (fun () -> 24)
-                let world = MockWorld.make ()
 
                 use worldFreezer =
-                    WorldFreezer.listen'
-                        UnrecognisedEscapeCodeBehaviour.Throw
-                        StopwatchMock.Empty
-                        world.KeyAvailable
-                        world.ReadKey
+                    WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+                let world = MockWorld.attach worldFreezer
 
                 let mutable vdomRenderCount = 0
                 let mutable batchIndex = 0

@@ -38,14 +38,11 @@ module TestStyledSpans =
                 )
 
             let processWorld = WorldProcessor.passthrough
-            let world = MockWorld.make ()
 
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
@@ -100,14 +97,11 @@ Hello     |
                 )
 
             let processWorld = WorldProcessor.passthrough
-            let world = MockWorld.make ()
 
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
@@ -155,14 +149,11 @@ RGB       |
                 )
 
             let processWorld = WorldProcessor.passthrough
-            let world = MockWorld.make ()
 
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
@@ -197,14 +188,11 @@ World|
             let vdom (_ : IVdomContext<_>) (_ : FakeUnit) = Vdom.styledSpans []
 
             let processWorld = WorldProcessor.passthrough
-            let world = MockWorld.make ()
 
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
@@ -246,14 +234,11 @@ World|
                 )
 
             let processWorld = WorldProcessor.passthrough
-            let world = MockWorld.make ()
 
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
@@ -301,14 +286,11 @@ Hello|
                 )
 
             let processWorld = WorldProcessor.passthrough
-            let world = MockWorld.make ()
 
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
@@ -353,14 +335,11 @@ World     |
                 )
 
             let processWorld = WorldProcessor.passthrough
-            let world = MockWorld.make ()
 
             use worldFreezer =
-                WorldFreezer.listen'
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    world.KeyAvailable
-                    world.ReadKey
+                WorldFreezer.listen' UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty
+
+            let world = MockWorld.attach worldFreezer
 
             let renderState = RenderState.make console MockTime.getStaticUtcNow None
 
