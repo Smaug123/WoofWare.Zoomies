@@ -26,6 +26,7 @@
     <Compile Include="TestCatamorphism.fs" />
     <Compile Include="TestDebugDump.fs" />
     <Compile Include="TestRender.fs" />
+    <Compile Include="TestTopLevelKeyed.fs" />
     <Compile Include="TestPanelSplit.fs" />
     <Compile Include="TestBordered.fs" />
     <Compile Include="TestTextRendering.fs" />
