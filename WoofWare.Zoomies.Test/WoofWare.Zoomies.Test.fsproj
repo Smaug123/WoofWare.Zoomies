@@ -48,6 +48,7 @@
     <Compile Include="TestFlexibleContent.fs" />
     <Compile Include="TestPostLayoutEvents.fs" />
     <Compile Include="TestWorldFreezer.fs" />
+    <Compile Include="TestWorldFreezerDisposal.fs" />
     <Compile Include="TestAppRun.fs" />
   </ItemGroup>
 
