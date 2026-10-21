@@ -41,14 +41,17 @@ module ActivationResolver =
                 None
         )
 
-    /// Create a resolver for a text input field
+    /// Create a resolver for a text input field.
+    /// Backspace produces `onBackspace`; any other printable character produces `onChar`; control characters
+    /// (Enter, Esc, Ctrl+letter, etc) are not handled.
     let textInput (key : NodeKey) (onChar : char -> 'e) (onBackspace : 'e) : ActivationResolver<'e, 's> =
         ActivationResolver (fun k keystroke _ ->
             if k <> key then
                 None
             elif keystroke.Key = ConsoleKey.Backspace then
                 Some onBackspace
-            elif keystroke.KeyChar <> '\000' then
+            elif keystroke.KeyChar <> '\000' && not (Char.IsControl keystroke.KeyChar) then
+                // Reject control characters (Enter, Esc, Ctrl+letter, etc.) to avoid inserting them as literal text.
                 Some (onChar keystroke.KeyChar)
             else
                 None
