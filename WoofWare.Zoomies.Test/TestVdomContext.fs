@@ -163,3 +163,51 @@ module TestVdomContext =
         // Prune when nothing remains - should not mark dirty
         VdomContext.pruneExpiredActivations ctx
         VdomContext.isDirty ctx |> shouldEqual false
+
+    [<Test>]
+    let ``nextActivationExpiry is exactly when the first recent activation stops being recent`` () =
+        let gen =
+            FsCheck.FSharp.Gen.zip (FsCheck.FSharp.Gen.choose (0, 4)) (FsCheck.FSharp.Gen.choose (0, 2000))
+            |> FsCheck.FSharp.Gen.listOf
+
+        let keys = Array.init 5 (fun i -> NodeKey.make $"key%i{i}")
+
+        let prop (activations : (int * int) list) =
+            let start = DateTime (2020, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+            let now = ref start
+            let ctx = VdomContext.empty<unit> (fun () -> now.Value) bounds
+
+            // Record activations in time order, then (as each loop iteration does) prune before asking.
+            for keyIndex, offsetMs in activations |> List.sortBy snd do
+                now.Value <- start + TimeSpan.FromMilliseconds (float offsetMs)
+                VdomContext.recordActivation keys.[keyIndex] ctx
+
+            VdomContext.pruneExpiredActivations ctx
+            let recordedAt = now.Value
+
+            let recentAt (t : DateTime) =
+                now.Value <- t
+                keys |> Array.map (fun k -> VdomContext.wasRecentlyActivated k ctx)
+
+            let recentNow = recentAt recordedAt
+
+            match VdomContext.nextActivationExpiry ctx with
+            | ValueNone ->
+                // Nothing will ever change, so it's fine to sleep forever.
+                recentNow |> shouldEqual (Array.create keys.Length false)
+            | ValueSome deadline ->
+                (deadline > recordedAt) |> shouldEqual true
+
+                // Nothing changes before the deadline...
+                for t in
+                    [
+                        recordedAt
+                        recordedAt + (deadline - recordedAt) / 2.0
+                        deadline - TimeSpan.FromTicks 1L
+                    ] do
+                    recentAt t |> shouldEqual recentNow
+
+                // ...and something does change at it.
+                (recentAt deadline <> recentNow) |> shouldEqual true
+
+        FsCheck.Check.One (propConfig, FsCheck.FSharp.Prop.forAll (FsCheck.FSharp.Arb.fromGen gen) prop)

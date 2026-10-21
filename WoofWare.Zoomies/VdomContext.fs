@@ -115,6 +115,24 @@ module VdomContext =
         if removed then
             ctx._IsDirty <- true
 
+    /// The earliest time at which a recorded activation stops counting as recent (that is, when
+    /// `wasRecentlyActivated` will flip to false and the vdom must be redrawn), or ValueNone if no
+    /// activation is recorded. An event loop that sleeps must wake no later than this.
+    let internal nextActivationExpiry<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : DateTime voption =
+        let timeout =
+            TimeSpan.FromMilliseconds VdomContextConstants.RECENT_ACTIVATION_TIMEOUT_MS
+
+        let mutable earliest = ValueNone
+
+        for KeyValue (_, time) in ctx._LastActivationTimes do
+            let expiry = time + timeout
+
+            match earliest with
+            | ValueSome e when e <= expiry -> ()
+            | _ -> earliest <- ValueSome expiry
+
+        earliest
+
     /// Drain all post-layout events, returning them and clearing the internal list.
     /// Returns an empty array if no events were posted.
     let internal drainPostLayoutEvents<'postLayoutEvent> (ctx : VdomContext<'postLayoutEvent>) : 'postLayoutEvent[] =

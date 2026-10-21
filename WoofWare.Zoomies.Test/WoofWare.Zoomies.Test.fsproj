@@ -52,6 +52,7 @@
     <Compile Include="TestWorldFreezer.fs" />
     <Compile Include="TestWorldFreezerDisposal.fs" />
     <Compile Include="TestAppRun.fs" />
+    <Compile Include="TestEventLoop.fs" />
   </ItemGroup>
 
   <ItemGroup>
