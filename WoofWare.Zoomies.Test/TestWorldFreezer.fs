@@ -822,14 +822,11 @@ module TestWorldFreezer =
             readUnblocked |> shouldEqual true
         }
 
-    [<Test>]
-    let ``input thread exceptions surface as ApplicationEventException`` () =
+    /// Run a freezer whose blocking read throws, and return the exception the freezer delivers into the world.
+    let private exceptionFromFailingRead (read : CancellationToken -> ConsoleKeyInfo voption) : Task<exn> =
         task {
             use freezer =
-                WorldFreezer.listenBlocking<unit>
-                    UnrecognisedEscapeCodeBehaviour.Throw
-                    StopwatchMock.Empty
-                    (fun _ -> failwith "console went away")
+                WorldFreezer.listenBlocking<unit> UnrecognisedEscapeCodeBehaviour.Throw StopwatchMock.Empty read
 
             // The consumer protocol: arm, drain, await only if the drain came up empty,
             // drain again. (The exception may arrive before or after the arm.)
@@ -848,6 +845,66 @@ module TestWorldFreezer =
                 }
 
             match changes with
-            | [| WorldStateChange.ApplicationEventException e |] -> e.Message |> shouldEqual "console went away"
-            | other -> failwith $"unexpected changes: %A{other}"
+            | [| WorldStateChange.ApplicationEventException e |] -> return e
+            | other -> return failwith $"unexpected changes: %A{other}"
+        }
+
+    [<Test>]
+    let ``input thread exceptions surface as ApplicationEventException`` () =
+        task {
+            let! e = exceptionFromFailingRead (fun _ -> failwith "console went away")
+            e.Message |> shouldEqual "console went away"
+        }
+
+    [<Test>]
+    let ``a cancellation the freezer did not cause surfaces as ApplicationEventException`` () =
+        task {
+            // The input source has its own cancellation, unrelated to the freezer's disposal.
+            use sourceCts = new CancellationTokenSource ()
+            sourceCts.Cancel ()
+
+            let! e =
+                exceptionFromFailingRead (fun _ ->
+                    sourceCts.Token.ThrowIfCancellationRequested ()
+                    ValueNone
+                )
+
+            match e with
+            | :? OperationCanceledException -> ()
+            | other -> failwith $"expected the read's OperationCanceledException, got %O{other}"
+        }
+
+    [<Test>]
+    let ``a read cancelled by disposal stops quietly`` () =
+        task {
+            use started = new SemaphoreSlim (0)
+            use exited = new SemaphoreSlim (0)
+
+            let freezer =
+                WorldFreezer.listenBlocking<unit>
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    (fun ct ->
+                        try
+                            started.Release () |> ignore<int>
+                            ct.WaitHandle.WaitOne () |> ignore<bool>
+                            ct.ThrowIfCancellationRequested ()
+                            ValueNone
+                        finally
+                            exited.Release () |> ignore<int>
+                    )
+
+            let! enteredRead = started.WaitAsync waitTimeout
+            enteredRead |> shouldEqual true
+            let wake = freezer.WaitForChange ()
+
+            do! (freezer :> IAsyncDisposable).DisposeAsync ()
+            let! readExited = exited.WaitAsync waitTimeout
+            readExited |> shouldEqual true
+
+            // The read threw only because we cancelled it: that's shutdown, not an error to report.
+            // (The input thread handles the exception just after the read exits, so give it a moment.)
+            do! Task.Delay 100
+            wake.IsCompleted |> shouldEqual false
+            freezer.Changes () |> shouldEqual ValueNone
         }

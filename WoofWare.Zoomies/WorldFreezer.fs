@@ -686,8 +686,10 @@ module WorldFreezer =
     ///
     /// `readKey` should block until a key is available, and return ValueNone when the input
     /// source is exhausted or the supplied token fires (the token is cancelled when the
-    /// freezer is disposed). If `readKey` throws, the exception is delivered into the world
-    /// as an `ApplicationEventException` and the input thread stops.
+    /// freezer is disposed); it may instead throw OperationCanceledException once that token has
+    /// fired. Any other exception (including an OperationCanceledException thrown while the
+    /// freezer's token has not fired) is delivered into the world as an `ApplicationEventException`,
+    /// and the input thread stops.
     ///
     /// The real console's ReadKey cannot be interrupted, so on disposal the thread may stay
     /// blocked in `readKey` until process exit; it is a background thread, so it cannot keep
@@ -709,7 +711,9 @@ module WorldFreezer =
                         try
                             readKey freezer._InputCts.Token
                         with
-                        | :? OperationCanceledException -> ValueNone
+                        // Only our own cancellation (disposal) is a normal shutdown; a cancellation raised by
+                        // the input source for its own reasons is a read failure like any other.
+                        | :? OperationCanceledException when freezer._InputCts.IsCancellationRequested -> ValueNone
                         | exc ->
                             freezer._Changes.Enqueue (RawWorldStateChange.ApplicationEventException exc)
 
