@@ -109,7 +109,7 @@ type private CsiDecodeState =
     | ConsumingIdentifier
     | SgrTracking of SgrDecode
 
-type private AnsiDecodeState = | Csi of bracket : ConsoleKeyInfo * CsiDecodeState
+type private AnsiDecodeState = | Csi of CsiDecodeState
 
 type private DequeueState =
     {
@@ -289,20 +289,18 @@ type WorldFreezer<'appEvent> =
                         this._DequeueState.State <-
                             ValueSome (
                                 AnsiDecodeState.Csi (
-                                    key,
                                     CsiDecodeState.SgrTracking (SgrDecode.Empty this._DequeueState.Processed.Count)
                                 )
                             )
                     elif '0' <= key.KeyChar && key.KeyChar <= '9' then
                         // consuming a numerical parameter
-                        this._DequeueState.State <-
-                            ValueSome (AnsiDecodeState.Csi (key, CsiDecodeState.ConsumingIdentifier))
+                        this._DequeueState.State <- ValueSome (AnsiDecodeState.Csi CsiDecodeState.ConsumingIdentifier)
                     else
                         match this._Behaviour with
                         | UnrecognisedEscapeCodeBehaviour.Throw ->
                             failwith $"Unrecognised ANSI control sequence: received char '%c{key.KeyChar}'"
                         | UnrecognisedEscapeCodeBehaviour.PassThrough -> emitBuffered ()
-                | ValueSome (AnsiDecodeState.Csi (angleBracket, CsiDecodeState.ConsumingIdentifier)) ->
+                | ValueSome (AnsiDecodeState.Csi CsiDecodeState.ConsumingIdentifier) ->
 
                     if '0' <= key.KeyChar && key.KeyChar <= '9' then
                         ()
@@ -343,7 +341,7 @@ type WorldFreezer<'appEvent> =
                             | UnrecognisedEscapeCodeBehaviour.Throw ->
                                 failwith $"don't know how to handle CSI code %i{code} with key %c{key.KeyChar}"
                             | UnrecognisedEscapeCodeBehaviour.PassThrough -> emitBuffered ()
-                | ValueSome (AnsiDecodeState.Csi (angleBracket, CsiDecodeState.SgrTracking state)) ->
+                | ValueSome (AnsiDecodeState.Csi (CsiDecodeState.SgrTracking state)) ->
                     match key.KeyChar with
                     | ';' ->
                         match state.Mode with
