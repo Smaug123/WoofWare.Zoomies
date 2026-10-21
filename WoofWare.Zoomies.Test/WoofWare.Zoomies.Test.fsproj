@@ -22,6 +22,7 @@
     <Compile Include="TestVdomContext.fs" />
     <Compile Include="TestExternalEventSubscription.fs" />
     <Compile Include="TestOrderedSet.fs" />
+    <Compile Include="TestActivationResolver.fs" />
     <Compile Include="TestCatamorphism.fs" />
     <Compile Include="TestDebugDump.fs" />
     <Compile Include="TestRender.fs" />
@@ -39,6 +40,7 @@
     <Compile Include="TestButton.fs" />
     <Compile Include="TestTextBox.fs" />
     <Compile Include="TestTable.fs" />
+    <Compile Include="TestTableNegativeFixed.fs" />
     <Compile Include="TestVdomMeasure.fs" />
     <Compile Include="TestMultiSelection.fs" />
     <Compile Include="TestSingleSelection.fs" />
@@ -48,6 +50,7 @@
     <Compile Include="TestFlexibleContent.fs" />
     <Compile Include="TestPostLayoutEvents.fs" />
     <Compile Include="TestWorldFreezer.fs" />
+    <Compile Include="TestWorldFreezerDisposal.fs" />
     <Compile Include="TestAppRun.fs" />
   </ItemGroup>
 

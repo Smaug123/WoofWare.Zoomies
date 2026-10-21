@@ -64,12 +64,6 @@ type MouseEvent =
         | MouseEvent.Press (button, modifiers, coords) -> $"Press %O{button} (%O{modifiers}) at %O{coords}"
         | MouseEvent.Release (button, modifiers, coords) -> $"Release %O{button} (%O{modifiers}) at %O{coords}"
 
-/// Internal type used for ANSI escape code parsing within WorldFreezer.
-/// These events are not emitted to users; they are handled internally.
-type internal KeyboardEvent =
-    | BeginBracketedPaste
-    | EndBracketedPaste
-
 type internal RawWorldStateChange<'appEvent> =
     | Keystroke of ConsoleKeyInfo
     | ApplicationEvent of 'appEvent
@@ -115,7 +109,7 @@ type private CsiDecodeState =
     | ConsumingIdentifier
     | SgrTracking of SgrDecode
 
-type private AnsiDecodeState = | Csi of bracket : ConsoleKeyInfo * CsiDecodeState
+type private AnsiDecodeState = | Csi of CsiDecodeState
 
 type private DequeueState =
     {
@@ -124,7 +118,6 @@ type private DequeueState =
         /// The int64 is the timestamp at which we consumed this Esc.
         mutable Esc : (int64 * ConsoleKeyInfo) voption
         mutable Bracket : ConsoleKeyInfo voption
-        mutable AngleBracket : ConsoleKeyInfo voption
         mutable State : AnsiDecodeState voption
         ParsedParameters : ResizeArray<int>
     }
@@ -134,7 +127,6 @@ type private DequeueState =
             Processed = ResizeArray ()
             Esc = ValueNone
             Bracket = ValueNone
-            AngleBracket = ValueNone
             State = ValueNone
             ParsedParameters = ResizeArray ()
         }
@@ -156,7 +148,6 @@ type private DequeueState =
     member this.Clear () =
         this.Processed.Clear ()
         this.ParsedParameters.Clear ()
-        this.AngleBracket <- ValueNone
         this.Bracket <- ValueNone
         this.Esc <- ValueNone
         this.State <- ValueNone
@@ -298,20 +289,18 @@ type WorldFreezer<'appEvent> =
                         this._DequeueState.State <-
                             ValueSome (
                                 AnsiDecodeState.Csi (
-                                    key,
                                     CsiDecodeState.SgrTracking (SgrDecode.Empty this._DequeueState.Processed.Count)
                                 )
                             )
                     elif '0' <= key.KeyChar && key.KeyChar <= '9' then
                         // consuming a numerical parameter
-                        this._DequeueState.State <-
-                            ValueSome (AnsiDecodeState.Csi (key, CsiDecodeState.ConsumingIdentifier))
+                        this._DequeueState.State <- ValueSome (AnsiDecodeState.Csi CsiDecodeState.ConsumingIdentifier)
                     else
                         match this._Behaviour with
                         | UnrecognisedEscapeCodeBehaviour.Throw ->
                             failwith $"Unrecognised ANSI control sequence: received char '%c{key.KeyChar}'"
                         | UnrecognisedEscapeCodeBehaviour.PassThrough -> emitBuffered ()
-                | ValueSome (AnsiDecodeState.Csi (angleBracket, CsiDecodeState.ConsumingIdentifier)) ->
+                | ValueSome (AnsiDecodeState.Csi CsiDecodeState.ConsumingIdentifier) ->
 
                     if '0' <= key.KeyChar && key.KeyChar <= '9' then
                         ()
@@ -352,7 +341,7 @@ type WorldFreezer<'appEvent> =
                             | UnrecognisedEscapeCodeBehaviour.Throw ->
                                 failwith $"don't know how to handle CSI code %i{code} with key %c{key.KeyChar}"
                             | UnrecognisedEscapeCodeBehaviour.PassThrough -> emitBuffered ()
-                | ValueSome (AnsiDecodeState.Csi (angleBracket, CsiDecodeState.SgrTracking state)) ->
+                | ValueSome (AnsiDecodeState.Csi (CsiDecodeState.SgrTracking state)) ->
                     match key.KeyChar with
                     | ';' ->
                         match state.Mode with
@@ -521,10 +510,15 @@ type WorldFreezer<'appEvent> =
             this._Changes.Enqueue (RawWorldStateChange.ApplicationEvent evt)
 
         member this.SubscribeEvent evt toAppEvent =
-            if this._IsDisposing.Value > 0 then
+            // Increment first, then check _IsDisposing, to close the race with DisposeAsync.
+            // DisposeAsync waits for _ActiveSubscriptionRequests to hit 0 before disposing subscriptions,
+            // so incrementing first ensures DisposeAsync will see our in-flight subscription.
+            Interlocked.Increment this._ActiveSubscriptionRequests |> ignore<int>
+
+            if Volatile.Read &this._IsDisposing.contents > 0 then
+                Interlocked.Decrement this._ActiveSubscriptionRequests |> ignore<int>
                 raise (ObjectDisposedException "WorldFreezer")
             else
-                Interlocked.Increment this._ActiveSubscriptionRequests |> ignore<int>
 
                 let handler =
                     Handler<'a> (fun _ args ->
