@@ -388,20 +388,24 @@ module App =
 
         state
 
-    /// We set up a ConsoleCancelEventHandler to suppress one Ctrl+C, and we also listen to stdin,
-    /// for as long as this task is running.
-    /// Cancel the CancellationToken to cause the render loop to quit and to unhook all these state listeners.
-    ///
-    /// The render loop is event-driven: it sleeps until input arrives, an application event is posted (directly
-    /// or through a subscription), the terminal is resized, a component's "recently activated" highlight expires,
-    /// or the input decoder's internal timeout (Esc disambiguation, bracketed-paste timeout) elapses. An idle app
-    /// does no work. In particular, merely letting time pass does not cause a rerender: if your view depends on
-    /// the time, drive it with application events (e.g. a timer subscribed via `IWorldBridge.SubscribeEvent`).
-    ///
-    /// Returns an AppHandle with:
-    /// - Ready: completes when initial setup is done and first render is complete
-    /// - Finished: completes when the app exits (faults if user logic raises an exception)
-    let run'<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
+    /// How often the render loop checks the terminal size on platforms where it cannot be told about resizes.
+    [<Literal>]
+    let private RESIZE_POLL_INTERVAL_MS = 16.0
+
+    /// Arrange for `onResize` to be called whenever the terminal is resized, via SIGWINCH.
+    /// Returns ValueNone on platforms without SIGWINCH (e.g. Windows); the render loop must then poll.
+    let internal sigwinchResizeSignal (onResize : unit -> unit) : IDisposable voption =
+        try
+            PosixSignalRegistration.Create (PosixSignal.SIGWINCH, (fun _ -> onResize ())) :> IDisposable
+            |> ValueSome
+        with :? PlatformNotSupportedException ->
+            ValueNone
+
+    /// `run'`, with the source of terminal-resize notifications made explicit (for tests).
+    /// `resizeSignal onResize` should arrange for `onResize` to be called on every resize, returning a
+    /// registration to dispose at shutdown, or ValueNone if it cannot (whereupon the loop polls the size).
+    let internal runWith<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
+        (resizeSignal : (unit -> unit) -> IDisposable voption)
         (terminate : CancellationToken)
         (console : IConsole)
         (getUtcNow : unit -> DateTime)
@@ -457,16 +461,20 @@ module App =
                         try
                             let listener' = worldFreezer ()
 
+                            let resizeRegistration = resizeSignal listener'.NotifyTerminalResize
+
                             use _ =
-                                try
-                                    PosixSignalRegistration.Create (
-                                        PosixSignal.SIGWINCH,
-                                        fun _ -> listener'.NotifyTerminalResize ()
-                                    )
-                                with :? PlatformNotSupportedException ->
-                                    // SIGWINCH not supported on this platform (e.g., Windows).
-                                    // Recall that the `use` syntax is special-cased to not throw on null!
-                                    null
+                                match resizeRegistration with
+                                | ValueSome registration -> registration
+                                // Recall that the `use` syntax is special-cased to not throw on null!
+                                | ValueNone -> null
+
+                            // Without a resize signal, nothing wakes the loop when the terminal is resized, so
+                            // we must wake periodically to check the size (as the pre-event-driven loop did).
+                            let resizePollDelay =
+                                match resizeRegistration with
+                                | ValueSome _ -> ValueNone
+                                | ValueNone -> ValueSome (TimeSpan.FromMilliseconds RESIZE_POLL_INTERVAL_MS)
 
                             listener <- Some listener'
                             let processWorld = processWorld listener'
@@ -481,8 +489,9 @@ module App =
                             let ctx = RenderState.vdomContext renderState
 
                             // How long may the loop sleep? Until the earliest of: a recorded activation
-                            // expiring (so the "pressed" highlight is redrawn), and the freezer's next
-                            // internal timeout (Esc disambiguation, paste timeout). Must be computed after
+                            // expiring (so the "pressed" highlight is redrawn), the freezer's next
+                            // internal timeout (Esc disambiguation, paste timeout), and, on platforms
+                            // without a resize signal, the next terminal-size check. Must be computed after
                             // the iteration's pump, so that activations recorded during it are seen.
                             let nextDeadline () : TimeSpan voption =
                                 let activationDelay =
@@ -499,10 +508,13 @@ module App =
                                         )
                                     )
 
-                                match activationDelay, inputDelay with
-                                | ValueNone, d
-                                | d, ValueNone -> d
-                                | ValueSome a, ValueSome i -> ValueSome (min a i)
+                                let earlier (a : TimeSpan voption) (b : TimeSpan voption) =
+                                    match a, b with
+                                    | ValueNone, d
+                                    | d, ValueNone -> d
+                                    | ValueSome a, ValueSome b -> ValueSome (min a b)
+
+                                earlier (earlier activationDelay inputDelay) resizePollDelay
 
                             // Signal that we're ready: initial setup complete, first render done
                             ready.SetResult ()
@@ -574,6 +586,49 @@ module App =
             Ready = ready.Task
             Finished = complete.Task
         }
+
+    /// We set up a ConsoleCancelEventHandler to suppress one Ctrl+C, and we also listen to stdin,
+    /// for as long as this task is running.
+    /// Cancel the CancellationToken to cause the render loop to quit and to unhook all these state listeners.
+    ///
+    /// The render loop is event-driven: it sleeps until input arrives, an application event is posted (directly
+    /// or through a subscription), the terminal is resized, a component's "recently activated" highlight expires,
+    /// or the input decoder's internal timeout (Esc disambiguation, bracketed-paste timeout) elapses. An idle app
+    /// does no work. (On platforms without SIGWINCH, such as Windows, the loop also wakes every few milliseconds
+    /// to check for terminal resizes.) In particular, merely letting time pass does not cause a rerender: if your
+    /// view depends on the time, drive it with application events (e.g. a timer subscribed via
+    /// `IWorldBridge.SubscribeEvent`).
+    ///
+    /// Returns an AppHandle with:
+    /// - Ready: completes when initial setup is done and first render is complete
+    /// - Finished: completes when the app exits (faults if user logic raises an exception)
+    let run'<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
+        (terminate : CancellationToken)
+        (console : IConsole)
+        (getUtcNow : unit -> DateTime)
+        (ctrlC : CtrlCHandler)
+        (worldFreezer : unit -> WorldFreezer<'appEvent>)
+        (initialState : 'state)
+        (haveFrameworkHandleFocus : 'state -> bool)
+        (processWorld : IWorldBridge<'appEvent> -> WorldProcessor<'appEvent, 'postLayoutEvent, 'state>)
+        (vdom : IVdomContext<'postLayoutEvent> -> 'state -> Vdom<DesiredBounds>)
+        (resolveActivation : ActivationResolver<'appEvent, 'state>)
+        (debugWriter : StreamWriter option)
+        : AppHandle
+        =
+        runWith
+            sigwinchResizeSignal
+            terminate
+            console
+            getUtcNow
+            ctrlC
+            worldFreezer
+            initialState
+            haveFrameworkHandleFocus
+            processWorld
+            vdom
+            resolveActivation
+            debugWriter
 
     let run<'state, 'appEvent, 'postLayoutEvent when 'state : equality>
         (getEnv : string -> string option)

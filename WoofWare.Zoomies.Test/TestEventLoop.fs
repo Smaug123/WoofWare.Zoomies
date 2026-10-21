@@ -15,15 +15,18 @@ open WoofWare.Zoomies.Components
 [<Parallelizable(ParallelScope.All)>]
 module TestEventLoop =
 
-    /// A console which discards output, counting how many times it has been flushed.
-    let private quietConsole (flushes : int ref) : IConsole =
+    /// A console of the given (mutable) width which discards output, counting how many times it has been flushed.
+    let private resizableConsole (width : int ref) (flushes : int ref) : IConsole =
         {
-            WindowWidth = fun () -> 80
+            WindowWidth = fun () -> Volatile.Read &width.contents
             WindowHeight = fun () -> 10
             ColorMode = ColorMode.Color
             Execute = ignore
             Flush = fun () -> Interlocked.Increment flushes |> ignore<int>
         }
+
+    /// An 80-column console which discards output, counting how many times it has been flushed.
+    let private quietConsole (flushes : int ref) : IConsole = resizableConsole (ref 80) flushes
 
     let private flushCount (flushes : int ref) = Volatile.Read &flushes.contents
 
@@ -65,7 +68,15 @@ module TestEventLoop =
         Vdom.textContent $"count: %i{count}"
 
     /// Start an app with a capturable freezer; returns the handle and a way to get the freezer.
-    let private start
+    /// A resize signal source which is available but never fires: the loop needn't poll for resizes.
+    let private silentResizeSignal (_ : unit -> unit) : IDisposable voption =
+        ValueSome
+            { new IDisposable with
+                member _.Dispose () = ()
+            }
+
+    let private startWith
+        (resizeSignal : (unit -> unit) -> IDisposable voption)
         (cts : CancellationTokenSource)
         (console : IConsole)
         (getUtcNow : unit -> DateTime)
@@ -84,9 +95,25 @@ module TestEventLoop =
             f
 
         let handle =
-            App.run' cts.Token console getUtcNow ctrlC worldFreezer 0 (fun _ -> true) processWorld view resolver None
+            App.runWith
+                resizeSignal
+                cts.Token
+                console
+                getUtcNow
+                ctrlC
+                worldFreezer
+                0
+                (fun _ -> true)
+                processWorld
+                view
+                resolver
+                None
 
         handle, (fun () -> freezerRef.Value |> Option.get)
+
+    /// Start an app on a platform with a (silent) resize signal, so that the loop never needs to poll.
+    let private start cts console getUtcNow ctrlC stopwatch processWorld view resolver =
+        startWith silentResizeSignal cts console getUtcNow ctrlC stopwatch processWorld view resolver
 
     [<Test>]
     let ``an idle app does no work`` () =
@@ -326,6 +353,40 @@ module TestEventLoop =
             // The first Ctrl-C is swallowed, so the process isn't killed under us.
             args.Cancel |> shouldEqual true
             do! handle.Finished.WaitAsync (TimeSpan.FromSeconds 10.0)
+        }
+
+    [<Test>]
+    let ``without a resize signal, a resize alone is still noticed`` () =
+        task {
+            let width = ref 80
+            let flushes = ref 0
+            let ctrlC, _, _ = FakeCtrlCHandler.make ()
+            use cts = new CancellationTokenSource ()
+
+            let handle, _ =
+                startWith
+                    // As on Windows: no SIGWINCH, so nothing tells the loop about resizes.
+                    (fun _ -> ValueNone)
+                    cts
+                    (resizableConsole width flushes)
+                    (fun () -> DateTime.UtcNow)
+                    ctrlC
+                    StopwatchMock.Empty
+                    (recordingProcessor (ConcurrentQueue ()))
+                    countingView
+                    ActivationResolver.none
+
+            do! handle.Ready
+            do! Task.Delay 100
+            let flushesBefore = flushCount flushes
+
+            // No input, no posted events: only the loop itself can notice this.
+            Volatile.Write (&width.contents, 60)
+
+            do! awaitCondition "redrawn at the new size" (fun () -> flushCount flushes > flushesBefore)
+
+            cts.Cancel ()
+            do! handle.Finished
         }
 
     [<Test>]
