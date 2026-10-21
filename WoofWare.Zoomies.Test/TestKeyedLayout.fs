@@ -1,5 +1,7 @@
 namespace WoofWare.Zoomies.Test
 
+open System
+open System.Threading.Tasks
 open FsCheck
 open FsCheck.FSharp
 open FsUnitTyped
@@ -163,3 +165,60 @@ module TestKeyedLayout =
 
         Check.One (propConfig.WithMaxTest 2000, Prop.forAll (Arb.fromGen gen) (fun (s, w, h) -> property s w h))
 
+    let private focusedKeyAfterTab (vdom : Vdom<DesiredBounds>) : Task<NodeKey option> =
+        task {
+            let console, _terminal = ConsoleHarness.make' (fun () -> 10) (fun () -> 5)
+            let world = MockWorld.make ()
+
+            use worldFreezer =
+                WorldFreezer.listen'
+                    UnrecognisedEscapeCodeBehaviour.Throw
+                    StopwatchMock.Empty
+                    world.KeyAvailable
+                    world.ReadKey
+
+            let renderState = RenderState.make<unit> console MockTime.getStaticUtcNow None
+
+            let pump () =
+                App.pumpOnce
+                    worldFreezer
+                    ()
+                    (fun () -> true)
+                    renderState
+                    WorldProcessor.passthrough
+                    (fun _ () -> vdom)
+                    ActivationResolver.none
+                    (fun () -> false)
+
+            pump ()
+            world.SendKey (ConsoleKeyInfo ('\t', ConsoleKey.Tab, false, false, false))
+            pump ()
+            return RenderState.focusedKey renderState
+        }
+
+    [<Test>]
+    let ``withKey on a focusable node tracks focus under the new key`` () =
+        task {
+            let focusable =
+                Vdom.withFocusTracking (Vdom.textContent "x" |> Vdom.withKey (NodeKey.make "a"))
+
+            let! focused =
+                focusable
+                |> Vdom.withKey (NodeKey.make "b")
+                |> Vdom.Keyed
+                |> Vdom.bordered
+                |> focusedKeyAfterTab
+
+            focused |> Option.map NodeKey.toHumanReadableString |> shouldEqual (Some "b")
+
+            let! focused =
+                focusable
+                |> Vdom.withKey (NodeKey.make "b")
+                |> Vdom.Keyed
+                |> Vdom.withKey (NodeKey.make "c")
+                |> Vdom.Keyed
+                |> Vdom.bordered
+                |> focusedKeyAfterTab
+
+            focused |> Option.map NodeKey.toHumanReadableString |> shouldEqual (Some "c")
+        }

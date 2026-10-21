@@ -484,6 +484,7 @@ type Vdom =
 
     /// Attach a key to a VDOM node, effectively giving that node a name.
     /// If the VDOM node is already keyed, this replaces the key.
+    /// If the VDOM node is focus-tracked (see `withFocusTracking`), focus will be tracked under the new key.
     ///
     /// You're free to arbitrarily reshuffle keys, reassign them to new nodes, etc., between renders.
     /// Doing so will invalidate the layout cache, but will not incur any repainting unless you also changed how
@@ -495,9 +496,16 @@ type Vdom =
     ///
     /// It's up to you to ensure that at most one component has a given key within a single Vdom.
     static member withKey (key : NodeKey) (vdom : Vdom<'bounds>) : KeyedVdom<'bounds> =
-        match vdom with
-        | Vdom.Keyed (KeyedVdom (_prevKey, vdom)) -> KeyedVdom (key, vdom)
-        | Vdom.Unkeyed vdom -> KeyedVdom (key, vdom)
+        let unkeyed =
+            match vdom with
+            | Vdom.Keyed (KeyedVdom (_prevKey, vdom)) -> vdom
+            | Vdom.Unkeyed vdom -> vdom
+
+        match unkeyed with
+        | UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, KeyedVdom (_prevKey, inner)) ->
+            // Focus is tracked under the key of the Focusable's child, so replace that key too.
+            KeyedVdom (key, UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, KeyedVdom (key, inner)))
+        | _ -> KeyedVdom (key, unkeyed)
 
     /// Mark a keyed node as focusable, for the purposes of the automatic focus tracking system.
     ///
