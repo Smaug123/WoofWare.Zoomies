@@ -771,116 +771,18 @@ module internal Layout =
     /// Arrange a measured tree into concrete bounds
     let rec internal arrange (measured : MeasuredNode<DesiredBounds>) (bounds : Rectangle) : ArrangedNode =
         match measured.Vdom with
-        | Vdom.Keyed (KeyedVdom (key, unkeyedVdom)) ->
-            match unkeyedVdom with
-            | UnkeyedVdom.TextContent (text, style, alignment, focused, wrap) ->
-                {
-                    Vdom = Vdom.Keyed (KeyedVdom (key, UnkeyedVdom.TextContent (text, style, alignment, focused, wrap)))
+        | Vdom.Keyed (KeyedVdom (key, _)) ->
+            // Keyed wrappers store an unkeyed copy of the wrapped node as their only child (see measureEither's
+            // Keyed case). A key has no effect on layout, so arrange that unkeyed copy and reattach the key.
+            let inner = arrange measured.Children.[0] bounds
+
+            match inner.Vdom with
+            | Vdom.Unkeyed unkeyed ->
+                { inner with
+                    Vdom = Vdom.Keyed (KeyedVdom (key, unkeyed))
                     VDomSource = measured.Vdom
-                    Bounds = bounds
-                    Children = []
                 }
-            | UnkeyedVdom.StyledSpans (spans, alignment, focused, wrap) ->
-                {
-                    Vdom = Vdom.Keyed (KeyedVdom (key, UnkeyedVdom.StyledSpans (spans, alignment, focused, wrap)))
-                    VDomSource = measured.Vdom
-                    Bounds = bounds
-                    Children = []
-                }
-            | UnkeyedVdom.Empty ->
-                {
-                    Vdom = Vdom.Keyed (KeyedVdom (key, UnkeyedVdom.Empty))
-                    VDomSource = measured.Vdom
-                    Bounds = bounds
-                    Children = []
-                }
-            | UnkeyedVdom.Bordered _ ->
-                let borderThickness = 2
-
-                let innerBounds =
-                    {
-                        TopLeftX = bounds.TopLeftX + 1
-                        TopLeftY = bounds.TopLeftY + 1
-                        Width = max 0 (bounds.Width - borderThickness)
-                        Height = max 0 (bounds.Height - borderThickness)
-                    }
-
-                let childArranged = arrange measured.Children.[0] innerBounds
-                let childVdom = childArranged.Vdom
-
-                {
-                    Vdom = Vdom.Keyed (KeyedVdom (key, UnkeyedVdom.Bordered childVdom))
-                    VDomSource = measured.Vdom
-                    Bounds = bounds
-                    Children = [ childArranged ]
-                }
-            | UnkeyedVdom.PanelSplit (dir, behaviour, _, _) ->
-                // Keyed wrappers store the wrapped node as their only child (see measureEither's Keyed case),
-                // so we must unwrap to get the actual PanelSplit's MeasuredNode
-                let childrenArranged = arrangePanelSplit measured.Children.[0] bounds dir behaviour
-                let child1Vdom = childrenArranged.[0].Vdom
-                let child2Vdom = childrenArranged.[1].Vdom
-
-                {
-                    Vdom = Vdom.Keyed (KeyedVdom (key, UnkeyedVdom.PanelSplit (dir, behaviour, child1Vdom, child2Vdom)))
-                    VDomSource = measured.Vdom
-                    Bounds = bounds
-                    Children = childrenArranged
-                }
-            | UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, _) ->
-                let childArranged = arrange measured.Children.[0] bounds
-                let childVdom = childArranged.Vdom
-
-                let focusableVdom =
-                    match childVdom with
-                    | Vdom.Keyed keyedVdom ->
-                        Vdom.Keyed (
-                            KeyedVdom (key, UnkeyedVdom.Focusable (isFirstToFocus, isInitiallyFocused, keyedVdom))
-                        )
-                    | Vdom.Unkeyed _ -> failwith "Focusable child must be keyed"
-
-                {
-                    Vdom = focusableVdom
-                    VDomSource = measured.Vdom
-                    Bounds = bounds
-                    Children = [ childArranged ]
-                }
-            | UnkeyedVdom.Tag (tag, _) ->
-                // Tag is transparent - arrange the child and wrap it back
-                let childArranged = arrange measured.Children.[0] bounds
-
-                // Reconstruct the tagged Vdom from the arranged child
-                let taggedVdom =
-                    Vdom.Keyed (KeyedVdom (key, UnkeyedVdom.Tag (tag, childArranged.Vdom)))
-
-                {
-                    Vdom = taggedVdom
-                    VDomSource = measured.Vdom
-                    Bounds = bounds
-                    Children = [ childArranged ]
-                }
-            | UnkeyedVdom.FlexibleContent content ->
-                // Call the render function with allocated bounds
-                let renderedVdom = content.Render bounds
-
-                // Measure the rendered Vdom with constraints = allocated bounds
-                let renderConstraints =
-                    {
-                        MaxWidth = bounds.Width
-                        MaxHeight = bounds.Height
-                    }
-
-                let measuredRendered = measureEither renderConstraints renderedVdom
-
-                // Arrange the rendered Vdom with the same bounds
-                let arrangedRendered = arrange measuredRendered bounds
-
-                {
-                    Vdom = Vdom.Keyed (KeyedVdom (key, UnkeyedVdom.FlexibleContent content))
-                    VDomSource = measured.Vdom
-                    Bounds = bounds
-                    Children = [ arrangedRendered ]
-                }
+            | Vdom.Keyed _ -> failwith "LOGIC ERROR: arranging an unkeyed node produced a keyed node"
         | Vdom.Unkeyed unkeyedVdom ->
             match unkeyedVdom with
             | UnkeyedVdom.TextContent (text, style, alignment, focused, wrap) ->

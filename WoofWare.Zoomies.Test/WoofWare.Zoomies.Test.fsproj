@@ -28,6 +28,7 @@
     <Compile Include="TestRender.fs" />
     <Compile Include="TestPanelSplit.fs" />
     <Compile Include="TestBordered.fs" />
+    <Compile Include="TestKeyedLayout.fs" />
     <Compile Include="TestTextRendering.fs" />
     <Compile Include="TestStyledSpans.fs" />
     <Compile Include="TestCheckbox.fs" />
